@@ -138,8 +138,13 @@ class Draw:
     noise_redraws: int = 0
 
 
-def draw(seed: int, shard: int, row: int, pool_size: int) -> Draw:
-    """The draw for Tadabur row ``row`` of ``shard`` in a run seeded ``seed``."""
+def draw(seed: int, shard: int | str, row: int, pool_size: int) -> Draw:
+    """The draw for row ``row`` of ``shard`` in a run seeded ``seed``.
+
+    ``shard`` is a Tadabur shard's index or a tlog clip's ``f"{split}:{shard_file}"`` key
+    (:class:`training.distill_mixed.MixedWindowDataset`); it is formatted into the seed
+    string, so the two sources cannot share a draw.
+    """
     rng = random.Random(f"{seed + DRAW_SEED_OFFSET}:{shard}:{row}")
     kinds, shares = zip(*MIXTURE)
     kind = rng.choices(kinds, weights=shares)[0]
@@ -154,7 +159,7 @@ def draw(seed: int, shard: int, row: int, pool_size: int) -> Draw:
     return Draw(kind)
 
 
-def audible_noise(chosen: Draw, seed: int, shard: int, row: int,
+def audible_noise(chosen: Draw, seed: int, shard: int | str, row: int,
                   pool: tuple[NoiseRecording, ...], length: int) -> Draw:
     """``chosen`` (a noise draw) if its segment of ``length`` samples is audible -- its RMS
     above the pool's silence floor, :data:`perturbation.NOISE_MIN_RMS` (-80 dBFS), below which
@@ -212,7 +217,7 @@ class Augmenter:
         self.noise_redrawn = 0
         self.noise_left_clean = 0
 
-    def resolve(self, clean: np.ndarray, shard: int, row: int) -> Draw:
+    def resolve(self, clean: np.ndarray, shard: int | str, row: int) -> Draw:
         """The draw a clip is augmented under: its keyed draw, a silent noise segment
         re-drawn (:func:`audible_noise`). Logs each re-draw; never raises for one."""
         chosen = draw(self.seed, shard, row, len(self.pool))
@@ -229,7 +234,7 @@ class Augmenter:
                   f"{self.noise_left_clean} left clean", flush=True)
         return resolved
 
-    def __call__(self, clean: np.ndarray, shard: int, row: int) -> np.ndarray:
+    def __call__(self, clean: np.ndarray, shard: int | str, row: int) -> np.ndarray:
         # A clip of digital silence has no level to set an SNR or a reverberant level
         # against; it is the only clip that stays clean whatever it drew.
         if not np.any(clean):

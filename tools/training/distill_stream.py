@@ -165,9 +165,12 @@ def iter_row_windows(
         yield cut_window(waveform, start)
 
 
-#: ``augment(clean, shard, row)``: the student's clip for Tadabur row ``row`` of ``shard``,
-#: the clean clip's length and timing (:class:`training.augmentation.Augmenter`).
-Augment = Callable[[np.ndarray, int, int], np.ndarray]
+#: ``augment(clean, shard, row)``: the student's clip for the clip at ``shard`` and ``row``,
+#: the clean clip's length and timing (:class:`training.augmentation.Augmenter`). ``shard`` is
+#: an ``int`` for a Tadabur recording and ``f"{split}:{shard_file}"`` for a tlog one
+#: (:class:`training.distill_mixed.MixedWindowDataset`), so a key never collides across the
+#: two sources and the augmentation draws stay independent.
+Augment = Callable[[np.ndarray, int | str, int], np.ndarray]
 
 
 class StreamingWindowDataset(torch.utils.data.IterableDataset):
@@ -226,6 +229,12 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         self.exposure_use = exposure_use
         self.augment = augment
         self._extractor = None
+        #: What the current (or last) pass read: decoded clips, windows cut, and their
+        #: real-audio seconds. Reset by each ``__iter__``; the mixed stream reads them to
+        #: report the Tadabur arm beside the tlog reader's per-split summary.
+        self.rows_seen = 0
+        self.windows_emitted = 0
+        self.audio_seconds = 0.0
 
     @property
     def extractor(self):
@@ -279,8 +288,11 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
                 continue
             augmented = (waveform if self.augment is None
                          else self.augment(waveform, shard, row_index))
+            self.rows_seen += 1
+            self.audio_seconds += len(waveform) / SAMPLE_RATE
             for start in row_window_starts(len(waveform), self.hop_seconds):
                 clean = cut_window(waveform, start)
+                self.windows_emitted += 1
                 yield clean, (clean if augmented is waveform else cut_window(augmented, start))
         if exclusion is not None:
             print(f"[data] exposure exclusion {exclusion.report()}", flush=True)
@@ -292,7 +304,14 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         -- a 5 s float32 waveform is 320 KB against a feature window's 160 KB, see
         :data:`DEFAULT_SHUFFLE_BUFFER` -- and is kept only so the shuffle stays independent
         of the feature extractor. If RAM binds again, buffering features is the cheaper fix.
+
+        Each pass resets ``rows_seen``, ``windows_emitted`` and ``audio_seconds``, which
+        count what it read (a clip and its windows are counted when cut, so the buffer's
+        last few windows are included even if the consumer stops before draining it).
         """
+        self.rows_seen = 0
+        self.windows_emitted = 0
+        self.audio_seconds = 0.0
         rng = random.Random(window_shuffle_seed(self.seed))
         buffer: list = []
 

@@ -160,6 +160,15 @@ class TrainConfig:
     # 0.0 disables averaging. 0.999 is ~1000 steps of memory, which at ~1 step/s is the
     # timescale over which this run's loss visibly oscillates.
     ema_decay: float = 0.0
+    # The mixed stream (#228), empty for the control's Tadabur-only run: the per-batch
+    # composition, the committed tlog shard schedule and the frame manifest the run replays.
+    # The paths are operational; the mix and the two digests define the input, so they are
+    # resume-critical.
+    mix: str = ""
+    tlog_schedule: str = ""
+    tlog_schedule_sha256: str = ""
+    frame_manifest: str = ""
+    frame_manifest_sha256: str = ""
 
     def loss_config(self) -> DistillLossConfig:
         return DistillLossConfig(
@@ -208,6 +217,11 @@ RESUME_CRITICAL_FIELDS = (
     # The teacher every step was fitted against: a resume that swapped it would splice two
     # targets onto one optimiser state, which is what this guard exists to refuse.
     "teacher_revision",
+    # The mixed stream's definition: a resume that changed the composition or re-read a
+    # different schedule or frame would splice two input distributions onto one optimiser.
+    "mix",
+    "tlog_schedule_sha256",
+    "frame_manifest_sha256",
 )
 
 
@@ -222,6 +236,10 @@ LEGACY_FIELD_VALUES = {
     "exposure_use": "",
     "shuffle_buffer": 1024,
     "teacher_revision": "",
+    # Every run before #228 was Tadabur-only, so a checkpoint without these is the control.
+    "mix": "",
+    "tlog_schedule_sha256": "",
+    "frame_manifest_sha256": "",
 }
 
 
@@ -363,10 +381,28 @@ def build_augmenter(config: TrainConfig):
 
 
 def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
-    """Train and validation loaders over disjoint *clips*."""
+    """Train and validation loaders over disjoint *clips*.
+
+    Under ``config.mix`` the train loader is the round-2 mixed stream
+    (:class:`training.distill_mixed.MixedWindowDataset`) around the same Tadabur dataset the
+    control streams, plus the committed tlog schedule. Its tlog shards cache and consumed-keys
+    log live under the run's out dir, so the run keeps its own prefix evidence.
+    """
     audio_root = Path(config.audio_root)
     if not audio_root.is_dir():
         raise SystemExit(f"not a directory: {audio_root}")
+
+    if config.mix:
+        from training import distill_mixed
+
+        mix = distill_mixed.parse_mix(config.mix, config.batch_size)
+        if not config.stream_shards:
+            raise SystemExit(
+                "--mix needs --stream-shards: the mixed stream's Tadabur side is the "
+                "control's shard stream"
+            )
+    else:
+        mix = None
 
     clips = discover_clips(audio_root)
     if not clips:
@@ -384,7 +420,7 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
         from tadabur.shard_reader import parse_shard_spec
         from training.distill_stream import StreamingWindowDataset
 
-        train_dataset = StreamingWindowDataset(
+        dataset: torch.utils.data.IterableDataset = StreamingWindowDataset(
             parse_shard_spec(config.stream_shards),
             hop_seconds=config.hop_seconds,
             shuffle_buffer=config.shuffle_buffer,
@@ -392,8 +428,18 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
             exposure_use=config.exposure_use or None,
             augment=build_augmenter(config),
         )
+        if mix is not None:
+            from tadabur.tlog_schedule import read_schedule
+
+            dataset = distill_mixed.MixedWindowDataset(
+                dataset,
+                mix=mix,
+                schedule=read_schedule(Path(config.tlog_schedule)),
+                cache_dir=Path(config.out_dir) / distill_mixed.TLOG_CACHE_DIRNAME,
+                run_log=Path(config.out_dir) / distill_mixed.TLOG_RUN_LOG_NAME,
+            )
         train_loader = DataLoader(
-            train_dataset,
+            dataset,
             batch_size=config.batch_size,
             num_workers=config.num_workers,
             pin_memory=True,
@@ -470,13 +516,14 @@ def teacher_student_inputs(batch) -> tuple[torch.Tensor, torch.Tensor]:
     """The teacher's and the student's input from one training batch.
 
     The streamed dataset yields ``(teacher, student)`` pairs -- clean and, under a recipe,
-    augmented windows (:class:`training.distill_stream.StreamingWindowDataset`); the staged
-    corpus yields one tensor, which both models read.
+    augmented windows (:class:`training.distill_stream.StreamingWindowDataset`); the mixed
+    stream yields ``(teacher, student, source)`` (:class:`training.distill_mixed.
+    MixedWindowDataset`), whose third element names the source and is read by the caller;
+    the staged corpus yields one tensor, which both models read.
     """
     if isinstance(batch, torch.Tensor):
         return batch, batch
-    teacher_features, student_features = batch
-    return teacher_features, student_features
+    return batch[0], batch[1]
 
 
 def forward_step(
@@ -519,6 +566,22 @@ def forward_step(
         projector=projector,
         config=loss_config,
     )
+
+
+@torch.no_grad()
+def distillation_logits(
+    teacher_features: torch.Tensor, student_features: torch.Tensor, teacher, student
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """One batch's teacher and student logits, detached, for per-source logging.
+
+    :func:`forward_step` keeps only the loss, so a run that reports per-source numbers needs
+    its own forward. It runs on the log cadence (every ``--log-every`` steps), under
+    ``no_grad``, so it costs a fraction of a percent of the run rather than another graph.
+    """
+    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+        teacher_logits = teacher(teacher_features, return_dict=True)["logits"]["phonemes"]
+        student_logits = student(student_features, return_dict=True)["logits"]["phonemes"]
+    return teacher_logits, student_logits
 
 
 @torch.no_grad()
@@ -708,6 +771,21 @@ def train(
     device = torch.device("cuda")
     seed_everything(config.seed)
 
+    mix = None
+    if config.mix:
+        from training import distill_mixed
+
+        mix = distill_mixed.parse_mix(config.mix, config.batch_size)
+        if resume:
+            # The consumed-keys log is opened for append, and the tlog reader cannot be
+            # rewound without appending its keys again: a replay would duplicate the evidence
+            # of what the run read. The round's rule is one attempt (restart from scratch),
+            # so a mixed run that has to continue is a new run.
+            raise SystemExit(
+                "refusing to resume a mixed run: its tlog consumed-keys log cannot be "
+                "replayed without duplicating rows. Start a fresh --out-dir."
+            )
+
     out_dir = Path(config.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     write_run_config(out_dir, config, init_from, use_ema)
@@ -784,6 +862,13 @@ def train(
             f"{len(val_loader.dataset):,} monitoring-only val windows from --audio-root "
             f"(never streamed)"
         )
+        if mix is not None:
+            print(
+                f"[data] mixed stream: every {mix.size}-window batch is {mix.tlog} tlog + "
+                f"{mix.tadabur} Tadabur; tlog schedule "
+                f"{config.tlog_schedule_sha256[:12]} "
+                f"({config.tlog_schedule}), frame {config.frame_manifest_sha256[:12]}"
+            )
     else:
         print(
             f"[data] {len(train_loader.dataset):,} train windows, "
@@ -822,6 +907,11 @@ def train(
             teacher_in, student_in = (
                 t.to(device, non_blocking=True) for t in teacher_student_inputs(batch)
             )
+            sources = batch[2].to(device) if mix is not None else None
+            if mix is not None:
+                # Every batch, not the smoke's average: the composition is the round's
+                # defining input, and a silent drift to 23 + 9 would still train.
+                distill_mixed.check_batch_composition(sources, mix)
 
             output = forward_step(teacher_in, student_in, teacher, student, projector, loss_config)
             (output.total / config.grad_accum).backward()
@@ -851,8 +941,16 @@ def train(
                     "elapsed_s": round(time.time() - started, 1),
                     **output.as_dict(),
                 }
+                if mix is not None:
+                    teacher_logits, student_logits = distillation_logits(
+                        teacher_in, student_in, teacher, student
+                    )
+                    record.update(distill_mixed.per_source_stats(
+                        student_logits, teacher_logits, sources, loss_config
+                    ))
+                    record.update(distill_mixed.batch_counts(sources))
                 log(record)
-                print(
+                line = (
                     f"[{step:>6}/{config.steps}] loss {record['total']:.4f} "
                     f"kl {fmt_term(record['logit_loss'], 4)} "
                     f"feat {fmt_term(record['feature_loss'], 4)} "
@@ -862,9 +960,16 @@ def train(
                     f"conf-agree {record['confirmed_agreement']:.3f} "
                     f"blank-margin {record['blank_collapse_margin']:+.3f} "
                     f"|g| {record['grad_norm_preclip']:.1f}"
-                    f"{'*' if record['clipped'] else ''}",
-                    flush=True,
+                    f"{'*' if record['clipped'] else ''}"
                 )
+                if mix is not None:
+                    line += (
+                        f" | tlog-kl {fmt_term(record['kl_tlog'], 4)}"
+                        f" tadabur-kl {fmt_term(record['kl_tadabur'], 4)}"
+                        f" tlog-blank {record['student_blank_ratio_tlog']:.3f}"
+                        f" tadabur-blank {record['student_blank_ratio_tadabur']:.3f}"
+                    )
+                print(line, flush=True)
                 if output.stats.is_collapsing():
                     print(
                         f"[warn] blank collapse: student blank "
@@ -932,6 +1037,26 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="the exposure-registry use the streamed rows serve (e.g. aug.training): drop "
         "the rows of reciters it must not touch, before decoding (acceptance rules §6)",
+    )
+    parser.add_argument(
+        "--mix",
+        default="",
+        help="stream the round-2 mixed input (#228) instead of Tadabur alone: the per-batch "
+        'composition, e.g. "tlog=24,tadabur=8". Needs --stream-shards (the Tadabur side), '
+        "--tlog-schedule and --frame-manifest, and the mix's size must be --batch-size.",
+    )
+    parser.add_argument(
+        "--tlog-schedule",
+        default="",
+        help="the committed tlog shard schedule (tadabur/tlog/training_schedule.json) the "
+        "mixed stream's tlog side follows; its SHA-256 is recorded in the run config",
+    )
+    parser.add_argument(
+        "--frame-manifest",
+        default="",
+        help="the frame manifest (training.frame_manifest) the mixed stream's Tadabur side "
+        "replays; it must name this run's --stream-shards and --seed, and its SHA-256 is "
+        "recorded in the run config",
     )
     parser.add_argument(
         "--augment",
@@ -1026,6 +1151,29 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def require_frame_manifest(path: Path, shards: list[int], seed: int) -> str:
+    """The SHA-256 of the frame manifest at ``path``, refusing another run's frame.
+
+    The manifest is what the round-2 replay contract is checked against, so a run whose
+    manifest names other shards or another shard-order seed would record a frame it does not
+    stream -- and a reader comparing manifests would certify the wrong input.
+    """
+    from tadabur.tlog_index import sha256_file
+
+    manifest = json.loads(Path(path).read_text(encoding="utf-8"))
+    if manifest.get("shards") != sorted(shards):
+        raise SystemExit(
+            f"{path}: frame manifest lists {len(manifest.get('shards', []))} shards, not the "
+            f"{len(shards)} --stream-shards names"
+        )
+    if manifest.get("shard_order_seed") != seed:
+        raise SystemExit(
+            f"{path}: frame manifest's shard-order seed is "
+            f"{manifest.get('shard_order_seed')!r}, not --seed {seed}"
+        )
+    return sha256_file(Path(path))
+
+
 def main() -> None:
     args = build_parser().parse_args()
 
@@ -1043,6 +1191,34 @@ def main() -> None:
         from training.augmentation import recipe_record
 
         augment = recipe_record()
+
+    tlog_schedule = frame_manifest = ""
+    tlog_schedule_sha256 = frame_manifest_sha256 = ""
+    if args.mix:
+        from tadabur.shard_reader import parse_shard_spec
+        from tadabur.tlog_index import sha256_file
+        from training import distill_mixed
+
+        if not args.stream_shards:
+            raise SystemExit(
+                "--mix needs --stream-shards: the mixed stream's Tadabur side is a shard "
+                "stream, and --audio-root is validation only"
+            )
+        if not args.tlog_schedule or not args.frame_manifest:
+            raise SystemExit(
+                "--mix needs --tlog-schedule and --frame-manifest: the committed tlog "
+                "schedule and the frame the Tadabur side replays"
+            )
+        try:
+            distill_mixed.parse_mix(args.mix, args.batch_size)
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        tlog_schedule = str(args.tlog_schedule)
+        frame_manifest = str(args.frame_manifest)
+        tlog_schedule_sha256 = sha256_file(Path(tlog_schedule))
+        frame_manifest_sha256 = require_frame_manifest(
+            Path(frame_manifest), parse_shard_spec(args.stream_shards), args.seed
+        )
 
     config = TrainConfig(
         preset=args.preset,
@@ -1075,6 +1251,11 @@ def main() -> None:
         confirm_weight=args.confirm_weight,
         ema_decay=args.ema_decay,
         teacher_revision=args.teacher_revision,
+        mix=args.mix,
+        tlog_schedule=tlog_schedule,
+        tlog_schedule_sha256=tlog_schedule_sha256,
+        frame_manifest=frame_manifest,
+        frame_manifest_sha256=frame_manifest_sha256,
     )
 
     device = torch.device("cuda")

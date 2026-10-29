@@ -470,3 +470,42 @@ def test_launch_resume_keeps_the_run_dir_and_starts_detached(tmp_path):
     assert started, issued
     assert "< /dev/null" in started[-1]
     assert "RESUME=1" in started[-1]
+
+
+def _control_manifest(tmp_path: Path) -> subprocess.CompletedProcess:
+    """`manifest` reads the spec the data assertion wrote, as `chain` reaches it."""
+    (tmp_path / "logs").mkdir(exist_ok=True)
+    (tmp_path / "logs" / "spec.txt").write_text("21-23,40-41,90,383\n", encoding="utf-8")
+    return subprocess.run(
+        ["bash", str(CONTROL), "manifest"],
+        cwd=TOOLS,
+        env=_env(tmp_path),
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_the_launch_records_the_frame_the_candidate_must_replay(tmp_path):
+    """Same seed is not enough: the shard order and the window shuffle draw from different
+    seeds, so the candidate's all-Tadabur substream needs the frame, both seeds and the
+    recipe record to reproduce this arm's input."""
+    from tadabur.shard_reader import parse_shard_spec
+    from training.consumed_prefix import shard_permutation
+    from training.distill_stream import window_shuffle_seed
+    from training.frame_manifest import shards_digest
+
+    done = _control_manifest(tmp_path)
+    assert done.returncode == 0, done.stdout + done.stderr
+    manifest = json.loads(
+        (tmp_path / "runs" / "consonant2_control" / "frame_manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    shards = parse_shard_spec("21-23,40-41,90,383")
+    assert manifest["shards"] == shards
+    assert manifest["shards_sha256"] == shards_digest(shards)
+    assert manifest["stream_order"] == shard_permutation(shards, CONTROL_SEED)
+    assert manifest["shard_order_seed"] == CONTROL_SEED
+    assert manifest["window_shuffle_seed"] == window_shuffle_seed(CONTROL_SEED) == 2027
+    assert manifest["augmentation"]["version"] == "aug94-mixture-v2"
+    assert manifest["exposure_use"] == "consonant2.control.training"

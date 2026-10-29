@@ -16,11 +16,13 @@
 # previous run's directory exists; `launch --resume` continues it instead (#221: a retry must
 # never destroy the checkpoints, which is why the run directories sit outside the archived
 # repo). `run` asserts the data first (both source runs' consumed prefixes, the committed
-# registration, the warm start's checksum), smoke-tests 300 steps with an early evaluation,
-# gates the smoke on throughput, finite KL, a real validation reading and the averaged warm
-# start, then runs 10,000 steps. It appends one line per stage to logs/events and writes,
-# last, logs/train.exit and then logs/train.done; `check` reads that, never a log tail. A run
-# stopped by the budget writes exit 2 and a `budget-exceeded` done-file.
+# registration, the warm start's checksum), writes the frame manifest the round-2 candidate
+# must replay (shard list and digest, both RNG seeds, the recipe record), smoke-tests 300
+# steps with an early evaluation, gates the smoke on throughput, finite KL, a real validation
+# reading and the averaged warm start, then runs 10,000 steps. It appends one line per stage
+# to logs/events and writes, last, logs/train.exit and then logs/train.done; `check` reads
+# that, never a log tail. A run stopped by the budget writes exit 2 and a `budget-exceeded`
+# done-file.
 #
 # Budget: the smoke is ~0.1 GPU-h and 10,000 steps ~3.5 GPU-h at #178's 0.83 steps/s, so
 # BUDGET defaults to six hours from the lock's acquisition.
@@ -330,8 +332,18 @@ train_arm() {  # <out-dir> <steps> <log-every> <eval-every> [resume]
     "${resume_flag[@]}"
 }
 
+manifest() {
+  # The frame the round-2 candidate's all-Tadabur substream has to replay exactly: the shard
+  # list `assert_stream` just verified, the two RNG seeds and the augmentation recipe record
+  # (keyed by source row). Written into the run directory before the first step, so the input
+  # the run actually reads is what the run note copies.
+  python -m training.frame_manifest --shards "$(cat "$ROOT/logs/spec.txt")" \
+    --shard-order-seed "$SEED" --exposure-use "$EXPOSURE_USE" --run-dir "$OUT"
+}
+
 chain() {
   assert_ready || return 1
+  manifest || return 1
   # A resume keeps the smoke it already passed; the smoke directory itself is scratch (its
   # checkpoint is deleted after the gate), so a retried smoke starts from an empty one.
   if [ ! -e "$ROOT/logs/smoke.done" ]; then
@@ -551,6 +563,10 @@ case ${1:-} in
     assert_ready || status=$?
     exit "$status"
     ;;
+  # The frame manifest alone, from the spec `assert_stream` wrote: the run's input record,
+  # written at launch (and rewritten identically by a resume, whose frame cannot change).
+  # Run it from `tools/`; it exists so a test can read what the launch records.
+  manifest) manifest ;;
   # The data assertion alone, in the shape `chain` reaches it: through `assert_ready || return
   # 1`, where bash disables errexit inside the function. Run it from `tools/` with the env
   # active; it exists so a test can prove the assertion can fail at all.
@@ -567,7 +583,8 @@ case ${1:-} in
   # fresh SSH shell, where neither conda nor a bare `python` is on PATH. Run it from `tools/`.
   monitor) activate; assert_monitor "${2:-$ROOT/logs/train.log}" ;;
   *)
-    echo "usage: $0 {launch [--resume]|check|report} (on the box: setup|run|verify|gate|monitor)" >&2
+    echo "usage: $0 {launch [--resume]|check|report} \
+(on the box: setup|run|verify|gate|monitor|manifest)" >&2
     exit 2
     ;;
 esac

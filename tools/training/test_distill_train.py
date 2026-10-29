@@ -650,3 +650,100 @@ def test_the_teacher_revision_flag_defaults_to_the_hub_branch():
     assert parser.parse_args(
         ["--audio-root", "audio", "--teacher-revision", TEACHER_REVISION]
     ).teacher_revision == TEACHER_REVISION
+
+
+# --- a resume continues the input stream, not only the optimiser -----------------------
+
+
+class _FakeStats:
+    def is_collapsing(self) -> bool:
+        return False
+
+
+class _PlainOutput:
+    def __init__(self, total) -> None:
+        self.total = total
+        self.stats = _FakeStats()
+
+    def as_dict(self) -> dict:
+        return {
+            "total": 0.0, "logit_loss": 0.0, "feature_loss": 0.0, "ctc_loss": None,
+            "hard_loss": None, "feature_cosine": 0.0, "confirmed_agreement": 0.0,
+            "blank_collapse_margin": 0.0,
+        }
+
+
+class _LabelledBatches:
+    """A deterministic finite loader: each pass yields batches 1..n, labelled in the tensor.
+
+    Stands in for `StreamingWindowDataset`, which is deterministic the same way (seeded shard
+    order, seeded shuffle buffer, worker slices by id) but needs a corpus to iterate.
+    """
+
+    def __init__(self, batches: int = 4) -> None:
+        self.batches = batches
+        self.dataset = list(range(batches))
+
+    def __iter__(self):
+        for index in range(1, self.batches + 1):
+            label = torch.tensor([float(index)])
+            yield label, label.clone()
+
+
+class _CPUTorch:
+    """The trainer's view of torch with `device` forced to CPU (`train` hardcodes CUDA).
+
+    Only `distill_train`'s own module attribute is replaced: patching `torch.device` itself
+    would break torch's lazily imported modules, whose annotations bind it at import time.
+    """
+
+    def __getattr__(self, name):
+        if name == "device":
+            return lambda *args, **kwargs: torch.device("cpu")
+        return getattr(torch, name)
+
+
+def _train_with_doubles(tmp_path, monkeypatch, seen: list[int]) -> None:
+    """The hub model, CUDA and the corpus replaced by the smallest stand-ins `train` needs."""
+    monkeypatch.setattr(dt, "torch", _CPUTorch())
+    monkeypatch.setattr(dt, "load_run_teacher", lambda *a, **k: torch.nn.Linear(1, 1))
+    monkeypatch.setattr(dt, "build_student", lambda spec: torch.nn.Linear(1, 1))
+    monkeypatch.setattr(dt, "FeatureProjector", lambda *a, **k: torch.nn.Linear(1, 1))
+    loader = _LabelledBatches()
+    monkeypatch.setattr(dt, "build_dataloaders", lambda config: (loader, loader))
+    monkeypatch.setattr(dt, "evaluate", lambda *a, **k: {})
+
+    def forward(teacher_in, student_in, teacher, student, projector, loss_config):
+        seen.append(int(teacher_in.reshape(-1)[0]))
+        return _PlainOutput(sum(p.sum() for p in student.parameters()) * 0.0)
+
+    monkeypatch.setattr(dt, "forward_step", forward)
+
+
+def test_a_resume_continues_the_stream_where_the_checkpoint_stopped(tmp_path, monkeypatch):
+    """R1.1: `train` recreates the loader, so a resume must drop the batches the checkpoint
+    already trained on -- otherwise it trains steps N+1.. on the start of the stream again
+    and finishes with exit 0, the same manifest, and the wrong input schedule."""
+    import shutil
+
+    seen: list[int] = []
+    _train_with_doubles(tmp_path, monkeypatch, seen)
+    saved = dt.save_checkpoint
+
+    def save_and_keep(path, step, *args, **kwargs):
+        saved(path, step, *args, **kwargs)
+        if step == 2:
+            shutil.copy(path, tmp_path / "at-step-2.pt")
+
+    monkeypatch.setattr(dt, "save_checkpoint", save_and_keep)
+    config = _config(
+        out_dir=str(tmp_path), steps=4, seed=7, save_every=2, ema_decay=0.0,
+        learning_rate=1e-3,
+    )
+    dt.train(config)
+    assert seen == [1, 2, 3, 4]  # an uninterrupted run reads the stream in order
+
+    shutil.copy(tmp_path / "at-step-2.pt", tmp_path / dt.CHECKPOINT_FILENAME)
+    seen.clear()
+    dt.train(config, resume=True)
+    assert seen == [3, 4]  # the resume continues the stream, not just the optimiser

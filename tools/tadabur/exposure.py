@@ -173,6 +173,12 @@ AUG_CONTROL = "aug.control"
 #: ``training.consumed_prefix`` from the seed-9494 permutation and its log), warm-started
 #: from C95's averaged weights. A shard use, membership `exact`, written before launch.
 CONSONANT_TRAINING = "consonant1.training"
+#: The round-2 control (#223): #178's warm start, schedule and seed trained once more on
+#: Tadabur alone -- the 278 shards #178 left, minus the prefix its own run streamed
+#: (:func:`training.consumed_prefix.remaining_after_logs` over #94's log and #178's) -- so
+#: that the round-2 candidate minus this arm measures what tlog data added. A shard use,
+#: membership `exact`, written before launch.
+CONSONANT2_CONTROL = "consonant2.control.training"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -182,7 +188,7 @@ USES = frozenset({
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -995,13 +1001,14 @@ PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
     SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL, CONSONANT_TRAINING,
+    CONSONANT2_CONTROL,
 })
 
 

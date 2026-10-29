@@ -9,7 +9,7 @@
 # docs/consonant-round2-run.md (the run note) and docs/consonant-round2-preregistration.md.
 #
 # Mac side, from the worktree root, once the code is committed:
-#   scripts/issue-228-train.sh launch           # freeze-check, gate, archive HEAD, start detached
+#   scripts/issue-228-train.sh launch           # freeze-check, gate, stage HEAD, start detached
 #   scripts/issue-228-train.sh launch --smoke   # the 700-step smoke only; no freeze needed
 #   scripts/issue-228-train.sh check            # done-file check; 0 = the smoke and the run finished
 #   scripts/issue-228-train.sh report           # checkpoint SHA-256, KL range, consumed prefix
@@ -618,17 +618,19 @@ launch() {
   esac
   repo_root=$(git rev-parse --show-toplevel)
   head=$(git -C "$repo_root" rev-parse HEAD)
+  local branch
+  branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
   # Nothing touches the box before the full run's freeze check passes.
   if [ -z "$smoke" ]; then
     freeze_check || return 1
   fi
-  ssh "$HOST" "mkdir -p '$ROOT/logs'"
   # The lock first: nothing on the box is touched while another run holds the GPU.
   if ! ssh "$HOST" "flock -n /root/scratch/gpu.lock true" 2>/dev/null; then
     echo "gpu.lock is held; not launching. Holder:" >&2
     ssh "$HOST" "pgrep -af 'flock /root/scratch/gpu.lock' || true" >&2
     return 3
   fi
+  ssh "$HOST" "mkdir -p '$ROOT/logs'"
   # The run directories live outside the archived repo. A previous full attempt's checkpoint is
   # refused: a mixed run cannot resume, and a restart must not append to its metrics log. A
   # directory a smoke-only launch left behind (it holds the frame manifest, no checkpoint) is
@@ -640,8 +642,26 @@ launch() {
   fi
   ssh "$HOST" "rm -rf '$OUT'"
   assert_disk || return 5
-  git -C "$repo_root" archive "$head" \
-    | ssh "$HOST" "rm -rf '$ROOT/repo' && mkdir -p '$ROOT/repo' && tar -x -C '$ROOT/repo'"
+  # A real checkout, not a `git archive` tree: the tlog reader re-materialises
+  # `tlog.training` by checking its overlay commit out of the staged tree's own history
+  # (`tadabur.tlog_pool.require_overlay_at`), so a tree without `.git` refuses in the data
+  # assertion and again in the mixed stream's first row. The bundle is created here, where
+  # the history is, and cloned on the box, then HEAD is checked.
+  local bundle
+  bundle=$(mktemp)
+  git -C "$repo_root" bundle create "$bundle" "$branch" \
+    || { rm -f "$bundle"; return 1; }
+  ssh "$HOST" "rm -rf '$ROOT/repo' '$ROOT/repo.bundle' && cat > '$ROOT/repo.bundle'" \
+    < "$bundle" || { rm -f "$bundle"; return 1; }
+  rm -f "$bundle"
+  if [ "$branch" = HEAD ]; then
+    ssh "$HOST" "git clone -q '$ROOT/repo.bundle' '$ROOT/repo'" || return 1
+  else
+    ssh "$HOST" "git clone -q -b '$branch' '$ROOT/repo.bundle' '$ROOT/repo'" || return 1
+  fi
+  ssh "$HOST" "rm -f '$ROOT/repo.bundle' && \
+    test \"\$(git -C '$ROOT/repo' rev-parse HEAD)\" = '$head'" \
+    || { echo "the box's checkout is not $head" >&2; return 1; }
   ssh "$HOST" "printf '%s %s\n' '$head' \"\$(date -u +%FT%TZ)\" > '$ROOT/logs/launch.txt'"
   echo "launch commit $head"
   ssh "$HOST" "'$ROOT/repo/scripts/issue-228-train.sh' setup"

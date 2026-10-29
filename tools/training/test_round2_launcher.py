@@ -24,9 +24,11 @@ warm start, seed and schedule, with the tlog stream added. Contract:
 * ``freeze-check``: run in a git checkout; refuses unless the pre-registration, the freeze record
   (``$FREEZE_RECORD``, a path in the repo), ``tlog/training_schedule.json`` and
   ``tlog/training_prefix.json`` are committed in HEAD.
-* ``launch [--smoke|--resume]``: a full launch runs ``freeze-check`` first and touches the box
-  only if it passes; ``--smoke`` skips it and starts the box's run with ``SMOKE_ONLY=1``. A held
-  ``gpu.lock`` exits 3.
+* ``launch [--smoke]``: a full launch runs ``freeze-check`` first and touches the box only if it
+  passes; ``--smoke`` skips it and starts the box's run with ``SMOKE_ONLY=1``. A held
+  ``gpu.lock`` exits 3. ``--resume`` is refused: the mixed stream cannot replay its consumed-keys
+  log. HEAD is staged as a bundle clone (a checkout), not a ``git archive`` tree -- the tlog
+  reader checks the overlay commit out of the staged tree's own history.
 """
 
 from __future__ import annotations
@@ -412,11 +414,12 @@ def test_a_full_launch_without_the_preregistration_in_head_never_touches_the_box
     assert _ssh_log(tmp_path) == ""
 
 
-def test_a_full_launch_with_the_freeze_committed_archives_head_and_starts_the_run(tmp_path):
+def test_a_full_launch_with_the_freeze_committed_stages_head_and_starts_the_run(tmp_path):
     done = _launch(tmp_path, _repo(tmp_path))
     assert done.returncode == 0, _text(done)
     issued = _ssh_log(tmp_path)
-    assert "tar -x" in issued
+    assert "git clone" in issued  # a checkout, so the tlog overlay commit is in its history
+    assert "tar -x" not in issued
     started = [line for line in issued.splitlines() if "setsid" in line]
     assert started and "SMOKE_ONLY" not in started[-1]
 
@@ -429,11 +432,14 @@ def test_a_smoke_launch_does_not_need_the_freeze(tmp_path):
 
 
 @pytest.mark.parametrize("args", [(), ("--smoke",)])
-def test_a_held_gpu_lock_refuses_the_launch_before_anything_is_archived(tmp_path, args):
+def test_a_held_gpu_lock_refuses_the_launch_before_anything_is_staged(tmp_path, args):
     done = _launch(tmp_path, _repo(tmp_path), *args, lock_held=True)
     assert done.returncode == 3
     assert "gpu.lock is held" in _text(done)
-    assert "tar -x" not in _ssh_log(tmp_path)
+    issued = _ssh_log(tmp_path)
+    assert "tar -x" not in issued
+    assert "git clone" not in issued
+    assert "mkdir" not in issued
 
 
 # --- the smoke's evidence is tied to the launch commit ---------------------------------------
@@ -456,3 +462,53 @@ def test_an_absent_or_empty_smoke_done_is_not_evidence(tmp_path, done):
     if done is not None:
         (logs / "smoke.done").write_text(done, encoding="utf-8")
     assert _run(_env(tmp_path), "smoke-valid", "a" * 40).returncode != 0
+
+
+# --- the staged tree must be a checkout, not an archive --------------------------------------
+
+_OVERLAY_CHECK = (
+    "from tadabur import tlog_pool\n"
+    "from tadabur.exposure import TLOG_TRAINING, load_registry\n"
+    "use = load_registry().row_sets[TLOG_TRAINING]\n"
+    "tlog_pool.require_overlay_at(use.overlay_commit)\n"
+)
+
+
+def _require_overlay(tree: Path) -> subprocess.CompletedProcess:
+    """The tlog reader's own staging check, in ``tree``: its overlay commit must be checked
+    out of the tree's own history (``load_training_rows`` calls exactly this)."""
+    return subprocess.run([sys.executable, "-c", _OVERLAY_CHECK], cwd=tree / "tools",
+                          capture_output=True, text=True)
+
+
+def test_the_staged_tree_is_a_checkout_the_tlog_reader_can_verify(tmp_path):
+    """S1.1: `launch` stages a bundle clone, not a `git archive` tree. The tlog reader
+    re-materialises `tlog.training` by checking the overlay commit out of the staged tree's
+    history, so an archive tree refuses in the data assertion and again in the mixed stream."""
+    repo = TOOLS.parent
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    branch = subprocess.run(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
+                            check=True, capture_output=True, text=True).stdout.strip()
+    bundle = tmp_path / "repo.bundle"
+    subprocess.run(["git", "-C", str(repo), "bundle", "create", str(bundle), branch],
+                   check=True, capture_output=True)
+    staged = tmp_path / "checkout"
+    subprocess.run(["git", "clone", "-q", "-b", branch, str(bundle), str(staged)],
+                   check=True, capture_output=True)
+    assert subprocess.run(["git", "-C", str(staged), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip() == head
+    checks_out = _require_overlay(staged)
+    assert checks_out.returncode == 0, checks_out.stdout + checks_out.stderr
+
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    subprocess.run(f"git -C '{repo}' archive HEAD | tar -x -C '{archive}'", shell=True,
+                   check=True)
+    old = _require_overlay(archive)
+    assert old.returncode != 0
+    assert "no overlay commit" in old.stdout + old.stderr
+
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "bundle create" in text and "git clone" in text
+    assert 'git -C "$repo_root" archive' not in text

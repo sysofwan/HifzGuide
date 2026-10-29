@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,9 @@ from training import aug_readout_spec as asp
 from training import aug_readout_verdict as av
 from training import round2_fixtures as fx
 from training import tlog_eval
+
+#: The repository's ``tools/`` directory: the committed round-1 artifacts live under it.
+TOOLS = Path(__file__).parent.parent
 
 
 def test_the_models_writer_builds_the_look_manifest_from_the_pins(tmp_path):
@@ -60,6 +64,27 @@ def test_the_look_artifact_names_the_rows_it_left_out(tmp_path):
     look = json.loads(layout.look.read_text(encoding="utf-8"))
     assert look["excluded"] == {"keys": ["106_1_1482117566.flac#0"], "count": 1,
                                 "ayat": ["2:254"], "reason": tlog_eval.EXCLUDED_REASON}
+
+
+def test_round_1_s_committed_verdict_is_reproduced_byte_for_byte():
+    report = json.loads((TOOLS / "tadabur" / "consonant_readout" / "report.json")
+                        .read_text(encoding="utf-8"))
+
+    assert ag.canonical(report["verdict"]) == ag.canonical(av.verdict(report, asp.CONSONANT1))
+
+
+def test_a_round_2_dry_run_refuses_a_role_the_freeze_does_not_read(tmp_path):
+    from training.consonant2_readout import run_freeze
+
+    repo = fx.init_repo(tmp_path / "repo")
+    path, sha = fx.commit_prereg(repo)
+    spec = fx.filled_spec(root=repo / "readout", prereg=(path, sha))
+    sources = fx.TlogSources(tmp_path / "files", [fx.tlog_item(0, 2)],
+                             lambda model, item, position: None, spec=spec)
+
+    with pytest.raises(SystemExit, match="not a freeze model"):
+        run_freeze(spec, sources, "r2_candidate_ema")
+    assert sources.read == [] and sources.grade_calls == 0
 
 
 def test_round_2_shows_the_shaddah_g3_line_beside_the_verdict():

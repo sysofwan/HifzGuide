@@ -241,9 +241,13 @@ def verdict(report: Mapping, spec: RoundSpec | None = None) -> dict:
                 "verdict": aggregate([c["verdict"] for c in parts]),
                 "attribution": attribution(report)}
     parts = consonant_conditions(report, specification)
-    return {"bars": dict(specification.bars), "conditions": parts,
-            "reported": consonant_reported(report, specification),
-            "verdict": aggregate([c["verdict"] for c in parts])}
+    out = {"bars": dict(specification.bars), "conditions": parts,
+           "verdict": aggregate([c["verdict"] for c in parts])}
+    if reported := consonant_reported(report, specification):
+        # Only a round that declares reported readings carries the key: round 1's verdict is
+        # reproduced byte for byte by the code that wrote it (#227 review R1.1).
+        out["reported"] = reported
+    return out
 
 
 # --- the consonant round's bars (#174) ----------------------------------------------------------

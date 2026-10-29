@@ -132,11 +132,15 @@ def freeze_record(sources, spec: RoundSpec) -> dict:
 
 
 def run_freeze(spec: RoundSpec, sources, model: str | None = None) -> dict:
-    """One model's look-set cause split and top substitutions, for the freeze command's dry
-    run: it refuses without the committed pre-registration, grades, and writes nothing."""
+    """One of the round's three freeze models' look-set cause split and top substitutions, for
+    the freeze command's dry run: it refuses without the committed pre-registration and refuses
+    any other model by name (an unpinned role included), grades, and writes nothing."""
     from training.consonant_readout import freeze_report
 
     model = model or spec.baseline
+    if model not in FREEZE_MODELS:
+        raise SystemExit(f"{model} is not a freeze model: the freeze reads "
+                         f"{', '.join(FREEZE_LABELS[m] for m in FREEZE_MODELS)}")
     require_preregistration(spec, sources.harness_identity())
     data = sources.tlog(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)

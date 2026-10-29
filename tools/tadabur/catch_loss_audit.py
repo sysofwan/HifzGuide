@@ -62,6 +62,7 @@ from training.tashkeel_eval import write_text_atomically
 from .listening_session import read_verdicts
 from .tlog_index import read_jsonl
 from .tlog_pass1 import read_jsonl_gz
+from .truth_sites import UNCLEAR
 from .word_sample import WORD_VERDICTS
 
 #: The pre-registration's seed: the draw is reproducible from it and the committed inputs.
@@ -115,7 +116,10 @@ def graded_words(rows: Sequence[Mapping], *, baseline: str,
         if row["model"] not in (baseline, candidate):
             raise ValueError(f"the export carries {row['model']!r}, not the audit's pair "
                              f"{baseline!r} and {candidate!r}")
-        by_word.setdefault((row["key"], row["position"]), {})[row["model"]] = row
+        models = by_word.setdefault((row["key"], row["position"]), {})
+        if row["model"] in models:
+            raise ValueError(f"{row['key']}/{row['position']}: {row['model']} graded it twice")
+        models[row["model"]] = row
     words = []
     for key, position in sorted(by_word):
         models = by_word[key, position]
@@ -294,8 +298,11 @@ def _flagging(stratum: str) -> str:
 def score(directory: Path, *, spec: RoundSpec = CONSONANT2) -> dict:
     """Score the sitting in ``directory`` and write its ``result.json``; return it."""
     ids = [row["id"] for row in read_jsonl(directory / WORKLIST)]
-    key = {row["id"]: row for row in read_jsonl(directory / KEY)}
-    if set(key) != set(ids):
+    if len(set(ids)) != len(ids):
+        raise ValueError(f"{directory / WORKLIST} holds a duplicate id")
+    key_rows = read_jsonl(directory / KEY)
+    key = {row["id"]: row for row in key_rows}
+    if len(key) != len(key_rows) or set(key) != set(ids):
         raise SystemExit(f"{directory / KEY} does not hold exactly the worklist's items")
     verdicts = read_verdicts(directory / VERDICTS)
     silent = sorted(set(ids) - set(verdicts))
@@ -313,8 +320,7 @@ def score(directory: Path, *, spec: RoundSpec = CONSONANT2) -> dict:
         heard[ident] = answer
     at_most = spec.bars["catch_loss_real_at_most"]
     at_least = spec.bars["catch_loss_decisive_at_least"]
-    strata = [row["stratum"] for row in key.values()]
-    unknown = sorted(set(strata) - {REMOVED, ADDED})
+    unknown = sorted({row["stratum"] for row in key.values()} - {REMOVED, ADDED})
     if unknown:
         raise ValueError(f"{directory / KEY} names unknown strata: {unknown}")
     counts = {stratum: _counts([heard[row["id"]] for row in key.values()
@@ -358,7 +364,7 @@ def _noisy(key: Sequence[Mapping], heard: Mapping[str, str], stratum: str) -> di
             continue
         counts["items"] += 1
         answer = heard[row["id"]]
-        counts["decisive"] += answer != "unclear"
+        counts["decisive"] += answer != UNCLEAR
         counts["real"] += answer == MISTAKE_SIDE
     return counts
 

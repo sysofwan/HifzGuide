@@ -179,6 +179,11 @@ CONSONANT_TRAINING = "consonant1.training"
 #: that the round-2 candidate minus this arm measures what tlog data added. A shard use,
 #: membership `exact`, written before launch.
 CONSONANT2_CONTROL = "consonant2.control.training"
+#: The round-2 candidate (#228): the control's 211-shard frame, trained with every batch 3
+#: parts tlog to 1 part Tadabur, so candidate minus control measures what the tlog data
+#: added. A shard use over the same frame as the control, membership `exact`, written before
+#: launch.
+CONSONANT2_TRAINING = "consonant2.training"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -188,7 +193,7 @@ USES = frozenset({
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING, CONSONANT2_CONTROL,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -1001,14 +1006,14 @@ PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING, CONSONANT2_CONTROL,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
     SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL, CONSONANT_TRAINING,
-    CONSONANT2_CONTROL,
+    CONSONANT2_CONTROL, CONSONANT2_TRAINING,
 })
 
 
@@ -1349,6 +1354,11 @@ def main() -> None:
         "staged", help="rewrite the uses the staged-clip registry alone determines (each "
                        "truth-site source's items, the mining pool): after a new truth-site file")
     commands.add_parser("describe", help="summarize the committed registry")
+    commands.add_parser(
+        "tlog-training-disjoint",
+        help="check tlog.training's rows against every evaluation use "
+             "(check_row_set_disjoint: the tlog training pool is a row-set use, which "
+             "check_disjoint refuses by design). A run's launch-time data assertion")
     copies = commands.add_parser(
         "copies", help="rewrite the probable-copy screen and the checksum aliases")
     copies.add_argument("--index", type=Path, required=True,
@@ -1397,6 +1407,20 @@ def main() -> None:
 
     if args.command == "describe":
         print(describe(load_registry()))
+        return
+    if args.command == "tlog-training-disjoint":
+        # The training pool is a row-set use: check_disjoint refuses it by design, so this
+        # is the one certified check of it against every evaluation use. Failing loudly is
+        # the point -- it is a launch's data assertion, and a collision must stop the run.
+        from .tlog_pool import load_training_rows
+
+        rows = load_training_rows()
+        try:
+            check_row_set_disjoint(rows)
+        except ExposureOverlap as overlap:
+            raise SystemExit(f"tlog.training is not disjoint from evaluation audio: "
+                             f"{overlap}") from None
+        print(f"tlog.training: {len(rows)} rows disjoint from every evaluation use")
         return
     if args.command == "staged":
         for use, rows in sorted(staged_exposures(load_staged_clips()).items()):

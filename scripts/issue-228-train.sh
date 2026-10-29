@@ -15,7 +15,8 @@
 #   scripts/issue-228-train.sh report           # checkpoint SHA-256, KL range, consumed prefix
 #
 # `launch` refuses (full run only) unless the round-2 pre-registration, the consonant2 freeze
-# record, `tlog/training_schedule.json` and `tlog/training_prefix.json` are committed in HEAD;
+# record (`tadabur/consonant2_readout/freeze.json`, resolved through the consonant2 spec),
+# `tlog/training_schedule.json` and `tlog/training_prefix.json` are committed in HEAD;
 # a smoke may run before the freeze. It also refuses while `gpu.lock` is held (exit 3), while a
 # previous attempt's checkpoint exists (4), below MIN_FREE_GB on /root/scratch (5). It never touches
 # the box before the freeze check passes. `--resume` is refused: the tlog consumed-keys log
@@ -86,10 +87,11 @@ EXPOSURE_USE=consonant2.training
 # The control's committed use is the frame this run replays.
 FRAME_USE=consonant2.control.training
 TLOG_SCHEDULE=$ROOT/repo/tools/tadabur/tlog/training_schedule.json
-# The freeze artefacts the full run refuses without, committed in HEAD. The freeze record is
-# #227's; its path is named here until that issue lands the readout spec that resolves it.
-FREEZE_RECORD=${FREEZE_RECORD:-docs/consonant2-freeze.json}
-FROZEN=(docs/consonant-round2-preregistration.md "$FREEZE_RECORD"
+# The freeze artefacts the full run refuses without, committed in HEAD -- all but the freeze
+# record, which is #233's artifact at the consonant2 spec's own readout root; `freeze_check`
+# resolves it through that spec (`tadabur/consonant2_readout/freeze.json`), and `FREEZE_RECORD`
+# overrides it.
+FROZEN=(docs/consonant-round2-preregistration.md
         tools/tadabur/tlog/training_schedule.json tools/tadabur/tlog/training_prefix.json)
 
 # --- the frame ----------------------------------------------------------------------------
@@ -589,17 +591,41 @@ assert_disk() {
   echo "free space: $((avail / 1024 / 1024 / 1024)) GiB on /root/scratch"
 }
 
+freeze_record_path() {
+  # The round's freeze record is #233's artifact: the consonant2 spec's own readout root's
+  # `freeze.json`, written by `training.consonant_readout freeze --spec consonant2 --half look`.
+  # Asking the spec for it (from this script's own tree, not the checkout being probed) keeps
+  # the path in one place; the repo-relative form is what HEAD is probed for.
+  (
+    cd "$(dirname "$0")/../tools" &&
+      python - <<'PY'
+import pathlib
+
+from training.aug_readout_spec import CONSONANT2
+from training.consonant_readout import freeze_path
+
+print(freeze_path(CONSONANT2).resolve().relative_to(pathlib.Path.cwd().resolve().parent))
+PY
+  )
+}
+
 freeze_check() {  # [<checkout>]
   # The full run may start only after the round's pre-registration and freeze artefacts are
   # **committed**, not merely on disk: a draft is not a pre-registration, and a run launched
   # against one cannot be cited. Locally runnable so the refusal is tested without a box.
   # `<checkout>` is the staged tree `chain` re-checks on the box; the Mac-side `launch` and the
   # `freeze-check` subcommand derive it from the checkout they run in.
-  local root=${1:-} missing="" name
+  local root=${1:-} missing="" name record
+  local -a wanted
   if [ -z "$root" ]; then
     root=$(git rev-parse --show-toplevel) || return 1
   fi
-  for name in "${FROZEN[@]}"; do
+  record=${FREEZE_RECORD:-}
+  if [ -z "$record" ]; then
+    record=$(freeze_record_path "$root") || return 1
+  fi
+  wanted=("${FROZEN[@]}" "$record")
+  for name in "${wanted[@]}"; do
     if ! git -C "$root" cat-file -e "HEAD:$name" 2>/dev/null; then
       echo "freeze-check: $name is not committed in HEAD" >&2
       missing=1
@@ -610,7 +636,7 @@ freeze_check() {  # [<checkout>]
       "before them with 'launch --smoke')" >&2
     return 1
   fi
-  echo "freeze: ${#FROZEN[@]} artefacts committed in HEAD"
+  echo "freeze: ${#wanted[@]} artefacts committed in HEAD"
 }
 
 launch() {

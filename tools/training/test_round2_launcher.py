@@ -378,6 +378,41 @@ def test_the_freeze_check_refuses_an_artefact_that_is_on_disk_but_not_committed(
     assert prereg in _text(done)
 
 
+#: #233's freeze artifact, at the consonant2 spec's readout root.
+ROUND2_FREEZE_RECORD = "tools/tadabur/consonant2_readout/freeze.json"
+
+
+def _resolved_freeze_record() -> str:
+    from training.aug_readout_spec import CONSONANT2
+    from training.consonant_readout import freeze_path
+
+    return str(freeze_path(CONSONANT2).resolve().relative_to(TOOLS.parent.resolve()))
+
+
+def _freeze_check_without_override(tmp_path: Path, repo: Path) -> subprocess.CompletedProcess:
+    """The launcher's own default: no ``FREEZE_RECORD`` in the environment."""
+    return _run(_env(tmp_path), "freeze-check", cwd=repo)
+
+
+def test_the_freeze_check_resolves_the_rounds_record_from_the_consonant2_spec(tmp_path):
+    """Fable r11: the record is #233's `consonant2_readout/freeze.json`, at the spec's own
+    readout root -- not the launcher's old `docs/consonant2-freeze.json`, which #233 never
+    writes."""
+    assert _resolved_freeze_record() == ROUND2_FREEZE_RECORD
+    repo = _repo(tmp_path, tuple(name for name in FROZEN if name != FREEZE_RECORD)
+                 + (ROUND2_FREEZE_RECORD,))
+    done = _freeze_check_without_override(tmp_path, repo)
+    assert done.returncode == 0, _text(done)
+    assert "4 artefacts committed" in done.stdout
+
+
+def test_the_freeze_check_refuses_a_checkout_that_commits_only_the_old_record_path(tmp_path):
+    repo = _repo(tmp_path)  # `docs/consonant2-freeze.json`, which nothing writes
+    done = _freeze_check_without_override(tmp_path, repo)
+    assert done.returncode != 0
+    assert ROUND2_FREEZE_RECORD in _text(done)
+
+
 def _launch(tmp_path: Path, repo: Path, *args: str, lock_held: bool = False,
             checkpoint: str = "absent") -> subprocess.CompletedProcess:
     """`launch` against a stand-in box: every ssh is answered by a shim and logged.

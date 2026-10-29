@@ -634,12 +634,30 @@ launch() {
   # The run directories live outside the archived repo. A previous full attempt's checkpoint is
   # refused: a mixed run cannot resume, and a restart must not append to its metrics log. A
   # directory a smoke-only launch left behind (it holds the frame manifest, no checkpoint) is
-  # scratch, so it is cleared and the full attempt starts empty.
-  if ssh "$HOST" "test -s '$OUT/checkpoint.pt' && echo exists" | grep -q exists; then
-    echo "refusing: $OUT holds a previous attempt's checkpoint. A mixed run cannot resume;" \
-      "remove the directory to start the attempt again." >&2
+  # scratch, so it is cleared and the full attempt starts empty. The answer must be explicit:
+  # a dropped connection or a remote failure is not an absent checkpoint, so nothing is removed
+  # until the box has positively said `absent`.
+  local reply status=0
+  reply=$(ssh "$HOST" "if [ -s '$OUT/checkpoint.pt' ]; then echo exists; else echo absent; fi") \
+    || status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "refusing: could not read whether $OUT holds a checkpoint (ssh exit $status); nothing" \
+      "was removed" >&2
     return 4
   fi
+  case $reply in
+    exists)
+      echo "refusing: $OUT holds a previous attempt's checkpoint. A mixed run cannot resume;" \
+        "remove the directory to start the attempt again." >&2
+      return 4
+      ;;
+    absent) ;;
+    *)
+      echo "refusing: the checkpoint probe answered '$reply', not exists or absent; nothing" \
+        "was removed" >&2
+      return 4
+      ;;
+  esac
   ssh "$HOST" "rm -rf '$OUT'"
   assert_disk || return 5
   # A real checkout, not a `git archive` tree: the tlog reader re-materialises

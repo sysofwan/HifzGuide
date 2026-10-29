@@ -378,9 +378,19 @@ def test_the_freeze_check_refuses_an_artefact_that_is_on_disk_but_not_committed(
     assert prereg in _text(done)
 
 
-def _launch(tmp_path: Path, repo: Path, *args: str, lock_held: bool = False
-            ) -> subprocess.CompletedProcess:
-    """`launch` against a stand-in box: every ssh is answered by a shim and logged."""
+def _launch(tmp_path: Path, repo: Path, *args: str, lock_held: bool = False,
+            checkpoint: str = "absent") -> subprocess.CompletedProcess:
+    """`launch` against a stand-in box: every ssh is answered by a shim and logged.
+
+    ``checkpoint`` is the box's answer to the checkpoint probe: ``absent`` or ``exists``; the
+    ``fail`` and ``garbage`` states model a dropped connection (exit 255, no answer) and an
+    unparseable answer."""
+    probe = {
+        "absent": "printf 'absent\\n'",
+        "exists": "printf 'exists\\n'",
+        "fail": "exit 255",
+        "garbage": "printf 'ok\\n'",
+    }[checkpoint]
     shim = tmp_path / "bin"
     shim.mkdir(exist_ok=True)
     ssh = shim / "ssh"
@@ -389,8 +399,7 @@ def _launch(tmp_path: Path, repo: Path, *args: str, lock_held: bool = False
         f'printf \'%s\\n\' "$*" >> "{tmp_path}/ssh.log"',
         'case "$*" in',
         '  *"tar -x"*) cat > /dev/null ;;',
-        '  *"test -e"*) exit 0 ;;',
-        '  *"test -s"*) exit 0 ;;',
+        f'  *"checkpoint.pt"*) {probe} ;;',
         f'  *"flock -n"*) [ "{int(lock_held)}" = 1 ] && exit 1 ;;',
         f'  *"df -B1"*) echo {400 * 1024 ** 3} ;;',
         "esac",
@@ -440,6 +449,28 @@ def test_a_held_gpu_lock_refuses_the_launch_before_anything_is_staged(tmp_path, 
     assert "tar -x" not in issued
     assert "git clone" not in issued
     assert "mkdir" not in issued
+
+
+def test_a_previous_attempts_checkpoint_refuses_the_launch_and_is_kept(tmp_path):
+    done = _launch(tmp_path, _repo(tmp_path), checkpoint="exists")
+    assert done.returncode == 4
+    assert "previous attempt's checkpoint" in _text(done)
+    issued = _ssh_log(tmp_path)
+    assert "rm -rf" not in issued
+    assert "git clone" not in issued
+
+
+@pytest.mark.parametrize("answer", ["fail", "garbage"])
+def test_an_unclear_checkpoint_probe_neither_removes_nor_stages_the_run(tmp_path, answer):
+    """R1.1: a dropped SSH connection (or an answer that is neither `exists` nor `absent`)
+    is not an absent checkpoint, so it must not authorize deleting the run directory."""
+    done = _launch(tmp_path, _repo(tmp_path), "--smoke", checkpoint=answer)
+    assert done.returncode != 0
+    assert "nothing was removed" in _text(done)
+    issued = _ssh_log(tmp_path)
+    assert "rm -rf" not in issued
+    assert "git clone" not in issued
+    assert "mkdir" in issued  # only the logs directory, before the probe
 
 
 # --- the smoke's evidence is tied to the launch commit ---------------------------------------

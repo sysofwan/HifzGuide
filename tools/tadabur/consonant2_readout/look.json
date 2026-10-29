@@ -1,0 +1,124 @@
+{
+ "choice": {
+  "candidate": "ema",
+  "control": "ema"
+ },
+ "control": "the control was decoded on the look set at both weights, for its own live/EMA choice only; it is reported, never in the verdict",
+ "excluded": {
+  "ayat": [
+   "106:1",
+   "106:2",
+   "106:4",
+   "55:17",
+   "90:10",
+   "90:8",
+   "90:9"
+  ],
+  "count": 12,
+  "keys": [
+   "106_1_1482117566.flac#0",
+   "106_1_151870877.flac#0",
+   "106_1_6349218118.flac#0",
+   "106_1_9417097353.flac#0",
+   "106_2_2108995228.flac#0",
+   "106_2_6921227965.flac#0",
+   "106_4_2159827840.flac#0",
+   "55_17_8333433811.flac#0",
+   "55_17_8693496692.flac#0",
+   "90_10_undefined_vD4N8ZA.flac#0",
+   "90_8_5507662909.flac#0",
+   "90_9_7919081121.flac#0"
+  ],
+  "reason": "no item: the row names no ayah, or the phonetizer cannot handle the ayah the row names"
+ },
+ "half": "look",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identities": {
+  "r2_candidate_ema": {
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r2_candidate_live": {
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  },
+  "r2_control_ema": {
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r2_control_live": {
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  }
+ },
+ "input_sha256": {
+  "/Users/sysofwan/repos/HifzGuide-wt/r2-look/docs/consonant-round2-preregistration.md": "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a",
+  "tadabur/consonant2_readout/decodes/tlog.look.base.jsonl.gz": "ebcd8eb0606492a351dbf9ec1ca70051537b641bc83591a7aa7a3597b72765f5",
+  "tadabur/consonant2_readout/decodes/tlog.look.c95.jsonl.gz": "005f9698e633b03c963190bca5bb100dc35ac445bee31be5c31265c883e0e86c",
+  "tadabur/consonant2_readout/decodes/tlog.look.r2_candidate_ema.jsonl.gz": "d3e0844db1e9e71bd2f8931ba81a07440456c03d9a75f65dd1feae9e0ceafb9f",
+  "tadabur/consonant2_readout/decodes/tlog.look.r2_candidate_live.jsonl.gz": "47f6f60acf3a44fdd6adeace985f49cb79367f2c7022ee9612ce9c5a37f2a327",
+  "tadabur/consonant2_readout/decodes/tlog.look.r2_control_ema.jsonl.gz": "00414c29b868bea97a8d4d33a4cc1df24d1be860c17bbcb5243191fb7663b693",
+  "tadabur/consonant2_readout/decodes/tlog.look.r2_control_live.jsonl.gz": "2fc66586221c69bada032cc3bdb511bb5f3badd8902ae21a0cf12f631f70033e",
+  "tadabur/tlog/tranches/look.jsonl": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57"
+ },
+ "inputs": {
+  "r2_candidate_ema": {
+   "false_flags_per_1000": 107.39436619718309,
+   "flagged_words": 2623.0,
+   "graded_words": 24424.0,
+   "word_agreement_points": 58.48055848055848
+  },
+  "r2_candidate_live": {
+   "false_flags_per_1000": 108.14025015378306,
+   "flagged_words": 2637.0,
+   "graded_words": 24385.0,
+   "word_agreement_points": 58.58195858195858
+  },
+  "r2_control_ema": {
+   "false_flags_per_1000": 144.7669153477942,
+   "flagged_words": 3357.0,
+   "graded_words": 23189.0,
+   "word_agreement_points": 49.25704925704926
+  },
+  "r2_control_live": {
+   "false_flags_per_1000": 146.5824633758646,
+   "flagged_words": 3412.0,
+   "graded_words": 23277.0,
+   "word_agreement_points": 49.04644904644905
+  }
+ },
+ "issue": 227,
+ "items": 2841,
+ "rule": "each arm's weights with fewer tlog look gating false flags per 1,000 graded words (shipped default); a tie goes to higher word agreement with the teacher, then to live; the candidate and the control choose independently"
+}

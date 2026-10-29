@@ -1,0 +1,43 @@
+{
+ "identities": {
+  "r2_candidate_ema": {
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r2_candidate_live": {
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  },
+  "r2_control_ema": {
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r2_control_live": {
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  }
+ },
+ "issue": 227,
+ "look_inputs_sha256": "e532026da5123b91e2ef4b80d741b77a527c6f207363fed8427994d96a1d96f4",
+ "look_sha256": "509969de18ae4faa0cad86a64b64b4661aa6df1d3052b06c08a1182d264f88f9",
+ "models": {
+  "candidate": "r2_candidate_ema",
+  "control": "r2_control_ema"
+ },
+ "weights": {
+  "candidate": "ema",
+  "control": "ema"
+ }
+}

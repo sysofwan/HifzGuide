@@ -348,8 +348,14 @@ chain() {
     : > "$ROOT/logs/smoke.done"
   fi
   printf '%s full start\n' "$(date -u +%FT%TZ)" >> "$ROOT/logs/events"
-  if ! train_arm "$OUT" "$STEPS" 50 "$EVAL_EVERY" "${RESUME:-}" \
-    > "$ROOT/logs/train.log" 2>&1; then
+  # `assert_monitor` counts the shard-completion lines of the whole run, so a resume appends
+  # to the previous segment's log instead of truncating the evidence it checks.
+  if [ -n "${RESUME:-}" ]; then
+    exec 3>>"$ROOT/logs/train.log"
+  else
+    exec 3>"$ROOT/logs/train.log"
+  fi
+  if ! train_arm "$OUT" "$STEPS" 50 "$EVAL_EVERY" "${RESUME:-}" >&3 2>&1; then
     printf '%s full failed\n' "$(date -u +%FT%TZ)" >> "$ROOT/logs/events"
     return 1
   fi

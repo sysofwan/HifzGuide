@@ -524,9 +524,11 @@ A training call must pass the schedule (`iter_training_rows(..., schedule=..., r
 without it the reader refuses, so the old sorted walk — which read shards 0–121, 34 of 114
 surahs and no `unclean` row — cannot return. The schedule must cover the rows' shards exactly,
 and at most `interleave_width` shards are on disk at once: each is read once and deleted when
-exhausted, on a raise or on `close()`. Every consumed row key is appended to the gzip'd run log
-(default `<cache_dir>/consumed.jsonl.gz`), and the end of the run prints rows, clips, windows
-and real-audio seconds per split.
+exhausted, on a raise or on `close()`. Every consumed row key is appended to the gzip'd run log,
+which defaults to `<cache_dir>/consumed.jsonl.gz` — the cache directory is scratch, so a run
+that must keep its prefix evidence passes `run_log` beside the run. The reader prints rows,
+clips, windows and real-audio seconds per split when the stream ends, when it is closed and when
+it raises, so a run that stops at its window budget still reports the prefix it consumed.
 
 `training_prefix.json` is the plan for the round-2 budget, `plan --windows 240000`, walking the
 same interleave order the reader yields. The prefix is **73,829 rows** (17.3% of the 426,825-row

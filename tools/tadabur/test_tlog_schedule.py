@@ -399,6 +399,16 @@ def test_a_schedule_that_does_not_cover_exactly_the_shards_refuses_before_any_do
     assert disk.calls == [] and disk.peak == 0
 
 
+@pytest.mark.parametrize(("field", "value"), [("count", 8), ("rows_sha256", "0" * 64)])
+def test_a_schedule_for_another_overlay_refuses_before_any_download(field, value, tmp_path):
+    rows, payloads = _world(UNEVEN)
+    schedule = replace(_scheduled(rows, width=3), **{field: value})
+    reader, disk = _read(rows, payloads, schedule, tmp_path)
+    with pytest.raises(ValueError, match="schedule"):
+        list(reader)
+    assert disk.calls == [] and disk.peak == 0
+
+
 @pytest.fixture
 def cached_shards(tmp_path, monkeypatch):
     """Two tlog shards served by a fake ``hf_hub_download``: the parquet files by shard name."""
@@ -477,6 +487,24 @@ def test_the_run_ends_with_one_line_per_split_of_rows_clips_windows_and_audio_se
     list(reader)
     lines = capsys.readouterr().out.splitlines()[1:]  # the first line is the pre-run estimate
     for split, count, windows, seconds in (("clean", 3, 12, 36), ("unclean", 2, 8, 24)):
+        [line] = [line for line in lines if re.search(rf"(?<![\w-]){split}(?![\w-])", line)]
+        for number in (count, windows, seconds):
+            assert re.search(rf"(?<![\d.]){number}(\.0+)?(?![\d.])", line), (split, number, line)
+
+
+def test_the_summary_is_printed_when_the_consumer_stops_early(tmp_path, capsys):
+    """A run stops at its window budget, not at the pool's end (#224): the consumed prefix is
+    still reported, so it can be compared with ``training_prefix.json``."""
+    rows, payloads = _world([("clean", CLEAN_0, 3), ("unclean", _stem("unclean", 0), 3)])
+    schedule = _scheduled(rows, [("clean", CLEAN_0), ("unclean", _stem("unclean", 0))],
+                          width=2)
+    reader, _ = _read(rows, payloads, schedule, tmp_path)
+    for _ in range(3):  # clean:0, unclean:0, clean:1
+        next(reader)
+    assert len(capsys.readouterr().out.splitlines()) == 1  # only the pre-run estimate
+    reader.close()
+    lines = capsys.readouterr().out.splitlines()
+    for split, count, windows, seconds in (("clean", 2, 8, 24), ("unclean", 1, 4, 12)):
         [line] = [line for line in lines if re.search(rf"(?<![\w-]){split}(?![\w-])", line)]
         for number in (count, windows, seconds):
             assert re.search(rf"(?<![\d.]){number}(\.0+)?(?![\d.])", line), (split, number, line)

@@ -201,6 +201,20 @@ def interleave_order(rows: Iterable[Mapping[str, Any]],
     return interleave_streams(rows_by_shard(rows, schedule), schedule)
 
 
+def add_split_row(totals: dict[str, dict[str, int | float]],
+                  row: Mapping[str, Any]) -> None:
+    """Add one row to a per-split totals map; :func:`split_totals` and the reader's live
+    summary share this one definition of what a row contributes."""
+    from .tlog_pool import _windows_per_clip
+
+    entry = totals.setdefault(row["split"], {"rows": 0, "clips": 0, "windows": 0,
+                                             "audio_seconds": 0.0})
+    entry["rows"] += 1
+    entry["clips"] += 1
+    entry["windows"] += _windows_per_clip(row)
+    entry["audio_seconds"] += row["duration_s"]
+
+
 def split_totals(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, int | float]]:
     """Per split: ``rows``, ``clips``, ``windows`` and ``audio_seconds`` (real audio read).
 
@@ -209,16 +223,9 @@ def split_totals(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, int |
     ``audio_seconds`` the sum of the rows' ``duration_s``, rounded to the millisecond so a
     committed report shows seconds rather than float noise.
     """
-    from .tlog_pool import _windows_per_clip
-
     totals: dict[str, dict[str, int | float]] = {}
     for row in rows:
-        entry = totals.setdefault(row["split"], {"rows": 0, "clips": 0, "windows": 0,
-                                                 "audio_seconds": 0.0})
-        entry["rows"] += 1
-        entry["clips"] += 1
-        entry["windows"] += _windows_per_clip(row)
-        entry["audio_seconds"] += row["duration_s"]
+        add_split_row(totals, row)
     for entry in totals.values():
         entry["audio_seconds"] = round(entry["audio_seconds"], 3)
     return totals

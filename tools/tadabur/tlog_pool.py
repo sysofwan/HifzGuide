@@ -57,8 +57,10 @@ MEASURE_SEED = 19_100_620
 #: The amendment's stop: more than this share of a population's usable rows above D_max halts.
 D_MAX_STOP_SHARE = 0.01
 
-#: The training reader's run log, written beside the run (#224): one JSON line per consumed
-#: row key, appended across restarts, so a run's actual prefix can be compared with the plan.
+#: The training reader's default run log, inside the cache directory (#224): one JSON line per
+#: consumed row key, appended across restarts, so a run's actual prefix can be compared with
+#: the plan. A run that must keep that evidence passes ``run_log`` beside the run; the cache
+#: directory is scratch.
 RUN_LOG_NAME = "consumed.jsonl.gz"
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -572,8 +574,11 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     :func:`load_training_rows`, the verified committed use), in
     :func:`tadabur.tlog_schedule.interleave_order`: the schedule's shards in its order,
     ``schedule.interleave_width`` of them open at once and one row per open shard per round, so
-    consecutive windows come from different shards and both splits appear within the first
-    round. Row order within a shard is kept; the downstream shuffle buffer does the rest.
+    consecutive rows come from different shards while K are open. Row order within a shard is
+    kept; the downstream shuffle buffer does the rest. The schedule is a seeded draw over both
+    splits, not a stratified one, so how early a split first appears is the draw's: on the
+    committed file the first 10 scheduled shards are ``clean`` and the first ``unclean`` row is
+    the 5,292nd (the guarantee is the interleave, not a first-round mix).
 
     ``schedule`` is required: a training call without one refuses, so the sorted
     ``(split, shard_file)`` walk cannot come back unnoticed. The schedule must cover exactly
@@ -594,11 +599,14 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     refuses after it.
 
     Every consumed row key is appended as one JSON line to ``run_log`` (default
-    ``cache_dir / RUN_LOG_NAME``), opened for append so a resumed run keeps its earlier lines,
-    and the end of the run prints one line per split with its rows, clips, windows and
-    real-audio seconds. The first log line reports the rows, their windows per clip at the
-    round-2 stream's 5 s window and 2.5 s hop, and the total, so a run's example count is
-    visible before the first window is cut.
+    ``cache_dir / RUN_LOG_NAME``, a scratch directory -- a run that must keep its prefix
+    evidence passes ``run_log`` beside the run), opened for append so a resumed run keeps its
+    earlier lines. The summary -- one line per split with its rows, clips, windows and
+    real-audio seconds -- is printed when the stream ends, when the reader is closed, and when
+    it raises, so a run that stops at its window budget still reports the prefix it consumed.
+    The first log line reports the rows, their windows per clip at the round-2 stream's 5 s
+    window and 2.5 s hop, and the total, so a run's example count is visible before the first
+    window is cut.
     """
     if schedule is None:
         raise ValueError("a training run needs the frozen shard schedule "
@@ -630,21 +638,23 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     log_path = Path(cache_dir) / RUN_LOG_NAME if run_log is None else Path(run_log)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log = gzip.open(log_path, "at", encoding="utf-8")
-    consumed: list[Mapping[str, Any]] = []
+    totals: dict[str, dict[str, int | float]] = {}
     try:
         for row, audio in tlog_schedule.interleave_streams(shard_streams, schedule):
-            consumed.append(row)
             log.write(json.dumps({"split": row["split"], "shard_file": row["shard_file"],
                                   "row": row["row"]}) + "\n")
+            tlog_schedule.add_split_row(totals, row)
             yield row_key(row), audio
     finally:
         log.close()
         for stream_ in shard_streams.values():
             stream_.close()
-    for split, totals in sorted(tlog_schedule.split_totals(consumed).items()):
-        print(f"[training] {split}: {totals['rows']} rows, {totals['clips']} clips, "
-              f"{totals['windows']} windows, {totals['audio_seconds']} s of real audio",
-              flush=True)
+        # Printed here, not after the loop: a run that stops at its window budget never
+        # exhausts the stream, and its consumed prefix is what the plan is compared with.
+        for split, total in sorted(totals.items()):
+            print(f"[training] {split}: {total['rows']} rows, {total['clips']} clips, "
+                  f"{total['windows']} windows, {round(total['audio_seconds'], 3)} s of real "
+                  f"audio", flush=True)
 
 
 def _windows_per_clip(row: Mapping[str, Any]) -> int:

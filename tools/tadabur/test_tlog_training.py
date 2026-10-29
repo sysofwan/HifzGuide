@@ -48,14 +48,17 @@ Contract this file pins
 * ``load_training_rows(registry=None, *, pool_rows=None, repo=ROOT)``: the verified rows — overlay
   at the use's commit, predicate equal to ``TRAINING_PREDICATE``, count and hash matching
   (``ValueError`` naming ``overlay``, ``predicate``, ``count`` or ``rows_sha256``).
-* ``iter_training_rows(rows=None, *, cache_dir, stream=None, load_audio=None)``: yields
-  ``((split, shard_file, row), samples)`` for exactly ``rows`` (default ``load_training_rows()``),
-  shard by shard in ``(split, shard_file)`` order and row order, reading ``stream(f"data/{stem}
-  .parquet")`` (default :func:`tadabur.tlog_pool.shard_rows`-backed, deleting each shard after
-  use even when the reader stops early or raises). ``load_audio`` defaults to
-  ``default_audio``. A row that is not a predicate row, a checksum mismatch and a wanted row the
-  shard lacks are ``ValueError`` before that row is decoded. The first log line reports the
-  windows per clip at the round-2 5 s window and 2.5 s hop.
+* ``iter_training_rows(rows=None, *, cache_dir, schedule, stream=None, load_audio=None,
+  run_log=None)``: yields ``((split, shard_file, row), samples)`` for exactly ``rows`` (default
+  ``load_training_rows()``), in the required schedule's order (``tadabur.tlog_schedule``) and
+  row order within a shard, reading ``stream(f"data/{stem}.parquet")`` (default
+  :func:`tadabur.tlog_pool.shard_rows`-backed, deleting each shard after use even when the
+  reader stops early or raises). ``load_audio`` defaults to ``default_audio``; ``run_log`` the
+  gzip'd consumed-key log (default ``cache_dir / RUN_LOG_NAME``). A row that is not a predicate
+  row, a checksum mismatch and a wanted row the shard lacks are ``ValueError`` before that row
+  is decoded. The first log line reports the windows per clip at the round-2 5 s window and
+  2.5 s hop; the per-split rows/clips/windows/seconds summary prints when the stream ends, is
+  closed or raises.
 
 Amended by #224 (a deliberate, recorded edit of this locked file): ``iter_training_rows`` takes a
 required ``schedule`` (``tadabur.tlog_schedule.Schedule``) and walks the shards in *its* order,

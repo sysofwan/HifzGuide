@@ -38,6 +38,12 @@ Usage::
     python -m training.distill_train --preset h384 \\
         --audio-root ../tadabur/audit_run/clips_v2 --out-dir runs/h384 --resume
 
+**A resume continues the data stream, not only the optimiser.** The stream is deterministic
+(seeded shard order, seeded shuffle buffer, worker slices by id), so a resume recreates it
+and drops the checkpoint's batches before the first update; the resumed run then reads the
+windows an uninterrupted run would have read next. That costs the data pipeline's work for
+the dropped batches (decode, augmentation, feature extraction), not the optimiser's.
+
 Linux + CUDA only (see ``tools/environment.yml``).
 """
 
@@ -787,6 +793,18 @@ def train(
     loss_config = config.loss_config()
     metrics_path = out_dir / METRICS_FILENAME
     step = start_step
+    # A resume recreates the stream instead of restoring its cursor, so the batches the
+    # checkpoint's weights already trained on have to be dropped: `StreamingWindowDataset` is
+    # deterministic (seeded shard order, seeded shuffle buffer, worker slices by id), so a
+    # fresh loader's first `start_step` batches are exactly the ones the checkpoint saw.
+    # Without this a resumed run trains its first steps again on the start of the stream and
+    # silently leaves the input schedule an uninterrupted run -- and a candidate matched to
+    # it -- followed. The skip pays the data pipeline's cost (decode, augmentation, feature
+    # extraction) for those batches, not the optimiser's.
+    to_skip = start_step
+    if to_skip:
+        print(f"[resume] dropping the first {to_skip} batches the checkpoint trained on",
+              flush=True)
     grad_norm = 0.0
     started = time.time()
 
@@ -796,6 +814,9 @@ def train(
 
     while step < config.steps:
         for batch in train_loader:
+            if to_skip:
+                to_skip -= 1
+                continue
             if step >= config.steps:
                 break
             teacher_in, student_in = (

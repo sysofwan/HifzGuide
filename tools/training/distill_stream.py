@@ -117,6 +117,18 @@ def default_train_shards() -> str:
 # feature extractor -- but if RAM ever binds again, buffering features is the cheaper fix.
 DEFAULT_SHUFFLE_BUFFER = 512
 
+#: The run seed's offset for the shuffle buffer's RNG. The seed orders the shards
+#: (:func:`training.consumed_prefix.shard_permutation`) and ``seed + 1`` drives the window
+#: shuffle; the augmentation draws take ``seed + 2``
+#: (:data:`training.augmentation.DRAW_SEED_OFFSET`). A run's frame manifest records the
+#: derived value, so a replay does not need to know the offset.
+SHUFFLE_SEED_OFFSET = 1
+
+
+def window_shuffle_seed(seed: int) -> int:
+    """The seed of the RNG that shuffle-buffers a run seeded ``seed``'s windows."""
+    return seed + SHUFFLE_SEED_OFFSET
+
 
 def decode_row_waveform(row: dict):
     """The 16 kHz mono waveform for one streamed Tadabur row."""
@@ -281,7 +293,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         :data:`DEFAULT_SHUFFLE_BUFFER` -- and is kept only so the shuffle stays independent
         of the feature extractor. If RAM binds again, buffering features is the cheaper fix.
         """
-        rng = random.Random(self.seed + 1)
+        rng = random.Random(window_shuffle_seed(self.seed))
         buffer: list = []
 
         for pair in self._raw_windows():

@@ -96,10 +96,11 @@ def _out_of_memory(parts_dir: Path, index: int) -> bool:
 
 
 def _stop_workers(workers: Sequence[subprocess.Popen]) -> None:
-    """Terminate and reap the workers of a measurement that is being abandoned.
+    """Terminate and reap the workers of a measurement, however it ends.
 
     The runner's flock is released when this process exits, so an orphan would keep holding
-    the card with no live job for :func:`refuse_if_live` to see.
+    the card with no live job for :func:`refuse_if_live` to see. A measurement that finished
+    has already reaped its workers, so this only waits on their recorded exit codes.
     """
     for worker in workers:
         if worker.poll() is None:
@@ -150,9 +151,8 @@ def measure(processes: int, *, parts_root: Path, cache_dir: Path, clip_cache: Pa
             peaks.append(memory("memory.used"))
             time.sleep(sample_seconds)
         codes = [worker.wait() for worker in workers]
-    except BaseException:
+    finally:
         _stop_workers(workers)
-        raise
     seconds = round(time.monotonic() - started, 1)
     if any(codes) and not all(code == 0 or _out_of_memory(parts_dir, index)
                               for index, code in enumerate(codes)):

@@ -48,14 +48,27 @@ Contract this file pins
 * ``load_training_rows(registry=None, *, pool_rows=None, repo=ROOT)``: the verified rows — overlay
   at the use's commit, predicate equal to ``TRAINING_PREDICATE``, count and hash matching
   (``ValueError`` naming ``overlay``, ``predicate``, ``count`` or ``rows_sha256``).
-* ``iter_training_rows(rows=None, *, cache_dir, stream=None, load_audio=None)``: yields
-  ``((split, shard_file, row), samples)`` for exactly ``rows`` (default ``load_training_rows()``),
-  shard by shard in ``(split, shard_file)`` order and row order, reading ``stream(f"data/{stem}
-  .parquet")`` (default :func:`tadabur.tlog_pool.shard_rows`-backed, deleting each shard after
-  use even when the reader stops early or raises). ``load_audio`` defaults to
-  ``default_audio``. A row that is not a predicate row, a checksum mismatch and a wanted row the
-  shard lacks are ``ValueError`` before that row is decoded. The first log line reports the
-  windows per clip at the round-2 5 s window and 2.5 s hop.
+* ``iter_training_rows(rows=None, *, cache_dir, schedule, stream=None, load_audio=None,
+  run_log=None)``: yields ``((split, shard_file, row), samples)`` for exactly ``rows`` (default
+  ``load_training_rows()``), in the required schedule's order (``tadabur.tlog_schedule``) and
+  row order within a shard, reading ``stream(f"data/{stem}.parquet")`` (default
+  :func:`tadabur.tlog_pool.shard_rows`-backed, deleting each shard after use even when the
+  reader stops early or raises). ``load_audio`` defaults to ``default_audio``; ``run_log`` the
+  gzip'd consumed-key log (default ``cache_dir / RUN_LOG_NAME``). The schedule is checked
+  before any download: its overlay must be the default path's verified use, and its count,
+  ``rows_sha256`` and shards must be the rows'. A row that is not a predicate row, a checksum
+  mismatch and a wanted row the shard lacks are ``ValueError`` before that row is decoded. The
+  first log line reports the windows per clip at the round-2 5 s window and 2.5 s hop; the
+  per-split rows/clips/windows/seconds summary prints when the stream ends, is closed or
+  raises, and every close is attempted even when one fails.
+
+Amended by #224 (a deliberate, recorded edit of this locked file): ``iter_training_rows`` takes a
+required ``schedule`` (``tadabur.tlog_schedule.Schedule``) and walks the shards in *its* order,
+not ``(split, shard_file)`` order; every call below passes ``_schedule(rows)``. The schedule's own
+contract (K-way interleave, refusals, the run log) is pinned in ``test_tlog_schedule.py``. The
+default path also resolves the ``tlog.training`` use through ``tlog_pool.training_use`` and binds
+the schedule's recorded overlay to it (review R1.2), so the default-path test patches that seam
+too; nothing about the predicate, checksum or deletion assertions changed.
 """
 
 from __future__ import annotations
@@ -73,7 +86,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from tadabur import exposure, tlog_pool
+from tadabur import exposure, tlog_pool, tlog_schedule
 from tadabur.exposure import (
     EXTERNAL_USES,
     ClipExposure,
@@ -504,6 +517,13 @@ def _wanted(payloads, rows, *, split="clean", shard=CLEAN_0, **overrides):
             for row in rows]
 
 
+def _schedule(rows, **options) -> tlog_schedule.Schedule:
+    """The frozen schedule over ``rows``' shards (#224): a training call must pass one."""
+    use = exposure.RowSetExposure("b" * 40, dict(tlog_pool.TRAINING_PREDICATE), len(rows),
+                                  tlog_pool.rows_digest(rows))
+    return tlog_schedule.build_schedule(rows, use, **options)
+
+
 def test_the_reader_yields_exactly_the_wanted_rows_with_their_decoded_audio(tmp_path):
     payloads = _shard_payloads()
     calls, loaded = [], []
@@ -511,14 +531,16 @@ def test_the_reader_yields_exactly_the_wanted_rows_with_their_decoded_audio(tmp_
     rows = _wanted(payloads, [3, 1])
     stream = _fake_stream({"data/clean-00000-of-00411.parquet": payloads}, calls)
     out = list(tlog_pool.iter_training_rows(
-        rows, cache_dir=tmp_path, stream=stream, load_audio=_recording_loader(loaded, samples)))
+        rows, cache_dir=tmp_path, schedule=_schedule(rows), stream=stream,
+        load_audio=_recording_loader(loaded, samples)))
     assert [key for key, _ in out] == [("clean", CLEAN_0, 1), ("clean", CLEAN_0, 3)]
     assert all(audio is samples for _, audio in out)
     assert loaded == [payloads[1], payloads[3]]  # rows 0 and 2 are never decoded
     assert calls == ["data/clean-00000-of-00411.parquet"]
 
 
-def test_the_reader_goes_shard_by_shard_in_split_then_shard_order(tmp_path):
+def test_the_reader_goes_shard_by_shard_in_schedule_order_at_width_one(tmp_path):
+    """Amended by #224: the sorted ``(split, shard_file)`` walk is gone; the schedule is the order."""
     calls, loaded = [], []
     names = {"data/clean-00000-of-00411.parquet": _shard_payloads(2, "a"),
              "data/clean-00001-of-00411.parquet": _shard_payloads(2, "b"),
@@ -527,12 +549,15 @@ def test_the_reader_goes_shard_by_shard_in_split_then_shard_order(tmp_path):
                     shard=UNCLEAN_0)
             + _wanted(names["data/clean-00001-of-00411.parquet"], [0], shard=CLEAN_1)
             + _wanted(names["data/clean-00000-of-00411.parquet"], [1]))
+    schedule = replace(_schedule(rows, width=1),
+                       shards=(("unclean", UNCLEAN_0), ("clean", CLEAN_1), ("clean", CLEAN_0)))
     out = list(tlog_pool.iter_training_rows(
-        rows, cache_dir=tmp_path, stream=_fake_stream(names, calls),
+        rows, cache_dir=tmp_path, schedule=schedule, stream=_fake_stream(names, calls),
         load_audio=_recording_loader(loaded)))
-    assert calls == list(names)  # clean-00000, clean-00001, unclean-00000
-    assert [key for key, _ in out] == [("clean", CLEAN_0, 1), ("clean", CLEAN_1, 0),
-                                       ("unclean", UNCLEAN_0, 0), ("unclean", UNCLEAN_0, 1)]
+    assert calls == ["data/unclean-00000-of-00332.parquet", "data/clean-00001-of-00411.parquet",
+                     "data/clean-00000-of-00411.parquet"]
+    assert [key for key, _ in out] == [("unclean", UNCLEAN_0, 0), ("unclean", UNCLEAN_0, 1),
+                                       ("clean", CLEAN_1, 0), ("clean", CLEAN_0, 1)]
 
 
 def test_the_reader_refuses_a_checksum_mismatch_before_decoding_it(tmp_path):
@@ -541,7 +566,7 @@ def test_the_reader_refuses_a_checksum_mismatch_before_decoding_it(tmp_path):
     rows[1] = {**rows[1], "audio_sha256": "0" * 64}
     calls, loaded = [], []
     reader = tlog_pool.iter_training_rows(
-        rows, cache_dir=tmp_path,
+        rows, cache_dir=tmp_path, schedule=_schedule(rows),
         stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, calls),
         load_audio=_recording_loader(loaded))
     with pytest.raises(ValueError, match="audio_sha256|checksum|recorded"):
@@ -554,7 +579,7 @@ def test_the_reader_refuses_a_wanted_row_the_shard_lacks(tmp_path):
     rows = _wanted(payloads, [1]) + [_pool_row(7, payload=b"missing")]
     with pytest.raises(ValueError):
         list(tlog_pool.iter_training_rows(
-            rows, cache_dir=tmp_path,
+            rows, cache_dir=tmp_path, schedule=_schedule(rows),
             stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, []),
             load_audio=_recording_loader([])))
 
@@ -567,7 +592,7 @@ def test_the_reader_refuses_a_row_outside_the_predicate_before_reading_any_shard
     calls, loaded = [], []
     with pytest.raises(ValueError):
         list(tlog_pool.iter_training_rows(
-            rows, cache_dir=tmp_path,
+            rows, cache_dir=tmp_path, schedule=_schedule(rows[:1]),
             stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, calls),
             load_audio=_recording_loader(loaded)))
     assert calls == [] and loaded == []
@@ -579,8 +604,13 @@ def test_the_reader_defaults_to_the_verified_committed_use(tmp_path, monkeypatch
     seen = []
     monkeypatch.setattr(tlog_pool, "load_training_rows",
                         lambda *args, **kwargs: seen.append(True) or verified)
+    # Amended by #224 R1.2: the default path also binds the schedule to the use it verified.
+    monkeypatch.setattr(tlog_pool, "training_use",
+                        lambda *args, **kwargs: exposure.RowSetExposure(
+                            "b" * 40, dict(tlog_pool.TRAINING_PREDICATE), len(verified),
+                            tlog_pool.rows_digest(verified)))
     out = list(tlog_pool.iter_training_rows(
-        cache_dir=tmp_path,
+        cache_dir=tmp_path, schedule=_schedule(verified),
         stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, []),
         load_audio=_recording_loader([])))
     assert seen and [key for key, _ in out] == [("clean", CLEAN_0, 1)]
@@ -590,8 +620,9 @@ def test_the_first_log_line_reports_windows_per_clip_at_the_round_2_window_and_h
         tmp_path, capsys):
     """A 12 s clip at a 5 s window and 2.5 s hop starts windows at 0, 2.5, 5 and 7.5 s."""
     payloads = _shard_payloads()
+    rows = _wanted(payloads, [0, 1, 2])
     list(tlog_pool.iter_training_rows(
-        _wanted(payloads, [0, 1, 2]), cache_dir=tmp_path,
+        rows, cache_dir=tmp_path, schedule=_schedule(rows),
         stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, []),
         load_audio=_recording_loader([])))
     first = capsys.readouterr().out.splitlines()[0]
@@ -608,7 +639,8 @@ def test_the_default_decoder_yields_16_khz_mono_float32(tmp_path):
     payload = buffer.getvalue()  # one second at 8 kHz
     row = _pool_row(0, payload=payload)
     stream = _fake_stream({"data/clean-00000-of-00411.parquet": [payload]}, [])
-    [(key, audio)] = list(tlog_pool.iter_training_rows([row], cache_dir=tmp_path, stream=stream))
+    [(key, audio)] = list(tlog_pool.iter_training_rows(
+        [row], cache_dir=tmp_path, schedule=_schedule([row]), stream=stream))
     assert key == ("clean", CLEAN_0, 0)
     assert audio.dtype == np.float32 and audio.ndim == 1 and len(audio) == 16_000
 
@@ -641,8 +673,9 @@ def cached_shard(tmp_path, monkeypatch):
 def test_the_reader_streams_the_pinned_revision_and_deletes_the_shard_after_use(
         cached_shard, tmp_path):
     parquet, payloads, calls = cached_shard
+    rows = _wanted(payloads, [0, 2])
     out = list(tlog_pool.iter_training_rows(
-        _wanted(payloads, [0, 2]), cache_dir=tmp_path / "cache",
+        rows, cache_dir=tmp_path / "cache", schedule=_schedule(rows),
         load_audio=_recording_loader([])))
     assert [key for key, _ in out] == [("clean", CLEAN_0, 0), ("clean", CLEAN_0, 2)]
     assert calls == [(TLOG.repo, "data/clean-00000-of-00411.parquet", TLOG.revision)]
@@ -655,6 +688,7 @@ def test_the_reader_deletes_the_shard_when_a_checksum_fails(cached_shard, tmp_pa
     rows[1] = {**rows[1], "audio_sha256": "0" * 64}
     with pytest.raises(ValueError) as error:
         list(tlog_pool.iter_training_rows(rows, cache_dir=tmp_path / "cache",
+                                          schedule=_schedule(rows),
                                           load_audio=_recording_loader([])))
     # ``error`` keeps the failing frames alive, so only an explicit close deletes the shard
     assert error.type is ValueError
@@ -663,8 +697,9 @@ def test_the_reader_deletes_the_shard_when_a_checksum_fails(cached_shard, tmp_pa
 
 def test_the_reader_deletes_the_shard_when_the_consumer_stops_early(cached_shard, tmp_path):
     parquet, payloads, _ = cached_shard
+    rows = _wanted(payloads, [0, 1, 2])
     reader = tlog_pool.iter_training_rows(
-        _wanted(payloads, [0, 1, 2]), cache_dir=tmp_path / "cache",
+        rows, cache_dir=tmp_path / "cache", schedule=_schedule(rows),
         load_audio=_recording_loader([]))
     next(reader)
     reader.close()

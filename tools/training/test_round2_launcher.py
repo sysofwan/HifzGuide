@@ -207,7 +207,7 @@ def test_the_script_runs_the_pre_registered_recipe_from_the_178_weights():
     for literal in (
         "tlog=24,tadabur=8", "--init-weights ema", f"INIT_SHA={INIT_SHA}",
         "TEACHER_REVISION=01a1ef9fbe40d144ef845101e89ff924aed3fef5", "SEED=2026", "STEPS=10000",
-        "SMOKE_STEPS=300", "--batch-size 32", "--learning-rate 5e-5", "--warmup-steps 500",
+        "SMOKE_STEPS=700", "--batch-size 32", "--learning-rate 5e-5", "--warmup-steps 500",
         "--cooldown-steps 3000", "--ema-decay 0.999", "--save-every 2000", "--num-workers 1",
         "BUDGET=${BUDGET:-21600}", "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/"
         "checkpoint.pt", "--tlog-schedule", "--frame-manifest",
@@ -434,3 +434,25 @@ def test_a_held_gpu_lock_refuses_the_launch_before_anything_is_archived(tmp_path
     assert done.returncode == 3
     assert "gpu.lock is held" in _text(done)
     assert "tar -x" not in _ssh_log(tmp_path)
+
+
+# --- the smoke's evidence is tied to the launch commit ---------------------------------------
+
+
+def test_a_smoke_is_evidence_only_for_the_launch_commit_that_ran_it(tmp_path):
+    """A code change between `launch --smoke` and the full launch must smoke again: the gate
+    result belongs to the archived tree, not to the arm's name."""
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "smoke.done").write_text("a" * 40 + "\n", encoding="utf-8")
+    assert _run(_env(tmp_path), "smoke-valid", "a" * 40).returncode == 0
+    assert _run(_env(tmp_path), "smoke-valid", "b" * 40).returncode != 0
+
+
+@pytest.mark.parametrize("done", [None, "", "\n"])
+def test_an_absent_or_empty_smoke_done_is_not_evidence(tmp_path, done):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    if done is not None:
+        (logs / "smoke.done").write_text(done, encoding="utf-8")
+    assert _run(_env(tmp_path), "smoke-valid", "a" * 40).returncode != 0

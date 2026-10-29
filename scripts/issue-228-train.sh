@@ -10,7 +10,7 @@
 #
 # Mac side, from the worktree root, once the code is committed:
 #   scripts/issue-228-train.sh launch           # freeze-check, gate, archive HEAD, start detached
-#   scripts/issue-228-train.sh launch --smoke   # the 300-step smoke only; no freeze needed
+#   scripts/issue-228-train.sh launch --smoke   # the 700-step smoke only; no freeze needed
 #   scripts/issue-228-train.sh check            # done-file check; 0 = the smoke and the run finished
 #   scripts/issue-228-train.sh report           # checkpoint SHA-256, KL range, consumed prefix
 #
@@ -24,7 +24,7 @@
 #
 # `run` asserts the data first (the candidate's committed shard use, the committed tlog rows'
 # disjointness, the warm start's checksum), writes the frame manifest the run records, samples
-# the tlog cache's shard count while it runs, smoke-tests 300 steps, gates the smoke on
+# the tlog cache's shard count while it runs, smoke-tests 700 steps, gates the smoke on
 # throughput, both sources' finite KL, every batch 24 + 8, both splits consumed, at most
 # interleave-width tlog shards on disk and the averaged warm start, then runs 10,000 steps. It
 # appends one line per stage to logs/events and writes, last, logs/train.exit and then
@@ -33,7 +33,7 @@
 # reads clips staged from the frame's monitor shard, and `assert_monitor` refuses a finished log
 # that entered it.
 #
-# Budget: the smoke is ~0.1 GPU-h and 10,000 steps ~3.5 GPU-h at #178's 0.83 steps/s, so BUDGET
+# Budget: the 700-step smoke is ~0.25 GPU-h and 10,000 steps ~3.5 GPU-h at #178's 0.83 steps/s, so BUDGET
 # defaults to six hours from the lock's acquisition.
 set -euo pipefail
 
@@ -63,7 +63,11 @@ INDEX=${INDEX:-/root/scratch/issue-89/stage/full_index.jsonl}
 
 SEED=2026
 STEPS=10000
-SMOKE_STEPS=300
+# 700, not the 300 the issue text names (orchestrator amendment, 2026-10-29): the frozen
+# schedule's first `unclean` row is its 5,292nd, which 24 tlog windows a step reaches around
+# step 600, so a 300-step smoke could never satisfy the gate's both-splits criterion. The gate
+# keeps that refusal; the smoke runs long enough to meet it.
+SMOKE_STEPS=700
 # The teacher commit #174 pre-registers (`obadx/muaalem-model-v3_2` @ 01a1ef9). Pinned
 # through preflight and training: the hub's default branch can move between the two loads.
 TEACHER_REVISION=01a1ef9fbe40d144ef845101e89ff924aed3fef5
@@ -371,10 +375,25 @@ manifest() {
     --shard-order-seed "$SEED" --exposure-use "$EXPOSURE_USE" --run-dir "$OUT"
 }
 
+smoke_is_current() {  # <commit>
+  # The smoke's gate result is evidence for the code that ran it, not for the arm: a launch of
+  # another commit must smoke again. `launch` writes logs/launch.txt (`<commit> <time>`) before
+  # the chain starts, and `chain` stores that commit in smoke.done when the smoke passes.
+  [ -s "$ROOT/logs/smoke.done" ] && [ "$(cat "$ROOT/logs/smoke.done")" = "$1" ]
+}
+
 chain() {
   assert_ready || return 1
   manifest || return 1
-  if [ ! -e "$ROOT/logs/smoke.done" ]; then
+  local commit
+  commit=$(cut -d' ' -f1 "$ROOT/logs/launch.txt" 2>/dev/null || true)
+  if [ -z "$commit" ]; then
+    echo "[smoke] $ROOT/logs/launch.txt names no launch commit: the smoke's evidence is" \
+      "tied to the code that ran it, so this run cannot decide whether to smoke again" >&2
+    return 1
+  fi
+  if ! smoke_is_current "$commit"; then
+    rm -f "$ROOT/logs/smoke.done"
     rm -rf "$SMOKE"
     printf '%s smoke start\n' "$(date -u +%FT%TZ)" >> "$ROOT/logs/events"
     if ! train_arm "$SMOKE" "$SMOKE_STEPS" 25 "$SMOKE_EVAL_EVERY" > "$ROOT/logs/smoke.log" 2>&1
@@ -386,7 +405,7 @@ chain() {
       "$SMOKE/tlog_consumed.jsonl.gz" "$MIX" >> "$ROOT/logs/events" || return 1
     smoke_has_ema "$SMOKE/checkpoint.pt" >> "$ROOT/logs/events" || return 1
     rm -f "$SMOKE/checkpoint.pt"  # the metrics stay; the run's weights supersede them
-    : > "$ROOT/logs/smoke.done"
+    printf '%s\n' "$commit" > "$ROOT/logs/smoke.done"
   fi
   # A smoke-only launch exists for the window before the freeze: it must not spend the round's
   # one full attempt.
@@ -694,12 +713,15 @@ case ${1:-} in
   # The smoke gate alone, so a test can prove it rejects a smoke that missed a criterion.
   gate) gate_smoke "${2:?metrics.jsonl}" "${3:?smoke.log}" "${4:?shards.log}" \
     "${5:?consumed keys}" "$MIX" ;;
+  # Whether smoke.done belongs to this launch commit (`chain`'s decision alone). It exists so a
+  # test can prove a code change between the smoke and the full launch re-runs the smoke.
+  smoke-valid) smoke_is_current "${2:?commit}" ;;
   # The post-run monitoring guard alone. It activates the box's environment itself: `report`
   # reaches it from a fresh SSH shell, where neither conda nor a bare `python` is on PATH.
   monitor) activate; assert_monitor "${2:-$ROOT/logs/train.log}" ;;
   *)
     echo "usage: $0 {launch [--smoke]|check|report} \
-(on the box: setup|run|verify|frame|ready|manifest|freeze-check|gate|monitor)" >&2
+(on the box: setup|run|verify|frame|ready|manifest|freeze-check|gate|smoke-valid|monitor)" >&2
     exit 2
     ;;
 esac

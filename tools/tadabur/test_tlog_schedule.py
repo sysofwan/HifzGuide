@@ -145,6 +145,25 @@ def _load(data: bytes):
     return np.zeros(16, dtype=np.float32)
 
 
+class _FailingCloseDisk(_Disk):
+    """A shard stream whose close runs its own cleanup and then fails (#224 R1.1)."""
+
+    def __init__(self, payloads, failing: str):
+        super().__init__(payloads)
+        self.failing = failing
+
+    def _rows(self, shard: str):
+        self.on_disk.add(shard)
+        self.peak = max(self.peak, len(self.on_disk))
+        try:
+            for index, payload in enumerate(self.payloads[shard]):
+                yield {"audio": {"path": f"{index}.flac", "bytes": payload}}
+        finally:
+            self.on_disk.discard(shard)
+            if shard == self.failing:
+                raise PermissionError(13, "permission denied")
+
+
 def _read(rows, payloads, schedule, tmp_path, **options):
     disk = _Disk(payloads)
     reader = tlog_pool.iter_training_rows(rows, cache_dir=tmp_path, schedule=schedule, stream=disk,
@@ -407,6 +426,80 @@ def test_a_schedule_for_another_overlay_refuses_before_any_download(field, value
     with pytest.raises(ValueError, match="schedule"):
         list(reader)
     assert disk.calls == [] and disk.peak == 0
+
+
+def test_every_other_shard_is_deleted_when_one_shards_close_fails(tmp_path):
+    """One shard's close error must not strand the others (#224 R1.1)."""
+    rows, payloads = _world([("clean", _stem("clean", index), 3) for index in range(3)])
+    failing = f"data/{_stem('clean', 0)}.parquet"
+    disk = _FailingCloseDisk(payloads, failing)
+    reader = tlog_pool.iter_training_rows(rows, cache_dir=tmp_path, schedule=_scheduled(rows),
+                                          stream=disk, load_audio=_load)
+    for _ in range(3):  # width 8, three shards: all open
+        next(reader)
+    assert len(disk.on_disk) == 3
+    with pytest.raises(PermissionError) as error:
+        reader.close()
+    assert error.value.errno == 13
+    assert disk.on_disk == set()
+
+
+def test_every_shard_is_deleted_when_the_run_log_close_fails(tmp_path, monkeypatch):
+    """A gzip flush/trailer error must not strand the open shards (#224 R1.1)."""
+    rows, payloads = _world([("clean", _stem("clean", index), 3) for index in range(3)])
+    disk = _Disk(payloads)
+
+    class _FailingLog:
+        def write(self, text):
+            pass
+
+        def close(self):
+            raise OSError(28, "no space left on device")
+
+    monkeypatch.setattr(tlog_pool.gzip, "open", lambda *args, **kwargs: _FailingLog())
+    reader = tlog_pool.iter_training_rows(rows, cache_dir=tmp_path, schedule=_scheduled(rows),
+                                          stream=disk, load_audio=_load)
+    for _ in range(3):
+        next(reader)
+    assert len(disk.on_disk) == 3
+    with pytest.raises(OSError) as error:
+        reader.close()
+    assert error.value.errno == 28
+    assert disk.on_disk == set()
+
+
+def test_the_reader_refuses_a_schedule_for_another_overlay_on_the_default_path(
+        tmp_path, monkeypatch):
+    """The default path binds the schedule's overlay to the verified use (#224 R1.2): the same
+    rows under a corrected overlay still invalidate the frozen window budget."""
+    rows, payloads = _world(UNEVEN)
+    disk = _Disk(payloads)
+    monkeypatch.setattr(tlog_pool, "load_training_rows", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(tlog_pool, "training_use",
+                        lambda *args, **kwargs: replace(_use(rows), overlay_commit="c" * 40))
+    with pytest.raises(ValueError, match="overlay"):
+        list(tlog_pool.iter_training_rows(cache_dir=tmp_path, schedule=_scheduled(rows),
+                                          stream=disk, load_audio=_load))
+    assert disk.calls == [] and disk.peak == 0
+
+
+@pytest.mark.parametrize(("field", "value"), [("count", 10), ("rows_sha256", "0" * 64)])
+def test_the_plan_refuses_a_schedule_whose_count_or_hash_is_not_the_pools(field, value):
+    rows, schedule = _plan_world()
+    with pytest.raises(ValueError, match="schedule"):
+        tlog_schedule.plan_prefix(rows, replace(schedule, **{field: value}), windows=18)
+
+
+def test_the_plan_refuses_a_schedule_for_another_overlay_before_writing(tmp_path, monkeypatch):
+    rows, schedule = _plan_world()
+    path = tmp_path / "schedule.json"
+    tlog_schedule.write_schedule(replace(schedule, overlay_commit="c" * 40), path)
+    monkeypatch.setattr(tlog_pool, "load_training_rows", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(tlog_pool, "training_use", lambda *args, **kwargs: _use(rows))
+    prefix = tmp_path / "prefix.json"
+    with pytest.raises(ValueError, match="overlay"):
+        tlog_schedule.plan(schedule_path=path, prefix_path=prefix, windows=18)
+    assert not prefix.exists()
 
 
 @pytest.fixture

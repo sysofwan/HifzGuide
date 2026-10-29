@@ -28,6 +28,7 @@ every meta by :func:`tree_provenance`, so the cited commit survives the squash m
 
 from __future__ import annotations
 
+import contextlib
 import gzip
 import hashlib
 import json
@@ -528,6 +529,22 @@ def empty_training_use(repo: Path = ROOT) -> exposure.RowSetExposure:
                                    rows_digest([]))
 
 
+def training_use(registry: exposure.ExposureRegistry | None = None
+                 ) -> exposure.RowSetExposure:
+    """The committed ``tlog.training`` use; a registry without one raises.
+
+    The seam :func:`load_training_rows` verifies and the reader binds the schedule's recorded
+    overlay to: a use with no file is absent evidence, never an empty pool.
+    """
+    registry = exposure.load_registry() if registry is None else registry
+    use = registry.row_sets.get(exposure.TLOG_TRAINING)
+    if use is None:
+        raise exposure.ExposureIncomplete(
+            f"{exposure.TLOG_TRAINING} has no file in the registry: write it (empty if the "
+            "training pool has no rows) before reading it")
+    return use
+
+
 def load_training_rows(registry: exposure.ExposureRegistry | None = None, *,
                        pool_rows: Iterable[Mapping[str, Any]] | None = None,
                        repo: Path = ROOT) -> list[dict]:
@@ -541,11 +558,7 @@ def load_training_rows(registry: exposure.ExposureRegistry | None = None, *,
     :class:`tadabur.exposure.ExposureIncomplete` -- absent evidence is not an empty pool.
     """
     registry = exposure.load_registry() if registry is None else registry
-    use = registry.row_sets.get(exposure.TLOG_TRAINING)
-    if use is None:
-        raise exposure.ExposureIncomplete(
-            f"{exposure.TLOG_TRAINING} has no file in the registry: write it (empty if the "
-            "training pool has no rows) before reading it")
+    use = training_use(registry)
     require_overlay_at(use.overlay_commit, repo)
     if dict(use.predicate) != TRAINING_PREDICATE:
         raise ValueError(f"{exposure.TLOG_TRAINING}: the recorded predicate is "
@@ -581,20 +594,23 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     the 5,292nd (the guarantee is the interleave, not a first-round mix).
 
     ``schedule`` is required: a training call without one refuses, so the sorted
-    ``(split, shard_file)`` walk cannot come back unnoticed. The schedule must cover exactly
-    the shards of ``rows``, and its count and ``rows_sha256`` must be theirs -- a missing,
-    duplicated or extra shard, or a schedule built for another overlay, refuses before any
-    download.
+    ``(split, shard_file)`` walk cannot come back unnoticed. The schedule must be this run's,
+    checked before the first download: on the default path its recorded overlay must be the
+    verified use's, its count and ``rows_sha256`` must be the rows', and its shards must be
+    exactly theirs (a missing, duplicated or extra shard refuses). Injected ``rows`` are the
+    synthetic seam -- they are checked against the count, hash and coverage, not against the
+    registry.
 
     Each shard is read once and dropped -- the disk budget is at most ``interleave_width``
     shards -- and every open shard is closed, and so deleted, when the reader is exhausted, when
     it is closed (:meth:`close`), and when it raises (a checksum mismatch, a wanted row the
-    shard lacks); a consumer that raises inside its own loop never resumes the reader, so it
-    must hold it in :func:`contextlib.closing` (or close it in a ``finally``) or the download is
-    dropped only when the generator is finalised. ``stream`` is the row source (default
-    :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading into
-    ``cache_dir``) and ``load_audio`` the decoder (default :func:`default_audio`, 16 kHz mono
-    float32). A row outside :data:`TRAINING_PREDICATE` refuses before any shard is read; a
+    shard lacks); every close and the run log's close are attempted even when one of them
+    fails, and their errors surface. A consumer that raises inside its own loop never resumes
+    the reader, so it must hold it in :func:`contextlib.closing` (or close it in a ``finally``)
+    or the download is dropped only when the generator is finalised. ``stream`` is the row
+    source (default :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading
+    into ``cache_dir``) and ``load_audio`` the decoder (default :func:`default_audio`, 16 kHz
+    mono float32). A row outside :data:`TRAINING_PREDICATE` refuses before any shard is read; a
     checksum mismatch refuses before that row is decoded, and a wanted row the shard lacks
     refuses after it.
 
@@ -611,16 +627,16 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     if schedule is None:
         raise ValueError("a training run needs the frozen shard schedule "
                          "(tadabur.tlog_schedule); the sorted walk is gone (#224)")
-    rows = list(load_training_rows() if rows is None else rows)
+    use = None
+    if rows is None:
+        rows = load_training_rows()
+        use = training_use()
+    rows = list(rows)
     if outside := next((row for row in rows
                         if row["role"] != "train" or not row["usable"]), None):
         raise ValueError(f"{row_key(outside)} is not a training row: "
                          f"{TRAINING_PREDICATE['text']}")
-    by_shard = tlog_schedule.rows_by_shard(rows, schedule)
-    digest = rows_digest(rows)
-    if (len(rows), digest) != (schedule.count, schedule.rows_sha256):
-        raise ValueError(f"the schedule is for {schedule.count} rows with rows_sha256 "
-                         f"{schedule.rows_sha256}, not these {len(rows)} rows with {digest}")
+    by_shard = tlog_schedule.require_schedule(schedule, rows, use=use)
     windows = [_windows_per_clip(row) for row in rows]
     print(f"[training] {len(rows)} rows, windows per clip: "
           f"{sum(windows) / len(windows) if windows else 0.0:.1f} at a 5.0 s window and a "
@@ -637,24 +653,27 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     shard_streams = {shard: shard_stream(shard) for shard in schedule.shards}
     log_path = Path(cache_dir) / RUN_LOG_NAME if run_log is None else Path(run_log)
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    log = gzip.open(log_path, "at", encoding="utf-8")
-    totals: dict[str, dict[str, int | float]] = {}
-    try:
-        for row, audio in tlog_schedule.interleave_streams(shard_streams, schedule):
-            log.write(json.dumps({"split": row["split"], "shard_file": row["shard_file"],
-                                  "row": row["row"]}) + "\n")
-            tlog_schedule.add_split_row(totals, row)
-            yield row_key(row), audio
-    finally:
-        log.close()
+    # Every close is registered on the stack, so one failing close (a full disk flushing the
+    # log, a strict deletion error) still attempts the rest before its error surfaces.
+    with contextlib.ExitStack() as stack:
+        log = gzip.open(log_path, "at", encoding="utf-8")
+        stack.callback(log.close)
         for stream_ in shard_streams.values():
-            stream_.close()
-        # Printed here, not after the loop: a run that stops at its window budget never
-        # exhausts the stream, and its consumed prefix is what the plan is compared with.
-        for split, total in sorted(totals.items()):
-            print(f"[training] {split}: {total['rows']} rows, {total['clips']} clips, "
-                  f"{total['windows']} windows, {round(total['audio_seconds'], 3)} s of real "
-                  f"audio", flush=True)
+            stack.callback(stream_.close)
+        totals: dict[str, dict[str, int | float]] = {}
+        try:
+            for row, audio in tlog_schedule.interleave_streams(shard_streams, schedule):
+                log.write(json.dumps({"split": row["split"], "shard_file": row["shard_file"],
+                                      "row": row["row"]}) + "\n")
+                tlog_schedule.add_split_row(totals, row)
+                yield row_key(row), audio
+        finally:
+            # Printed here, not after the loop: a run that stops at its window budget never
+            # exhausts the stream, and its consumed prefix is what the plan is compared with.
+            for split, total in sorted(totals.items()):
+                print(f"[training] {split}: {total['rows']} rows, {total['clips']} clips, "
+                      f"{total['windows']} windows, "
+                      f"{round(total['audio_seconds'], 3)} s of real audio", flush=True)
 
 
 def _windows_per_clip(row: Mapping[str, Any]) -> int:

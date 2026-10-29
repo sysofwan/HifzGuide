@@ -522,13 +522,18 @@ hash of itself: the round-2 pre-registration cites `sha256_file` of the file, wh
 
 A training call must pass the schedule (`iter_training_rows(..., schedule=..., run_log=...)`);
 without it the reader refuses, so the old sorted walk — which read shards 0–121, 34 of 114
-surahs and no `unclean` row — cannot return. The schedule must cover the rows' shards exactly,
-and at most `interleave_width` shards are on disk at once: each is read once and deleted when
-exhausted, on a raise or on `close()`. Every consumed row key is appended to the gzip'd run log,
-which defaults to `<cache_dir>/consumed.jsonl.gz` — the cache directory is scratch, so a run
-that must keep its prefix evidence passes `run_log` beside the run. The reader prints rows,
-clips, windows and real-audio seconds per split when the stream ends, when it is closed and when
-it raises, so a run that stops at its window budget still reports the prefix it consumed.
+surahs and no `unclean` row — cannot return. The schedule must be this run's, checked before the
+first download: on the default path its recorded overlay must be the verified use's, and its
+count, `rows_sha256` and shards must be the rows' (a missing, duplicated or extra shard
+refuses). `plan` runs the same check before it writes a report, so no report can be produced for
+a schedule the reader would refuse. At most `interleave_width` shards are on disk at once: each
+is read once and deleted when exhausted, on a raise or on `close()`, and every close (the run log
+included) is attempted even when one fails, with the error surfaced. Every consumed row key is
+appended to the gzip'd run log, which defaults to `<cache_dir>/consumed.jsonl.gz` — the cache
+directory is scratch, so a run that must keep its prefix evidence passes `run_log` beside the
+run. The reader prints rows, clips, windows and real-audio seconds per split when the stream
+ends, when it is closed and when it raises, so a run that stops at its window budget still
+reports the prefix it consumed.
 
 `training_prefix.json` is the plan for the round-2 budget, `plan --windows 240000`, walking the
 same interleave order the reader yields. The prefix is **73,829 rows** (17.3% of the 426,825-row

@@ -54,16 +54,21 @@ Contract this file pins
   row order within a shard, reading ``stream(f"data/{stem}.parquet")`` (default
   :func:`tadabur.tlog_pool.shard_rows`-backed, deleting each shard after use even when the
   reader stops early or raises). ``load_audio`` defaults to ``default_audio``; ``run_log`` the
-  gzip'd consumed-key log (default ``cache_dir / RUN_LOG_NAME``). A row that is not a predicate
-  row, a checksum mismatch and a wanted row the shard lacks are ``ValueError`` before that row
-  is decoded. The first log line reports the windows per clip at the round-2 5 s window and
-  2.5 s hop; the per-split rows/clips/windows/seconds summary prints when the stream ends, is
-  closed or raises.
+  gzip'd consumed-key log (default ``cache_dir / RUN_LOG_NAME``). The schedule is checked
+  before any download: its overlay must be the default path's verified use, and its count,
+  ``rows_sha256`` and shards must be the rows'. A row that is not a predicate row, a checksum
+  mismatch and a wanted row the shard lacks are ``ValueError`` before that row is decoded. The
+  first log line reports the windows per clip at the round-2 5 s window and 2.5 s hop; the
+  per-split rows/clips/windows/seconds summary prints when the stream ends, is closed or
+  raises, and every close is attempted even when one fails.
 
 Amended by #224 (a deliberate, recorded edit of this locked file): ``iter_training_rows`` takes a
 required ``schedule`` (``tadabur.tlog_schedule.Schedule``) and walks the shards in *its* order,
 not ``(split, shard_file)`` order; every call below passes ``_schedule(rows)``. The schedule's own
-contract (K-way interleave, refusals, the run log) is pinned in ``test_tlog_schedule.py``.
+contract (K-way interleave, refusals, the run log) is pinned in ``test_tlog_schedule.py``. The
+default path also resolves the ``tlog.training`` use through ``tlog_pool.training_use`` and binds
+the schedule's recorded overlay to it (review R1.2), so the default-path test patches that seam
+too; nothing about the predicate, checksum or deletion assertions changed.
 """
 
 from __future__ import annotations
@@ -599,6 +604,11 @@ def test_the_reader_defaults_to_the_verified_committed_use(tmp_path, monkeypatch
     seen = []
     monkeypatch.setattr(tlog_pool, "load_training_rows",
                         lambda *args, **kwargs: seen.append(True) or verified)
+    # Amended by #224 R1.2: the default path also binds the schedule to the use it verified.
+    monkeypatch.setattr(tlog_pool, "training_use",
+                        lambda *args, **kwargs: exposure.RowSetExposure(
+                            "b" * 40, dict(tlog_pool.TRAINING_PREDICATE), len(verified),
+                            tlog_pool.rows_digest(verified)))
     out = list(tlog_pool.iter_training_rows(
         cache_dir=tmp_path, schedule=_schedule(verified),
         stream=_fake_stream({"data/clean-00000-of-00411.parquet": payloads}, []),

@@ -11,7 +11,9 @@ round, so any prefix of the stream is representative.
 agreement -- and is committed in the round-2 freeze, whose pre-registration cites its SHA-256
 (``tadabur.tlog_index.sha256_file``; the file cannot hold its own hash). It records the seed, the
 interleave width, the overlay commit, and the ``tlog.training`` use's count and ``rows_sha256``,
-so the reader can refuse a schedule built for another overlay.
+so :func:`require_schedule` can refuse a schedule built for another overlay or another pool
+before the reader downloads a shard or the planner writes a report. Injected rows are the
+synthetic seam: they are checked against the count, hash and shard coverage, not the registry.
 
 ``tools/tadabur/tlog/training_prefix.json`` is the plan for the round-2 run's window budget: the
 rows, clips, windows and real-audio seconds of each split, the shards touched, the share of the
@@ -193,6 +195,29 @@ def interleave_streams(streams: Mapping[tuple[str, str], Iterable[Any]],
         slots = live
 
 
+def require_schedule(schedule: Schedule, rows: Sequence[Mapping[str, Any]], *, use=None
+                     ) -> dict[tuple[str, str], list[Mapping[str, Any]]]:
+    """Refuse unless ``schedule`` is this run's, checked before any download or report.
+
+    ``use`` is the verified :class:`tadabur.exposure.RowSetExposure` the rows came from: the
+    schedule's recorded overlay must be that use's, because a corrected overlay with the same
+    membership can still change the window budget its report froze. The rows' count and
+    ``rows_sha256`` must be the schedule's, and its shards must be exactly theirs. Returns the
+    rows grouped by shard in row order -- the grouping every walk needs anyway.
+    """
+    from .tlog_pool import rows_digest
+
+    if use is not None and schedule.overlay_commit != use.overlay_commit:
+        raise ValueError(f"the schedule is for overlay {schedule.overlay_commit}, not the "
+                         f"verified use's {use.overlay_commit}")
+    by_shard = rows_by_shard(rows, schedule)
+    digest = rows_digest(rows)
+    if (len(rows), digest) != (schedule.count, schedule.rows_sha256):
+        raise ValueError(f"the schedule is for {schedule.count} rows with rows_sha256 "
+                         f"{schedule.rows_sha256}, not these {len(rows)} rows with {digest}")
+    return by_shard
+
+
 def interleave_order(rows: Iterable[Mapping[str, Any]],
                      schedule: Schedule) -> Iterator[Mapping[str, Any]]:
     """``rows`` in the stream order the reader yields them in: the shards of the schedule,
@@ -243,7 +268,8 @@ def _clean_surahs(rows: Iterable[Mapping[str, Any]]) -> list[int]:
                    if row["split"] == "clean" and (surah := _surah(row)) is not None})
 
 
-def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, windows: int) -> dict:
+def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, windows: int,
+                use=None) -> dict:
     """The planned prefix of a run of ``windows`` tlog windows, walking
     :func:`interleave_order`.
 
@@ -252,12 +278,17 @@ def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, window
     windows and real seconds per split, the shards touched, the prefix's share of the pool, and
     the clean surahs covered against the pool's. Surah coverage covers clean rows only: unclean
     rows carry no filename label.
+
+    :func:`require_schedule` runs first, so a plan is never reported for a schedule the reader
+    would refuse: the commit's ``use`` binds the recorded overlay, and the count, hash and shard
+    coverage are checked against the pool.
     """
     if windows < 1:
         raise ValueError(f"a prefix window target is positive, not {windows!r}")
     from .tlog_pool import _windows_per_clip
 
     pool = list(rows)
+    require_schedule(schedule, pool, use=use)
     taken: list[Mapping[str, Any]] = []
     running = 0
     for row in interleave_order(pool, schedule):
@@ -298,10 +329,15 @@ def build(*, schedule_path: Path = SCHEDULE_PATH) -> Schedule:
 
 def plan(*, windows: int = DEFAULT_PREFIX_WINDOWS, schedule_path: Path = SCHEDULE_PATH,
          prefix_path: Path = PREFIX_PATH) -> dict:
-    """The committed schedule's planned prefix, written to ``prefix_path``."""
-    from .tlog_pool import load_training_rows
+    """The committed schedule's planned prefix, written to ``prefix_path``.
 
-    report = plan_prefix(load_training_rows(), read_schedule(schedule_path), windows=windows)
+    The schedule is bound to the committed use before the report is written: a schedule for
+    another overlay, or one whose count, hash or shards are not the pool's, refuses.
+    """
+    from .tlog_pool import load_training_rows, training_use
+
+    report = plan_prefix(load_training_rows(), read_schedule(schedule_path), windows=windows,
+                         use=training_use())
     write_json(report, Path(prefix_path))
     return report
 

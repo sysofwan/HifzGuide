@@ -47,6 +47,35 @@ esac
 
 remote() { ssh -n "$HOST" "$@"; }
 
+# A fetch treats the remote `test`'s 1 as "absent" (the review list before the owner queues
+# anything, the backup directory before it runs) and every other nonzero as the transport
+# failure it is: a failed ssh must fail the fetch, never print it as absent and succeed.
+fetch_file() {  # remote path, destination
+  local path=$1 destination=$2 status=0
+  remote "test -f '$path'" || status=$?
+  if [ "$status" -eq 0 ]; then
+    rsync -a "$HOST:$path" "$destination/"
+  elif [ "$status" -eq 1 ]; then
+    echo "$HOST:$path is absent (nothing to fetch)"
+  else
+    echo "ssh $HOST failed (status $status) checking $path" >&2
+    return "$status"
+  fi
+}
+
+fetch_tree() {  # remote directory, destination
+  local directory=$1 destination=$2 status=0
+  remote "test -d '$directory'" || status=$?
+  if [ "$status" -eq 0 ]; then
+    rsync -a "$HOST:$directory/" "$destination/"
+  elif [ "$status" -eq 1 ]; then
+    echo "$HOST:$directory is absent (nothing to fetch)"
+  else
+    echo "ssh $HOST failed (status $status) checking $directory" >&2
+    return "$status"
+  fi
+}
+
 stage_repo() {
   local branch sha
   branch=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
@@ -125,20 +154,10 @@ fetch() {
       rsync -a --include 'worklist.jsonl' --include 'key.jsonl' \
         --include 'summary.json' --exclude '*' "$HOST:$ROOT/" "$destination/" ;;
     ui)
-      local file
-      for file in "$VERDICTS" "$REVIEW"; do
-        if remote "test -f '$file'"; then
-          rsync -a "$HOST:$file" "$destination/"
-        else
-          echo "$HOST:$file is absent (nothing to fetch)"
-        fi
-      done ;;
+      fetch_file "$VERDICTS" "$destination"
+      fetch_file "$REVIEW" "$destination" ;;
     backup)
-      if remote "test -d '$BACKUP'"; then
-        rsync -a "$HOST:$BACKUP/" "$destination/"
-      else
-        echo "$HOST:$BACKUP is absent (no backup has run)"
-      fi ;;
+      fetch_tree "$BACKUP" "$destination" ;;
   esac
   echo "fetched $job into $destination"
 }

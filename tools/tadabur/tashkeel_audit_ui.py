@@ -10,10 +10,12 @@ each site and record **what the reciter said**, one shuffled queue across three 
 * **consonant** — which of the pair's two letters was said, or unclear. The P3.5 nominal
   rejects come up here and in shaddah, indistinguishable from the mined sites;
 * **word** — was the highlighted word recited correctly: yes, no or unclear. Ship A's random
-  word sample (:mod:`tadabur.word_sample`, #126) asks it, given with ``--words``. The word is
-  shown whole, since judging it needs its text; it may be a word another row asks about (in
-  another recitation), so the sampled words are asked **after** every other row
-  (:func:`queue`), once those answers are given.
+  word sample (:mod:`tadabur.word_sample`, #126) asks it, given with ``--words``; so does the
+  round-2 catch-loss audit (:mod:`tadabur.catch_loss_audit`, #225), given with
+  ``--catch-loss`` and its look clip cache with ``--clip-cache``. The word is shown whole,
+  since judging it needs its text; it may be a word another row asks about (in another
+  recitation), so word rows are asked **after** every other row (:func:`queue`), once those
+  answers are given.
 
 The synthetic-edit check (#107, :mod:`tadabur.edit_check`) shares the queue: each of its
 items asks the shaddah or consonant question of its mark and whether the recitation
@@ -53,6 +55,13 @@ Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the
 
   python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000] \
       [--worklist tadabur/ship_a/worklist.jsonl --words tadabur/ship_a/word_sample.jsonl]
+
+or the round-2 catch-loss audit's worklist alone, playing each look clip whole from the box's
+cache (``scripts/issue-225-audit.sh ui launch`` on cuda-dev)::
+
+  python -m tadabur.tashkeel_audit_ui --catch-loss <catch_loss/worklist.jsonl> \
+      --clip-cache /root/scratch/tlog/r2/clips --verdicts <catch_loss/verdicts.jsonl> \
+      --host 0.0.0.0
 """
 
 from __future__ import annotations
@@ -71,8 +80,14 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 
-from .audio import TARGET_SAMPLE_RATE, read_audio
+from .audio import (
+    TARGET_SAMPLE_RATE,
+    decode_to_mono_16k_with_rate_and_decoder,
+    read_audio,
+    read_audio_bytes,
+)
 from .audit_http import AuditHandler, serve
+from .catch_loss_worklist import CatchLossRow, read_catch_loss_worklist, verify_clips
 from .edit_check import BLIND_CHECK_PATH, WORDS_PATH, EditCheckSite, load_edit_check
 from .edit_check import verify_audio as verify_edit_check_audio
 from .listening_session import (
@@ -97,7 +112,7 @@ from .listening_session import (
 )
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
 from .truth_sites import CONSONANTS, HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
-from .word_sample import WORD_VERDICTS, WordSite, load_words
+from .word_sample import WORD_MODE, WORD_VERDICTS, WordSite, load_words
 
 _PAGE_PATH = Path(__file__).parent / "tashkeel_audit_page.html"
 #: The page's logic, a module with no DOM in it, so it is tested on its own.
@@ -116,13 +131,14 @@ _TASHKEEL_CHOICES = (*HARAKA_CHARS, SUKUN, UNCLEAR)  # fatha, damma, kasra
 _SHADDAH_CHOICES = (HELD, NOT_HELD, UNCLEAR)
 
 #: A row of the queue: a session site, a synthetic-edit check item (which also asks
-#: whether it sounds natural), or a sampled word (asked whether it was recited correctly).
-Row = SessionSite | EditCheckSite | WordSite
+#: whether it sounds natural), a sampled word or a catch-loss audit word (both asked
+#: whether the word was recited correctly).
+Row = SessionSite | EditCheckSite | WordSite | CatchLossRow
 
 
 def judges_word(row: Row) -> bool:
-    """Whether the row asks about a whole word: Ship A's word sample."""
-    return isinstance(row, WordSite)
+    """Whether the row asks about a whole word: Ship A's word sample or the catch-loss audit."""
+    return row.mode == WORD_MODE
 
 
 def choices(row: Row) -> tuple[str, ...]:
@@ -376,6 +392,20 @@ class SessionState:
                    audio_dir=audio_dir, verdicts=read_verdicts(verdicts),
                    review_path=review, review={} if review is None else read_review(review))
 
+    @classmethod
+    def load_catch_loss(
+        cls, worklist: Path, verdicts: Path, clip_cache: Path,
+        uthmani_words, review: Path | None = None,
+    ) -> "SessionState":
+        """The round-2 catch-loss audit's worklist (#225) in its one seeded queue, once every
+        look clip is verified against the SHA-256 its row records: the page is asked the
+        whole-word question and never sees a stratum, a grade or a weight."""
+        rows = read_catch_loss_worklist(worklist, uthmani_words)
+        verify_clips(rows, clip_cache)
+        return cls(rows=queue([], [], rows), verdicts_path=verdicts, audio_dir=clip_cache,
+                   verdicts=read_verdicts(verdicts), review_path=review,
+                   review={} if review is None else read_review(review))
+
     def row(self, key: str) -> Row:
         return self._by_key[key]
 
@@ -457,8 +487,14 @@ class SessionState:
         return {"answered": answered, "total": len(self.rows)}
 
     def audio(self, key: str, whole: bool) -> bytes:
-        """The site's excerpt, or its whole segment, as a WAV."""
+        """The site's excerpt, or its whole segment, as a WAV. A catch-loss item is its whole
+        look clip from the cache: the clip's own container and rate (tlog's are not the staged
+        16 kHz WAV), and the span its row records is provenance, not a cut."""
         row = self.row(key)
+        if isinstance(row, CatchLossRow):
+            source = self.audio_dir / f"{row.site.audio_sha256}.audio"
+            samples, _, _ = decode_to_mono_16k_with_rate_and_decoder(read_audio_bytes(source))
+            return encode_wav(samples)
         start, end = (
             (row.site.start_sample, row.site.end_sample)
             if whole else (row.excerpt_start_sample, row.excerpt_end_sample)
@@ -548,10 +584,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--audio-dir", type=Path, required=True,
+    parser.add_argument("--audio-dir", type=Path, default=None,
                         help="directory holding the staged 16 kHz clips the worklist plays "
-                             "and the edit-check items (listening_session fetch)")
+                             "and the edit-check items (listening_session fetch); required "
+                             "unless --catch-loss is given")
     parser.add_argument("--worklist", type=Path, default=WORKLIST_PATH)
+    parser.add_argument("--catch-loss", type=Path, default=None,
+                        help="the round-2 catch-loss audit's worklist (#225): its items are "
+                             "the queue, not this worklist")
+    parser.add_argument("--clip-cache", type=Path, default=None,
+                        help="the box's look clip cache (tlog/r2/clips), needed with "
+                             "--catch-loss")
     parser.add_argument("--edit-check", type=Path, default=BLIND_CHECK_PATH,
                         help="the synthetic-edit blind check asked in the same queue")
     parser.add_argument("--edit-words", type=Path, default=WORDS_PATH,
@@ -571,10 +614,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
-    state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
-                              load_staged_clips(), args.edit_check, args.edit_words, args.words,
-                              args.review)
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.catch_loss is not None:
+        if args.clip_cache is None:
+            parser.error("--catch-loss needs --clip-cache")
+        from .waqf_segments import _uthmani_words
+
+        state = SessionState.load_catch_loss(args.catch_loss, args.verdicts, args.clip_cache,
+                                             _uthmani_words, args.review)
+    else:
+        if args.audio_dir is None:
+            parser.error("--audio-dir is required unless --catch-loss is given")
+        state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
+                                  load_staged_clips(), args.edit_check, args.edit_words,
+                                  args.words, args.review)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

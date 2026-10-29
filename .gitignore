@@ -177,6 +177,12 @@ tools/tadabur/aug_readout/restricted/
 # per-word export are source-of-truth. The gzipped JSONL output is not matched by the
 # ``*.jsonl`` rule above, and is named here so a later rule cannot swallow it.
 !tools/tadabur/consonant2_readout/**/*.jsonl.gz
+# The catch-loss audit (#225): the seeded blind worklist, its key and the owner's verdicts are
+# source-of-truth (the verdicts are human data, and irreplaceable). No tlog audio is committed.
+!tools/tadabur/consonant2_readout/catch_loss/worklist.jsonl
+!tools/tadabur/consonant2_readout/catch_loss/key.jsonl
+!tools/tadabur/consonant2_readout/catch_loss/verdicts.jsonl
+!tools/tadabur/consonant2_readout/catch_loss/review.jsonl
 # The owner's listening at h448's excess flags on Tarteel v1 (#160): the frozen worklist, where
 # each staged clip came from, and what the owner heard (the page writes the last two).
 !tools/tadabur/tarteel_excess/worklist.jsonl

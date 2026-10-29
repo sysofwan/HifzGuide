@@ -553,8 +553,10 @@ LOOK_GRADES = "look_grades.jsonl.gz"
 
 def look_grade_rows(grades: Sequence, models: Sequence[str],
                     decodes: Mapping[str, Mapping[str, dict]]) -> list[dict]:
-    """One row per word and model: the kept grade, why it was flagged, and the clip's whole
-    provenance (the audit's worklist and the listening UI need it)."""
+    """One row per word and model: the kept grade, why it was flagged (its causes and the
+    consonant substitutions behind them, so the catch-loss audit can mark the owner's harder
+    pairs), and the clip's whole provenance (the audit's worklist and the listening UI need
+    it)."""
     rows = []
     for grade in grades:
         if grade.model not in models:
@@ -565,6 +567,8 @@ def look_grade_rows(grades: Sequence, models: Sequence[str],
             "word": grade.word, "word_index": grade.word_index,
             "outcome": grade.outcome, "graded": grade.graded, "flagged": grade.flagged,
             "causes": list(grade.reason.causes) if grade.reason is not None else [],
+            "consonants": [list(pair) for pair in grade.reason.consonants]
+            if grade.reason is not None else [],
             "surah_ayah": grade.item.surah_ayah,
             "audio_filename": grade.item.audio_filename,
             "audio_sha256": grade.item.audio_sha256,

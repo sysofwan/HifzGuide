@@ -631,8 +631,6 @@ launch() {
   esac
   repo_root=$(git rev-parse --show-toplevel)
   head=$(git -C "$repo_root" rev-parse HEAD)
-  local branch
-  branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
   # Nothing touches the box before the full run's freeze check passes.
   if [ -z "$smoke" ]; then
     freeze_check || return 1
@@ -680,16 +678,15 @@ launch() {
   # the history is, and cloned on the box, then HEAD is checked.
   local bundle
   bundle=$(mktemp)
-  git -C "$repo_root" bundle create "$bundle" "$branch" \
+  # Bundling the commit itself, not a branch name: a bundle's HEAD is what `git clone` checks
+  # out, so the clone needs no `-b` and behaves the same from a branch and from a detached
+  # checkout (`rev-parse --abbrev-ref HEAD` reports the literal `HEAD` there, which `-b` rejects).
+  git -C "$repo_root" bundle create "$bundle" HEAD \
     || { rm -f "$bundle"; return 1; }
   ssh "$HOST" "rm -rf '$ROOT/repo' '$ROOT/repo.bundle' && cat > '$ROOT/repo.bundle'" \
     < "$bundle" || { rm -f "$bundle"; return 1; }
   rm -f "$bundle"
-  if [ "$branch" = HEAD ]; then
-    ssh "$HOST" "git clone -q '$ROOT/repo.bundle' '$ROOT/repo'" || return 1
-  else
-    ssh "$HOST" "git clone -q -b '$branch' '$ROOT/repo.bundle' '$ROOT/repo'" || return 1
-  fi
+  ssh "$HOST" "git clone -q '$ROOT/repo.bundle' '$ROOT/repo'" || return 1
   ssh "$HOST" "rm -f '$ROOT/repo.bundle' && \
     test \"\$(git -C '$ROOT/repo' rev-parse HEAD)\" = '$head'" \
     || { echo "the box's checkout is not $head" >&2; return 1; }

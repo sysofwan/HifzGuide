@@ -551,20 +551,51 @@ def _require_overlay(tree: Path) -> subprocess.CompletedProcess:
                           capture_output=True, text=True)
 
 
+def _head_checkout(tmp_path: Path, *, detached: bool) -> Path:
+    """A git checkout whose HEAD is a named branch, or detached as review/CI checkouts are."""
+    repo = tmp_path / ("detached" if detached else "branch")
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "agent/staged")
+    (repo / "launcher.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    _git(repo, "add", "launcher.sh")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "one")
+    if detached:
+        _git(repo, "checkout", "-q", "--detach", "HEAD")
+    return repo
+
+
+@pytest.mark.parametrize("detached", [False, True])
+def test_the_launch_stages_head_the_same_way_from_a_branch_and_a_detached_checkout(
+        tmp_path, detached):
+    """R1.3: in a detached checkout ``git rev-parse --abbrev-ref HEAD`` reports the literal
+    ``HEAD``, which ``git clone -b`` rejects. The bundle carries its own HEAD, so staging never
+    names a branch and both states stage the same commit."""
+    repo = _head_checkout(tmp_path, detached=detached)
+    done = _launch(tmp_path, repo, "--smoke")
+    assert done.returncode == 0, _text(done)
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    assert f"launch commit {head}" in done.stdout
+    clone = [line for line in _ssh_log(tmp_path).splitlines() if "git clone" in line]
+    assert len(clone) == 1, clone
+    assert " -b " not in clone[0]
+
+
 def test_the_staged_tree_is_a_checkout_the_tlog_reader_can_verify(tmp_path):
     """S1.1: `launch` stages a bundle clone, not a `git archive` tree. The tlog reader
     re-materialises `tlog.training` by checking the overlay commit out of the staged tree's
-    history, so an archive tree refuses in the data assertion and again in the mixed stream."""
+    history, so an archive tree refuses in the data assertion and again in the mixed stream.
+
+    Staged here exactly as `launch` does it -- the commit's own bundle, cloned without naming a
+    branch -- so the test also holds in a detached checkout."""
     repo = TOOLS.parent
     head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
                           capture_output=True, text=True).stdout.strip()
-    branch = subprocess.run(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
-                            check=True, capture_output=True, text=True).stdout.strip()
     bundle = tmp_path / "repo.bundle"
-    subprocess.run(["git", "-C", str(repo), "bundle", "create", str(bundle), branch],
+    subprocess.run(["git", "-C", str(repo), "bundle", "create", str(bundle), "HEAD"],
                    check=True, capture_output=True)
     staged = tmp_path / "checkout"
-    subprocess.run(["git", "clone", "-q", "-b", branch, str(bundle), str(staged)],
+    subprocess.run(["git", "clone", "-q", str(bundle), str(staged)],
                    check=True, capture_output=True)
     assert subprocess.run(["git", "-C", str(staged), "rev-parse", "HEAD"], check=True,
                           capture_output=True, text=True).stdout.strip() == head

@@ -65,11 +65,14 @@ def test_the_round_2_spec_pins_muraja_and_the_harness():
         "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b")
 
 
-def test_the_pre_registration_pin_is_an_unfilled_placeholder_that_check_pins_refuses():
-    """The freeze issue fills it; until then no sitting can pass the pin, whatever it hashes."""
-    for observed in ("a" * 64, "0" * 64, "", asp.PREREG_SHA256):
-        with pytest.raises(SystemExit, match="pre-registration pin"):
-            asp.check_pins(asp.CONSONANT2, HARNESS, observed)
+def test_the_pre_registration_pin_is_the_committed_document_s_sha256():
+    """#229 fills it: the pin is the committed doc's bytes, so an edited doc refuses."""
+    pinned = asp.CONSONANT2.pins.prereg_sha256
+    assert pinned == asp.CONSONANT2_PREREG_SHA256
+    assert pinned == ag.sha256_file(asp.CONSONANT2.prereg_path)
+    asp.check_pins(asp.CONSONANT2, HARNESS, pinned)  # every pin matches: no refusal
+    with pytest.raises(SystemExit, match="pre-registration pin"):
+        asp.check_pins(asp.CONSONANT2, HARNESS, "b" * 64)
 
 
 def test_a_filled_pin_refuses_a_moved_pre_registration_and_a_moved_harness():

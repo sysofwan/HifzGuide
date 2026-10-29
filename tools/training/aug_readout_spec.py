@@ -43,9 +43,8 @@ CANDIDATE_SHA256 = "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc2
 CANDIDATE_RECIPE = "aug94-mixture-v2"
 LIVE = "live"
 EMA = "ema"
-#: A pin the freeze issue has not filled in yet: no observed value equals it, so
-#: :func:`check_pins` refuses every sitting of a round whose pin is still unfilled (#227).
-UNFILLED_PIN = None
+#: Round 2's pre-registration, frozen by #229 on 2026-10-28 (owner-approved).
+CONSONANT2_PREREG_SHA256 = "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a"
 
 
 @dataclass(frozen=True)
@@ -54,7 +53,7 @@ class Pins:
 
     muraja_commit: str
     harness_sha256: str
-    prereg_sha256: str | None
+    prereg_sha256: str
 
 
 @dataclass(frozen=True)
@@ -212,7 +211,7 @@ CONSONANT2 = RoundSpec(
         **{(name, model): Decodes(AUG95_ROOT, model)
            for name in REUSED_SETS for model in (H448, BASE)}},
     comparisons=((CANDIDATE, C95),),
-    pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, UNFILLED_PIN),
+    pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, CONSONANT2_PREREG_SHA256),
     prereg_path=CONSONANT2_PREREG_PATH,
     look_set=TLOG_LOOK,
     look_roles=(CANDIDATE, CONTROL),
@@ -249,16 +248,11 @@ def model_spec(specification: RoundSpec, name: str) -> ModelSpec | None:
 
 def check_pins(specification: RoundSpec, harness: Mapping, prereg_sha256: str) -> None:
     """Refuse a sitting whose Muraja commit, harness binary or pre-registration differs from
-    the round's pins (#174), and every sitting of a round whose pre-registration pin is still
-    unfilled (#227). ``harness`` is
+    the round's pins (#174). ``harness`` is
     :func:`training.aug_readout_gate.harness_identity`."""
     pins = specification.pins
     if pins is None:
         return
-    if pins.prereg_sha256 is None:
-        raise SystemExit(f"the pre-registration pin is unfilled: "
-                         f"{specification.prereg_path.name} has no committed SHA-256 to check "
-                         f"against; the freeze issue fills it in")
     observed = {"Muraja pin": (harness.get("muraja_commit"), pins.muraja_commit),
                 "harness pin": (harness.get("binary_sha256"), pins.harness_sha256),
                 "pre-registration pin": (prereg_sha256, pins.prereg_sha256)}

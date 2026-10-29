@@ -1,0 +1,233 @@
+{
+ "tlog.look/r2_candidate_live": {
+  "model": "r2_candidate_live",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "weights": "live",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58"
+  }
+ },
+ "tlog.look/r2_candidate_ema": {
+  "model": "r2_candidate_ema",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "weights": "ema",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58"
+  }
+ },
+ "tlog.look/r2_control_live": {
+  "model": "r2_control_live",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "weights": "live",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473"
+  }
+ },
+ "tlog.look/r2_control_ema": {
+  "model": "r2_control_ema",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "weights": "ema",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473"
+  }
+ },
+ "tlog.look/c95": {
+  "model": "c95",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "weights": "ema",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
+  }
+ },
+ "tlog.look/base": {
+  "model": "base",
+  "fingerprints": {
+   "spans": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  }
+ }
+}

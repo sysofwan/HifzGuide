@@ -223,3 +223,28 @@ def test_a_frame_manifest_that_is_not_this_runs_frame_is_refused(
     with pytest.raises(SystemExit):
         _run_main(tmp_path, monkeypatch, "--mix", MIX, "--tlog-schedule", str(SCHEDULE_PATH),
                   "--frame-manifest", str(manifest))
+
+
+def test_a_mixed_run_with_more_than_one_worker_is_refused(tmp_path):
+    """S1.2: each worker would replay the whole tlog schedule from its start, race one
+    shard's deletion and append to one consumed-keys log from several processes."""
+    with pytest.raises(SystemExit, match="num-workers"):
+        dt.train(_mixed_config(tmp_path, num_workers=2))
+
+
+@pytest.mark.parametrize("field,value", [
+    ("window_shuffle_seed", 2025),
+    ("stream_order_sha256", "0" * 64),
+    ("augmentation", {"version": "aug94-mixture-v1"}),
+])
+def test_a_frame_manifest_whose_contents_are_not_this_frames_is_refused(
+        tmp_path, monkeypatch, field, value):
+    """S1.4: the recorded frame must be the frame the run streams -- the shard list, the
+    stream order and its digest, both seeds and the recipe record, not just two of them."""
+    manifest = _manifest(tmp_path)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data[field] = value
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        _run_main(tmp_path, monkeypatch, "--mix", MIX, "--tlog-schedule", str(SCHEDULE_PATH),
+                  "--frame-manifest", str(manifest))

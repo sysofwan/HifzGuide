@@ -95,7 +95,7 @@ def test_a_collision_stops_the_command(calls, monkeypatch):
         raise exposure.ExposureOverlap("audio_sha256: a training row is an evaluation clip")
 
     monkeypatch.setattr(exposure, "check_row_set_disjoint", collide)
-    with pytest.raises((SystemExit, exposure.ExposureOverlap)) as stopped:
+    with pytest.raises(SystemExit) as stopped:
         _main(monkeypatch)
-    assert stopped.value.code != 0 if isinstance(stopped.value, SystemExit) else True
+    assert stopped.value.code != 0
     assert calls["disjoint"] == []

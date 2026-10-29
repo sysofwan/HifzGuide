@@ -183,13 +183,16 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
             run_log=self.run_log,
         )
         for (split, shard_file, row), samples in reader:
+            # A clean draw returns ``samples`` itself (:meth:`Augmenter.__call__`), so the
+            # identity test below keeps it: ``extract_pair`` then runs the feature extractor
+            # once for the whole clip, as the Tadabur side does.
             augmented = (
-                None if augment is None
+                samples if augment is None
                 else augment(samples, f"{split}:{shard_file}", row)
             )
             for start in row_window_starts(len(samples), self.tadabur.hop_seconds):
                 clean = cut_window(samples, start)
-                yield clean, (clean if augmented is None else cut_window(augmented, start))
+                yield clean, (clean if augmented is samples else cut_window(augmented, start))
 
     def _tlog_windows(self):
         """``_tlog_pairs`` through the Tadabur stream's shuffle buffer and extraction."""
@@ -232,6 +235,14 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
             # reader's consumed-keys log and drops the shards each one has open.
             tlog.close()
             tadabur.close()
+            # The tlog reader prints its own per-split rows, clips, windows and seconds when
+            # it closes; this is the other arm's half of the run's per-source input line.
+            print(
+                f"[data] tadabur: {self.tadabur.rows_seen} clips, "
+                f"{self.tadabur.windows_emitted} windows, "
+                f"{self.tadabur.audio_seconds:.3f} s of real audio",
+                flush=True,
+            )
 
 
 def per_source_stats(

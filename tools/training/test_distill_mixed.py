@@ -467,3 +467,30 @@ def test_the_kl_and_blank_ratios_are_reported_per_source():
     assert set(stats) == {f"{name}_{source}" for source in ("tlog", "tadabur")
                           for name in ("kl", "teacher_blank_ratio", "student_blank_ratio",
                                        "blank_collapse_margin")}
+
+
+def test_a_clean_augmentation_draw_still_gives_the_student_the_teachers_window(
+        tadabur_shards, tmp_path, tlog):
+    """S1.5: ``Augmenter.__call__`` returns the input array itself for a clean draw (and for
+    digital silence); the tlog path must keep that identity so ``extract_pair`` extracts the
+    clip once instead of twice."""
+    def clean_draw(clean, shard, row):
+        return clean
+
+    items = _of(_items(_mixed(tmp_path, tlog, shuffle_buffer=4, augment=clean_draw)),
+                dm.SOURCE_TLOG)
+    assert items
+    assert all(student is teacher for teacher, student, _ in items)
+
+
+def test_the_tadabur_arm_reports_its_clips_windows_and_seconds(
+        tadabur_shards, tmp_path, capsys):
+    """S1.3: the tlog reader reports its own per-split rows, clips, windows and seconds; the
+    Tadabur arm must report its half of the same line."""
+    mixed = _mixed(tmp_path, _big_tlog())
+    assert len(_of(_items(mixed), dm.SOURCE_TADABUR)) == 40
+    tadabur = mixed.tadabur
+    assert tadabur.rows_seen == len(SECONDS) * 4  # 4 shards x 5 clips
+    assert 40 <= tadabur.windows_emitted <= 44  # cut, including the buffer's tail
+    assert tadabur.audio_seconds == pytest.approx(4 * sum(SECONDS))
+    assert f"[data] tadabur: {len(SECONDS) * 4} clips, " in capsys.readouterr().out

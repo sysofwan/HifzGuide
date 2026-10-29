@@ -776,6 +776,15 @@ def train(
         from training import distill_mixed
 
         mix = distill_mixed.parse_mix(config.mix, config.batch_size)
+        if config.num_workers != 1:
+            # Each worker would replay the whole frozen tlog schedule (the Tadabur dataset
+            # slices by worker; the tlog side has no shard list to slice), training on every
+            # tlog row once per worker, racing one shard's deletion and appending to one
+            # consumed-keys log from several processes -- which produces an unreadable gzip.
+            raise SystemExit(
+                "a mixed run needs --num-workers 1: every worker would replay the whole tlog "
+                "schedule from its start and append to one consumed-keys log"
+            )
         if resume:
             # The consumed-keys log is opened for append, and the tlog reader cannot be
             # rewound without appending its keys again: a replay would duplicate the evidence
@@ -1154,22 +1163,28 @@ def build_parser() -> argparse.ArgumentParser:
 def require_frame_manifest(path: Path, shards: list[int], seed: int) -> str:
     """The SHA-256 of the frame manifest at ``path``, refusing another run's frame.
 
-    The manifest is what the round-2 replay contract is checked against, so a run whose
-    manifest names other shards or another shard-order seed would record a frame it does not
-    stream -- and a reader comparing manifests would certify the wrong input.
+    The manifest is what the round-2 replay contract is checked against, so it is compared
+    field for field with the manifest this run would write: the shard list, the stream order
+    and its digest, both seeds and the augmentation recipe record. A manifest differing in
+    any of them names an input the run does not stream, and recording it in ``run_config``
+    would certify the wrong frame. ``exposure_use`` is the manifest's own, because the run's
+    use is recorded separately and the frame's membership does not depend on it.
     """
     from tadabur.tlog_index import sha256_file
+    from training.frame_manifest import frame_manifest
 
     manifest = json.loads(Path(path).read_text(encoding="utf-8"))
-    if manifest.get("shards") != sorted(shards):
+    expected = frame_manifest(
+        shards,
+        shard_order_seed=seed,
+        exposure_use=manifest.get("exposure_use", ""),
+    )
+    if manifest != expected:
+        fields = sorted(key for key in set(manifest) | set(expected)
+                        if manifest.get(key) != expected.get(key))
         raise SystemExit(
-            f"{path}: frame manifest lists {len(manifest.get('shards', []))} shards, not the "
-            f"{len(shards)} --stream-shards names"
-        )
-    if manifest.get("shard_order_seed") != seed:
-        raise SystemExit(
-            f"{path}: frame manifest's shard-order seed is "
-            f"{manifest.get('shard_order_seed')!r}, not --seed {seed}"
+            f"{path}: frame manifest does not describe this run's frame (differs on "
+            f"{', '.join(fields)}); --stream-shards {len(shards)} shards, --seed {seed}"
         )
     return sha256_file(Path(path))
 

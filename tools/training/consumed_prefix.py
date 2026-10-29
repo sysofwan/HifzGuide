@@ -28,6 +28,9 @@ Usage::
 
     # ... with the monitoring shard and the point it would be entered (monitor=, position=)
     python -m training.consumed_prefix --log <log> --monitor-seed 178
+
+    # Two rounds deep (:func:`remaining_after_logs`), what a second continuation trains on
+    remaining_after_logs([(c95_log, AUG94_SEED), (continuation_log, 178)])
 """
 
 from __future__ import annotations
@@ -121,20 +124,35 @@ def monitor_reached(shards: Iterable[int], completed: Sequence[int], seed: int) 
     return len(list(completed)) >= position
 
 
-def remaining_from_log(
-    log: Path, *, seed: int = AUG94_SEED, shards: str = ""
+def remaining_after_logs(
+    runs: Sequence[tuple[Path, int]], *, shards: str = ""
 ) -> list[int]:
-    """The shards a continuation of the run whose log this is has left.
+    """The shards left after each run in ``runs`` consumed its prefix of what was left.
 
-    ``shards`` overrides the source run's ``--stream-shards``; by default it is ``h448``'s
+    ``runs`` is ``(log, stream seed)`` in the order the runs happened: a continuation inherits
+    its predecessor's remainder as its own shard list, so a second round's corpus is the
+    intersection of what both earlier rounds left. Each log's order is checked against its own
+    seed permutation of that remainder (:func:`consumed_prefix`), so a log from another run
+    cannot be chained in.
+
+    ``shards`` overrides the first run's ``--stream-shards``; by default it is ``h448``'s
     training spec, the only shard set a training run may stream.
     """
     from tadabur.shard_reader import parse_shard_spec
     from training.decode_evalset import training_shard_spec
 
-    source = parse_shard_spec(shards or training_shard_spec())
-    completed = completion_order(log.read_text(encoding="utf-8"))
-    return remaining_shards(source, consumed_prefix(source, completed, seed))
+    remaining = parse_shard_spec(shards or training_shard_spec())
+    for log, seed in runs:
+        completed = completion_order(log.read_text(encoding="utf-8"))
+        remaining = remaining_shards(remaining, consumed_prefix(remaining, completed, seed))
+    return remaining
+
+
+def remaining_from_log(
+    log: Path, *, seed: int = AUG94_SEED, shards: str = ""
+) -> list[int]:
+    """The shards a continuation of the run whose log this is has left."""
+    return remaining_after_logs([(log, seed)], shards=shards)
 
 
 def main() -> None:

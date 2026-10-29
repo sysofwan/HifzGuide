@@ -159,6 +159,42 @@ def test_a_log_with_no_completions_is_refused():
         consumed_prefix(_h448_shards(), [], SOURCE_SEED)
 
 
+def test_a_second_continuation_leaves_only_what_both_runs_left(tmp_path):
+    """#223's control trains after #94 *and* #178: a shard either run streamed is audio the
+    arm would be measured against having already seen."""
+    from training.consumed_prefix import (
+        consumed_prefix,
+        remaining_after_logs,
+        remaining_shards,
+        shard_permutation,
+    )
+
+    after_94 = remaining_shards(_h448_shards(), _consumed())
+    streamed_178 = shard_permutation(after_94, RUN_SEED)[:66]
+    log_94 = tmp_path / "aug94.log"
+    log_94.write_text(
+        "".join(
+            f"[data] exposure exclusion through shard {shard} {{'use': 'x'}}\n"
+            for shard in OBSERVED_COMPLETIONS
+        ),
+        encoding="utf-8",
+    )
+    log_178 = tmp_path / "train178.log"
+    log_178.write_text(
+        "".join(
+            f"[data] exposure exclusion through shard {shard} {{'use': 'x'}}\n"
+            for shard in streamed_178
+        ),
+        encoding="utf-8",
+    )
+    remaining = remaining_after_logs([(log_94, SOURCE_SEED), (log_178, RUN_SEED)])
+    assert remaining == remaining_shards(
+        after_94, consumed_prefix(after_94, streamed_178, RUN_SEED)
+    )
+    assert len(remaining) == 278 - 67  # #94 left 278; #178 entered 67 of them
+    assert not set(remaining) & (set(_consumed()) | set(streamed_178))
+
+
 # --- the shard validation reads, and the guard that keeps it out of training ----------
 
 

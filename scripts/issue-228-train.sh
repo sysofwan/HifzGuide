@@ -17,7 +17,7 @@
 # `launch` refuses (full run only) unless the round-2 pre-registration, the consonant2 freeze
 # record, `tlog/training_schedule.json` and `tlog/training_prefix.json` are committed in HEAD;
 # a smoke may run before the freeze. It also refuses while `gpu.lock` is held (exit 3), while a
-# previous run's directory exists (4), below MIN_FREE_GB on /root/scratch (5). It never touches
+# previous attempt's checkpoint exists (4), below MIN_FREE_GB on /root/scratch (5). It never touches
 # the box before the freeze check passes. `--resume` is refused: the tlog consumed-keys log
 # cannot be replayed without duplicating rows, so the round's one attempt restarts from scratch
 # with the same seed and schedule (remove the run directory, then launch again).
@@ -604,19 +604,23 @@ launch() {
     freeze_check || return 1
   fi
   ssh "$HOST" "mkdir -p '$ROOT/logs'"
-  # The run directories live outside the archived repo, and an existing one is refused: its
-  # checkpoints and consumed-keys log are the attempt's evidence.
-  if ssh "$HOST" "test -e '$OUT' && echo exists" | grep -q exists; then
-    echo "refusing: $OUT exists (a previous attempt's checkpoints). A mixed run cannot" \
-      "resume; remove the directory to start the attempt again." >&2
-    return 4
-  fi
-  assert_disk || return 5
+  # The lock first: nothing on the box is touched while another run holds the GPU.
   if ! ssh "$HOST" "flock -n /root/scratch/gpu.lock true" 2>/dev/null; then
     echo "gpu.lock is held; not launching. Holder:" >&2
     ssh "$HOST" "pgrep -af 'flock /root/scratch/gpu.lock' || true" >&2
     return 3
   fi
+  # The run directories live outside the archived repo. A previous full attempt's checkpoint is
+  # refused: a mixed run cannot resume, and a restart must not append to its metrics log. A
+  # directory a smoke-only launch left behind (it holds the frame manifest, no checkpoint) is
+  # scratch, so it is cleared and the full attempt starts empty.
+  if ssh "$HOST" "test -s '$OUT/checkpoint.pt' && echo exists" | grep -q exists; then
+    echo "refusing: $OUT holds a previous attempt's checkpoint. A mixed run cannot resume;" \
+      "remove the directory to start the attempt again." >&2
+    return 4
+  fi
+  ssh "$HOST" "rm -rf '$OUT'"
+  assert_disk || return 5
   git -C "$repo_root" archive "$head" \
     | ssh "$HOST" "rm -rf '$ROOT/repo' && mkdir -p '$ROOT/repo' && tar -x -C '$ROOT/repo'"
   ssh "$HOST" "printf '%s %s\n' '$head' \"\$(date -u +%FT%TZ)\" > '$ROOT/logs/launch.txt'"

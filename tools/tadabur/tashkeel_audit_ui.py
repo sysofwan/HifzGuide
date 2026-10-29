@@ -588,16 +588,18 @@ def build_parser() -> argparse.ArgumentParser:
                         help="directory holding the staged 16 kHz clips the worklist plays "
                              "and the edit-check items (listening_session fetch); required "
                              "unless --catch-loss is given")
-    parser.add_argument("--worklist", type=Path, default=WORKLIST_PATH)
+    parser.add_argument("--worklist", type=Path, default=None,
+                        help=f"the session's worklist (default: {WORKLIST_PATH.name})")
     parser.add_argument("--catch-loss", type=Path, default=None,
                         help="the round-2 catch-loss audit's worklist (#225): its items are "
                              "the queue, not this worklist")
     parser.add_argument("--clip-cache", type=Path, default=None,
                         help="the box's look clip cache (tlog/r2/clips), needed with "
                              "--catch-loss")
-    parser.add_argument("--edit-check", type=Path, default=BLIND_CHECK_PATH,
-                        help="the synthetic-edit blind check asked in the same queue")
-    parser.add_argument("--edit-words", type=Path, default=WORDS_PATH,
+    parser.add_argument("--edit-check", type=Path, default=None,
+                        help="the synthetic-edit blind check asked in the same queue "
+                             f"(default: {BLIND_CHECK_PATH.name})")
+    parser.add_argument("--edit-words", type=Path, default=None,
                         help="the word offsets of the blind check's references")
     parser.add_argument("--words", type=Path, default=None,
                         help="a word sample asked in the same queue (tadabur/ship_a/"
@@ -619,6 +621,10 @@ def main() -> None:
     if args.catch_loss is not None:
         if args.clip_cache is None:
             parser.error("--catch-loss needs --clip-cache")
+        if args.audio_dir or args.worklist or args.words or args.edit_check or args.edit_words:
+            parser.error("--catch-loss serves the audit's worklist from --clip-cache alone; "
+                         "--audio-dir, --worklist, --words, --edit-check and --edit-words do "
+                         "not apply")
         from .waqf_segments import _uthmani_words
 
         state = SessionState.load_catch_loss(args.catch_loss, args.verdicts, args.clip_cache,
@@ -626,9 +632,10 @@ def main() -> None:
     else:
         if args.audio_dir is None:
             parser.error("--audio-dir is required unless --catch-loss is given")
-        state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
-                                  load_staged_clips(), args.edit_check, args.edit_words,
-                                  args.words, args.review)
+        state = SessionState.load(args.worklist or WORKLIST_PATH, args.verdicts,
+                                  args.audio_dir, load_staged_clips(),
+                                  args.edit_check or BLIND_CHECK_PATH,
+                                  args.edit_words or WORDS_PATH, args.words, args.review)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

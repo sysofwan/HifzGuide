@@ -91,3 +91,26 @@ tooling. It read the tranche, took each row's `filename_label` as the ayah, and 
  "start_sample": 0, "end_sample": 0,  # the span is provenance; the page plays the whole clip
  "surah_ayah": filename_label, "word_index": 0, "word": uthmani_words(filename_label)[0]}
 ```
+
+## The drawn sitting, 2026-10-29
+
+The real draw, from the committed look sitting (issue #230's look phase).
+
+* **Look choice:** the candidate chose **EMA** (107.39 false flags per 1,000 graded words,
+  2,623 of 24,424; live 108.14, 2,637 of 24,385) and the control chose **EMA** (144.77, 3,357 of
+  23,189; live 146.58, 3,412 of 23,277); no tie-break was needed. C95's look-gating rate is the
+  freeze's 153.22 (3,505 of 22,875). Look gating only; no confirm row was read.
+* **Draw:** `round2-catch-loss-2026-10`, choice commit `d0b28b8`. Removed population 1,743 words
+  (sampled 100), added population 278 (sampled 50). Committed at `bf99c80` before any listening.
+* **Served:** `scripts/issue-225-audit.sh ui launch` on cuda-dev (pid 677255, log
+  `/root/scratch/catch_loss/logs/ui.log`), reached at `http://10.0.1.195:8000/`: 150 items,
+  "0 of 150 answered", and no `verdicts.jsonl` exists.
+* **Dry run:** a second instance of the same server on the same staged clone and clip cache
+  (`--port 8001`, verdicts to `/root/scratch/catch_loss/dryrun.verdicts.jsonl`), driven over the
+  LAN from headless Chromium. Three items loaded with the target word highlighted; `/api/audio`
+  returned mono 16 kHz RIFF (346,840 bytes); Play set the element playing (`readyState` 4,
+  `paused: false`, `currentTime` 0.97 s on the next item); three answers were stored
+  (`correct`, `mistake`, `unclear`) and each answer advanced the queue and played the next site.
+  The instance was then stopped and its verdicts and review list deleted, so the main sitting's
+  verdict file holds no dry-run answer.
+

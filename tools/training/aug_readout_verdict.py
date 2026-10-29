@@ -343,7 +343,7 @@ def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
               bars["tadabur_lower_at_least"], False),
         *(bound(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], "lower",
                 bars["bench_lower_at_least"], False)
-          for kind in ("consonant", "haraka", "shaddah")),
+          for kind in spec.g3_kinds),
         bound("g4.tashkeel_cause", main["tashkeel_cause"], "upper",
               bars["tashkeel_upper_at_most"], False),
         # The round's report always writes ``g5_frozen`` (empty before #177). A report that

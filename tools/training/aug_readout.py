@@ -23,6 +23,14 @@ Each sitting first requires a complete identity manifest for every model it read
 itself exclusively (:func:`training.aug_readout_gate.claim`): it runs once, a concurrent run
 fails, and after an interruption only the same sitting may run again.
 
+**Rounds** are specs (:mod:`training.aug_readout_spec`): #95, the consonant round (#175) and the
+tlog consonant round (#227). A round declares its look set and roles, so the same code reads
+Tarteel v1's look half for #95 and the consonant round and the tlog look gating rows for round 2.
+Round 2 decodes both arms on the look set and chooses each arm's weights on its own (#95's rule,
+:func:`look_weights`), and its look sitting exports C95's and the chosen candidate's per-word
+grades (``look_grades.jsonl.gz``) for the catch-loss audit (#225). Its pooled confirm read is
+part 2 (#227): ``confirm --spec consonant2`` refuses.
+
 **Sets** (:data:`~training.aug_readout_gate.SETS`): Tarteel v1's halves; qdat (and qdat_bench, its
 clips, stream arm); RetaSy (catch side, restricted: aggregates only); QUD's two professional
 mushafs on a **salted 50% of segments** (:func:`qud_selection_record`, frozen in
@@ -52,15 +60,18 @@ Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja har
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
+import os
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
-from training.aug_readout_spec import AUG95, PREREG_PATH, RoundSpec, check_pins
+from training.aug_readout_spec import AUG95, RoundSpec, check_pins, tlog_round
 from training.aug_readout_spec import spec as round_spec
+from training.aug_readout_spec import SPECS
 from training.aug_readout_gate import (
     ARMS,
     BASELINES,
@@ -81,16 +92,19 @@ from training.aug_readout_gate import (
     arm_model,
     baseline_identities,
     canonical,
+    choice_models,
     claim,
     committed_choice,
     decodes_file,
     digests,
     harness_identity,
     input_name,
+    look_models,
     make_choice,
     needs,
     read_manifest,
     require_manifest,
+    require_preregistration,
     round_decodes_file,
     sha256_file,
     validate_identity,
@@ -177,12 +191,14 @@ def load_qud_selection(path: Path = QUD_SELECTION_PATH) -> set[str]:
 # --- the choice ---------------------------------------------------------------------------------
 
 
-def choose(inputs: Mapping[str, dict]) -> str:
-    """Live or EMA: the candidate's weights with fewer look-half false flags per 1,000; on a tie,
+def choose(inputs: Mapping[str, dict], arm: str = CANDIDATE,
+           spec: RoundSpec = AUG95) -> str:
+    """Live or EMA: the arm's weights with fewer look-set false flags per 1,000; on a tie,
     higher word agreement with the teacher; on a tie again, live (#94's checkpoint rule is the
-    final step's live weights unless the look half says otherwise)."""
+    final step's live weights unless the look set says otherwise). Round 2 applies this to each
+    of its arms on its own (#227)."""
     def key(weights: str) -> tuple:
-        row = inputs[arm_model(CANDIDATE, weights)]
+        row = inputs[arm_model(arm, weights, spec)]
         return (row["false_flags_per_1000"], -row["word_agreement_points"], WEIGHTS.index(weights))
 
     return min(WEIGHTS, key=key)
@@ -195,11 +211,21 @@ NO_CONTROL_CHOICE_RULE = (
     "the candidate's weights with fewer Tarteel v1 look-half false flags per 1,000 graded words "
     "(shipped default); a tie goes to higher word agreement with the teacher, then to live; no "
     "control arm (#178): the choice binds the candidate only")
+PER_ARM_CHOICE_RULE = (
+    "each arm's weights with fewer tlog look gating false flags per 1,000 graded words (shipped "
+    "default); a tie goes to higher word agreement with the teacher, then to live; the "
+    "candidate and the control choose independently")
+PER_ARM_CONTROL_ON_LOOK = (
+    "the control was decoded on the look set at both weights, for its own live/EMA choice "
+    "only; it is reported, never in the verdict")
 
 
 def look_wording(spec: RoundSpec) -> tuple[str, str]:
-    """The look artifact's rule and control note: #95 binds both arms, a round with no control
-    (``consonant1``) says so (#179)."""
+    """The look artifact's rule and control note: #95 binds both arms at one selector, a round
+    that decodes both arms chooses each on its own, and a round with no control (``consonant1``)
+    says so (#179, #227)."""
+    if len(spec.look_roles) > 1:
+        return PER_ARM_CHOICE_RULE, PER_ARM_CONTROL_ON_LOOK
     if CONTROL in spec.students:
         return CHOICE_RULE, CONTROL_ON_LOOK
     return NO_CONTROL_CHOICE_RULE, NO_CONTROL_ON_LOOK
@@ -263,6 +289,10 @@ class Sources:
         from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
         from training.qud_pilot import decodes_file as qud_committed
 
+        if tlog_round(self.spec):
+            from training.consonant2_readout import input_files as round_inputs
+
+            return round_inputs(self, phase)
         readout = [self.decode_path(s, m)
                    for s, models in needs(phase, weights, self.spec).items() for m in models]
         if self.spec.name == "consonant1":
@@ -360,6 +390,29 @@ class Sources:
                      for m in BASELINES}
         return TadaburData(clips, decodes, blanks, identical)
 
+    def tlog(self, role: str, models: Sequence[str]) -> SetData:
+        """One tlog tranche's gating items and their decodes, and every model's decoded
+        checks. The manifest is read only through :func:`tadabur.tlog_tranches.load_tranche`,
+        whose claim gate refuses an unopened confirm tranche; part 1 reads the look tranche
+        (its pooled confirm read is part 2, #227)."""
+        from tadabur.tlog_tranches import load_tranche
+        from tadabur.waqf_segments import hafs_segment_reference
+        from training.external_corpus import read_decode_file
+        from training.tlog_eval import gating_items
+
+        if role != LOOK:
+            raise SystemExit(f"{role}: the pooled confirm read is part 2 (#227); this readout "
+                             "reads tlog look gating only")
+        rows = load_tranche(role)
+        set_name = f"tlog.{role}"
+        base = read_decode_file(self.decode_path(set_name, BASE))
+        items, _ = gating_items(rows, base, reference_of=hafs_segment_reference())
+        keys = {item.key for item in items}
+        decodes = {BASE: base,
+                   **{m: read_readout(set_name, m, base, keys, spec=self.spec)
+                      for m in models if m != BASE}}
+        return SetData(items, {m: decodes[m] for m in models})
+
     def bench(self) -> dict[str, str]:
         from training.nonpro_eval import bench_transcripts
 
@@ -447,43 +500,114 @@ def stream_text(data: SetData, models: Sequence[str]) -> dict[str, dict[str, str
 # --- look ---------------------------------------------------------------------------------------
 
 
-def look_inputs(data: SetData, workers: int = 1) -> dict:
-    """The choice's inputs on the look half, per candidate weights: false flags per 1,000 graded
-    words (shipped default) and word agreement with the teacher (points). Nothing else."""
+def look_graded_models(spec: RoundSpec) -> tuple[str, ...]:
+    """The models the look sitting grades: the round's look roles at both weight selectors and,
+    on a round that reads the tlog tranches, its baseline — the catch-loss audit's C95 side."""
+    models = look_models(spec)
+    return (*models, spec.baseline) if tlog_round(spec) else models
+
+
+def look_data(sources: Sources, models: Sequence[str], spec: RoundSpec) -> SetData:
+    """The round's look set, read: Tarteel v1's look half (#95, the consonant round) or the
+    tlog look gating rows (:meth:`Sources.tlog`)."""
+    if spec.look_set == TARTEEL_LOOK:
+        return sources.tarteel(LOOK, models)
+    return sources.tlog(LOOK, models)
+
+
+def look_inputs(data: SetData, workers: int = 1,
+                models: Sequence[str] = LOOK_MODELS) -> dict:
+    """The choice's inputs on the look set, per model (an arm's weights): false flags per 1,000
+    graded words (shipped default) and word agreement with the teacher (points). Nothing else."""
     from training.muraja_policy import SHIPPED_DEFAULT
 
-    flags = compare(false_flag_terms(data.grades, LOOK_MODELS, SHIPPED_DEFAULT.name), PER_1000,
+    flags = compare(false_flag_terms(data.grades, models, SHIPPED_DEFAULT.name), PER_1000,
                     comparisons=())
-    agreement = compare(word_agreement_terms(data.items, checks_text(data, (*LOOK_MODELS, BASE)),
-                                             LOOK_MODELS, workers=workers), POINTS, comparisons=())
+    agreement = compare(word_agreement_terms(data.items, checks_text(data, (*models, BASE)),
+                                             models, workers=workers), POINTS, comparisons=())
     return {m: {"graded_words": flags["models"][m]["den"],
                 "flagged_words": flags["models"][m]["num"],
                 "false_flags_per_1000": flags["models"][m]["point"],
                 "word_agreement_points": agreement["models"][m]["point"]}
-            for m in LOOK_MODELS}
+            for m in models}
+
+
+def look_weights(spec: RoundSpec, inputs: Mapping[str, dict]) -> str | Mapping[str, str]:
+    """The choice's weights: #95 and the consonant round pick one selector for every arm; a
+    round that decodes more than one arm on the look set picks each arm's own (#227)."""
+    if len(spec.look_roles) == 1:
+        return choose(inputs, spec.look_roles[0], spec)
+    return {role: choose(inputs, role, spec) for role in spec.look_roles}
+
+
+#: The look sitting's per-word export (#225's catch-loss audit reads it): C95's and the chosen
+#: candidate's kept grades on the tlog look gating rows.
+LOOK_GRADES = "look_grades.jsonl.gz"
+
+
+def look_grade_rows(grades: Sequence, models: Sequence[str],
+                    decodes: Mapping[str, Mapping[str, dict]]) -> list[dict]:
+    """One row per word and model: the kept grade, why it was flagged, and the clip's whole
+    provenance (the audit's worklist and the listening UI need it)."""
+    rows = []
+    for grade in grades:
+        if grade.model not in models:
+            continue
+        line = decodes[grade.model][grade.item.key]
+        rows.append({
+            "key": grade.item.key, "model": grade.model, "position": grade.position,
+            "word": grade.word, "word_index": grade.word_index,
+            "outcome": grade.outcome, "graded": grade.graded, "flagged": grade.flagged,
+            "causes": list(grade.reason.causes) if grade.reason is not None else [],
+            "surah_ayah": grade.item.surah_ayah,
+            "audio_filename": grade.item.audio_filename,
+            "audio_sha256": grade.item.audio_sha256,
+            "start_sample": grade.item.start_sample, "end_sample": grade.item.end_sample,
+            "split": line["split"], "shard_file": line["shard_file"], "row": line["row"],
+        })
+    return sorted(rows, key=lambda row: (row["model"], row["key"], row["position"]))
+
+
+def write_look_grades(path: Path, rows: Sequence[dict]) -> None:
+    """The per-word export, gzip-reproducible (one fixed header, no timestamp) and written
+    atomically: a resumed look never leaves a torn file behind the claim."""
+    body = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_bytes(gzip.compress(body.encode("utf-8"), mtime=0))
+    os.replace(temporary, path)
 
 
 def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
              spec: RoundSpec = AUG95) -> dict:
-    """Read the look half once and write the choice. Refused once a choice exists, without a
-    complete identity manifest for the candidate's two weights, and while (or after) another
-    look sitting holds the claim."""
+    """Read the look set once and write the choice. Refused once a choice exists, on a round
+    that reads the tlog tranches unless its pre-registration is committed and pinned, without a
+    complete identity manifest for every look arm's weights, and while (or after) another look
+    sitting holds the claim."""
     if layout.choice.exists():
         raise SystemExit(f"the look half was read: {layout.choice.name} exists; it is read once")
+    if tlog_round(spec):
+        require_preregistration(spec, sources.harness_identity())
     identities = require_manifest(read_manifest(layout), needs(LOOK, None, spec), None,
                                   spec=spec)
     sitting = {"phase": LOOK, "identities": identities,
                "inputs": digests(sources.input_files(LOOK, None)),
                "harness": sources.harness_identity()}
     with claim(layout.claim(LOOK), sitting):
-        data = sources.tarteel(LOOK, (*LOOK_MODELS, BASE))
-        if any(half(i.audio_filename) != LOOK for i in data.items):
+        graded = look_graded_models(spec)
+        data = look_data(sources, (*graded, BASE), spec)
+        if spec.look_set == TARTEEL_LOOK and any(half(i.audio_filename) != LOOK
+                                                 for i in data.items):
             raise ValueError("an item outside the look half reached the look")
         data = SetData(data.items, data.decodes,
-                       sources.grade(data.items, data.decodes, LOOK_MODELS))
-        inputs = look_inputs(data, workers)
-        weights = choose(inputs)
+                       sources.grade(data.items, data.decodes, graded))
+        inputs = look_inputs(data, workers, look_models(spec))
+        weights = look_weights(spec, inputs)
         same_harness(sources, sitting)
+        if tlog_round(spec):  # the catch-loss audit reads C95 beside the chosen candidate
+            export = (spec.baseline, choice_models(spec, weights)[CANDIDATE])
+            write_look_grades(layout.root / LOOK_GRADES,
+                              look_grade_rows(data.grades, export, data.decodes))
         rule, control = look_wording(spec)
         look_text = canonical({"issue": spec.issue, "half": LOOK, "items": len(data.items),
                                "inputs": inputs, "rule": rule, "choice": weights,
@@ -636,7 +760,10 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     """Read the confirm half and the guards once, for the committed choice, and write the
     report and the verdict. Refused without a committed choice, once a verdict exists, without
     a complete identity manifest for every model read, and while (or after) another confirm
-    sitting holds the claim."""
+    sitting holds the claim. A round that reads the tlog tranches reads its pooled confirm in
+    part 2 (#227), never through #95's tables."""
+    if tlog_round(spec):
+        raise SystemExit(f"{spec.name}: the pooled confirm read is part 2 (#227)")
     committed = committed_choice(layout, spec=spec)
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the confirm half is read once")
@@ -659,8 +786,9 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     reproduction_record = None
     with claim(layout.claim(CONFIRM), sitting):
         if spec.pins is not None:  # the pre-registration's pins, before any candidate is read
+            prereg = spec.prereg_path
             check_pins(spec, sitting["harness"],
-                       sha256_file(PREREG_PATH) if PREREG_PATH.exists() else "")
+                       sha256_file(prereg) if prereg.exists() else "")
             # #95's own inputs, not this round's: the check is against history (#175 R1.1).
             # It must pass before any confirm set is read, and is recorded in the report.
             totals = reproduction(Sources())
@@ -879,7 +1007,8 @@ def main() -> None:
     commands.add_parser("select-qud", help="freeze QUD's salted half (before any decode)")
     merged = commands.add_parser("merge", help="gather the GPU box's decodes")
     merged.add_argument("--decodes-dir", type=Path, required=True)
-    merged.add_argument("--spec", default=AUG95.name, choices=("aug95", "consonant1"))
+    rounds = tuple(SPECS)
+    merged.add_argument("--spec", default=AUG95.name, choices=rounds)
     for name, text in (("look", "read the look half once and write the choice"),
                        ("confirm", "read the confirm half and the guards once: the verdict")):
         command = commands.add_parser(name, help=text)
@@ -890,17 +1019,14 @@ def main() -> None:
         "doc", help="render the round's readout document")
     for command in (*[commands.choices[name] for name in ("look", "confirm")],
                     coverage_command, doc_command):
-        command.add_argument("--spec", default=AUG95.name,
-                             choices=("aug95", "consonant1"))
+        command.add_argument("--spec", default=AUG95.name, choices=rounds)
     args = parser.parse_args()
     if args.command == "select-qud":  # #95's frozen half: the one command with no --spec
         record = write_qud_selection()
         print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']} of {record['segments']}")
         return
     specification = round_spec(args.spec)
-    from training.consonant_readout import ROUND_DIR
-
-    layout = Layout(ROUND_DIR) if specification.name == "consonant1" else Layout()
+    layout = Layout(specification.root)
     sources = Sources(specification)
 
     if args.command == "merge":
@@ -913,6 +1039,8 @@ def main() -> None:
         report = run_confirm(sources, layout, args.workers, spec=specification)
         print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")
     elif args.command == "coverage":
+        if tlog_round(specification):
+            raise SystemExit(f"{specification.name}'s coverage record is part 2 (#227)")
         if specification.name == "consonant1":
             from training.consonant_readout import coverage as round_coverage
 
@@ -925,6 +1053,8 @@ def main() -> None:
             f"{name} {row['evaluated']} of {row['decoded']}"
             for name, row in record["populations"].items()))
     else:
+        if tlog_round(specification):
+            raise SystemExit(f"{specification.name}'s readout doc is part 2 (#227)")
         from training.aug_readout_doc import render
 
         look = json.loads(layout.look.read_text(encoding="utf-8"))

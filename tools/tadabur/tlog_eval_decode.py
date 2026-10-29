@@ -77,7 +77,8 @@ from .tlog_pass1 import read_jsonl_gz, shard_rows
 from .tlog_pool import default_audio, row_key
 from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR
 from training.aug_readout_gate import model_spec
-from training.aug_readout_spec import C95_SHA256, CANDIDATE_SHA256, CONSONANT1
+from training.aug_readout_spec import (C95_SHA256, CANDIDATE_SHA256, CONSONANT1,
+                                       CONSONANT2, RoundSpec)
 from training.external_decode import (ModelSpec, Recording, append_timing, decode_recordings,
                                       load_decoders)
 from training.nonpro_decode import item_key
@@ -85,10 +86,14 @@ from training.truth_baseline import CHECK_STORE, DECODES_DIR, DEFAULT_MODELS, PR
 
 #: The tranche this decoder reads; every other role is refused.
 LOOK = "look"
-#: The four models round 2 can read, in the order their merged files and meta list them.
+#: The models round 2's tlog look decodes hold, in the order their merged files and meta list
+#: them (#212): the teacher, C95, #178's candidate and ``h448``.
 MODELS = ("base", "c95", "candidate_ema", "h448")
 #: The narrowed run: the teacher, C95 and the #178 candidate (architect r26 drops ``h448``).
 RUN_MODELS = ("base", "c95", "candidate_ema")
+#: The round-2 arms' decode roles (#227): the candidate's and the control's live and EMA
+#: weights, whose checkpoints the round's spec pins.
+ROUND2_MODELS = ("r2_candidate_live", "r2_candidate_ema", "r2_control_live", "r2_control_ema")
 #: The three checkpoints, by the SHA-256 of their bytes (#174's C95, #178's candidate, h448).
 H448_SHA256 = "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
 PINNED_SHA256 = {"c95": C95_SHA256, "candidate_ema": CANDIDATE_SHA256, "h448": H448_SHA256}
@@ -129,6 +134,13 @@ RUN_STORES = {"checks": CHECK_STORE}
 # --- the models and their pins ------------------------------------------------------------------
 
 
+def round2_model_specs(spec: RoundSpec = CONSONANT2) -> dict[str, ModelSpec]:
+    """The round-2 arms' decode specs, from the identities the round pins (#227). Until the run
+    issues fill those in, every role is refused by name: it never resolves to #94's
+    checkpoints."""
+    return {name: model_spec(name, spec) for name in ROUND2_MODELS}
+
+
 def model_specs() -> dict[str, ModelSpec]:
     """The four models' decode specs, in :data:`MODELS` order.
 
@@ -165,6 +177,14 @@ def require_pinned_identities(identities: Mapping[str, Mapping[str, object]],
         found = identities[name].get("checkpoint_sha256")
         if found != PINNED_SHA256[name]:
             raise ValueError(f"{name} is {found}, not the pinned {PINNED_SHA256[name]}")
+    for name in (name for name in models if name in ROUND2_MODELS):
+        pinned = CONSONANT2.models.get(name)
+        if pinned is None:
+            raise ValueError(f"{name} is not pinned by the round's spec yet: it is not a "
+                             "checkpoint this decoder can run")
+        found = identities[name].get("checkpoint_sha256")
+        if found != pinned.checkpoint_sha256:
+            raise ValueError(f"{name} is {found}, not the pinned {pinned.checkpoint_sha256}")
 
 
 # --- the look tranche only ----------------------------------------------------------------------
@@ -540,10 +560,13 @@ def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
     """The run's decoders, with every identity checked against its pin after the load."""
     parts_dir = Path(parts_dir)
     parts_dir.mkdir(parents=True, exist_ok=True)
-    unknown = set(models) - set(MODELS)
+    unknown = set(models) - set(MODELS) - set(ROUND2_MODELS)
     if unknown:
-        raise ValueError(f"{sorted(unknown)[0]} is not a round-2 model {list(MODELS)}")
-    specs = {name: spec for name, spec in model_specs().items() if name in models}
+        raise ValueError(f"{sorted(unknown)[0]} is not a round-2 model "
+                         f"{[*MODELS, *ROUND2_MODELS]}")
+    specs = {**{name: spec for name, spec in model_specs().items() if name in models},
+             **{name: model_spec(name, CONSONANT2) for name in models
+                if name in ROUND2_MODELS}}
     decoders = load_decoders(lambda name: parts_dir / f"{name}.identity.json", specs)
     require_pinned_identities(run_identities(parts_dir, models), models)
     return decoders

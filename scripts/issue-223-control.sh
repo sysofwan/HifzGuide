@@ -8,14 +8,14 @@
 # Recipe, data and readings: docs/consonant-round2-control.md.
 #
 # Mac side, from the worktree root, once the code is committed:
-#   scripts/issue-223-control.sh launch   # archive HEAD, start detached under gpu.lock
+#   scripts/issue-223-control.sh launch   # gate, archive HEAD, start detached under gpu.lock
 #   scripts/issue-223-control.sh check    # done-file check; 0 = smoke and the full run finished
 #   scripts/issue-223-control.sh report   # final checkpoint SHA-256, loss and throughput
 #
-# `launch` refuses while the GPU lock is held (another issue's run owns the box) and while a
-# previous run's directory exists; `launch --resume` continues it instead (#221: a retry must
-# never destroy the checkpoints, which is why the run directories sit outside the archived
-# repo). `run` asserts the data first (both source runs' consumed prefixes, the committed
+# `launch` refuses while the GPU lock is held (exit 3), while a previous run's directory
+# exists (4), below MIN_FREE_GB on /root/scratch (5) and when `--resume` names no checkpoint
+# (6). `launch --resume` continues an existing run instead (#221: a retry must never destroy
+# the checkpoints, which is why the run directories sit outside the archived repo). `run` asserts the data first (both source runs' consumed prefixes, the committed
 # registration, the warm start's checksum), writes the frame manifest the round-2 candidate
 # must replay (shard list and digest, both RNG seeds, the recipe record), smoke-tests 300
 # steps with an early evaluation, gates the smoke on throughput, finite KL, a real validation
@@ -25,13 +25,19 @@
 # done-file.
 #
 # Budget: the smoke is ~0.1 GPU-h and 10,000 steps ~3.5 GPU-h at #178's 0.83 steps/s, so
-# BUDGET defaults to six hours from the lock's acquisition.
+# BUDGET defaults to six hours from the lock's acquisition. The box's disk is the binding
+# constraint: a run needs its checkpoint (1.9 GiB), one shard's cached blob while it streams,
+# the archived tree and the smoke's checkpoint, so launch refuses below MIN_FREE_GB.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
 ROOT=${ISSUE_ROOT:-/root/scratch/issue-223}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 BUDGET=${BUDGET:-21600}
+# GiB free on /root/scratch a launch needs: #178's run directory peaked at 2.03 GiB, one
+# shard's cached blob is a few GiB, the archived tree is ~0.4 GiB and the smoke saves a full
+# checkpoint before the gate deletes it.
+MIN_FREE_GB=${MIN_FREE_GB:-10}
 
 # The warm start: #178's candidate checkpoint, whose averaged weights continue C95. Its
 # SHA-256 is the file the #178 run note records -- live and averaged weights in one file.
@@ -41,7 +47,8 @@ POOL=${POOL:-/root/scratch/issue-94/noise_pool.npz}
 POOL_SHA=d2978d0ff3fcc14b08b21b9360d0933202e1a9f7b92fae5de9376d6ba2b3fd43
 # In-training validation is monitoring only and must touch no evaluation set, so it reads
 # clips staged from the run's own shards -- from the last shard of its seed-2026 permutation,
-# which `assert_stream` splits *off* the stream -- rather than #94's dev clips.
+# which the run's step budget never reaches; `assert_monitor` asserts that from the finished
+# log -- rather than #94's dev clips.
 VAL_CLIPS=${VAL_CLIPS:-$ROOT/val_clips}
 VAL_CLIPS_COUNT=${VAL_CLIPS_COUNT:-200}
 
@@ -51,8 +58,10 @@ VAL_CLIPS_COUNT=${VAL_CLIPS_COUNT:-200}
 # its own seed, so a log from another run cannot be chained in.
 SOURCE_LOG_94=${SOURCE_LOG_94:-/root/scratch/issue-94/logs/aug94_candidate_v2.log}
 SOURCE_LOG_178=${SOURCE_LOG_178:-/root/scratch/issue-178/logs/train.log}
-SEED_94=9494
-SEED_178=178
+# Each overridable like the other inputs: a wrong seed fails the log's permutation cross-check
+# rather than selecting shards quietly, so an override cannot pass unnoticed.
+SEED_94=${SEED_94:-9494}
+SEED_178=${SEED_178:-178}
 # The shard index the registration counts its rows from.
 INDEX=${INDEX:-/root/scratch/issue-89/stage/full_index.jsonl}
 
@@ -85,11 +94,40 @@ activate() {
 }
 
 
+derive_frame() {
+  # The one derivation, from the two source runs to this run's frame: both consumed prefixes
+  # (each log read with its own stream seed, $SEED_94 and $SEED_178) and the
+  # monitor shard this run's seed orders last. Fills MONITOR, POSITION and SPEC, or returns 1
+  # -- a log that does not match its seed's permutation stops here rather than leaving audio
+  # an earlier run already streamed in the control's corpus.
+  local derivation
+  derivation=$(python -m training.consumed_prefix \
+    --log "$SOURCE_LOG_94:$SEED_94" --log "$SOURCE_LOG_178:$SEED_178" \
+    --monitor-seed "$SEED") || return 1
+  MONITOR=""
+  POSITION=""
+  SPEC=""
+  while IFS='=' read -r key value; do
+    case $key in
+      monitor) MONITOR=$value ;;
+      position) POSITION=$value ;;
+      stream) SPEC=$value ;;
+    esac
+  done <<<"$derivation"
+  if [ -z "$MONITOR" ] || [ -z "$POSITION" ] || [ -z "$SPEC" ]; then
+    echo "[assert] derivation printed no monitor shard, position and spec:" \
+      "(${derivation})" >&2
+    return 1
+  fi
+}
+
+
 setup() {
   mkdir -p "$ROOT/logs" "$VAL_CLIPS"
   cd "$ROOT/repo/tools"
   activate
-  python - "$VAL_CLIPS" "$VAL_CLIPS_COUNT" "$SOURCE_LOG_94" "$SOURCE_LOG_178" "$SEED" <<'PY'
+  derive_frame || exit 1
+  python - "$VAL_CLIPS" "$VAL_CLIPS_COUNT" "$SPEC" "$MONITOR" "$POSITION" <<'PY'
 import pathlib
 import sys
 
@@ -97,20 +135,17 @@ import soundfile as sf
 
 from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.exposure import CONSONANT2_CONTROL, RowExclusion
-from tadabur.shard_reader import iter_shard_rows
-from training.consumed_prefix import monitoring_shard, remaining_after_logs
+from tadabur.shard_reader import iter_shard_rows, parse_shard_spec
 from training.distill_data import clip_split
 from training.distill_stream import decode_row_waveform
 
 out = pathlib.Path(sys.argv[1])
 wanted = int(sys.argv[2])
 # The shard the run monitors on: the last of its seed permutation. The run's step budget
-# never completes the shards before it; `assert_stream` logs the position and `run` asserts
-# after the full run that the log never reached it.
-remaining = remaining_after_logs(
-    [(pathlib.Path(sys.argv[3]), 9494), (pathlib.Path(sys.argv[4]), 178)]
-)
-monitor, position = monitoring_shard(remaining, int(sys.argv[5]))
+# never completes the shards before it; `assert_monitor` refuses a finished log that entered
+# it, so the validation clips were never training audio.
+remaining = parse_shard_spec(sys.argv[3])
+monitor, position = int(sys.argv[4]), int(sys.argv[5])
 for stale in out.glob("*.wav"):
     stale.unlink()
 
@@ -170,42 +205,14 @@ assert_stream() {
   # disables errexit for the whole body, so a bare failing command would be swallowed and
   # a drift would launch anyway.
   mkdir -p "$ROOT/logs"
-  local derivation monitor="" position="" spec=""
-  derivation=$(python - "$SOURCE_LOG_94" "$SOURCE_LOG_178" "$SEED" <<'PY'
-import pathlib
-import sys
-
-from tadabur.shard_reader import shard_spec
-from training.consumed_prefix import monitoring_shard, remaining_after_logs
-
-remaining = remaining_after_logs(
-    [(pathlib.Path(sys.argv[1]), 9494), (pathlib.Path(sys.argv[2]), 178)]
-)
-monitor, position = monitoring_shard(remaining, int(sys.argv[3]))
-print(f"monitor={monitor}")
-print(f"position={position}")
-print(f"stream={shard_spec(remaining)}")
-PY
-) || return 1
-  while IFS='=' read -r key value; do
-    case $key in
-      monitor) monitor=$value ;;
-      position) position=$value ;;
-      stream) spec=$value ;;
-    esac
-  done <<<"$derivation"
-  if [ -z "$monitor" ] || [ -z "$position" ] || [ -z "$spec" ]; then
-    echo "[assert] derivation printed no monitor shard, position and spec:" \
-      "(${derivation})" >&2
-    return 1
-  fi
-  echo "[assert] monitor shard $monitor: validation clips are staged from it, and the run" \
-    "enters it only after $position completions -- asserted by assert_monitor"
-  echo "[assert] stream shards: $spec"
+  derive_frame || return 1
+  echo "[assert] monitor shard $MONITOR: validation clips are staged from it, and the run" \
+    "enters it only after $POSITION completions -- asserted by assert_monitor"
+  echo "[assert] stream shards: $SPEC"
   python -m tadabur.exposure training-stream --use "$EXPOSURE_USE" --index "$INDEX" \
-    --shards "$spec" --membership exact --note "launch assertion" --check || return 1
-  printf '%s\n' "$spec" > "$ROOT/logs/spec.txt"
-  printf '%s\n' "$monitor" "$position" > "$ROOT/logs/val_shard.txt"
+    --shards "$SPEC" --membership exact --note "launch assertion" --check || return 1
+  printf '%s\n' "$SPEC" > "$ROOT/logs/spec.txt"
+  printf '%s\n' "$MONITOR" "$POSITION" > "$ROOT/logs/val_shard.txt"
 }
 
 assert_monitor() {  # <log>
@@ -213,24 +220,19 @@ assert_monitor() {  # <log>
   # --stream-shards, so the only thing keeping validation out of training is the step budget.
   # This reads the finished log's shard-completion lines and refuses if the run entered the
   # shard the validation clips were decoded from -- the val rows would be in-sample.
-  python - "$1" "$SOURCE_LOG_94" "$SOURCE_LOG_178" "$SEED" <<'PY'
+  derive_frame || return 1
+  python - "$1" "$SPEC" "$MONITOR" "$POSITION" "$SEED" <<'PY'
 import pathlib
 import sys
 
-from training.consumed_prefix import (
-    completion_order,
-    monitor_reached,
-    monitoring_shard,
-    remaining_after_logs,
-)
+from tadabur.shard_reader import parse_shard_spec
+from training.consumed_prefix import completion_order, monitor_reached
 
 log = pathlib.Path(sys.argv[1])
-remaining = remaining_after_logs(
-    [(pathlib.Path(sys.argv[2]), 9494), (pathlib.Path(sys.argv[3]), 178)]
-)
+remaining = parse_shard_spec(sys.argv[2])
+monitor, position = int(sys.argv[3]), int(sys.argv[4])
 completed = completion_order(log.read_text(encoding="utf-8"))
-monitor, position = monitoring_shard(remaining, int(sys.argv[4]))
-if monitor_reached(remaining, completed, int(sys.argv[4])):
+if monitor_reached(remaining, completed, int(sys.argv[5])):
     raise SystemExit(
         f"{log}: {len(completed)} shards completed, so the run entered monitor shard "
         f"{monitor} at position {position}: the validation clips are training audio"
@@ -360,6 +362,12 @@ chain() {
     : > "$ROOT/logs/smoke.done"
   fi
   printf '%s full start\n' "$(date -u +%FT%TZ)" >> "$ROOT/logs/events"
+  # A resume continues a checkpoint on the box; `launch` refuses one without a checkpoint, and
+  # `run` is reachable directly, so the trainer is never asked to start over in its place.
+  if [ -n "${RESUME:-}" ] && [ ! -s "$OUT/checkpoint.pt" ]; then
+    echo "[resume] $OUT/checkpoint.pt is missing or empty: refusing to start a fresh run" >&2
+    return 1
+  fi
   # `assert_monitor` counts the shard-completion lines of the whole run, so a resume appends
   # to the previous segment's log instead of truncating the evidence it checks.
   if [ -n "${RESUME:-}" ]; then
@@ -486,6 +494,28 @@ PY"
 # --- on the Mac -------------------------------------------------------------------------
 
 
+assert_disk() {
+  # The box's disk is the binding constraint (#178 started from 35 GB free), and a full disk
+  # kills a 3.6 h run partway. Refuse before anything is archived or staged, so nothing is
+  # half-copied onto a box that cannot hold the run.
+  local avail
+  avail=$(ssh "$HOST" "df -B1 --output=avail /root/scratch | tail -1")
+  case $avail in
+    ''|*[!0-9]*)
+      echo "refusing: could not read free space on $HOST:/root/scratch ($avail)" >&2
+      return 1
+      ;;
+  esac
+  if [ "$avail" -lt $((MIN_FREE_GB * 1024 * 1024 * 1024)) ]; then
+    echo "refusing: $((avail / 1024 / 1024 / 1024)) GiB free on /root/scratch, below the" \
+      "$MIN_FREE_GB GiB a run needs (its checkpoint, one shard's blob, the archived tree);" \
+      "free space, or set MIN_FREE_GB if the budget is genuinely lower" >&2
+    return 1
+  fi
+  echo "free space: $((avail / 1024 / 1024 / 1024)) GiB on /root/scratch"
+}
+
+
 launch() {  # [--resume]
   local repo_root head held resume=""
   if [ "${1:-}" = "--resume" ]; then
@@ -495,15 +525,22 @@ launch() {  # [--resume]
   head=$(git -C "$repo_root" rev-parse HEAD)
   ssh "$HOST" "mkdir -p '$ROOT/logs'"
   # #221: the run directories live outside the archived repo, and an existing one is refused
-  # unless this is a resume -- the checkpoints in it are the arm's only artifact.
-  if ssh "$HOST" "test -e '$OUT' && echo exists" | grep -q exists; then
-    if [ -z "$resume" ]; then
-      echo "refusing: $OUT exists (a previous run's checkpoints)." \
-        "Rerun with '$0 launch --resume' to continue it." >&2
-      return 4
+  # unless this is a resume -- the checkpoints in it are the arm's only artifact. A resume
+  # without a checkpoint would silently start a fresh run under the same directory, so it is
+  # refused rather than left to the trainer's `--resume` fallback.
+  if [ -n "$resume" ]; then
+    if ! ssh "$HOST" "test -s '$OUT/checkpoint.pt'"; then
+      echo "refusing: --resume but $OUT/checkpoint.pt is missing or empty:" \
+        "there is nothing to continue" >&2
+      return 6
     fi
-    echo "resuming: keeping $OUT"
+    echo "resuming: keeping $OUT/checkpoint.pt"
+  elif ssh "$HOST" "test -e '$OUT' && echo exists" | grep -q exists; then
+    echo "refusing: $OUT exists (a previous run's checkpoints)." \
+      "Rerun with '$0 launch --resume' to continue it." >&2
+    return 4
   fi
+  assert_disk || return 5
   if ! ssh "$HOST" "flock -n /root/scratch/gpu.lock true" 2>/dev/null; then
     held=$(ssh "$HOST" "pgrep -af 'flock /root/scratch/gpu.lock' || true")
     echo "gpu.lock is held; not launching. Holder:" >&2

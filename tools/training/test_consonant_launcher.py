@@ -23,8 +23,9 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
 SCRIPT = TOOLS.parent / "scripts" / "issue-178-train.sh"
-#: The round-2 control (#223): #178's recipe once more, on Tadabur alone. Its `verify`, `gate`,
-#: `monitor` and `ready` subcommands are the same cut points, so these tests drive it too.
+#: The round-2 control (#223): #178's recipe once more, on Tadabur alone. Its `verify`, `ready`,
+#: `manifest`, `gate` and `monitor` subcommands are the same cut points, so these tests drive
+#: them too -- `monitor` in particular, whose argv differs from #178's.
 CONTROL = TOOLS.parent / "scripts" / "issue-223-control.sh"
 
 #: The head of the seed-9494 permutation, as #94's log reports it.
@@ -363,6 +364,21 @@ def test_the_controls_seed_names_the_monitor_shard_it_never_streams(tmp_path):
     assert monitor != monitoring_shard(after_both, RUN_SEED)[0]
 
 
+def test_a_flipped_source_seed_stops_the_derivation(tmp_path):
+    """The source seeds are the derivation's input, not decoration: read with the wrong seed,
+    a log fails the permutation cross-check instead of selecting other shards quietly."""
+    log_94, log_178, _, _ = _control_sources(tmp_path)
+    done = _control_verify(
+        tmp_path,
+        SOURCE_LOG_94=str(log_94),
+        SOURCE_LOG_178=str(log_178),
+        SEED_94="1234",
+    )
+    assert done.returncode != 0
+    assert "permutation" in done.stdout + done.stderr
+    assert not (tmp_path / "logs" / "spec.txt").exists()
+
+
 def test_the_control_refuses_a_second_log_with_no_completions(tmp_path):
     """A truncated #178 log would leave its whole prefix back in the corpus."""
     log_94, log_178, _, _ = _control_sources(tmp_path)
@@ -415,7 +431,8 @@ def test_the_control_registers_its_shard_use_as_the_round_2_control(tmp_path):
 
 
 def _control_launch(
-    tmp_path: Path, *args: str, run_dir: bool = False
+    tmp_path: Path, *args: str, run_dir: bool = False, checkpoint: bool = False,
+    free_gb: int = 40,
 ) -> subprocess.CompletedProcess:
     """`launch` against a stand-in box: every ssh is answered by a shim and logged."""
     shim = tmp_path / "bin"
@@ -430,6 +447,8 @@ def _control_launch(
                 'case "$*" in',
                 '  *"tar -x"*) cat > /dev/null ;;',  # the archived tree arrives on stdin
                 '  *"test -e"*) [ "%d" = 1 ] && echo exists ;;' % run_dir,
+                '  *"test -s"*) [ "%d" = 1 ] && exit 0; exit 1 ;;' % checkpoint,
+                '  *"df -B1"*) echo %d ;;' % (free_gb * 1024 ** 3),
                 "esac",
                 "exit 0",
                 "",
@@ -463,13 +482,62 @@ def test_the_launch_refuses_a_previous_run_dir_so_a_retry_keeps_its_checkpoints(
 def test_launch_resume_keeps_the_run_dir_and_starts_detached(tmp_path):
     """#221: `nohup`'s inherited streams kept the launching ssh session open. The run starts
     under `setsid` with stdin from /dev/null, and a resume keeps the checkpoints' directory."""
-    done = _control_launch(tmp_path, "--resume", run_dir=True)
+    done = _control_launch(tmp_path, "--resume", run_dir=True, checkpoint=True)
     assert done.returncode == 0, done.stdout + done.stderr
     issued = (tmp_path / "ssh.log").read_text(encoding="utf-8")
     started = [line for line in issued.splitlines() if "setsid" in line]
     assert started, issued
     assert "< /dev/null" in started[-1]
     assert "RESUME=1" in started[-1]
+
+
+def _control_monitor(
+    tmp_path: Path, completions: int, **overrides: str
+) -> subprocess.CompletedProcess:
+    """`CONTROL monitor`: the guard at the end of the full run, on the chained frame."""
+    from tadabur.shard_reader import parse_shard_spec
+    from training.consumed_prefix import shard_permutation
+
+    log_94, log_178, _, after_both = _control_sources(tmp_path)
+    streamed = tmp_path / "train.log"
+    streamed.write_text(
+        _completion_lines(shard_permutation(after_both, CONTROL_SEED)[:completions]),
+        encoding="utf-8",
+    )
+    return subprocess.run(
+        ["bash", str(CONTROL), "monitor", str(streamed)],
+        cwd=TOOLS,
+        env=_fresh_shell_env(
+            tmp_path,
+            SOURCE_LOG_94=str(log_94),
+            SOURCE_LOG_178=str(log_178),
+            **overrides,
+        ),
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_the_controls_monitor_refuses_a_run_that_entered_its_validation_shard(tmp_path):
+    """The control's guard derives its frame from both logs; a slip there would check #178's
+    monitor shard instead and pass a run with in-sample validation."""
+    from training.consumed_prefix import monitoring_shard
+
+    _, _, _, after_both = _control_sources(tmp_path)
+    _, position = monitoring_shard(after_both, CONTROL_SEED)
+    done = _control_monitor(tmp_path, position)
+    assert done.returncode != 0
+    assert "entered monitor shard" in done.stdout + done.stderr
+
+
+def test_the_controls_monitor_accepts_a_run_that_stopped_short(tmp_path):
+    from training.consumed_prefix import monitoring_shard
+
+    _, _, _, after_both = _control_sources(tmp_path)
+    monitor, position = monitoring_shard(after_both, CONTROL_SEED)
+    done = _control_monitor(tmp_path, position - 1)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert f"monitor shard {monitor} entered at {position}: never streamed" in done.stdout
 
 
 def _control_manifest(tmp_path: Path) -> subprocess.CompletedProcess:
@@ -505,7 +573,30 @@ def test_the_launch_records_the_frame_the_candidate_must_replay(tmp_path):
     assert manifest["shards"] == shards
     assert manifest["shards_sha256"] == shards_digest(shards)
     assert manifest["stream_order"] == shard_permutation(shards, CONTROL_SEED)
+    assert manifest["stream_order_sha256"] == shards_digest(manifest["stream_order"])
     assert manifest["shard_order_seed"] == CONTROL_SEED
     assert manifest["window_shuffle_seed"] == window_shuffle_seed(CONTROL_SEED) == 2027
     assert manifest["augmentation"]["version"] == "aug94-mixture-v2"
     assert manifest["exposure_use"] == "consonant2.control.training"
+
+
+def test_launch_resume_refuses_when_there_is_no_checkpoint_to_continue(tmp_path):
+    """`--resume` with no checkpoint would silently start a fresh run in the same directory,
+    whose metrics and config look like the run it claims to continue."""
+    done = _control_launch(tmp_path, "--resume")
+    assert done.returncode == 6
+    assert "nothing to continue" in done.stderr
+    issued = (tmp_path / "ssh.log").read_text(encoding="utf-8")
+    assert "tar -x" not in issued
+    assert "setsid" not in issued
+
+
+def test_launch_refuses_a_box_below_the_free_space_floor(tmp_path):
+    """Disk is the binding constraint on cuda-dev: refuse before 0.4 GiB is archived and a
+    shard staged onto a box that cannot hold the checkpoints."""
+    done = _control_launch(tmp_path, free_gb=3)
+    assert done.returncode == 5
+    assert "below the" in done.stderr
+    issued = (tmp_path / "ssh.log").read_text(encoding="utf-8")
+    assert "tar -x" not in issued
+    assert "setsid" not in issued

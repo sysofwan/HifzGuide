@@ -153,6 +153,16 @@ def compare(terms: Terms, scale: float,
             "models": models, "comparisons": differences}
 
 
+def paired_se(terms: Terms, a: str, b: str, scale: float,
+              resample: Resample | None = None) -> float:
+    """The clustered paired bootstrap's standard error of ``a`` − ``b``, on ``scale``: the
+    standard deviation of the replicate differences (the same draw and clusters ``compare``
+    reports an interval from). A line's width, not a bound: it decides nothing."""
+    resample = resample or Resample.by_cluster(terms.clusters)
+    gap = resample.ratios(*terms.by_model[a]) - resample.ratios(*terms.by_model[b])
+    return float(np.std(gap)) * scale
+
+
 # --- false flags --------------------------------------------------------------------------------
 
 

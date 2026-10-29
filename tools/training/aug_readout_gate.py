@@ -37,7 +37,8 @@ from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK
 from training.aug_readout_metrics import BASE, CANDIDATE, CONTROL, H448
-from training.aug_readout_spec import AUG95, AUG95_ROOT, ModelIdentity, RoundSpec
+from training.aug_readout_spec import (AUG95, AUG95_ROOT, ModelIdentity, RoundSpec,
+                                       TLOG_CONFIRM, TLOG_LOOK, check_pins)
 from training.aug_readout_spec import model_spec as pinned_model_spec
 from training.external_decode import DEFAULT_SPECS, NO_AUGMENTATION, ModelSpec
 from training.truth_baseline import (
@@ -97,22 +98,39 @@ WEIGHTS = (LIVE, EMA)
 BASELINES = (H448, BASE)
 
 
-def arm_model(arm: str, weights: str) -> str:
-    return f"{arm}_{weights}"
+def arm_model(arm: str, weights: str, spec: RoundSpec | None = None) -> str:
+    """One arm's decode name at ``weights``: ``<arm>_<weights>`` for #94's checkpoints, and the
+    round's prefixed form (``r2_<arm>_<weights>``) for a round whose arms it pins itself."""
+    return f"{(spec or AUG95).arm_prefix}{arm}_{weights}"
 
 
-#: The models the look half is decoded and read for: the candidate's two weights. The control
-#: is never decoded on the look half.
-LOOK_MODELS = tuple(arm_model(CANDIDATE, w) for w in WEIGHTS)
+def look_models(spec: RoundSpec | None = None) -> tuple[str, ...]:
+    """The models the look set is decoded and read for: each of the round's look roles at both
+    weight selectors. #95 and the consonant round decode the candidate only; round 2 decodes
+    the candidate and the control, so each chooses its own weights."""
+    specification = spec or AUG95
+    return tuple(arm_model(role, weights, specification)
+                 for role in specification.look_roles for weights in WEIGHTS)
+
+
+#: The models the look half is decoded and read for in #95: the candidate's two weights. The
+#: control is never decoded on the look half.
+LOOK_MODELS = look_models(AUG95)
 
 
 def model_spec(name: str, spec: RoundSpec | None = None) -> ModelSpec:
     """The decode spec of a readout model: a round's pinned model, an arm's weights at
-    :data:`FINAL_STEP`, or a truth-baseline model."""
+    :data:`FINAL_STEP`, or a truth-baseline model. A round that names its own arms pins all of
+    them, so an arm the spec does not pin is refused by name, never resolved to #94's
+    checkpoints (#227)."""
+    specification = spec or AUG95
     if name in DEFAULT_SPECS:
         return DEFAULT_SPECS[name]
-    if (pinned := pinned_model_spec(spec or AUG95, name)) is not None:
+    if (pinned := pinned_model_spec(specification, name)) is not None:
         return pinned
+    if specification.arm_prefix:
+        raise ValueError(f"{name!r} is not a {specification.name} model: the round's arms are "
+                         f"pinned in its spec")
     arm, _, weights = name.rpartition("_")
     if arm not in ARMS or weights not in WEIGHTS:
         raise ValueError(f"{name!r} is no readout model")
@@ -129,6 +147,9 @@ STREAM = "stream_b0"
 BLANKS = "stream_b0_blanks"
 #: What a decode line of an external corpus's clip records of its audio (#156's decoder).
 CLIP_PROVENANCE = ("audio_filename", "audio_sha256", "start_sample", "end_sample")
+#: What a tlog decode line records of the row it was decoded from, each matched against the
+#: committed base decode of the same item: the S7 manifest's own row key and the clip.
+TLOG_PROVENANCE = ("split", "shard_file", "row", "audio_sha256", "start_sample", "end_sample")
 
 
 @dataclass(frozen=True)
@@ -156,6 +177,10 @@ SETS = {s.name: s for s in (
                                           "start_sample", "end_sample")),
     ReadoutSet(TADABUR_SET, (STREAM,), ("reciter_id", "clean_sha256", "start_sample",
                                         "end_sample")),
+    # Round 2's own sets (#227): the look tranche is read before the choice, the pooled
+    # confirm.1+2 tranches only after it, on the same committed decodes.
+    ReadoutSet(TLOG_LOOK, (CHECKS,), TLOG_PROVENANCE, gated=False),
+    ReadoutSet(TLOG_CONFIRM, (CHECKS,), TLOG_PROVENANCE),
 )}
 GATED = tuple(name for name, s in SETS.items() if s.gated)
 
@@ -174,19 +199,45 @@ def round_decodes_file(spec: RoundSpec, set_name: str, model: str) -> Path:
     return directory / f"{set_name}.{name}.jsonl.gz"
 
 
+def chosen_weights(spec: RoundSpec, choice: Mapping) -> dict[str, str]:
+    """Each of the round's arms and the weights it was chosen at. A choice's ``weights`` is one
+    selector for every arm (#95, the consonant round) or each arm's own (round 2, whose arms
+    choose independently on the look set) — the one place either form is read, and validated:
+    a partial per-arm mapping names no model."""
+    weights = choice["weights"]
+    arms = [role for role in spec.students if role in ARMS]
+    if not _valid_weights(spec, weights):
+        raise SystemExit(f"the choice's weights {weights!r} are not {list(WEIGHTS)}"
+                         f"{f', one per arm {arms}' if isinstance(weights, Mapping) else ''}")
+    return {role: weights[role] if isinstance(weights, Mapping) else weights for role in arms}
+
+
+def _valid_weights(spec: RoundSpec, weights) -> bool:
+    """A choice's ``weights``: one selector for every arm, or each of the round's arms named
+    with its own (round 2)."""
+    arms = [role for role in spec.students if role in ARMS]
+    if isinstance(weights, Mapping):
+        return set(weights) == set(arms) and all(w in WEIGHTS for w in weights.values())
+    return weights in WEIGHTS
+
+
 def allowed_models(set_name: str, choice: Mapping | None,
                    spec: RoundSpec | None = None) -> tuple[str, ...]:
-    """The models a set may be decoded (and read) for: the look half, the candidate's two
-    weights; any gated set only with a committed choice (``choice``, from
+    """The models a set may be decoded (and read) for: a look set, its round's look roles at
+    both weights; any gated set only with a committed choice (``choice``, from
     :func:`committed_choice`), for the round's students at the chosen weights (and, on Tadabur,
     the two baselines, for the blank share). A round with no control (``consonant1``) reads no
     control decodes."""
     specification = spec or AUG95
     if not SETS[set_name].gated:
-        return LOOK_MODELS
+        if set_name != specification.look_set:
+            raise SystemExit(f"{set_name} is read only after the look half, with a committed "
+                             f"choice: {specification.look_set} is this round's look set")
+        return look_models(specification)
     if choice is None:
         raise SystemExit(f"{set_name} is read only after the look half, with a committed choice")
-    students = tuple(arm_model(role, choice["weights"]) if role in ARMS else role
+    chosen = chosen_weights(specification, choice)
+    students = tuple(arm_model(role, chosen[role], specification) if role in chosen else role
                      for role in specification.students)
     baselines = BASELINES if set_name == TADABUR_SET else ()
     return tuple(dict.fromkeys((*students, *baselines)))
@@ -198,7 +249,7 @@ def needs(phase: str, weights: str | None,
     specification = spec or AUG95
     declared = specification.sets
     if phase == LOOK:
-        return {name: LOOK_MODELS for name in declared if name == TARTEEL_LOOK}
+        return {specification.look_set: look_models(specification)}
     return {name: allowed_models(name, {"weights": weights}, specification) for name in declared
             if name in SETS and SETS[name].gated}
 
@@ -337,13 +388,15 @@ def canonical(payload) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
 
 
-def choice_models(spec: RoundSpec, weights: str) -> dict[str, str]:
-    """The arms a round's choice binds at ``weights``: each of its students that is an arm.
-    A round without a control (``consonant1``) names its candidate only."""
-    return {role: arm_model(role, weights) for role in spec.students if role in ARMS}
+def choice_models(spec: RoundSpec, weights) -> dict[str, str]:
+    """The arms a round's choice binds: each of its students that is an arm, at the weights
+    ``weights`` names — one selector for every arm, or each arm's own (round 2). A round
+    without a control (``consonant1``) names its candidate only."""
+    chosen = chosen_weights(spec, {"weights": weights})
+    return {role: arm_model(role, chosen[role], spec) for role in spec.students if role in ARMS}
 
 
-def make_choice(weights: str, look_text: str, sitting: Mapping,
+def make_choice(weights: str | Mapping[str, str], look_text: str, sitting: Mapping,
                 spec: RoundSpec = AUG95) -> dict:
     """``choice.json``: the round's issue, the weights, bound to the look's SHA-256, to the look
     sitting (its input files' SHA-256 and the candidate's identities)."""
@@ -381,17 +434,18 @@ def committed_choice(layout: Layout = Layout(),
     if choice.get("look_sha256") != sha256_bytes(look_raw):
         raise SystemExit(f"{layout.choice.name} is not bound to the committed {layout.look.name}")
     # The semantic bindings: the weights the look chose, and the checkpoints the look read.
-    if choice.get("weights") not in WEIGHTS or choice["weights"] != look.get("choice"):
+    weights = choice.get("weights")
+    if not _valid_weights(spec, weights) or weights != look.get("choice"):
         raise SystemExit(f"{layout.choice.name} names other weights than {layout.look.name} chose")
-    if choice.get("models") != choice_models(spec, choice["weights"]):
+    if choice.get("models") != choice_models(spec, weights):
         raise SystemExit(f"{layout.choice.name} names other models than its weights")
     identities = choice.get("identities") or {}
-    if set(identities) != set(LOOK_MODELS):
-        raise SystemExit(f"{layout.choice.name} holds no identity for the candidate's weights")
+    if set(identities) != set(look_models(spec)):
+        raise SystemExit(f"{layout.choice.name} holds no identity for every look arm's weights")
     for model, identity in identities.items():
-        validate_identity(TARTEEL_LOOK, model, {"model": model, "identity": identity,
-                                                "fingerprints": expected_fingerprints(
-                                                    model_spec(model, spec=spec).ref)},
+        validate_identity(spec.look_set, model, {"model": model, "identity": identity,
+                                                 "fingerprints": expected_fingerprints(
+                                                     model_spec(model, spec=spec).ref)},
                           spec=spec)
     if not (identities == look.get("identities") == look_claim.get("identities")):
         raise SystemExit(f"{layout.choice.name} holds other checkpoints than the look read")
@@ -403,6 +457,18 @@ def committed_choice(layout: Layout = Layout(),
     commit = _git(layout.choice.parent, "log", "-1", "--format=%H", "--",
                   layout.choice.name).stdout.strip()
     return CommittedChoice(choice, sha256_bytes(raw), commit)
+
+
+def require_preregistration(spec: RoundSpec, harness: Mapping) -> str:
+    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and the
+    round's pins hold: no tlog decode is graded before the pre-registration's commit, and its
+    text is never edited after it (round 2's data discipline 1, #227)."""
+    if not is_committed(spec.prereg_path):
+        raise SystemExit(f"{spec.prereg_path.name} is not committed: nothing grades a tlog "
+                         "decode before the pre-registration's commit")
+    prereg = sha256_file(spec.prereg_path)
+    check_pins(spec, harness, prereg)
+    return prereg
 
 
 # --- a sitting's claim --------------------------------------------------------------------------

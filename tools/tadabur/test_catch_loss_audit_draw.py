@@ -227,6 +227,33 @@ def test_a_stratum_smaller_than_its_sample_is_taken_whole(tmp_path):
     assert len(look.worklist()) == 50
 
 
+def test_a_flag_in_the_real_outcome_vocabulary_is_still_a_flag(tmp_path):
+    def real_outcomes(rows):
+        for row in rows:
+            if row["flagged"]:  # a word grade's outcome is never "flagged" in the real export
+                row["outcome"] = ("flagged_unattributed", "flagged_elsewhere")[row["row"] % 2]
+        return rows
+
+    look = LookAudit(tmp_path, edit=real_outcomes)
+
+    summary = look.draw()
+
+    assert summary["populations"]["removed"] == {
+        "words": 130, "causes": {"tashkeel": 44, "other_consonant": 86}}
+    assert summary["populations"]["added"] == {
+        "words": 60, "causes": {"tashkeel": 30, "other_consonant": 30}}
+    assert summary["sampled"] == {"removed": 100, "added": 50}
+
+
+def test_an_empty_added_stratum_is_drawn_as_empty(tmp_path):
+    look = LookAudit(tmp_path, removed=30, added=0)
+
+    summary = look.draw()
+
+    assert summary["sampled"] == {"removed": 30, "added": 0}
+    assert {row["stratum"] for row in look.key()} == {"removed"}
+
+
 def test_draw_is_deterministic_from_the_seed_and_the_inputs(tmp_path):
     first, second = LookAudit(tmp_path / "a"), LookAudit(tmp_path / "b")
 
@@ -310,6 +337,14 @@ def test_draw_refuses_a_row_that_is_not_a_look_gating_row(tmp_path):
     look.tranche.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
     with pytest.raises(REFUSED, match="gating"):
+        look.draw()
+    assert not look.out.exists()
+
+
+def test_draw_refuses_an_empty_removed_stratum(tmp_path):
+    look = LookAudit(tmp_path, removed=0, added=10)
+
+    with pytest.raises(REFUSED, match="removed"):
         look.draw()
     assert not look.out.exists()
 

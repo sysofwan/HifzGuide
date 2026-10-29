@@ -110,6 +110,9 @@ def graded_words(rows: Sequence[Mapping], *, baseline: str,
 
     A word graded by one model only is in neither population (the audit compares two grades
     of the same word), and a word both models flag or neither flags is in neither stratum.
+    A flag is the export's ``flagged`` boolean, not its ``outcome``: a word grade's outcome is
+    ``flagged_unattributed`` (the carrier's group is unknown) or ``flagged_elsewhere``, never
+    ``flagged``, and every one is still a flag (:data:`training.muraja_policy.WORD_FLAGGED`).
     """
     by_word: dict[tuple[str, int], dict[str, Mapping]] = {}
     for row in rows:
@@ -129,8 +132,7 @@ def graded_words(rows: Sequence[Mapping], *, baseline: str,
         if (c95["word_index"], c95["audio_sha256"]) != (cand["word_index"],
                                                         cand["audio_sha256"]):
             raise ValueError(f"{key}/{position}: the two models graded different words")
-        removed = c95["outcome"] == "flagged"
-        added = cand["outcome"] == "flagged"
+        removed, added = bool(c95["flagged"]), bool(cand["flagged"])
         if removed == added:
             continue
         words.append({"c95": c95, "candidate": cand,
@@ -245,13 +247,17 @@ def draw(spec: RoundSpec, *, uthmani_words: Callable[[str], list[str]],
         sampled[stratum] = _sample(members, size)
         summary["populations"][stratum] = population
         summary["sampled"][stratum] = len(sampled[stratum])
+    if not sampled[REMOVED]:
+        raise SystemExit("the look sitting removed no word: nothing can be audited, so the "
+                         "audit cannot certify (no worklist is drawn)")
     items = [word for stratum in SAMPLE for word in sampled[stratum]]
     worklist_rows = sorted((_worklist_row(word, uthmani_words) for word in items),
                            key=lambda row: row["id"])
     if len({row["id"] for row in worklist_rows}) != len(worklist_rows):
         raise ValueError("two worklist items share an id")
-    probabilities = {stratum: summary["sampled"][stratum]
-                     / summary["populations"][stratum]["words"] for stratum in SAMPLE}
+    probabilities = {stratum: summary["sampled"][stratum] / population["words"]
+                     for stratum, population in summary["populations"].items()
+                     if population["words"]}
     key = sorted((_key_row(word, probabilities[word["stratum"]]) for word in items),
                  key=lambda row: row["id"])
     write_text_atomically(worklist, _jsonl(worklist_rows))

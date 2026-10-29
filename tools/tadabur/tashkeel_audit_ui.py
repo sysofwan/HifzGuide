@@ -604,11 +604,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--words", type=Path, default=None,
                         help="a word sample asked in the same queue (tadabur/ship_a/"
                              "word_sample.jsonl for Ship A's session)")
-    parser.add_argument("--verdicts", type=Path, default=VERDICTS_PATH,
-                        help="the tracked verdicts JSONL; resumed if present")
-    parser.add_argument("--review", type=Path, default=REVIEW_PATH,
+    parser.add_argument("--verdicts", type=Path, default=None,
+                        help="the tracked verdicts JSONL; resumed if present (default: "
+                             "listening_session/verdicts.jsonl, or verdicts.jsonl beside "
+                             "--catch-loss's worklist)")
+    parser.add_argument("--review", type=Path, default=None,
                         help="the sites queued for another listen, with a note each; "
-                             "created when the listener first queues one")
+                             "created when the listener first queues one (default: "
+                             "listening_session/review.jsonl, or review.jsonl beside "
+                             "--catch-loss's worklist)")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1",
                         help="bind address; 0.0.0.0 to answer from a phone on the LAN")
@@ -627,15 +631,19 @@ def main() -> None:
                          "not apply")
         from .waqf_segments import _uthmani_words
 
-        state = SessionState.load_catch_loss(args.catch_loss, args.verdicts, args.clip_cache,
-                                             _uthmani_words, args.review)
+        directory = args.catch_loss.parent
+        state = SessionState.load_catch_loss(
+            args.catch_loss, args.verdicts or directory / "verdicts.jsonl", args.clip_cache,
+            _uthmani_words, args.review or directory / "review.jsonl")
     else:
         if args.audio_dir is None:
             parser.error("--audio-dir is required unless --catch-loss is given")
-        state = SessionState.load(args.worklist or WORKLIST_PATH, args.verdicts,
-                                  args.audio_dir, load_staged_clips(),
+        state = SessionState.load(args.worklist or WORKLIST_PATH,
+                                  args.verdicts or VERDICTS_PATH, args.audio_dir,
+                                  load_staged_clips(),
                                   args.edit_check or BLIND_CHECK_PATH,
-                                  args.edit_words or WORDS_PATH, args.words, args.review)
+                                  args.edit_words or WORDS_PATH, args.words,
+                                  args.review or REVIEW_PATH)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

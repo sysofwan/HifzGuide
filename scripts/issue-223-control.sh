@@ -15,7 +15,10 @@
 # `launch` refuses while the GPU lock is held (exit 3), while a previous run's directory
 # exists (4), below MIN_FREE_GB on /root/scratch (5) and when `--resume` names no checkpoint
 # (6). `launch --resume` continues an existing run instead (#221: a retry must never destroy
-# the checkpoints, which is why the run directories sit outside the archived repo). `run` asserts the data first (both source runs' consumed prefixes, the committed
+# the checkpoints, which is why the run directories sit outside the archived repo); the
+# trainer drops the checkpoint's batches from the recreated stream, so the arm keeps the
+# input schedule it is matched on, at the cost of the data pipeline's work for those batches.
+# `run` asserts the data first (both source runs' consumed prefixes, the committed
 # registration, the warm start's checksum), writes the frame manifest the round-2 candidate
 # must replay (shard list and digest, both RNG seeds, the recipe record), smoke-tests 300
 # steps with an early evaluation, gates the smoke on throughput, finite KL, a real validation
@@ -231,7 +234,10 @@ from training.consumed_prefix import completion_order, monitor_reached
 log = pathlib.Path(sys.argv[1])
 remaining = parse_shard_spec(sys.argv[2])
 monitor, position = int(sys.argv[3]), int(sys.argv[4])
-completed = completion_order(log.read_text(encoding="utf-8"))
+# A resumed run replays the start of the stream to reach the checkpoint's batch, and the
+# replayed shards log their completion lines again: the guard counts the shards the run has
+# left, once each, not the lines.
+completed = list(dict.fromkeys(completion_order(log.read_text(encoding="utf-8"))))
 if monitor_reached(remaining, completed, int(sys.argv[5])):
     raise SystemExit(
         f"{log}: {len(completed)} shards completed, so the run entered monitor shard "

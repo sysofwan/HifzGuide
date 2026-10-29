@@ -492,18 +492,15 @@ def test_launch_resume_keeps_the_run_dir_and_starts_detached(tmp_path):
 
 
 def _control_monitor(
-    tmp_path: Path, completions: int, **overrides: str
+    tmp_path: Path, completions: int, *, replay: bool = False, **overrides: str
 ) -> subprocess.CompletedProcess:
     """`CONTROL monitor`: the guard at the end of the full run, on the chained frame."""
-    from tadabur.shard_reader import parse_shard_spec
     from training.consumed_prefix import shard_permutation
 
     log_94, log_178, _, after_both = _control_sources(tmp_path)
+    lines = _completion_lines(shard_permutation(after_both, CONTROL_SEED)[:completions])
     streamed = tmp_path / "train.log"
-    streamed.write_text(
-        _completion_lines(shard_permutation(after_both, CONTROL_SEED)[:completions]),
-        encoding="utf-8",
-    )
+    streamed.write_text(lines * 2 if replay else lines, encoding="utf-8")
     return subprocess.run(
         ["bash", str(CONTROL), "monitor", str(streamed)],
         cwd=TOOLS,
@@ -528,6 +525,19 @@ def test_the_controls_monitor_refuses_a_run_that_entered_its_validation_shard(tm
     done = _control_monitor(tmp_path, position)
     assert done.returncode != 0
     assert "entered monitor shard" in done.stdout + done.stderr
+
+
+def test_the_monitor_counts_a_replayed_shard_once(tmp_path):
+    """A resumed run replays the log's head to reach the checkpoint's batch, so its shards
+    log completion twice. Counting lines would report 210 shards left out of 105 and refuse a
+    run that never entered its validation shard."""
+    from training.consumed_prefix import monitoring_shard
+
+    _, _, _, after_both = _control_sources(tmp_path)
+    monitor, position = monitoring_shard(after_both, CONTROL_SEED)
+    done = _control_monitor(tmp_path, position // 2, replay=True)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert f"monitor shard {monitor} entered at {position}: never streamed" in done.stdout
 
 
 def test_the_controls_monitor_accepts_a_run_that_stopped_short(tmp_path):

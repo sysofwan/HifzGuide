@@ -174,18 +174,19 @@ def held_out_items(registry: Mapping | None = None) -> dict:
     return items_of(held_out_sites(), registry)
 
 
-def held_out_identity(model: str = BASELINE, spec: RoundSpec = CONSONANT1) -> dict:
+def held_out_identity(model: str = BASELINE, spec: RoundSpec | None = None) -> dict:
     """The round's identity for one held-out cache producer: the baseline's pin or the arm's
     chosen weights (``candidate_live``/``candidate_ema``, ``r2_<arm>_<weights>``)."""
-    return identity_record(spec.models[model])
+    return identity_record((spec or CONSONANT1).models[model])
 
 
 def update_held_out(audio_dir: Path, model: str = BASELINE,
-                    spec: RoundSpec = CONSONANT1) -> dict:
+                    spec: RoundSpec | None = None) -> dict:
     """Decode one model's decodes and check sequences of every held-out item, then prove the
     caches are the round's pin; the baselines' caches already hold the same items. An arm's
     caches are built at the weights the look half chose (#179), so they wait for the committed
     choice and read only its selected model (R1.3)."""
+    spec = spec or CONSONANT1
     if model != spec.baseline:
         choice = committed_choice(Layout(spec.root), spec=spec).choice
         chosen = sorted(choice["models"].values())
@@ -209,8 +210,9 @@ def update_held_out(audio_dir: Path, model: str = BASELINE,
 def assert_held_out_caches(items: Sequence, model: str = BASELINE,
                            check_dir: Path | None = None,
                            decode_dir: Path | None = None,
-                           spec: RoundSpec = CONSONANT1) -> dict:
+                           spec: RoundSpec | None = None) -> dict:
     """Refuse anything but the round's pin, holding every item's decode and check sequence."""
+    spec = spec or CONSONANT1
     check_dir = Path(check_dir or CHECK_STORE.directory)
     decode_dir = Path(decode_dir or DECODE_STORE.directory)
     expected = held_out_identity(model, spec=spec)

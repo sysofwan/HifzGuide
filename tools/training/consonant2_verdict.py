@@ -14,8 +14,9 @@ two reads: the non-tlog guards and the owner's catch-loss audit before any tranc
 * :func:`claim` opens ``confirm.1`` and then ``confirm.2`` through
   :mod:`tadabur.tlog_tranches`, only when ``preclaim.json`` is committed in HEAD with an
   overall pass; every other role is refused for this round.
-* :data:`POOLED_BARS` — bars 1, 2 (absolute 4.7), 3, 4a.tlog, 4b.tlog, G4 and G5 on the pooled
-  gating grades — and :func:`final_verdict`, the decision rule over both reads.
+* :data:`POOLED_BARS` — bars 1, 2 (absolute 4.7), 3, 4a.tlog, 4b.tlog and G4 on the pooled
+  gating grades, with G5 appended per frozen substitution — and :func:`final_verdict`, the
+  decision rule over both reads.
   :func:`run_verdict` reads the two claimable tranches once, pools them before resampling
   (:func:`training.tlog_eval.confirm_views`: the cluster is the surah), and writes
   ``report.json`` and ``verdict.json``; :func:`render` writes the readout doc.
@@ -31,6 +32,7 @@ import subprocess
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from tadabur.tarteel_split import CONFIRM
 from tadabur.tlog_tranches import TRANCHES_DIR, claim_tranche
 from training import aug_readout as ar
 from training.acceptance_stats import PASS, aggregate
@@ -85,8 +87,8 @@ STATEMENT = "clip-level split, same users possible on both sides"
 PRECLAIM_GATES = (
     "catch_loss", "g3.qdat_bench.consonant", "g3.qdat_bench.haraka", "g6.ship_a_verified",
     "bar4a.qdat", "bar4b.qdat", "bar5.qdat", "g1.qud_other", "g2.tadabur_dev_unseen")
-#: The pooled confirm gates, in the pre-registration's order; G5 adds one entry per frozen
-#: substitution (:func:`pooled_conditions`).
+#: The pooled confirm gates, in the pre-registration's order; :func:`pooled_conditions` appends
+#: one ``g5.<substitution>`` per frozen substitution.
 POOLED_BARS = ("bar1.all_cause", "bar2.reduction", "bar3.consonant_cause",
                "bar4a.tlog_confirm", "bar4b.tlog_confirm", "g4.tashkeel_cause")
 #: The roles the pooled read grades, in report order.
@@ -171,9 +173,8 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
     """The non-tlog sets read once for the chosen candidate and control, as round 1's report.
 
     Reads qdat (bars 4a, 4b, 5 and G3's bench kinds), the QUD other half (G1), Tadabur dev (G2)
-    and G6's caches, plus the Tarteel v1 confirm half only for the substitution tally G5 needs
-    later. ``control`` holds the control's columns beside the candidate's. A set whose decodes
-    are not committed is ``None`` and cannot certify.
+    and G6's caches. ``control`` holds the control's columns beside the candidate's. A set
+    whose decodes are not committed is ``None`` and cannot certify.
     """
     from training.consonant_readout import catch_arm, g6_scope
 
@@ -184,7 +185,7 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
              spec.baseline: spec.baseline, BASE: BASE}
     present = tuple(roles.values())
-    absent = set(ar.absent_sets(sources, "confirm", weights, spec))
+    absent = set(ar.absent_sets(sources, CONFIRM, weights, spec))
     shipped = SHIPPED_DEFAULT.name
     comparisons = spec.comparisons
 
@@ -213,11 +214,12 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
             {roles[name]: decodes for name, decodes in raw.decodes.items() if name in roles},
             {roles[name]: blanks for name, blanks in raw.blanks.items() if name in roles},
             raw.redecoded_identical)
-    bench = [] if qdat is None else ar.bench_items(qdat, sources.bench())
+    transcripts = {} if qdat is None else sources.bench()
+    bench = [] if qdat is None else ar.bench_items(qdat, transcripts)
     bench_views = {} if qdat is None else {
         kind: compare(terms, POINTS, comparisons) for kind, terms in bench_terms(
-            bench, ar.stream_text(ar.SetData(bench, qdat.decodes), present),
-            sources.bench(), present).items()}
+            bench, ar.stream_text(ar.SetData(bench, qdat.decodes), present), transcripts,
+            present).items()}
 
     identity = choice.get("identities", {})
     identities = ({chosen[CANDIDATE]: identity[chosen[CANDIDATE]]}
@@ -231,7 +233,6 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
     tadabur_table = (None if tadabur is None else compare(
         teacher_agreement_terms(tadabur.clips, tadabur.decodes, present), POINTS, comparisons))
     report = {
-        "main": {"all_cause": all_cause_qdat},
         "mechanism": {"qdat": agreement(qdat),
                       "qdat_departs": agreement(qdat, DEPARTS)},
         "consistency": {"qdat": all_cause_qdat},
@@ -397,28 +398,30 @@ def final_verdict(preclaim: Mapping, conditions: Sequence[Mapping]) -> str:
     return aggregate([preclaim["verdict"], *(c["verdict"] for c in conditions)])
 
 
-def _tables(grades: Sequence, comparisons: Sequence[tuple[str, str]]) -> dict:
+def _tables(grades: Sequence, roles: Sequence[str],
+            comparisons: Sequence[tuple[str, str]]) -> dict:
     """All-cause, consonant-caused and tashkeel-caused false flags per 1,000."""
     shipped = SHIPPED_DEFAULT.name
     return {
-        "all_cause": compare(false_flag_terms(grades, ROLES, shipped), PER_1000, comparisons),
-        "consonant_cause": compare(false_flag_terms(grades, ROLES, shipped, cause=CONSONANT),
+        "all_cause": compare(false_flag_terms(grades, roles, shipped), PER_1000, comparisons),
+        "consonant_cause": compare(false_flag_terms(grades, roles, shipped, cause=CONSONANT),
                                    PER_1000, comparisons),
-        "tashkeel_cause": compare(false_flag_terms(grades, ROLES, shipped,
+        "tashkeel_cause": compare(false_flag_terms(grades, roles, shipped,
                                                    cause=TASHKEEL_CAUSE),
                                   PER_1000, comparisons),
     }
 
 
-def _bar2_companions(main: Mapping) -> dict:
-    """The reported companions of bar 2: 10% of C95's rate, the share of the C95 − teacher gap
-    the candidate closes, and how many words the candidate and the teacher both flag."""
+def _bar2_companions(main: Mapping, baseline: str) -> dict:
+    """The reported companions of bar 2: 10% of the baseline's rate, the share of the
+    baseline − teacher gap the candidate closes, and how many words both the candidate and the
+    teacher flag."""
     models = main["models"]
-    rate = {role: models.get(role, {}).get("point") for role in (CANDIDATE, C95, BASE)}
+    rate = {role: models.get(role, {}).get("point") for role in (CANDIDATE, baseline, BASE)}
     gap = None
-    if all(value is not None for value in rate.values()) and rate[C95] != rate[BASE]:
-        gap = (rate[C95] - rate[CANDIDATE]) / (rate[C95] - rate[BASE])
-    return {"ten_percent_of_c95": None if rate[C95] is None else 0.1 * rate[C95],
+    if all(value is not None for value in rate.values()) and rate[baseline] != rate[BASE]:
+        gap = (rate[baseline] - rate[CANDIDATE]) / (rate[baseline] - rate[BASE])
+    return {"ten_percent_of_c95": None if rate[baseline] is None else 0.1 * rate[baseline],
             "gap_closed": gap}
 
 
@@ -451,7 +454,8 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
     chosen = ar.choice_models(spec, weights)
     models = (*chosen.values(), spec.baseline, BASE)
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
-             C95: C95, BASE: BASE}
+             spec.baseline: spec.baseline, BASE: BASE}
+    present = tuple(roles.values())
 
     sitting = {"phase": "confirm", "preclaim_sha256": sha256_file(layout.preclaim),
                "choice_commit": committed.commit, "choice_sha256": committed.sha256,
@@ -470,24 +474,26 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
         pooled = confirm_views({role: data.items for role, data in tranches.items()})
         items = pooled[POOLED_CONFIRM]
         decodes = {role: {**tranches["confirm.1"].decodes[role],
-                          **tranches["confirm.2"].decodes[role]} for role in ROLES}
+                          **tranches["confirm.2"].decodes[role]} for role in present}
         grades = sources.grade(items, decodes, ROLES)
         comparisons = spec.comparisons
-        main = _tables(grades, comparisons)
+        main = _tables(grades, present, comparisons)
         mechanism = {
             "tlog_confirm": compare(
                 word_agreement_terms(items, ar.checks_text(ar.SetData(items, decodes), ROLES),
-                                     (CANDIDATE, C95), workers=workers), POINTS, comparisons),
+                                     (CANDIDATE, spec.baseline), workers=workers),
+                POINTS, comparisons),
             "tlog_confirm_departs": compare(
-                word_agreement_terms(items, ar.checks_text(ar.SetData(items, decodes), ROLES),
-                                     (CANDIDATE, C95), subset=DEPARTS, workers=workers),
+                word_agreement_terms(items, ar.checks_text(ar.SetData(items, decodes), present),
+                                     (CANDIDATE, spec.baseline), subset=DEPARTS,
+                                     workers=workers),
                 POINTS, comparisons),
         }
         shipped = SHIPPED_DEFAULT.name
         frozen = frozen_substitutions(spec)
         substitutions = substitution_views(
-            substitution_terms(grades, ROLES, shipped,
-                               observed_substitutions(grades, ROLES, shipped)),
+            substitution_terms(grades, present, shipped,
+                               observed_substitutions(grades, present, shipped)),
             PER_1000, comparisons)
         conditions = pooled_conditions(
             {"main": main, "mechanism": mechanism, "substitutions": substitutions,
@@ -495,7 +501,7 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
         floor_keys = {item.key for item in items
                       if (item.labels or {}).get("id_floor_ok") is True}
         floor_grades = [grade for grade in grades if grade.item.key in floor_keys]
-        companions = _bar2_companions(main["all_cause"])
+        companions = _bar2_companions(main["all_cause"], spec.baseline)
         companions["teacher_shared_flags"] = _teacher_shared_flags(grades)
         report = {
             "issue": spec.issue,
@@ -504,14 +510,14 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
             "mechanism": mechanism,
             "substitutions": substitutions,
             "g5_frozen": list(frozen),
-            "tranches": {role: _tables(data.grades, comparisons)
+            "tranches": {role: _tables(data.grades, present, comparisons)
                          for role, data in tranches.items()},
             "bar2_companions": companions,
             "candidate_vs_control": {
-                "table": compare(false_flag_terms(grades, ROLES, shipped), PER_1000,
+                "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
                                  ((CANDIDATE, CONTROL),)),
                 "caveat": CONTROL_CAVEAT},
-            "strata": {ID_FLOOR_OK: _tables(floor_grades, comparisons)},
+            "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
             "coverage": {"reported_strata": dict(NOT_DECODED)},
             "sizes": {"pooled": len(items),
                       **{role: len(data.items) for role, data in tranches.items()}},

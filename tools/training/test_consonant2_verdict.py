@@ -291,6 +291,24 @@ class ConfirmSources(ar.Sources):
             m: {i.key: fx.decode_line(i, self.text(m, _number(i))) for i in self.tranches[role]}
             for m in models})
 
+    def tlog_views(self, role, models):
+        # The fixture's decode lines name no span, so the trimmed read is the whole ayah.
+        data = self.tlog(role, models)
+        return data, data
+
+    def tlog_span_trimmed(self, role, models):
+        return self.tlog(role, models)
+
+    def tadabur(self, models):
+        from training.nonpro_gap import DevClip
+
+        clips = [DevClip(f"dev_{n:03d}.flac", 30 + n % 3, (n, 0), 1.0,
+                         fx.CLEAN if n % 2 else fx.SWAPPED) for n in range(6)]
+        decodes = {m: {c.filename: self.text(m, 900 + n) for n, c in enumerate(clips)}
+                   for m in models}
+        blanks = {m: {c.filename: (1, 100) for c in clips} for m in models}
+        return ar.TadaburData(clips, decodes, blanks, {})
+
     def tarteel(self, which_half, models):
         items = [fx.tlog_item(100 + n, 20 + n) for n in range(4)]
         return ar.SetData(items, {m: {i.key: fx.decode_line(i, self.text(m, _number(i)))
@@ -310,7 +328,7 @@ class ConfirmSources(ar.Sources):
     def _refused(self, *args, **kwargs):
         raise AssertionError("a pre-claim set was read in the verdict")
 
-    qdat = qud_other = qud = retasy = tadabur = bench = _refused
+    qdat = qud_other = qud = retasy = bench = _refused
 
 
 class Sources:
@@ -418,7 +436,7 @@ def test_the_bar_2_companions_are_reported_not_gated(cv, tmp_path, monkeypatch):
     assert companions["ten_percent_of_c95"] == pytest.approx(0.1 * rate["c95"])
     assert companions["gap_closed"] == pytest.approx(
         (rate["c95"] - rate["candidate"]) / (rate["c95"] - rate["base"]))
-    assert "teacher_shared_flags" in companions
+    assert companions["teacher_shared_flags"] == {"candidate": 0, "c95": 1}
     assert not [name for name in _by_name(report) if "companion" in name]
 
 
@@ -431,6 +449,28 @@ def test_the_id_floor_set_is_reported_alone_and_the_strata_are_not_decoded(cv, t
     assert id_floor["observations"] == 40  # the 20 even-numbered clips, two words each
     assert report["coverage"]["reported_strata"]["status"] == "not decoded"
     assert report["main"]["all_cause"]["observations"] == 80  # never pooled into gating
+    assert "span-trimmed" not in report["coverage"]["reported_strata"]["reason"]
+
+
+def test_the_reported_lines_are_built_beside_the_bars(cv, tmp_path, monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    report = _verdict(cv, round_)
+
+    assert set(report["tarteel_confirm"]) == set(report["main"])
+    assert report["tarteel_confirm"]["all_cause"]["observations"] == 8
+    assert report["sensitivity"]["span_trimmed"]["all_cause"]["observations"] == 80
+    assert set(report["coverage"]["tranches"]) == {"confirm.1", "confirm.2"}
+    tranche = report["coverage"]["tranches"]["confirm.1"]
+    assert (tranche["clips"], tranche["partial_span"], tranche["excluded"]) == (20, 0, 0)
+    assert tranche["empty_slots"]["observations"] == 20
+    assert {row["reciter_id"] for row in report["dose_response"]["reciters"]} == {30, 31, 32}
+    assert report["dose_response"]["reciters"][0]["clips"] == 2
+    assert "shaddah_cause" in report["main"]
+    assert "shaddah_cause" in report["tranches"]["confirm.1"]
+    assert "tlog_confirm_shaddah" in report["mechanism"]
+    gated = {c["name"] for c in report["verdict"]["conditions"]}
+    assert not [name for name in gated if "shaddah" in name or "tarteel" in name
+                or "dose" in name]
 
 
 def test_every_verdict_carries_the_clip_level_split_statement(cv, tmp_path, monkeypatch):

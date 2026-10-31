@@ -40,7 +40,10 @@ from training.aug_readout_gate import (
     Layout,
     claim as hold_sitting,
     committed_choice,
+    input_name,
     is_committed,
+    require_preregistration,
+    require_preregistration_text,
     sha256_file,
 )
 from training.aug_readout_metrics import (
@@ -49,9 +52,12 @@ from training.aug_readout_metrics import (
     CONSONANT,
     CONTROL,
     DEPARTS,
+    GEMINATE,
     PER_1000,
     POINTS,
+    SHADDAH_CAUSE,
     TASHKEEL_CAUSE,
+    abstention_terms,
     bench_terms,
     compare,
     comparison_name,
@@ -96,11 +102,15 @@ POOLED_BARS = ("bar1.all_cause", "bar2.reduction", "bar3.consonant_cause",
 CONTROL_CAVEAT = ("n = 1 per arm: one training run each, so candidate − control is "
                   "descriptive, not a test")
 #: The reported strata's coverage: P3 decodes gating rows only (the pre-registration's budget).
+#: The span-trimmed sensitivity is not in this record: it is read from the gating decodes.
 NOT_DECODED = {
     "status": "not decoded",
-    "reason": "P3 decodes the gating rows only; the reported strata and the span-trimmed "
-              "sensitivity are recorded here, never decoded, so nothing estimates them",
+    "reason": "P3 decodes the gating rows only: the reported:* strata are recorded here, "
+              "never decoded, so nothing estimates them",
 }
+#: How the reported per-reciter points are read (one number per reciter defines no interval).
+DOSE_CAVEAT = ("one point per reciter on Tadabur dev; a per-reciter cell is descriptive and "
+               "defines no interval")
 AUDIT_BAR = ("the catch-loss audit: at most 20% of the decisive removed verdicts are real "
              "mistakes, and at least 80 decisive removed verdicts are heard")
 TLOG_BAR_TEXT = {
@@ -158,7 +168,7 @@ def preclaim_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
 def _bound_set(data, roles: Mapping[str, str]):
     """A set's decode lines and items, keyed by role rather than by decode name."""
     decodes = {roles[name]: lines for name, lines in data.decodes.items() if name in roles}
-    return ar.SetData(data.items, decodes)
+    return ar.SetData(data.items, decodes, excluded=data.excluded)
 
 
 def _role_grades(sources, data, roles: Mapping[str, str]) -> ar.SetData:
@@ -295,6 +305,7 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     result = json.loads(result_path.read_text(encoding="utf-8"))
     report = preclaim_report(sources, spec, choice.choice, workers)
     conditions = [audit_condition(result), *preclaim_conditions(report, spec)]
+    inputs, missing = _inputs(sources, spec, choice.choice)
     preclaim = {
         "issue": spec.issue,
         "phase": "preclaim",
@@ -308,7 +319,8 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
         "choice_commit": choice.commit,
         "choice_sha256": choice.sha256,
         "harness": sources.harness_identity(),
-        "inputs": _digests(sources, spec, choice.choice),
+        "inputs": inputs,
+        "missing_inputs": missing,
     }
     write_text_atomically(record, ar.canonical(preclaim))
     if preclaim["verdict"] != PASS:
@@ -320,11 +332,15 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     return preclaim
 
 
-def _digests(sources, spec: RoundSpec, choice: Mapping) -> dict:
+def _inputs(sources, spec: RoundSpec, choice: Mapping) -> tuple[dict, list[str]]:
+    """The confirm sitting's input digests and the declared inputs that are absent: a record
+    smaller than its roster names what is missing instead of dropping it."""
     from training.aug_readout_gate import digests
 
-    weights = choice["weights"]
-    return digests(path for path in sources.input_files("confirm", weights) if path.exists())
+    files = list(sources.input_files("confirm", choice["weights"]))
+    missing = [path for path in files if not path.exists()]
+    return (digests(path for path in files if path not in missing),
+            sorted(input_name(path) for path in missing))
 
 
 # --- the sequential claims ----------------------------------------------------------------------
@@ -353,6 +369,7 @@ def claim(spec: RoundSpec, role: str, *, tranches_dir: Path = TRANCHES_DIR, date
         raise SystemExit(f"{role!r} cannot be claimed for {spec.name}: the round reads "
                          f"{list(CONFIRM_TRANCHES)}")
     layout = layout or Layout(spec.root)
+    require_preregistration_text(spec)
     require_passing_preclaim(layout)
     return claim_tranche(role, issue=spec.issue, commit=_head_commit(layout.preclaim),
                          date=date, tranches_dir=tranches_dir)
@@ -398,7 +415,7 @@ def final_verdict(preclaim: Mapping, conditions: Sequence[Mapping]) -> str:
 
 def _tables(grades: Sequence, roles: Sequence[str],
             comparisons: Sequence[tuple[str, str]]) -> dict:
-    """All-cause, consonant-caused and tashkeel-caused false flags per 1,000."""
+    """All-cause, consonant-caused, tashkeel-caused and shaddah-caused false flags per 1,000."""
     shipped = SHIPPED_DEFAULT.name
     return {
         "all_cause": compare(false_flag_terms(grades, roles, shipped), PER_1000, comparisons),
@@ -407,6 +424,8 @@ def _tables(grades: Sequence, roles: Sequence[str],
         "tashkeel_cause": compare(false_flag_terms(grades, roles, shipped,
                                                    cause=TASHKEEL_CAUSE),
                                   PER_1000, comparisons),
+        "shaddah_cause": compare(false_flag_terms(grades, roles, shipped, cause=SHADDAH_CAUSE),
+                                 PER_1000, comparisons),
     }
 
 
@@ -423,50 +442,100 @@ def _bar2_companions(main: Mapping, baseline: str) -> dict:
             "gap_closed": gap}
 
 
-def _teacher_shared_flags(grades: Sequence) -> int:
-    """Words both the candidate and the teacher flag, in the pooled gating grades."""
-    both: dict[tuple[str, int], set[str]] = {}
+def _teacher_shared_flags(grades: Sequence, baseline: str) -> dict[str, int]:
+    """Words each student and the teacher both flag, in the pooled gating grades: the
+    candidate's and the baseline's, the pre-registration's two readings."""
+    flagged: dict[tuple[str, int], set[str]] = {}
     for grade in grades:
-        if grade.model in (CANDIDATE, BASE):
-            both.setdefault((grade.item.key, grade.position), set()).add(grade.model)
-    return sum(1 for models in both.values() if {CANDIDATE, BASE} <= models)
+        if grade.flagged:
+            flagged.setdefault((grade.item.key, grade.position), set()).add(grade.model)
+    return {student: sum(1 for models in flagged.values() if {student, BASE} <= models)
+            for student in (CANDIDATE, baseline)}
+
+
+def _partial_span(data) -> dict:
+    """How many of a tranche's gating clips name a span shorter than their filename ayah (S6's
+    ``word_from``/``word_to`` on the decode line; the readout grades the whole ayah)."""
+    partial = 0
+    for item in data.items:
+        line = data.decodes[BASE][item.key]
+        words = item.reference.reference.split(" ")
+        span = (line.get("word_from") or 1, line.get("word_to") or len(words))
+        partial += span != (1, len(words))
+    return {"clips": len(data.items), "partial_span": partial,
+            "partial_span_share": partial / len(data.items) if data.items else None}
+
+
+def _tranche_coverage(data, present: Sequence[str], comparisons, workers: int) -> dict:
+    """One tranche's declared and graded population, its partial-span share and the rate at
+    which each model commits nothing on a consonant carrier (an empty slot)."""
+    return {**_partial_span(data), "excluded": len(data.excluded),
+            "empty_slots": compare(
+                abstention_terms(data.items, ar.checks_text(data, present), present, workers),
+                POINTS, comparisons)}
+
+
+def dose_response(tadabur, present: Sequence[str], baseline: str) -> dict:
+    """Per reciter on Tadabur dev: each model's teacher-agreement point and the candidate −
+    baseline difference. Descriptive: one point per reciter defines no interval."""
+    rows = []
+    for reciter in sorted({clip.reciter_id for clip in tadabur.clips}):
+        clips = [clip for clip in tadabur.clips if clip.reciter_id == reciter]
+        terms = teacher_agreement_terms(clips, tadabur.decodes, present)
+        points = {}
+        for model in present:
+            num, den = terms.by_model[model]
+            total = float(den.sum())
+            points[model] = None if not total else float(num.sum()) / total * POINTS
+        rows.append({"reciter_id": reciter, "clips": len(clips), "points": points,
+                     "candidate_vs_baseline": (None if points[CANDIDATE] is None
+                                               or points[baseline] is None
+                                               else points[CANDIDATE] - points[baseline])})
+    return {"caveat": DOSE_CAVEAT, "reciters": rows}
 
 
 def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers: int = 1,
                 tranches_dir: Path = TRANCHES_DIR) -> dict:
     """Read ``confirm.1`` and ``confirm.2`` once, pool them, and write the report and verdict.
 
-    Refused before any tranche is read unless the committed pre-claim record is a pass and both
-    claims are committed in HEAD, and once ``verdict.json`` exists (the sitting reads once).
+    Refused before any tranche is read unless the pre-registration is committed at its pinned
+    hash, the committed pre-claim record is a pass and both claims are committed in HEAD, and
+    once ``verdict.json`` exists (the sitting reads once). The tranches are read from
+    ``tranches_dir``, the same directory their claims are checked in.
     """
     from tadabur.tlog_tranches import require_claim
 
     layout = layout or Layout(spec.root)
     preclaim = require_passing_preclaim(layout)
+    tranches_dir = Path(tranches_dir)
+    sources.tranches_dir = tranches_dir
     for role in CONFIRM_TRANCHES:
         require_claim(role, tranches_dir)
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the pooled confirm read happens once")
     committed = committed_choice(layout, spec=spec)
+    prereg = require_preregistration(spec, sources.harness_identity())
     weights = committed.choice["weights"]
     chosen = ar.choice_models(spec, weights)
     models = (*chosen.values(), spec.baseline, BASE)
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
              spec.baseline: spec.baseline, BASE: BASE}
     present = tuple(roles.values())
+    inputs, missing = _inputs(sources, spec, committed.choice)
 
     sitting = {"phase": "confirm", "preclaim_sha256": sha256_file(layout.preclaim),
                "choice_commit": committed.commit, "choice_sha256": committed.sha256,
-               "inputs": _digests(sources, spec, committed.choice),
+               "prereg_sha256": prereg, "inputs": inputs, "missing_inputs": missing,
                "harness": sources.harness_identity()}
     with hold_sitting(layout.claim("confirm"), sitting):
-        tranches = {}
+        tranches, trimmed = {}, {}
         for role in CONFIRM_TRANCHES:
-            data = sources.tlog(role, models)
-            bound = _bound_set(data, roles)
-            tranches[role] = ar.SetData(
-                bound.items, bound.decodes,
-                sources.grade(bound.items, bound.decodes, present))
+            for data, table in zip(sources.tlog_views(role, models), (tranches, trimmed)):
+                bound = _bound_set(data, roles)
+                table[role] = ar.SetData(
+                    bound.items, bound.decodes,
+                    sources.grade(bound.items, bound.decodes, present),
+                    excluded=bound.excluded)
         pooled = confirm_views({role: data.items for role, data in tranches.items()})
         items = pooled[POOLED_CONFIRM]
         decodes = {role: {**tranches["confirm.1"].decodes[role],
@@ -482,6 +551,9 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
             "tlog_confirm_departs": compare(
                 word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
                                      subset=DEPARTS, workers=workers), POINTS, comparisons),
+            "tlog_confirm_shaddah": compare(
+                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                     subset=GEMINATE, workers=workers), POINTS, comparisons),
         }
         shipped = SHIPPED_DEFAULT.name
         frozen = frozen_substitutions(spec)
@@ -496,7 +568,20 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
                       if (item.labels or {}).get("id_floor_ok") is True}
         floor_grades = [grade for grade in grades if grade.item.key in floor_keys]
         companions = _bar2_companions(main["all_cause"], spec.baseline)
-        companions["teacher_shared_flags"] = _teacher_shared_flags(grades)
+        companions["teacher_shared_flags"] = _teacher_shared_flags(grades, spec.baseline)
+        # The span-trimmed sensitivity: the same gating decodes, each item cut to the span its
+        # decode records. Reported only, never graded into gating.
+        span_pooled = confirm_views({role: data.items for role, data in trimmed.items()})
+        span_items = span_pooled[POOLED_CONFIRM]
+        span_decodes = {role: {**trimmed["confirm.1"].decodes[role],
+                               **trimmed["confirm.2"].decodes[role]} for role in present}
+        tarteel = _bound_set(sources.tarteel(CONFIRM, models), roles)
+        dev = sources.tadabur(models)
+        tadabur = ar.TadaburData(
+            dev.clips,
+            {roles[name]: lines for name, lines in dev.decodes.items() if name in roles},
+            {roles[name]: blanks for name, blanks in dev.blanks.items() if name in roles},
+            dev.redecoded_identical)
         report = {
             "issue": spec.issue,
             "statement": STATEMENT,
@@ -506,13 +591,21 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
             "g5_frozen": list(frozen),
             "tranches": {role: _tables(data.grades, present, comparisons)
                          for role, data in tranches.items()},
+            "sensitivity": {"span_trimmed": _tables(
+                sources.grade(span_items, span_decodes, present), present, comparisons)},
+            "tarteel_confirm": _tables(
+                sources.grade(tarteel.items, tarteel.decodes, present), present, comparisons),
+            "dose_response": dose_response(tadabur, present, spec.baseline),
             "bar2_companions": companions,
             "candidate_vs_control": {
                 "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
                                  ((CANDIDATE, CONTROL),)),
                 "caveat": CONTROL_CAVEAT},
             "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
-            "coverage": {"reported_strata": dict(NOT_DECODED)},
+            "coverage": {"tranches": {
+                role: _tranche_coverage(data, present, comparisons, workers)
+                for role, data in tranches.items()},
+                "reported_strata": dict(NOT_DECODED)},
             "sizes": {"pooled": len(items),
                       **{role: len(data.items) for role, data in tranches.items()}},
             "verdict": {"bars": dict(spec.bars), "conditions": conditions,
@@ -562,12 +655,36 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
     for role, table in report["tranches"].items():
         lines.append(f"- {role}: {table['all_cause']['observations']} observations, "
                      f"{table['all_cause']['clusters']} surah clusters")
-    lines += ["", "### Reported companions", ""]
+    lines += ["", "### Coverage and empty slots, per tranche", ""]
+    for role, coverage in report["coverage"]["tranches"].items():
+        empty = coverage["empty_slots"]["models"][CANDIDATE]["point"]
+        lines.append(f"- {role}: {coverage['clips']} clips, {coverage['partial_span']} "
+                     f"partial spans, {coverage['excluded']} excluded; candidate empty slots "
+                     f"{empty} per 100 carriers")
+    lines += ["", "### Reported, not gating", ""]
     for name, value in report["bar2_companions"].items():
         lines.append(f"- {name}: {value}")
+    lines += [
+        f"- Tarteel v1 confirm: {_model_point(report['tarteel_confirm']['all_cause'])}",
+        f"- span-trimmed sensitivity: "
+        f"{_model_point(report['sensitivity']['span_trimmed']['all_cause'])}",
+        f"- shaddah-caused false flags: {_model_point(report['main']['shaddah_cause'])}",
+        f"- shaddah agreement with the teacher: "
+        f"{_model_point(report['mechanism']['tlog_confirm_shaddah'])}",
+        f"- per-reciter dose-response on Tadabur dev: "
+        f"{len(report['dose_response']['reciters'])} reciters ({report['dose_response']['caveat']})",
+    ]
     lines += ["", f"Candidate − control: {report['candidate_vs_control']['caveat']}",
               f"Gating ∧ {ID_FLOOR_OK}: "
               f"{report['strata'][ID_FLOOR_OK]['all_cause']['observations']} observations",
               f"Reported strata: {report['coverage']['reported_strata']['status']} — "
               f"{report['coverage']['reported_strata']['reason']}"]
     return "\n".join(lines) + "\n"
+
+
+def _model_point(table: Mapping) -> str:
+    """One table's candidate point, then each paired comparison with its interval."""
+    candidate = table["models"][CANDIDATE]["point"]
+    versus = ", ".join(f"{name} {value['point']} {value['interval']}"
+                       for name, value in table["comparisons"].items())
+    return f"candidate {candidate}" + (f"; {versus}" if versus else "")

@@ -171,6 +171,14 @@ def test_a_committed_preclaim_that_is_not_a_pass_opens_nothing(
     _assert_refused(cv, round_, "confirm.2")
 
 
+def test_the_pre_registration_text_is_pinned_when_a_tranche_is_claimed(
+        cv, tmp_path, monkeypatch):
+    round_ = _round(tmp_path, monkeypatch, cv)
+    round_.write_commit(round_.spec.prereg_path, "an edit once the numbers were known\n",
+                        "edit the pre-registration")
+    _assert_refused(cv, round_, "confirm.1")
+
+
 # --- the command ----------------------------------------------------------------------------------
 
 

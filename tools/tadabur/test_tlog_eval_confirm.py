@@ -236,6 +236,10 @@ def _parts(tmp_path: Path, manifests, faults=None) -> Path:
             fault = faults.get((role, model), {})
             _write_jsonl(ted.decodes_path(parts, SHARDS[role], model, role=role),
                          _lines(rows, model, **fault))
+    for model in MODELS:
+        (parts / f"{model}.identity.json").write_text(
+            json.dumps({"model": model, "identity": {"checkpoint_sha256": "a" * 64},
+                        "fingerprints": {}}), encoding="utf-8")
     return parts
 
 
@@ -267,6 +271,7 @@ def test_the_merge_pools_both_tranches_into_one_sorted_file_per_model(tmp_path):
     assert meta["code_sha"] == "c" * 40 and meta["models"] == list(MODELS)
     assert meta["rows"] == {"base": 4, "c95": 4}
     assert meta["claims"] == claims
+    assert set(meta["identities"]) == {"tlog.confirm/base", "tlog.confirm/c95"}
     assert not (out / "meta.json").exists()
 
 
@@ -301,3 +306,22 @@ def test_the_merge_refuses_a_clip_in_both_tranches(tmp_path):
     with pytest.raises(ValueError, match="both"):
         ted.merge_confirm_decodes(_parts(tmp_path, manifests), tmp_path / "decodes",
                                   manifests=manifests, provenance={}, models=MODELS)
+
+
+# --- the decode entry point's model gate ---------------------------------------------------------
+
+
+class _Choice:
+    choice = {"weights": {"candidate": "ema", "control": "ema"}}
+
+
+def test_a_confirm_decode_refuses_a_selector_the_choice_did_not_pick(tmp_path, monkeypatch):
+    monkeypatch.setattr("training.aug_readout_gate.committed_choice",
+                        lambda *args, **kwargs: _Choice())
+    ted.require_confirm_models(("base", "c95", "r2_candidate_ema", "r2_control_ema"))
+
+    with pytest.raises(SystemExit, match="r2_candidate_live"):
+        ted.decode_shards(parts_dir=tmp_path, cache_dir=tmp_path,
+                          models=("r2_candidate_live",), role="confirm.1")
+    with pytest.raises(SystemExit, match="c178"):
+        ted.require_confirm_models(("c178",))

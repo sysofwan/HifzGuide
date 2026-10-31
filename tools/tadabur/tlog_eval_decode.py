@@ -586,11 +586,23 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
         write_shard(lines, out_dir / f"tlog.confirm.{model}.jsonl.gz")
         counts[model] = len(lines)
     meta = {**provenance, "tranches": list(CONFIRM_TRANCHES), "models": list(models),
-            "rows": counts}
+            "rows": counts,
+            "identities": _part_identities(parts_dir, models)}
     if claims is not None:
         meta["claims"] = {role: dict(record) for role, record in claims.items()}
     write_json(meta, out_dir / "meta.confirm.json")
     return counts
+
+
+def _part_identities(parts_dir: Path, models: Sequence[str]) -> dict[str, dict]:
+    """The producers' own identity records, keyed as ``models.json`` keys them: the records
+    ``load_decoders`` wrote beside the parts, so the sitting validates the weights that actually
+    decoded the sealed tranches, not only the model names."""
+    from training.aug_readout_spec import TLOG_CONFIRM
+
+    return {f"{TLOG_CONFIRM}/{model}": json.loads(path.read_text(encoding="utf-8"))
+            for model in models
+            if (path := Path(parts_dir) / f"{model}.identity.json").exists()}
 
 
 # --- the slice gate -----------------------------------------------------------------------------
@@ -750,6 +762,22 @@ def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) 
     return totals
 
 
+def require_confirm_models(models: Sequence[str], spec: RoundSpec = CONSONANT2) -> None:
+    """Refuse a confirm decode of a model outside the frozen set: the teacher, the round's
+    baseline, and the committed choice's candidate and control. A look-only context model or
+    the other weight selector is not a confirm producer."""
+    from training.aug_readout_gate import (Layout, arm_model, chosen_weights,
+                                           committed_choice)
+
+    choice = committed_choice(Layout(spec.root), spec=spec).choice
+    chosen = chosen_weights(spec, choice)
+    allowed = {MODELS[0], spec.baseline,
+               *(arm_model(role, weights, spec) for role, weights in chosen.items())}
+    if refused := [model for model in models if model not in allowed]:
+        raise SystemExit(f"a confirm tranche is decoded for {sorted(allowed)} only, "
+                         f"not {refused}")
+
+
 def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = RUN_MODELS,
                   stores: Mapping = RUN_STORES, shard_index: int = 0, shard_count: int = 1,
                   clip_cache: Path | None = None,
@@ -768,6 +796,8 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
+    if role != LOOK:
+        require_confirm_models(models)
     rows = gating_rows(selection_rows(role))
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:

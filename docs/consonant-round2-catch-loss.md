@@ -114,3 +114,29 @@ The real draw, from the committed look sitting (issue #230's look phase).
   The instance was then stopped and its verdicts and review list deleted, so the main sitting's
   verdict file holds no dry-run answer.
 
+## The owner's sitting, 2026-10-29
+
+The owner listened to all 150 items; the committed `verdicts.jsonl` is the sitting's file, SHA-256
+`48895df437d7338e61c32cdb8116a3f91986c4db7a907ed15079e5f324a76cef`: 133 `correct`, 11
+`mistake`, 6 `unclear`, 26 with a note. No `review.jsonl` was written.
+
+On the noted verdicts the owner said, verbatim:
+
+> Verdics with notes are between incorrect and not. I choose what I lean towards but it's not a perfect recitation
+
+**Result (the frozen rule, `result.json`).** Removed: **5 of 98 decisive** verdicts are real
+mistakes, **5.10%** (Wilson 95% 2.20–11.39%), at most the pre-registered 20% with 98 decisive
+(floor 80) -> **pass**. Added, reported only: 6 of 46 decisive, 13.04% (6.12–25.67%).
+
+**Sensitivity readings (REPORTED, not in `result.json`).** The statement describes the 26 noted
+answers as leaning between "incorrect" and "correct"; the two readings below re-score only those
+answers and leave every un-noted one as given. Neither is the bar.
+
+| reading | removed real/decisive | removed real share (Wilson 95%) | removed-stratum verdict | added real/decisive |
+|---|---|---|---|---|
+| (a) noted verdicts treated as `unclear` | 1/84 | 1.19% (0.21–6.44%) | pass (84 decisive) | 2/37 (5.41%) |
+| (b) noted `correct` treated as a real mistake | 15/98 | 15.31% (9.50–23.73%) | pass | 11/46 (23.91%) |
+
+The added stratum has no bar; its share is reported under the same two readings.
+
+

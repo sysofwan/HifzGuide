@@ -361,11 +361,20 @@ def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
 
 def consonant_reported(report: Mapping, spec: RoundSpec) -> list[dict]:
     """The readings computed beside the verdict and shown with it, never folded into it: round
-    2's shaddah G3 line (the owner reports it rather than gating it), same table and bar. An
-    absent reading is reported as cannot-certify, never as a pass."""
+    2's shaddah G3 line (the owner reports it rather than gating it), same table and bar, with
+    the interval it was read from so the doc prints both bounds beside the point. An absent
+    reading is reported as cannot-certify, never as a pass."""
     comparison = comparison_name(CANDIDATE, spec.baseline)
     guards = report["guards"]
-    return [bound_condition(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], comparison,
-                            "lower", spec.bars["bench_lower_at_least"], False,
-                            text=CONSONANT_BAR_TEXT[f"g3.qdat_bench.{kind}"])
-            for kind in spec.g3_reported_kinds]
+    out = []
+    for kind in spec.g3_reported_kinds:
+        table = guards["qdat_bench"][kind]
+        condition = bound_condition(f"g3.qdat_bench.{kind}", table, comparison, "lower",
+                                    spec.bars["bench_lower_at_least"], False,
+                                    text=CONSONANT_BAR_TEXT[f"g3.qdat_bench.{kind}"])
+        row = None if table is None else table["comparisons"].get(comparison)
+        if row is not None:
+            condition["interval"] = {"lower": row["interval"]["lower"],
+                                     "upper": row["interval"]["upper"]}
+        out.append(condition)
+    return out

@@ -21,14 +21,22 @@ confirm row.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
-from tadabur.tarteel_split import LOOK
+from tadabur.tarteel_split import CONFIRM, LOOK
 from training import aug_readout_metrics as am
-from training.aug_readout_gate import digests, require_preregistration
-from training.aug_readout_metrics import BASE
-from training.aug_readout_spec import C178, C95, RoundSpec
+from training.aug_readout_gate import (
+    QDAT_SET,
+    QUD_OTHER_SET,
+    TADABUR_SET,
+    TARTEEL_CONFIRM,
+    allowed_models,
+    digests,
+    require_preregistration,
+)
+from training.aug_readout_metrics import BASE, CANDIDATE
+from training.aug_readout_spec import C178, C95, TLOG_CONFIRM, RoundSpec
 from training.consonant2_freeze_doc import render
 from training.muraja_policy import SHIPPED_DEFAULT
 
@@ -184,42 +192,76 @@ def write_models(spec: RoundSpec, path: Path | None = None) -> dict:
     return records
 
 
-def input_files(sources, phase: str, weights=None) -> list[Path]:
-    """Round 2's sitting inputs: the look set's decodes of every model it reads, or the confirm
-    sitting's every read set, the teacher's decodes and the committed baselines it reuses, G6's
-    caches, the round's own frozen selections and the two claimable tranches' manifests; and the
-    pinned pre-registration (round 1's roster, ``aug_readout.Sources.input_files``)."""
-    from tadabur.exposure import EVALSET_MANIFEST_PATH
-    from tadabur.nonpro_sources import QDAT, TARTEEL_V1
-    from tadabur.qud_overlap import PILOT
-    from tadabur.tlog_tranches import TRANCHES_DIR
-    from training.aug_readout import look_graded_models
-    from training.consonant_readout import G6_SITES_PATH, MODELS_PATH, QUD_SELECTION_PATH
-    from training.nonpro_eval import decodes_file as committed
-    from training.nonpro_gap import GRID_PATH
-    from training.qud_pilot import decodes_file as qud_committed
-    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+#: The pre-claim sitting's phase name, beside the ``look`` and ``confirm`` the claims use.
+PRECLAIM = "preclaim"
+#: The sets each sitting reads, in the pre-registration's order: the pre-claim's non-tlog
+#: guards, and the confirm read's pooled tranches with the Tarteel v1 confirm half and the
+#: Tadabur dev grid its dose-response reads.
+SITTING_SETS = {
+    PRECLAIM: (QDAT_SET, QUD_OTHER_SET, TADABUR_SET),
+    CONFIRM: (TLOG_CONFIRM, TARTEEL_CONFIRM, TADABUR_SET),
+}
 
+
+def sitting_roster(spec: RoundSpec, phase: str, weights) -> dict[str, tuple[str, ...]]:
+    """The sets one of the round's sittings reads, and every model whose readout decodes it
+    reads there (:func:`training.aug_readout_gate.allowed_models`: the chosen students, the
+    truth baselines on Tadabur and the teacher on the pooled tlog confirm tranches)."""
+    return {name: allowed_models(name, {"weights": weights}, spec)
+            for name in SITTING_SETS[phase]}
+
+
+def input_files(sources, phase: str, weights=None) -> list[Path]:
+    """Round 2's sitting inputs: the look set's decodes of every model it reads and its tranche
+    manifest, or one of the two later sittings' own reads (:func:`sitting_inputs`). Each sitting
+    declares what it opens, so the pre-claim is never asked for the confirm tranches it has not
+    claimed, and the pooled read never declares a cache it does not open."""
     if phase == LOOK:
+        from tadabur.tlog_tranches import TRANCHES_DIR
+        from training.aug_readout import look_graded_models
+
         decodes = [sources.decode_path(sources.spec.look_set, model)
                    for model in (*look_graded_models(sources.spec), BASE)]
         return [*decodes, TRANCHES_DIR / f"{LOOK}.jsonl", sources.spec.prereg_path]
-    from training.aug_readout_gate import BASELINES, needs
+    return sitting_inputs(sources, phase, weights)
 
-    read = needs(phase, weights, sources.spec)
-    models = sorted({model for names in read.values() for model in names})
-    decodes = [sources.decode_path(set_name, model)
-               for set_name, names in read.items() for model in names]
-    # The teacher's decode of every set the sitting grades, and G6's caches: declared even when
-    # absent, so a cannot-certify record names what is missing.
-    teachers = [sources.decode_path(set_name, BASE) for set_name in read]
-    caches = [store.path(model) for model in models for store in (CHECK_STORE, DECODE_STORE)]
-    return [*decodes, *teachers,
-            *(committed(dataset, model) for dataset in (TARTEEL_V1, QDAT)
-              for model in (*BASELINES,)),
-            *(qud_committed(slug, model) for slug in PILOT for model in BASELINES),
-            *caches,
-            QUD_SELECTION_PATH, G6_SITES_PATH, MODELS_PATH,
-            sources.spec.root / "freeze.json",
-            *(TRANCHES_DIR / f"{role}.jsonl" for role in ("confirm.1", "confirm.2")),
-            EVALSET_MANIFEST_PATH, GRID_PATH, sources.spec.prereg_path]
+
+def sitting_inputs(sources, phase: str, weights) -> list[Path]:
+    """Every file the ``preclaim`` or ``confirm`` sitting of the round opens, and only those:
+    the readout decodes of :func:`sitting_roster`, the committed baseline decodes each reader
+    binds, the metadata those readers open, and then G6's sites and caches (pre-claim) or the
+    round's freeze and the two confirmed tranches' manifests (confirm)."""
+    from tadabur.exposure import EVALSET_MANIFEST_PATH
+    from tadabur.nonpro_sources import QDAT, TARTEEL_V1
+    from tadabur.qud_overlap import PILOT
+    from training.aug_readout_gate import BASELINES, Layout, arm_model, chosen_weights
+    from training.consonant_readout import (G6_SITES_PATH, QUD_SELECTION_PATH, catch_required)
+    from training.nonpro_eval import decodes_file as committed
+    from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
+    from training.qud_pilot import decodes_file as qud_committed
+    from training.tlog_eval import CONFIRM_TRANCHES
+
+    spec = sources.spec
+    sets = SITTING_SETS[phase]
+    files = [sources.decode_path(name, model)
+             for name, models in sitting_roster(spec, phase, weights).items()
+             for model in models]
+    files += [Layout(spec.root).models, spec.prereg_path]
+    if QDAT_SET in sets:  # each dataset's own committed truth-baseline decode
+        files.append(committed(QDAT, BASE))
+    if TARTEEL_CONFIRM in sets:
+        files.append(committed(TARTEEL_V1, BASE))
+    if QUD_OTHER_SET in sets:
+        files += [*(qud_committed(slug, model) for slug in PILOT for model in BASELINES),
+                  QUD_SELECTION_PATH]
+    if TADABUR_SET in sets:  # the dev grid, its clips' manifest and each baseline's decode
+        files += [*(GAP_DECODES / f"clean.{model}.jsonl.gz" for model in BASELINES),
+                  GRID_PATH, EVALSET_MANIFEST_PATH]
+    if phase == PRECLAIM:
+        chosen = chosen_weights(spec, {"weights": weights})
+        candidate = arm_model(CANDIDATE, chosen[CANDIDATE], spec)
+        files += [G6_SITES_PATH, *catch_required((candidate, spec.baseline))]
+    else:
+        files += [spec.root / "freeze.json",
+                  *(sources.tranches_dir / f"{role}.jsonl" for role in CONFIRM_TRANCHES)]
+    return files

@@ -229,9 +229,10 @@ def allowed_models(set_name: str, choice: Mapping | None,
                    spec: RoundSpec | None = None) -> tuple[str, ...]:
     """The models a set may be decoded (and read) for: a look set, its round's look roles at
     both weights; any gated set only with a committed choice (``choice``, from
-    :func:`committed_choice`), for the round's students at the chosen weights (and, on Tadabur,
-    the two baselines, for the blank share). A round with no control (``consonant1``) reads no
-    control decodes."""
+    :func:`committed_choice`), for the round's students at the chosen weights (and, on the
+    tlog confirm tranches, the teacher, whose checks the bars read beside the candidate's; on
+    Tadabur, the two baselines, for the blank share). A round with no control (``consonant1``)
+    reads no control decodes."""
     specification = spec or AUG95
     if not SETS[set_name].gated:
         if set_name != specification.look_set:
@@ -243,7 +244,8 @@ def allowed_models(set_name: str, choice: Mapping | None,
     chosen = chosen_weights(specification, choice)
     students = tuple(arm_model(role, chosen[role], specification) if role in chosen else role
                      for role in specification.students)
-    baselines = BASELINES if set_name == TADABUR_SET else ()
+    baselines = ((BASE,) if set_name == TLOG_CONFIRM
+                 else BASELINES if set_name == TADABUR_SET else ())
     return tuple(dict.fromkeys((*students, *baselines)))
 
 

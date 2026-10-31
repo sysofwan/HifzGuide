@@ -22,7 +22,10 @@ two reads: the non-tlog guards and the owner's catch-loss audit before any tranc
   ``report.json`` and ``verdict.json``; :func:`render` writes the readout doc.
 
 Every verdict carries :data:`STATEMENT`: the tranches are a clip-level split, so the same users
-may sit on both sides.
+may sit on both sides. Each sitting declares the files it opens
+(:func:`training.consonant2_readout.input_files`) and validates every producer it reads, the
+teacher included (:func:`read_inputs`); a declared input that is absent is never read — the
+sitting writes its cannot-certify record and doc instead.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM
@@ -40,9 +44,9 @@ from training.aug_readout_gate import (
     Layout,
     claim as hold_sitting,
     committed_choice,
+    digests,
     input_name,
     is_committed,
-    needs,
     read_manifest,
     require_manifest,
     require_preregistration,
@@ -56,6 +60,7 @@ from training.aug_readout_metrics import (
     CONSONANT,
     CONTROL,
     DEPARTS,
+    EQUALS,
     PER_1000,
     POINTS,
     SHADDAH_CAUSE,
@@ -82,6 +87,7 @@ from training.aug_readout_verdict import (
     reduction_condition,
     veto_conditions,
 )
+from training.consonant2_readout import PRECLAIM, sitting_roster
 from training.consonant_readout import frozen_substitutions
 from training.muraja_policy import SHIPPED_DEFAULT
 from training.tashkeel_eval import write_text_atomically
@@ -324,18 +330,55 @@ def _manifest_records(layout: Layout, spec: RoundSpec) -> dict:
     return records
 
 
-def validate_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping,
-                    weights) -> tuple[dict, tuple[str, ...]]:
-    """Refuse a read set whose producer identity is not the pinned, chosen model, before any
-    grade is read: every present set's records are validated by the canonical
-    :func:`training.aug_readout_gate.require_manifest`. Sets whose decodes are absent are
-    returned as such — they cannot certify, and nothing reads them."""
-    absent = ar.absent_sets(sources, CONFIRM, weights, spec)
-    required = {name: models for name, models in needs(CONFIRM, weights, spec).items()
-                if name not in absent}
-    identities = require_manifest(_manifest_records(layout, spec), required, choice,
-                                  spec=spec)
-    return identities, absent
+@dataclass(frozen=True)
+class SittingInputs:
+    """What a sitting declared before it graded anything: the producer identities it validated,
+    each present input's digest, and the absent inputs by name. An absent input is never read:
+    the sitting cannot certify and writes the record that says why."""
+
+    identities: dict
+    inputs: dict
+    missing_inputs: list[str]
+
+    @property
+    def present(self) -> bool:
+        return not self.missing_inputs
+
+    @property
+    def absent_reason(self) -> str:
+        return f"declared input absent: {', '.join(self.missing_inputs)}"
+
+
+def read_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping, weights,
+                phase: str) -> SittingInputs:
+    """A sitting's declared inputs before it reads a grade: the files its
+    ``Sources.input_files`` names — each sitting declares what it opens — and their digests,
+    with every producer validated: the sitting's own roster, the teacher included, through the
+    canonical :func:`require_manifest`. A set whose decodes are absent is not validated (it
+    cannot certify, and nothing reads it)."""
+    files = list(sources.input_files(phase, weights))
+    missing = [path for path in files if not path.exists()]
+    roster = sitting_roster(spec, phase, weights)
+    absent = {name for name, models in roster.items()
+              if any(sources.decode_path(name, model) in missing for model in models)}
+    identities = require_manifest(
+        _manifest_records(layout, spec),
+        {name: models for name, models in roster.items() if name not in absent},
+        choice, spec=spec)
+    present = [path for path in files if path not in missing]
+    return SittingInputs(identities, digests(present),
+                         sorted(input_name(path) for path in missing))
+
+
+def _nothing_read() -> dict:
+    """A pre-claim report whose every table is unread: the shape the gates are built from when
+    a declared input is absent, so each gate that reads it cannot certify."""
+    return {"mechanism": {"qdat": None, "qdat_departs": None},
+            "consistency": {"qdat": None},
+            "guards": {"qdat_bench": {kind: None
+                                      for kind in ("consonant", "haraka", "shaddah")},
+                       "qud_other": None, "tadabur_dev_unseen": None},
+            "catch": {"ship_a_verified": None}}
 
 
 def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
@@ -343,7 +386,8 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     """Read the audit and the non-tlog guards once, write ``preclaim.json``, and end the round
     on anything but a pass. Refused without the committed choice, the committed audit result
     and the round's pinned harness and pre-registration, before anything is read, and once its
-    own record exists."""
+    own record exists. A declared input that is absent writes the record — the audit it did
+    read beside every gate that cannot certify — instead of reading nothing's file."""
     layout = layout or Layout(spec.root)
     choice = committed_choice(layout, spec=spec)
     result_path = _catch_loss_result(layout)
@@ -354,28 +398,36 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     if record.exists():
         raise SystemExit(f"{record.name} exists: the pre-claim phase reads once")
     prereg = require_preregistration(spec, sources.harness_identity())
-    validate_inputs(sources, spec, layout, choice.choice, choice.choice["weights"])
+    declared = read_inputs(sources, spec, layout, choice.choice, choice.choice["weights"],
+                           PRECLAIM)
     result = json.loads(result_path.read_text(encoding="utf-8"))
-    report = preclaim_report(sources, spec, choice.choice, workers)
-    conditions = [audit_condition(result), *preclaim_conditions(report, spec)]
-    inputs, missing = _inputs(sources, spec, choice.choice)
+    if declared.present:
+        report = preclaim_report(sources, spec, choice.choice, workers)
+        conditions = [audit_condition(result), *preclaim_conditions(report, spec)]
+        reported = {condition["name"]: condition
+                    for condition in consonant_reported(report, spec)}
+        control = report.get("control", {})
+    else:
+        conditions = [audit_condition(result), *preclaim_conditions(_nothing_read(), spec)]
+        reported, control = {}, {}
     preclaim = {
         "issue": spec.issue,
         "phase": "preclaim",
         "verdict": aggregate([condition["verdict"] for condition in conditions]),
         "gates": {condition["name"]: condition for condition in conditions},
-        "reported": {condition["name"]: condition
-                     for condition in consonant_reported(report, spec)},
-        "control": report.get("control", {}),
+        "reported": reported,
+        "control": control,
         "audit": result,
         "bars": dict(spec.bars),
         "choice_commit": choice.commit,
         "choice_sha256": choice.sha256,
         "prereg_sha256": prereg,
         "harness": sources.harness_identity(),
-        "inputs": inputs,
-        "missing_inputs": missing,
+        "inputs": declared.inputs,
+        "missing_inputs": declared.missing_inputs,
     }
+    if not declared.present:
+        preclaim["unreadable"] = {"reason": declared.absent_reason}
     write_text_atomically(record, ar.canonical(preclaim))
     if preclaim["verdict"] != PASS:
         final = {"issue": spec.issue, "phase": "preclaim", "verdict": preclaim["verdict"],
@@ -384,17 +436,6 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
         write_text_atomically(layout.verdict, ar.canonical(final))
         write_text_atomically(spec.doc_path, render(preclaim, None))
     return preclaim
-
-
-def _inputs(sources, spec: RoundSpec, choice: Mapping) -> tuple[dict, list[str]]:
-    """The confirm sitting's input digests and the declared inputs that are absent: a record
-    smaller than its roster names what is missing instead of dropping it."""
-    from training.aug_readout_gate import digests
-
-    files = list(sources.input_files("confirm", choice["weights"]))
-    missing = [path for path in files if not path.exists()]
-    return (digests(path for path in files if path not in missing),
-            sorted(input_name(path) for path in missing))
 
 
 # --- the sequential claims ----------------------------------------------------------------------
@@ -577,14 +618,16 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
     grades = sources.grade(items, decodes, present)
     comparisons = spec.comparisons
     texts = ar.checks_text(ar.SetData(items, decodes), present)
+
+    def agreement(agreed_items, agreed_texts, subset=None) -> dict:
+        return compare(word_agreement_terms(agreed_items, agreed_texts,
+                                            (CANDIDATE, spec.baseline), subset=subset,
+                                            workers=workers), POINTS, comparisons)
+
     main = _tables(grades, present, comparisons)
     mechanism = {
-        "tlog_confirm": compare(
-            word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
-                                 workers=workers), POINTS, comparisons),
-        "tlog_confirm_departs": compare(
-            word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
-                                 subset=DEPARTS, workers=workers), POINTS, comparisons),
+        "tlog_confirm": agreement(items, texts),
+        "tlog_confirm_departs": agreement(items, texts, DEPARTS),
         "tlog_confirm_shaddah": compare(
             shaddah_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
                                     workers=workers), POINTS, comparisons),
@@ -610,6 +653,7 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
     span_decodes = {role: {**trimmed["confirm.1"].decodes[role],
                            **trimmed["confirm.2"].decodes[role]} for role in present}
     tarteel = _bound_set(sources.tarteel(CONFIRM, models), roles)
+    tarteel_texts = ar.checks_text(tarteel, present)
     dev = sources.tadabur(models)
     tadabur = ar.TadaburData(
         dev.clips,
@@ -628,8 +672,14 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
                      for role, data in tranches.items()},
         "sensitivity": {"span_trimmed": _tables(
             sources.grade(span_items, span_decodes, present), present, comparisons)},
-        "tarteel_confirm": _tables(
-            sources.grade(tarteel.items, tarteel.decodes, present), present, comparisons),
+        # Tarteel v1's confirm half as round 1 reads it: the cause tables and bar 4's word
+        # agreement, its teacher-departure subset and the teacher-equals companion.
+        "tarteel_confirm": {
+            "tables": _tables(sources.grade(tarteel.items, tarteel.decodes, present), present,
+                              comparisons),
+            "agreement": agreement(tarteel.items, tarteel_texts),
+            "departs": agreement(tarteel.items, tarteel_texts, DEPARTS),
+            "equals": agreement(tarteel.items, tarteel_texts, EQUALS)},
         "dose_response": dose_response(tadabur, present, spec.baseline),
         "bar2_companions": companions,
         "candidate_vs_control": {
@@ -702,23 +752,24 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
              spec.baseline: spec.baseline, BASE: BASE}
     present = tuple(roles.values())
-    identities, absent = validate_inputs(sources, spec, layout, committed.choice, weights)
-    inputs, missing = _inputs(sources, spec, committed.choice)
+    declared = read_inputs(sources, spec, layout, committed.choice, weights, CONFIRM)
 
     sitting = {"phase": "confirm", "preclaim_sha256": sha256_file(layout.preclaim),
                "choice_commit": committed.commit, "choice_sha256": committed.sha256,
                "prereg_sha256": prereg, "freeze_sha256": freeze_sha,
-               "identities": identities, "inputs": inputs, "missing_inputs": missing,
+               "identities": declared.identities, "inputs": declared.inputs,
+               "missing_inputs": declared.missing_inputs,
                "harness": sources.harness_identity()}
     with hold_sitting(layout.claim("confirm"), sitting):
-        if absent:
-            report = _unreadable_report(
-                spec, preclaim, f"declared input absent: {', '.join(absent)}", missing)
+        if not declared.present:
+            report = _unreadable_report(spec, preclaim, declared.absent_reason,
+                                        declared.missing_inputs)
         else:
             report = _pooled_report(sources, spec, models, roles, present, preclaim, workers)
             if report is None:
                 report = _unreadable_report(
-                    spec, preclaim, "the pooled gating tranches hold no item", missing)
+                    spec, preclaim, "the pooled gating tranches hold no item",
+                    declared.missing_inputs)
         write_text_atomically(layout.report, ar.canonical(report))
         write_text_atomically(layout.verdict, ar.canonical(
             {"issue": spec.issue, "statement": STATEMENT,
@@ -732,18 +783,40 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
 
 def _condition_lines(conditions: Sequence[Mapping]) -> list[str]:
     return [f"- {condition['name']}: {condition['verdict']} — "
-            f"{condition.get('bar') or ''}" for condition in conditions]
+            f"{condition.get('bar') or ''}{_readings(condition)}" for condition in conditions]
+
+
+def _readings(condition: Mapping) -> str:
+    """The numbers a gate or a reported line read, so the doc shows them beside the verdict: its
+    interval, its point and the bound the bar compares."""
+    numbers = []
+    interval = condition.get("interval")
+    if interval:
+        numbers.append(f"95% {_interval(interval)}")
+    for field in ("point", "bound", "threshold", "reduction", "required", "difference"):
+        value = condition.get(field)
+        if value is not None:
+            numbers.append(f"{field} {_measure(value)}")
+    return f" ({', '.join(numbers)})" if numbers else ""
+
+
+def _measure(value) -> str:
+    return f"{value:g}" if isinstance(value, int) else _number(value)
 
 
 def render(preclaim: Mapping, report: Mapping | None = None) -> str:
-    """The round's readout doc as text: the verdict, every gate with its frozen bar, the
-    reported tables with their estimates and intervals, and the clip-level-split statement.
-    ``report=None`` is a round the pre-claim ended; a report with ``unreadable`` renders why."""
+    """The round's readout doc as text: the verdict, every gate with its frozen bar and the
+    numbers it read, the reported tables with their estimates and intervals, and the
+    clip-level-split statement. ``report=None`` is a round the pre-claim ended; a report with
+    ``unreadable`` renders why."""
     lines = [f"# The tlog consonant round's readout (#{preclaim['issue']})", "",
              STATEMENT, "",
              f"Pre-claim verdict: {preclaim['verdict']}", ""]
     lines += ["## The pre-claim gates", ""]
     lines += _condition_lines(list(preclaim["gates"].values()))
+    if preclaim.get("unreadable"):
+        lines += ["", "Nothing was read: " + preclaim["unreadable"]["reason"],
+                  *[f"- missing input: {name}" for name in preclaim["missing_inputs"]]]
     if preclaim.get("reported"):
         lines += ["", "Reported beside the gates, never folded into them:", ""]
         lines += _condition_lines(list(preclaim["reported"].values()))
@@ -777,8 +850,13 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
                      f"partial spans, {coverage['excluded']} excluded")
         lines += _single_lines("empty slots per 100 consonant carriers",
                                coverage["empty_slots"], baseline)
-    lines += ["", "### Tarteel v1 confirm (the full round-1 table)", ""]
-    lines += _tables_lines("Tarteel v1 confirm", report["tarteel_confirm"], baseline)
+    lines += ["", "### Tarteel v1 confirm (the full round-1 reading)", ""]
+    tarteel = report["tarteel_confirm"]
+    lines += _tables_lines("Tarteel v1 confirm", tarteel["tables"], baseline)
+    for title, reading in (("word agreement with the teacher", "agreement"),
+                           ("agreement on the teacher-departure words", "departs"),
+                           ("agreement where the teacher equals the reference", "equals")):
+        lines += ["", *_single_lines(f"Tarteel v1 confirm, {title}", tarteel[reading], baseline)]
     lines += ["", "### Span-trimmed sensitivity", ""]
     lines += _tables_lines("span-trimmed confirm.1 + confirm.2",
                            report["sensitivity"]["span_trimmed"], baseline)

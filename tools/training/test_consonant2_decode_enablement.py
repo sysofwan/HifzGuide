@@ -68,24 +68,38 @@ def merged_calls(monkeypatch):
 # --- the merge -------------------------------------------------------------------------------------
 
 
-def test_the_confirm_sitting_declares_the_teacher_decodes_the_caches_and_the_freeze(tmp_path):
+def test_the_two_sittings_declare_their_own_reads(tmp_path):
+    """Each sitting declares what it opens: the pre-claim the non-tlog decodes, G6's sites and
+    the caches the catch reads; the confirm read the pooled tranches' decodes (teacher
+    included), the Tarteel v1 half, the dev grid and its clips' manifest, the freeze and the
+    two tranche manifests — never a cache it does not open, nor a tranche it has not claimed."""
+    from tadabur.exposure import EVALSET_MANIFEST_PATH
     from tadabur.tarteel_split import CONFIRM
     from tadabur.tlog_tranches import TRANCHES_DIR
-    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+    from training.consonant2_readout import PRECLAIM
+    from training.consonant_readout import G6_SITES_PATH
+    from training.nonpro_gap import GRID_PATH
+    from training.truth_baseline import CHECK_STORE
 
     round_ = rv.committed_round(tmp_path)
     sources = ar.Sources(round_.spec)
-    files = sources.input_files(CONFIRM, "ema")
+    weights = {"candidate": "ema", "control": "ema"}
 
-    for set_name in ("tlog.confirm", "tarteel_v1.confirm", "tadabur_dev_unseen"):
-        assert sources.decode_path(set_name, "base") in files
-    for model in (CANDIDATE, CONTROL):
-        for store in (CHECK_STORE, DECODE_STORE):
-            assert store.path(model) in files
-    assert round_.spec.root / "freeze.json" in files
-    assert TRANCHES_DIR / "confirm.1.jsonl" in files
-    assert TRANCHES_DIR / "confirm.2.jsonl" in files
-    assert round_.spec.prereg_path in files
+    confirm = sources.input_files(CONFIRM, weights)
+    for set_name, model in (("tlog.confirm", "base"), ("tlog.confirm", CANDIDATE),
+                            ("tlog.confirm", "c95"), ("tarteel_v1.confirm", CANDIDATE),
+                            ("tadabur_dev_unseen", "base")):
+        assert sources.decode_path(set_name, model) in confirm
+    for path in (GRID_PATH, EVALSET_MANIFEST_PATH, round_.spec.root / "freeze.json",
+                 TRANCHES_DIR / "confirm.1.jsonl", TRANCHES_DIR / "confirm.2.jsonl"):
+        assert path in confirm
+    assert not [path for path in confirm if CHECK_STORE.directory in path.parents]
+
+    preclaim = sources.input_files(PRECLAIM, weights)
+    assert sources.decode_path("qdat", CANDIDATE) in preclaim
+    assert G6_SITES_PATH in preclaim and CHECK_STORE.path(CANDIDATE) in preclaim
+    assert not [path for path in preclaim if path.name.startswith("confirm.")]
+    assert not [path for path in preclaim if "tlog.confirm" in path.name]
 
 
 def test_the_merge_writes_each_chosen_arm_s_file_in_the_rounds_own_root(tmp_path, merged_calls):

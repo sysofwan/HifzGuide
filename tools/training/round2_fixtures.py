@@ -100,15 +100,17 @@ def look_manifest(spec: asp.RoundSpec) -> dict:
 
 
 def confirm_manifest(spec: asp.RoundSpec, weights: str = "ema") -> dict:
-    """``models.json`` as a round's merges leave it: the look's records plus every confirm-phase
-    set's identities, the teacher and the committed baselines included (what a sitting
-    validates before it grades)."""
+    """``models.json`` as a round's merges leave it: the look's records plus every confirm
+    sitting's set identities, the teacher on the tlog tranches and the committed baselines on
+    Tadabur included (what a sitting validates before it grades)."""
     from tadabur.tarteel_split import CONFIRM
+    from training.consonant2_readout import PRECLAIM, sitting_roster
 
     records = look_manifest(spec)
-    for set_name, models in ag.needs(CONFIRM, weights, spec).items():
-        for model in models:
-            records[f"{set_name}/{model}"] = _identity_record(spec, model)
+    for phase in (PRECLAIM, CONFIRM):
+        for set_name, models in sitting_roster(spec, phase, weights).items():
+            for model in models:
+                records[f"{set_name}/{model}"] = _identity_record(spec, model)
     return records
 
 

@@ -327,6 +327,50 @@ def test_a_fail_outranks_a_cannot_certify(cv, tmp_path, monkeypatch):
     assert preclaim["verdict"] == FAIL
 
 
+def test_the_reported_shaddah_line_keeps_and_prints_its_numbers(cv, tmp_path, monkeypatch):
+    round_ = _round(tmp_path)
+    report = rv.clean_report()
+    _comparison(report, "guards", "qdat_bench", "shaddah").update(
+        interval=_interval(-9.0, -5.0))
+    preclaim, _ = _run(cv, round_, monkeypatch, report)
+
+    condition = preclaim["reported"]["g3.qdat_bench.shaddah"]
+    assert (condition["bound"], condition["interval"]) == (-9.0, {"lower": -9.0,
+                                                                 "upper": -5.0})
+    line = next(line for line in cv.render(preclaim, None).splitlines()
+                if line.startswith("- g3.qdat_bench.shaddah"))
+    assert f"point {condition['point']:.3f}" in line
+    assert "95% [-9.000, -5.000]" in line and "bound -9.000" in line
+
+
+class DeclaresAbsent(Sources):
+    """A round whose declared qdat teacher decode is absent: the audit is still read."""
+
+    def input_files(self, phase, weights):
+        return [self.spec.root / "decodes" / "qdat.base.jsonl.gz"]
+
+
+def test_a_declared_input_that_is_absent_writes_the_record_without_reading(cv, tmp_path,
+                                                                          monkeypatch):
+    round_ = _round(tmp_path)
+    reads = Reads()
+    monkeypatch.setattr(cv, "preclaim_report", reads)
+    preclaim = cv.run_preclaim(DeclaresAbsent(round_.spec), round_.spec, round_.layout)
+
+    assert reads.calls == []
+    assert preclaim["verdict"] == CANNOT_CERTIFY
+    assert preclaim["gates"]["catch_loss"]["verdict"] == PASS  # the one gate it did read
+    others = {verdict for name, condition in preclaim["gates"].items()
+              if name != "catch_loss" for verdict in [condition["verdict"]]}
+    assert others == {CANNOT_CERTIFY}
+    assert "qdat.base" in preclaim["unreadable"]["reason"]
+    assert json.loads(round_.preclaim.read_text(encoding="utf-8")) == preclaim
+    final = json.loads(round_.layout.verdict.read_text(encoding="utf-8"))
+    assert (final["verdict"], final["phase"]) == (CANNOT_CERTIFY, "preclaim")
+    doc = round_.spec.doc_path.read_text(encoding="utf-8")
+    assert "Nothing was read" in doc and "qdat.base" in doc
+
+
 def test_a_missing_input_cannot_certify_the_round(cv, tmp_path, monkeypatch):
     round_ = _round(tmp_path)
     report = rv.clean_report()

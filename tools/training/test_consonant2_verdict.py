@@ -39,6 +39,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import sys
+from collections.abc import Mapping
 
 import pytest
 
@@ -457,8 +458,21 @@ def test_the_reported_lines_are_built_beside_the_bars(cv, tmp_path, monkeypatch)
     round_ = _opened(tmp_path, monkeypatch, cv)
     report = _verdict(cv, round_)
 
-    assert set(report["tarteel_confirm"]) == set(report["main"])
-    assert report["tarteel_confirm"]["all_cause"]["observations"] == 8
+    tarteel = report["tarteel_confirm"]
+    assert set(tarteel) == {"tables", "agreement", "departs", "equals"}
+    assert set(tarteel["tables"]) == set(report["main"])
+    assert tarteel["tables"]["all_cause"]["observations"] == 8
+    # Round 1's bar-4 readings: one departure and one equal word per item, and the candidate
+    # hears the teacher's own reading, so it agrees on the whole reference (8 words of 8 words
+    # for the agreement reading, 4 + 4 across the two subsets) while the control agrees on the
+    # equal word only.
+    words = {name: tarteel[name]["models"] for name in ("agreement", "departs", "equals")}
+    assert words["agreement"]["candidate"]["den"] == 8
+    assert (words["departs"]["candidate"]["den"], words["equals"]["candidate"]["den"]) == (4, 4)
+    assert words["agreement"]["candidate"]["num"] == 8
+    assert words["departs"]["candidate"]["num"] == 4
+    assert words["departs"]["c95"]["num"] == 1  # C95 hears the teacher's reading on one clip
+    assert words["equals"]["c95"]["num"] == 4
     assert report["sensitivity"]["span_trimmed"]["all_cause"]["observations"] == 80
     assert set(report["coverage"]["tranches"]) == {"confirm.1", "confirm.2"}
     tranche = report["coverage"]["tranches"]["confirm.1"]
@@ -581,11 +595,70 @@ def test_a_freeze_edited_after_its_commit_refuses_the_pooled_read(cv, tmp_path, 
     assert not round_.layout.verdict.exists()
 
 
+def _preserved_confirm_teacher(round_, identities: Mapping) -> dict:
+    """The pooled merge's preserved identities beside the confirm decodes (``meta.confirm.json``
+    as ``tadabur.tlog_eval_decode.merge_confirm_decodes`` writes them)."""
+    path = round_.spec.root / "decodes" / "meta.confirm.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"identities": identities}), encoding="utf-8")
+    return identities
+
+
+def test_the_preserved_confirm_teacher_is_the_identity_the_sitting_validates(
+        cv, tmp_path, monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    teacher = fx.confirm_manifest(round_.spec)["tlog.confirm/base"]
+    _preserved_confirm_teacher(round_, {"tlog.confirm/base": teacher})
+
+    report = _verdict(cv, round_, ConfirmSources(round_.spec))
+    assert report["verdict"]["verdict"] == PASS
+    sitting = json.loads((round_.layout.root / "confirm.claim.json").read_text(encoding="utf-8"))
+    assert sitting["identities"]["base"] == teacher["identity"]
+
+
+@pytest.mark.parametrize("edit", [
+    lambda record: record.update(fingerprints={"not": "the frozen protocol"}),
+    lambda record: record["identity"].update(checkpoint_sha256="0" * 64),
+])
+def test_a_confirm_teacher_from_other_weights_refuses_the_pooled_read(
+        cv, tmp_path, monkeypatch, edit):
+    """The teacher's pooled confirm decodes define bars 4a/4b and the departure population, so
+    a preserved identity that is not the frozen baseline under the frozen protocol refuses
+    before any tranche is read."""
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    teacher = fx.confirm_manifest(round_.spec)["tlog.confirm/base"]
+    edit(teacher)
+    _preserved_confirm_teacher(round_, {"tlog.confirm/base": teacher})
+
+    sources = ConfirmSources(round_.spec)
+    with pytest.raises(REFUSED):
+        _verdict(cv, round_, sources)
+    assert sources.read == []
+    assert not round_.layout.verdict.exists()
+
+
 class MissingInput(ConfirmSources):
     """A round whose declared confirm decode is absent: the sitting must not read it."""
 
     def input_files(self, phase, weights):
         return [self.decode_path("tlog.confirm", CANDIDATE)]
+
+
+class MissingTeacherDecode(MissingInput):
+    """A round whose declared **teacher** decode of the tranches is absent: the reader always
+    reads it, and ``needs`` names only the students."""
+
+    def input_files(self, phase, weights):
+        return [self.decode_path("tlog.confirm", "base")]
+
+
+class MissingCore(MissingInput):
+    """A round whose declared core metadata (the Tadabur dev grid) is absent."""
+
+    def input_files(self, phase, weights):
+        from training.nonpro_gap import GRID_PATH
+
+        return [self.spec.root / GRID_PATH.name]
 
 
 class EmptyTranches(ConfirmSources):
@@ -619,6 +692,24 @@ def test_a_declared_input_that_is_absent_cannot_certify_without_reading(cv, tmp_
     assert sources.read == []
     assert json.loads(round_.layout.verdict.read_text(encoding="utf-8"))["verdict"] == \
         CANNOT_CERTIFY
+    assert "Nothing was read" in round_.spec.doc_path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("sources, named", [
+    (MissingTeacherDecode, "tlog.confirm.base"),
+    (MissingCore, "grid.json"),
+])
+def test_a_missing_teacher_or_core_input_cannot_certify_without_reading(
+        cv, tmp_path, monkeypatch, sources, named):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    declaring = sources(round_.spec)
+    report = _verdict(cv, round_, declaring)
+
+    assert report["verdict"]["verdict"] == CANNOT_CERTIFY
+    assert named in report["unreadable"]["reason"]
+    assert declaring.read == []
+    written = json.loads(round_.layout.verdict.read_text(encoding="utf-8"))
+    assert written["verdict"] == CANNOT_CERTIFY
     assert "Nothing was read" in round_.spec.doc_path.read_text(encoding="utf-8")
 
 
@@ -657,6 +748,17 @@ def test_the_doc_states_the_verdict_every_bar_and_the_statement(cv, tmp_path, mo
         in text
     assert "n = 1" in text
     assert "Tarteel v1 confirm" in text and "shaddah agreement" in text
+    # Tarteel v1's confirm half as round 1 reads it: bar 4's agreement, its departure subset and
+    # the teacher-equals companion, each with its measured point.
+    tarteel = report["tarteel_confirm"]
+    assert "Tarteel v1 confirm, word agreement with the teacher" in text
+    assert "Tarteel v1 confirm, agreement on the teacher-departure words" in text
+    assert "Tarteel v1 confirm, agreement where the teacher equals the reference" in text
+    for reading in ("agreement", "departs", "equals"):
+        point = tarteel[reading]["models"]["c95"]["point"]
+        assert f"{point:.3f}" in text
+    assert len({tarteel[reading]["models"]["c95"]["point"]
+                for reading in ("agreement", "departs", "equals")}) == 3
     assert "| 30 | 2 |" in text  # the first reciter's clips and its two points
     assert text == cv.render(preclaim, report)  # generated, reproducible
 

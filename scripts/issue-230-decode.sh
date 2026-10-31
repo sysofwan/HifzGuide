@@ -63,11 +63,14 @@ print(models["candidate"] + "," + models["control"])
 }
 
 require_not_decoded() {  # <candidate,control>
-  local model
+  # Only the sets this run decodes count: the round's look decodes name the same models.
+  local model set_name
   for model in ${1//,/ }; do
-    if git ls-tree -r --name-only HEAD -- "$DECODES" | grep -q "\.$model\.jsonl\.gz$"; then
-      die "a decode of $model is already committed in $DECODES: the sitting reads once"
-    fi
+    for set_name in "${SETS[@]}"; do
+      if git cat-file -e "HEAD:$DECODES/$set_name.$model.jsonl.gz" 2>/dev/null; then
+        die "a decode of $model on $set_name is already committed in $DECODES: the sitting reads once"
+      fi
+    done
   done
 }
 
@@ -166,6 +169,7 @@ check() {
 
 fetch() {
   local repo_root dest model
+  require_ready
   repo_root=$(git rev-parse --show-toplevel)
   dest=${FETCH_DIR:-/tmp/issue-230}
   mkdir -p "$dest"
@@ -260,6 +264,17 @@ decode() {
   done
 }
 
+decode_phase() {
+  # The timed body: the clips are staged under the lock, then the repo's tools run from the
+  # repository, one OMP thread per decode process (6 x 1, #217's measurement).
+  set -e
+  setup_clips
+  cd "$ROOT/repo/tools"
+  activate
+  export OMP_NUM_THREADS=1
+  decode
+}
+
 run() {
   mkdir -p "$ROOT/decodes" "$ROOT/logs"
   rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
@@ -268,17 +283,18 @@ run() {
     'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
   export MODELS
   local status=0
-  timeout --signal=TERM --kill-after=60 "$BUDGET" bash -c 'set -e; setup_clips; decode' \
-    || status=$?
-  local code=$status
+  timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?
+  local code=$status done
   if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
     code=2
-    printf '%s budget-exceeded budget=%ss; per-item output kept\n' \
-      "$(date -u +%FT%TZ)" "$BUDGET" > "$ROOT/logs/run.done"
+    done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
+      "$(date -u +%FT%TZ)" "$BUDGET")
   else
-    printf '%s exit %s\n' "$(date -u +%FT%TZ)" "$status" > "$ROOT/logs/run.done"
+    done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi
+  # ``check`` keys off done and then reads exit: write exit first.
   printf '%s\n' "$code" > "$ROOT/logs/run.exit"
+  printf '%s\n' "$done" > "$ROOT/logs/run.done"
   return "$code"
 }
 
@@ -290,8 +306,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     check) check ;;
     fetch) fetch ;;
     run) run ;;
+    decode-phase) decode_phase ;;
     *)
-      echo "usage: $0 {plan|launch|check|fetch}   (run executes on the box)" >&2
+      echo "usage: $0 {plan|launch|check|fetch}   (run and decode-phase execute on the box)" >&2
       exit 2
       ;;
   esac

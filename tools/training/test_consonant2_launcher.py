@@ -116,6 +116,17 @@ def test_the_plan_refuses_once_a_decode_of_a_chosen_model_is_committed(tmp_path)
     assert "already" in done.stderr
 
 
+def test_the_plan_ignores_the_look_decodes_of_the_same_models(tmp_path):
+    """The round's look decodes name the arms too; only the sets this run decodes count."""
+    round_ = rv.committed_round(tmp_path)
+    for model in ("r2_candidate_ema", "r2_control_ema"):
+        round_.write_commit(round_.layout.root / "decodes" / f"tlog.look.{model}.jsonl.gz",
+                            "x", "a look decode")
+    done = _run("plan", round_, tmp_path)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.splitlines() == DECODE_LINES
+
+
 # --- launch ---------------------------------------------------------------------------------------
 
 

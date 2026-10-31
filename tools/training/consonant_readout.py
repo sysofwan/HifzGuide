@@ -978,6 +978,16 @@ def main() -> None:
     freeze.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
     doc = commands.add_parser("doc", help="render the round's freeze doc from freeze.json")
     doc.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
+    preclaim = commands.add_parser("preclaim", help="read the audit and the non-tlog guards")
+    preclaim.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
+    preclaim.add_argument("--workers", type=int, default=8)
+    claiming = commands.add_parser("claim", help="open one confirm tranche of the round")
+    claiming.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
+    claiming.add_argument("--role", required=True)
+    claiming.add_argument("--date", required=True, help="YYYY-MM-DD, the claim's date")
+    pooled = commands.add_parser("verdict", help="read the pooled confirm tranches once")
+    pooled.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
+    pooled.add_argument("--workers", type=int, default=8)
     tracer_command = commands.add_parser("tracer", help="C95 against C95 on committed decodes")
     tracer_command.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
@@ -1022,6 +1032,27 @@ def main() -> None:
         path, doc_path = freeze_path(specification), freeze_doc_path(specification)
         write_text_atomically(doc_path, render(json.loads(path.read_text(encoding="utf-8"))))
         print(f"wrote {doc_path}")
+    elif args.command in ("preclaim", "claim", "verdict"):
+        from training import aug_readout as ar
+        from training import consonant2_verdict as round2_verdict
+        from training.aug_readout_gate import Layout
+
+        specification = round_spec(args.spec)
+        if not tlog_round(specification):
+            parser.error(f"{args.command} reads the tlog round's confirm tranches only")
+        layout = Layout(specification.root)
+        if args.command == "claim":
+            path = round2_verdict.claim(specification, args.role, date=args.date,
+                                        layout=layout)
+            print(f"wrote {path}: commit it next")
+        elif args.command == "preclaim":
+            record = round2_verdict.run_preclaim(ar.Sources(specification), specification,
+                                                 layout, args.workers)
+            print(f"wrote {layout.preclaim}: {record['verdict']}")
+        else:
+            report = round2_verdict.run_verdict(ar.Sources(specification), specification,
+                                                layout, args.workers)
+            print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")
     else:
         from training import aug_readout as ar
 

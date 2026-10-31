@@ -67,6 +67,10 @@ class Layout:
         return self.root / "choice.json"
 
     @property
+    def preclaim(self) -> Path:
+        return self.root / "preclaim.json"
+
+    @property
     def report(self) -> Path:
         return self.root / "report.json"
 

@@ -69,7 +69,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
-from training.aug_readout_spec import AUG95, RoundSpec, check_pins, tlog_round
+from training.aug_readout_spec import (AUG95, TLOG_CONFIRM, TLOG_LOOK, RoundSpec,
+                                       check_pins, tlog_round)
 from training.aug_readout_spec import spec as round_spec
 from training.aug_readout_spec import SPECS
 from training.aug_readout_gate import (
@@ -294,7 +295,7 @@ class Sources:
         if tlog_round(self.spec):
             from training.consonant2_readout import input_files as round_inputs
 
-            return round_inputs(self, phase)
+            return round_inputs(self, phase, weights)
         readout = [self.decode_path(s, m)
                    for s, models in needs(phase, weights, self.spec).items() for m in models]
         if self.spec.name == "consonant1":
@@ -396,8 +397,7 @@ class Sources:
         """One tlog tranche's gating items and their decodes, every model's decoded checks, and
         the rows the item builder left out (with their filename ayah). The manifest is read only
         through :func:`tadabur.tlog_tranches.load_tranche`, whose claim gate refuses an unopened
-        confirm tranche; part 1 reads the look tranche (its pooled confirm read is part 2,
-        #227)."""
+        confirm tranche; a confirm tranche reads the pooled ``tlog.confirm`` decodes."""
         from tadabur.tlog_tranches import load_tranche
         from tadabur.waqf_segments import hafs_segment_reference
         from training.external_corpus import read_decode_file
@@ -405,10 +405,13 @@ class Sources:
         from training.tlog_eval import gating_items
 
         if role != LOOK:
-            raise SystemExit(f"{role}: the pooled confirm read is part 2 (#227); this readout "
-                             "reads tlog look gating only")
+            from training.tlog_eval import CONFIRM_TRANCHES
+
+            if role not in CONFIRM_TRANCHES:
+                raise SystemExit(f"{role}: this round reads the tlog tranches "
+                                 f"{[LOOK, *CONFIRM_TRANCHES]}, never {role!r}")
         rows = load_tranche(role)
-        set_name = f"tlog.{role}"
+        set_name = TLOG_LOOK if role == LOOK else TLOG_CONFIRM
         base = read_decode_file(self.decode_path(set_name, BASE))
         items, unsupported = gating_items(rows, base, reference_of=hafs_segment_reference())
         keys = {item.key for item in items}

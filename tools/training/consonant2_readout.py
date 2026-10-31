@@ -184,15 +184,22 @@ def write_models(spec: RoundSpec, path: Path | None = None) -> dict:
     return records
 
 
-def input_files(sources, phase: str) -> list[Path]:
-    """Round 2's sitting inputs: the look set's decodes of every model it reads, the look
-    tranche's committed manifest and the pinned pre-registration. The guards' caches bind at
-    the confirm sitting, which is part 2 (#227)."""
+def input_files(sources, phase: str, weights=None) -> list[Path]:
+    """Round 2's sitting inputs: the look set's decodes of every model it reads, or the confirm
+    sitting's every read set plus the two claimable tranches' manifests; and the pinned
+    pre-registration."""
     from tadabur.tlog_tranches import TRANCHES_DIR
     from training.aug_readout import look_graded_models
 
-    if phase != LOOK:
-        raise SystemExit(f"round 2's {phase} sitting is part 2 (#227)")
-    decodes = [sources.decode_path(sources.spec.look_set, model)
-               for model in (*look_graded_models(sources.spec), BASE)]
-    return [*decodes, TRANCHES_DIR / f"{LOOK}.jsonl", sources.spec.prereg_path]
+    if phase == LOOK:
+        decodes = [sources.decode_path(sources.spec.look_set, model)
+                   for model in (*look_graded_models(sources.spec), BASE)]
+        return [*decodes, TRANCHES_DIR / f"{LOOK}.jsonl", sources.spec.prereg_path]
+    from training.aug_readout_gate import needs
+
+    decodes = [sources.decode_path(set_name, model)
+               for set_name, models in needs(phase, weights, sources.spec).items()
+               for model in models]
+    return [*decodes,
+            *(TRANCHES_DIR / f"{role}.jsonl" for role in ("confirm.1", "confirm.2")),
+            sources.spec.prereg_path]

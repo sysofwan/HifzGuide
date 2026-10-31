@@ -351,7 +351,8 @@ def test_both_tranches_are_decoded_by_disjoint_workers_then_pooled(tmp_path):
     env = _decode_env(tmp_path)
     done = _decode(env)
     assert done.returncode == 0, done.stderr
-    assert _calls(tmp_path) == [(role, index) for role in ROLES for index in range(2)]
+    assert sorted(_calls(tmp_path)) == sorted(
+        (role, index) for role in ROLES for index in range(2))
     log = (tmp_path / "python.log").read_text(encoding="utf-8").splitlines()
     merge = [line for line in log if "merge-confirm" in line]
     assert len(merge) == 1 and "--models base c95 r2_candidate_ema r2_control_ema" in merge[0]

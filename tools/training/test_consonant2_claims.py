@@ -24,6 +24,7 @@ import sys
 import pytest
 
 from tadabur import tlog_tranches as tranches
+from training import aug_readout as ar
 from training import aug_readout_spec as asp
 from training import consonant_readout as cr
 from training import round2_verdict_fixtures as rv
@@ -40,12 +41,12 @@ def cv():
     return consonant2_verdict
 
 
-class Sources:
+class Sources(ar.Sources):
     def input_files(self, phase, weights):
         return []
 
     def harness_identity(self):
-        return {"binary_sha256": "a" * 64}
+        return {"muraja_commit": asp.MURAJA_COMMIT, "binary_sha256": asp.HARNESS_SHA256}
 
 
 def _round(tmp_path, monkeypatch, cv, *, real=10, correct=90, commit=True) -> rv.Round:
@@ -176,6 +177,15 @@ def test_the_pre_registration_text_is_pinned_when_a_tranche_is_claimed(
     round_ = _round(tmp_path, monkeypatch, cv)
     round_.write_commit(round_.spec.prereg_path, "an edit once the numbers were known\n",
                         "edit the pre-registration")
+    _assert_refused(cv, round_, "confirm.1")
+
+
+def test_a_preclaim_pass_under_another_harness_opens_nothing(cv, tmp_path, monkeypatch):
+    round_ = _round(tmp_path, monkeypatch, cv)
+    record = json.loads(round_.preclaim.read_text(encoding="utf-8"))
+    record["harness"] = {"muraja_commit": "wrong", "binary_sha256": "0" * 64}
+    round_.write_commit(round_.preclaim, json.dumps(record), "a pass from another engine")
+    assert json.loads(round_.preclaim.read_text(encoding="utf-8"))["verdict"] == PASS
     _assert_refused(cv, round_, "confirm.1")
 
 

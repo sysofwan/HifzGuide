@@ -99,6 +99,29 @@ def look_manifest(spec: asp.RoundSpec) -> dict:
     return records
 
 
+def confirm_manifest(spec: asp.RoundSpec, weights: str = "ema") -> dict:
+    """``models.json`` as a round's merges leave it: the look's records plus every confirm-phase
+    set's identities, the teacher and the committed baselines included (what a sitting
+    validates before it grades)."""
+    from tadabur.tarteel_split import CONFIRM
+
+    records = look_manifest(spec)
+    for set_name, models in ag.needs(CONFIRM, weights, spec).items():
+        for model in models:
+            records[f"{set_name}/{model}"] = _identity_record(spec, model)
+    return records
+
+
+def _identity_record(spec: asp.RoundSpec, model: str) -> dict:
+    """One decode run's identity record: the round's pin for an arm or a pinned baseline, the
+    committed truth-baseline identity for a model the round does not pin."""
+    if model in spec.models:
+        return model_record(spec, model)
+    return {"model": model,
+            "fingerprints": ag.expected_fingerprints(DEFAULT_MODELS[model]),
+            "identity": ag.baseline_identities()[model]}
+
+
 # --- a git repository holding the pre-registration -----------------------------------------------
 
 

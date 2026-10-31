@@ -93,7 +93,7 @@ def committed_round(tmp_path: Path, flags: dict[str, int] | None = None, *,
     spec = dataclasses.replace(spec, doc_path=repo / "docs" / "consonant-round2-readout.md")
     layout = ag.Layout(spec.root)
     layout.root.mkdir()
-    layout.models.write_text(json.dumps(fx.look_manifest(spec)), encoding="utf-8")
+    layout.models.write_text(json.dumps(fx.confirm_manifest(spec)), encoding="utf-8")
     flagged = flags or EMA_FLAGS
     items = [fx.tlog_item(n, 1 + n % 5) for n in range(ITEMS)]
     sources = fx.TlogSources(

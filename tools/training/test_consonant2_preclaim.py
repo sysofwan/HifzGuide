@@ -35,7 +35,9 @@ import json
 
 import pytest
 
+from training import aug_readout as ar
 from training import aug_readout_gate as ag
+from training import aug_readout_spec as asp
 from training import round2_verdict_fixtures as rv
 from training.acceptance_stats import CANNOT_CERTIFY, FAIL, PASS
 from training.test_consonant_readout_verdict import _comparison, _interval
@@ -66,14 +68,14 @@ class Reads:
         return self.report
 
 
-class Sources:
+class Sources(ar.Sources):
     """The sitting's inputs, as the phase asks for them (nothing here is graded)."""
 
     def input_files(self, phase, weights):
         return []
 
     def harness_identity(self):
-        return {"binary_sha256": "a" * 64}
+        return {"muraja_commit": asp.MURAJA_COMMIT, "binary_sha256": asp.HARNESS_SHA256}
 
 
 def _round(tmp_path, real=10, correct=90, unclear=0):
@@ -214,6 +216,22 @@ def test_an_audit_result_that_is_not_committed_counts_for_nothing(cv, tmp_path, 
     with pytest.raises(REFUSED, match="result.json"):
         cv.run_preclaim(Sources(), round_.spec, round_.layout)
     assert reads.calls == []
+
+
+def test_a_harness_that_is_not_the_round_s_pin_refuses_before_any_read(cv, tmp_path,
+                                                                       monkeypatch):
+    round_ = rv.committed_round(tmp_path)
+    rv.plant_audit(round_, 10, 90)
+    reads = Reads()
+    monkeypatch.setattr(cv, "preclaim_report", reads)
+
+    class Other(Sources):
+        def harness_identity(self):
+            return {"muraja_commit": "wrong", "binary_sha256": "0" * 64}
+
+    with pytest.raises(REFUSED, match="pin differs"):
+        cv.run_preclaim(Other(), round_.spec, round_.layout)
+    assert reads.calls == [] and not round_.preclaim.exists()
 
 
 def test_an_audit_result_edited_since_its_commit_counts_for_nothing(cv, tmp_path, monkeypatch):

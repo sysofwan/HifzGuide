@@ -35,15 +35,19 @@ from pathlib import Path
 from tadabur.tarteel_split import CONFIRM
 from tadabur.tlog_tranches import TRANCHES_DIR, claim_tranche
 from training import aug_readout as ar
-from training.acceptance_stats import PASS, aggregate
+from training.acceptance_stats import CANNOT_CERTIFY, PASS, aggregate
 from training.aug_readout_gate import (
     Layout,
     claim as hold_sitting,
     committed_choice,
     input_name,
     is_committed,
+    needs,
+    read_manifest,
+    require_manifest,
     require_preregistration,
     require_preregistration_text,
+    round_decodes_file,
     sha256_file,
 )
 from training.aug_readout_metrics import (
@@ -52,7 +56,6 @@ from training.aug_readout_metrics import (
     CONSONANT,
     CONTROL,
     DEPARTS,
-    GEMINATE,
     PER_1000,
     POINTS,
     SHADDAH_CAUSE,
@@ -63,12 +66,13 @@ from training.aug_readout_metrics import (
     comparison_name,
     false_flag_terms,
     observed_substitutions,
+    shaddah_agreement_terms,
     substitution_terms,
     substitution_views,
     teacher_agreement_terms,
     word_agreement_terms,
 )
-from training.aug_readout_spec import RoundSpec
+from training.aug_readout_spec import TLOG_CONFIRM, RoundSpec, check_pins
 from training.aug_readout_verdict import (
     CONSONANT_BAR_TEXT,
     bound_condition,
@@ -276,8 +280,10 @@ def _catch_loss_result(layout: Layout) -> Path:
     return layout.root / "catch_loss" / RESULT
 
 
-def require_passing_preclaim(layout: Layout) -> dict:
-    """``preclaim.json`` committed in HEAD, unedited, with an overall pass."""
+def require_passing_preclaim(layout: Layout, spec: RoundSpec) -> dict:
+    """``preclaim.json`` committed in HEAD, unedited, with an overall pass **under the round's
+    pins**: the record's recorded harness and the committed pre-registration text must be the
+    round's, so a pass written under another engine cannot open a tranche."""
     path = layout.preclaim
     if not is_committed(path):
         raise SystemExit(f"{path.name} is not committed: the pre-claim phase has not run")
@@ -285,14 +291,59 @@ def require_passing_preclaim(layout: Layout) -> dict:
     if record.get("verdict") != PASS:
         raise SystemExit(f"{path.name} is {record.get('verdict')!r}, not a pass: no claim is "
                          "possible and no confirm tranche is read")
+    prereg = require_preregistration_text(spec)
+    check_pins(spec, record.get("harness") or {}, prereg)
     return record
+
+
+def _freeze_path(spec: RoundSpec) -> Path:
+    """The round's frozen substitution list: the committed ``freeze.json`` the G5 veto reads."""
+    return Path(spec.root) / "freeze.json"
+
+
+def require_frozen_list(spec: RoundSpec) -> tuple[Path, str]:
+    """The round's freeze, refused unless it is committed and unchanged at HEAD, with its
+    SHA-256: the G5 list is frozen, so a working-tree edit is never a new selection."""
+    path = _freeze_path(spec)
+    if not path.exists():
+        raise SystemExit(f"{path.name} is absent: the round's frozen substitutions are not "
+                         "recorded")
+    if not is_committed(path):
+        raise SystemExit(f"{path.name} is not committed unchanged: the frozen substitution "
+                         "list is never edited")
+    return path, sha256_file(path)
+
+
+def _manifest_records(layout: Layout, spec: RoundSpec) -> dict:
+    """The identities the sitting validates: the round's ``models.json`` plus the pooled confirm
+    merge's own (``meta.confirm.json``), which the confirm decoder writes beside its decodes."""
+    records = dict(read_manifest(layout))
+    meta = round_decodes_file(spec, TLOG_CONFIRM, BASE).parent / "meta.confirm.json"
+    if meta.exists():
+        records.update(json.loads(meta.read_text(encoding="utf-8")).get("identities", {}))
+    return records
+
+
+def validate_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping,
+                    weights) -> tuple[dict, tuple[str, ...]]:
+    """Refuse a read set whose producer identity is not the pinned, chosen model, before any
+    grade is read: every present set's records are validated by the canonical
+    :func:`training.aug_readout_gate.require_manifest`. Sets whose decodes are absent are
+    returned as such — they cannot certify, and nothing reads them."""
+    absent = ar.absent_sets(sources, CONFIRM, weights, spec)
+    required = {name: models for name, models in needs(CONFIRM, weights, spec).items()
+                if name not in absent}
+    identities = require_manifest(_manifest_records(layout, spec), required, choice,
+                                  spec=spec)
+    return identities, absent
 
 
 def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
                  workers: int = 1) -> dict:
     """Read the audit and the non-tlog guards once, write ``preclaim.json``, and end the round
-    on anything but a pass. Refused without the committed choice and the committed audit
-    result, before anything is read, and once its own record exists."""
+    on anything but a pass. Refused without the committed choice, the committed audit result
+    and the round's pinned harness and pre-registration, before anything is read, and once its
+    own record exists."""
     layout = layout or Layout(spec.root)
     choice = committed_choice(layout, spec=spec)
     result_path = _catch_loss_result(layout)
@@ -302,6 +353,8 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     record = layout.preclaim
     if record.exists():
         raise SystemExit(f"{record.name} exists: the pre-claim phase reads once")
+    prereg = require_preregistration(spec, sources.harness_identity())
+    validate_inputs(sources, spec, layout, choice.choice, choice.choice["weights"])
     result = json.loads(result_path.read_text(encoding="utf-8"))
     report = preclaim_report(sources, spec, choice.choice, workers)
     conditions = [audit_condition(result), *preclaim_conditions(report, spec)]
@@ -318,6 +371,7 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
         "bars": dict(spec.bars),
         "choice_commit": choice.commit,
         "choice_sha256": choice.sha256,
+        "prereg_sha256": prereg,
         "harness": sources.harness_identity(),
         "inputs": inputs,
         "missing_inputs": missing,
@@ -370,7 +424,7 @@ def claim(spec: RoundSpec, role: str, *, tranches_dir: Path = TRANCHES_DIR, date
                          f"{list(CONFIRM_TRANCHES)}")
     layout = layout or Layout(spec.root)
     require_preregistration_text(spec)
-    require_passing_preclaim(layout)
+    require_passing_preclaim(layout, spec)
     return claim_tranche(role, issue=spec.issue, commit=_head_commit(layout.preclaim),
                          date=date, tranches_dir=tranches_dir)
 
@@ -413,9 +467,17 @@ def final_verdict(preclaim: Mapping, conditions: Sequence[Mapping]) -> str:
     return aggregate([preclaim["verdict"], *(c["verdict"] for c in conditions)])
 
 
+#: A cell with no graded word: reported, defined by nothing, and never a statistic.
+EMPTY_CELL = {"status": "reported empty", "reason": "no graded word in this cell"}
+
+
 def _tables(grades: Sequence, roles: Sequence[str],
             comparisons: Sequence[tuple[str, str]]) -> dict:
-    """All-cause, consonant-caused, tashkeel-caused and shaddah-caused false flags per 1,000."""
+    """All-cause, consonant-caused, tashkeel-caused and shaddah-caused false flags per 1,000.
+    A cell with no graded word is marked empty rather than raising: a reported-only subset can
+    be empty without blocking the gating outcome."""
+    if not grades:
+        return dict(EMPTY_CELL)
     shipped = SHIPPED_DEFAULT.name
     return {
         "all_cause": compare(false_flag_terms(grades, roles, shipped), PER_1000, comparisons),
@@ -494,19 +556,137 @@ def dose_response(tadabur, present: Sequence[str], baseline: str) -> dict:
     return {"caveat": DOSE_CAVEAT, "reciters": rows}
 
 
+def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
+                   present: Sequence[str], preclaim: Mapping, workers: int) -> dict | None:
+    """The pooled confirm read: both tranches once, their span-trimmed views, the reported
+    tables. ``None`` when the pooled gating set holds no item (nothing can certify)."""
+    tranches, trimmed = {}, {}
+    for role in CONFIRM_TRANCHES:
+        for data, table in zip(sources.tlog_views(role, models), (tranches, trimmed)):
+            bound = _bound_set(data, roles)
+            table[role] = ar.SetData(
+                bound.items, bound.decodes,
+                sources.grade(bound.items, bound.decodes, present),
+                excluded=bound.excluded)
+    pooled = confirm_views({role: data.items for role, data in tranches.items()})
+    items = pooled[POOLED_CONFIRM]
+    if not items:
+        return None
+    decodes = {role: {**tranches["confirm.1"].decodes[role],
+                      **tranches["confirm.2"].decodes[role]} for role in present}
+    grades = sources.grade(items, decodes, present)
+    comparisons = spec.comparisons
+    texts = ar.checks_text(ar.SetData(items, decodes), present)
+    main = _tables(grades, present, comparisons)
+    mechanism = {
+        "tlog_confirm": compare(
+            word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                 workers=workers), POINTS, comparisons),
+        "tlog_confirm_departs": compare(
+            word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                 subset=DEPARTS, workers=workers), POINTS, comparisons),
+        "tlog_confirm_shaddah": compare(
+            shaddah_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                    workers=workers), POINTS, comparisons),
+    }
+    shipped = SHIPPED_DEFAULT.name
+    frozen = frozen_substitutions(spec)
+    substitutions = substitution_views(
+        substitution_terms(grades, present, shipped,
+                           observed_substitutions(grades, present, shipped)),
+        PER_1000, comparisons)
+    conditions = pooled_conditions(
+        {"main": main, "mechanism": mechanism, "substitutions": substitutions,
+         "g5_frozen": list(frozen)}, spec)
+    floor_keys = {item.key for item in items
+                  if (item.labels or {}).get("id_floor_ok") is True}
+    floor_grades = [grade for grade in grades if grade.item.key in floor_keys]
+    companions = _bar2_companions(main["all_cause"], spec.baseline)
+    companions["teacher_shared_flags"] = _teacher_shared_flags(grades, spec.baseline)
+    # The span-trimmed sensitivity: the same gating decodes, each item cut to the span its
+    # decode records. Reported only, never graded into gating.
+    span_pooled = confirm_views({role: data.items for role, data in trimmed.items()})
+    span_items = span_pooled[POOLED_CONFIRM]
+    span_decodes = {role: {**trimmed["confirm.1"].decodes[role],
+                           **trimmed["confirm.2"].decodes[role]} for role in present}
+    tarteel = _bound_set(sources.tarteel(CONFIRM, models), roles)
+    dev = sources.tadabur(models)
+    tadabur = ar.TadaburData(
+        dev.clips,
+        {roles[name]: lines for name, lines in dev.decodes.items() if name in roles},
+        {roles[name]: blanks for name, blanks in dev.blanks.items() if name in roles},
+        dev.redecoded_identical)
+    return {
+        "issue": spec.issue,
+        "statement": STATEMENT,
+        "baseline": spec.baseline,
+        "main": main,
+        "mechanism": mechanism,
+        "substitutions": substitutions,
+        "g5_frozen": list(frozen),
+        "tranches": {role: _tables(data.grades, present, comparisons)
+                     for role, data in tranches.items()},
+        "sensitivity": {"span_trimmed": _tables(
+            sources.grade(span_items, span_decodes, present), present, comparisons)},
+        "tarteel_confirm": _tables(
+            sources.grade(tarteel.items, tarteel.decodes, present), present, comparisons),
+        "dose_response": dose_response(tadabur, present, spec.baseline),
+        "bar2_companions": companions,
+        "candidate_vs_control": {
+            "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
+                             ((CANDIDATE, CONTROL),)),
+            "caveat": CONTROL_CAVEAT},
+        "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
+        "coverage": {"tranches": {
+            role: _tranche_coverage(data, present, comparisons, workers)
+            for role, data in tranches.items()},
+            "reported_strata": dict(NOT_DECODED)},
+        "sizes": {"pooled": len(items),
+                  **{role: len(data.items) for role, data in tranches.items()}},
+        "verdict": {"bars": dict(spec.bars), "conditions": conditions,
+                    "preclaim": preclaim["verdict"],
+                    "verdict": final_verdict(preclaim, conditions)},
+    }
+
+
+def _unreadable_report(spec: RoundSpec, preclaim: Mapping, reason: str,
+                       missing: Sequence[str]) -> dict:
+    """The round's record when nothing was read: every pooled bar cannot certify, and the
+    reason (the absent inputs) is named rather than raised."""
+    tables = {name: None for name in ("all_cause", "consonant_cause", "tashkeel_cause",
+                                      "shaddah_cause")}
+    mechanism = {name: None for name in ("tlog_confirm", "tlog_confirm_departs",
+                                         "tlog_confirm_shaddah")}
+    conditions = pooled_conditions(
+        {"main": tables, "mechanism": mechanism, "substitutions": {}, "g5_frozen": []}, spec)
+    return {
+        "issue": spec.issue,
+        "statement": STATEMENT,
+        "baseline": spec.baseline,
+        "unreadable": {"reason": reason, "missing_inputs": list(missing)},
+        "tranches": {},
+        "strata": {},
+        "coverage": {"reported_strata": dict(NOT_DECODED)},
+        "verdict": {"bars": dict(spec.bars), "conditions": conditions,
+                    "preclaim": preclaim["verdict"], "verdict": CANNOT_CERTIFY},
+    }
+
+
 def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers: int = 1,
                 tranches_dir: Path = TRANCHES_DIR) -> dict:
     """Read ``confirm.1`` and ``confirm.2`` once, pool them, and write the report and verdict.
 
     Refused before any tranche is read unless the pre-registration is committed at its pinned
-    hash, the committed pre-claim record is a pass and both claims are committed in HEAD, and
-    once ``verdict.json`` exists (the sitting reads once). The tranches are read from
-    ``tranches_dir``, the same directory their claims are checked in.
+    hash, the freeze is committed unchanged, the producers' identities are the pinned, chosen
+    models, the committed pre-claim record is a pass under those same pins, both claims are
+    committed in HEAD, and ``verdict.json`` is absent (the sitting reads once). A declared input
+    that is absent, or a pooled tranche that holds no gating item, writes a cannot-certify
+    verdict instead of reading nothing's file or grading an empty population.
     """
     from tadabur.tlog_tranches import require_claim
 
     layout = layout or Layout(spec.root)
-    preclaim = require_passing_preclaim(layout)
+    preclaim = require_passing_preclaim(layout, spec)
     tranches_dir = Path(tranches_dir)
     sources.tranches_dir = tranches_dir
     for role in CONFIRM_TRANCHES:
@@ -515,103 +695,30 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
         raise SystemExit(f"{layout.verdict.name} exists: the pooled confirm read happens once")
     committed = committed_choice(layout, spec=spec)
     prereg = require_preregistration(spec, sources.harness_identity())
+    _, freeze_sha = require_frozen_list(spec)
     weights = committed.choice["weights"]
     chosen = ar.choice_models(spec, weights)
     models = (*chosen.values(), spec.baseline, BASE)
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
              spec.baseline: spec.baseline, BASE: BASE}
     present = tuple(roles.values())
+    identities, absent = validate_inputs(sources, spec, layout, committed.choice, weights)
     inputs, missing = _inputs(sources, spec, committed.choice)
 
     sitting = {"phase": "confirm", "preclaim_sha256": sha256_file(layout.preclaim),
                "choice_commit": committed.commit, "choice_sha256": committed.sha256,
-               "prereg_sha256": prereg, "inputs": inputs, "missing_inputs": missing,
+               "prereg_sha256": prereg, "freeze_sha256": freeze_sha,
+               "identities": identities, "inputs": inputs, "missing_inputs": missing,
                "harness": sources.harness_identity()}
     with hold_sitting(layout.claim("confirm"), sitting):
-        tranches, trimmed = {}, {}
-        for role in CONFIRM_TRANCHES:
-            for data, table in zip(sources.tlog_views(role, models), (tranches, trimmed)):
-                bound = _bound_set(data, roles)
-                table[role] = ar.SetData(
-                    bound.items, bound.decodes,
-                    sources.grade(bound.items, bound.decodes, present),
-                    excluded=bound.excluded)
-        pooled = confirm_views({role: data.items for role, data in tranches.items()})
-        items = pooled[POOLED_CONFIRM]
-        decodes = {role: {**tranches["confirm.1"].decodes[role],
-                          **tranches["confirm.2"].decodes[role]} for role in present}
-        grades = sources.grade(items, decodes, present)
-        comparisons = spec.comparisons
-        texts = ar.checks_text(ar.SetData(items, decodes), present)
-        main = _tables(grades, present, comparisons)
-        mechanism = {
-            "tlog_confirm": compare(
-                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
-                                     workers=workers), POINTS, comparisons),
-            "tlog_confirm_departs": compare(
-                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
-                                     subset=DEPARTS, workers=workers), POINTS, comparisons),
-            "tlog_confirm_shaddah": compare(
-                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
-                                     subset=GEMINATE, workers=workers), POINTS, comparisons),
-        }
-        shipped = SHIPPED_DEFAULT.name
-        frozen = frozen_substitutions(spec)
-        substitutions = substitution_views(
-            substitution_terms(grades, present, shipped,
-                               observed_substitutions(grades, present, shipped)),
-            PER_1000, comparisons)
-        conditions = pooled_conditions(
-            {"main": main, "mechanism": mechanism, "substitutions": substitutions,
-             "g5_frozen": list(frozen)}, spec)
-        floor_keys = {item.key for item in items
-                      if (item.labels or {}).get("id_floor_ok") is True}
-        floor_grades = [grade for grade in grades if grade.item.key in floor_keys]
-        companions = _bar2_companions(main["all_cause"], spec.baseline)
-        companions["teacher_shared_flags"] = _teacher_shared_flags(grades, spec.baseline)
-        # The span-trimmed sensitivity: the same gating decodes, each item cut to the span its
-        # decode records. Reported only, never graded into gating.
-        span_pooled = confirm_views({role: data.items for role, data in trimmed.items()})
-        span_items = span_pooled[POOLED_CONFIRM]
-        span_decodes = {role: {**trimmed["confirm.1"].decodes[role],
-                               **trimmed["confirm.2"].decodes[role]} for role in present}
-        tarteel = _bound_set(sources.tarteel(CONFIRM, models), roles)
-        dev = sources.tadabur(models)
-        tadabur = ar.TadaburData(
-            dev.clips,
-            {roles[name]: lines for name, lines in dev.decodes.items() if name in roles},
-            {roles[name]: blanks for name, blanks in dev.blanks.items() if name in roles},
-            dev.redecoded_identical)
-        report = {
-            "issue": spec.issue,
-            "statement": STATEMENT,
-            "main": main,
-            "mechanism": mechanism,
-            "substitutions": substitutions,
-            "g5_frozen": list(frozen),
-            "tranches": {role: _tables(data.grades, present, comparisons)
-                         for role, data in tranches.items()},
-            "sensitivity": {"span_trimmed": _tables(
-                sources.grade(span_items, span_decodes, present), present, comparisons)},
-            "tarteel_confirm": _tables(
-                sources.grade(tarteel.items, tarteel.decodes, present), present, comparisons),
-            "dose_response": dose_response(tadabur, present, spec.baseline),
-            "bar2_companions": companions,
-            "candidate_vs_control": {
-                "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
-                                 ((CANDIDATE, CONTROL),)),
-                "caveat": CONTROL_CAVEAT},
-            "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
-            "coverage": {"tranches": {
-                role: _tranche_coverage(data, present, comparisons, workers)
-                for role, data in tranches.items()},
-                "reported_strata": dict(NOT_DECODED)},
-            "sizes": {"pooled": len(items),
-                      **{role: len(data.items) for role, data in tranches.items()}},
-            "verdict": {"bars": dict(spec.bars), "conditions": conditions,
-                        "preclaim": preclaim["verdict"],
-                        "verdict": final_verdict(preclaim, conditions)},
-        }
+        if absent:
+            report = _unreadable_report(
+                spec, preclaim, f"declared input absent: {', '.join(absent)}", missing)
+        else:
+            report = _pooled_report(sources, spec, models, roles, present, preclaim, workers)
+            if report is None:
+                report = _unreadable_report(
+                    spec, preclaim, "the pooled gating tranches hold no item", missing)
         write_text_atomically(layout.report, ar.canonical(report))
         write_text_atomically(layout.verdict, ar.canonical(
             {"issue": spec.issue, "statement": STATEMENT,
@@ -629,8 +736,9 @@ def _condition_lines(conditions: Sequence[Mapping]) -> list[str]:
 
 
 def render(preclaim: Mapping, report: Mapping | None = None) -> str:
-    """The round's readout doc as text: the verdict, every gate with its frozen bar, and the
-    clip-level-split statement. ``report=None`` is a round the pre-claim ended."""
+    """The round's readout doc as text: the verdict, every gate with its frozen bar, the
+    reported tables with their estimates and intervals, and the clip-level-split statement.
+    ``report=None`` is a round the pre-claim ended; a report with ``unreadable`` renders why."""
     lines = [f"# The tlog consonant round's readout (#{preclaim['issue']})", "",
              STATEMENT, "",
              f"Pre-claim verdict: {preclaim['verdict']}", ""]
@@ -651,40 +759,91 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
               f"Verdict: {verdict['verdict']} (pre-claim {verdict['preclaim']})", "",
               "### Bars", ""]
     lines += _condition_lines(verdict["conditions"])
+    if report.get("unreadable"):
+        lines += ["", "Nothing was read: " + report["unreadable"]["reason"],
+                  *[f"- missing input: {name}" for name in report["unreadable"]["missing_inputs"]]]
+        return "\n".join(lines) + "\n"
+    baseline = report["baseline"]
+    lines += ["", "### The pooled gating tables", ""]
+    lines += _tables_lines("pooled confirm.1 + confirm.2", report["main"], baseline)
     lines += ["", "### Each tranche alone", ""]
     for role, table in report["tranches"].items():
-        lines.append(f"- {role}: {table['all_cause']['observations']} observations, "
-                     f"{table['all_cause']['clusters']} surah clusters")
+        lines += _tables_lines(role, table, baseline)
+    lines += ["", f"### Gating ∧ {ID_FLOOR_OK}", ""]
+    lines += _tables_lines(ID_FLOOR_OK, report["strata"][ID_FLOOR_OK], baseline)
     lines += ["", "### Coverage and empty slots, per tranche", ""]
     for role, coverage in report["coverage"]["tranches"].items():
-        empty = coverage["empty_slots"]["models"][CANDIDATE]["point"]
         lines.append(f"- {role}: {coverage['clips']} clips, {coverage['partial_span']} "
-                     f"partial spans, {coverage['excluded']} excluded; candidate empty slots "
-                     f"{empty} per 100 carriers")
-    lines += ["", "### Reported, not gating", ""]
+                     f"partial spans, {coverage['excluded']} excluded")
+        lines += _single_lines("empty slots per 100 consonant carriers",
+                               coverage["empty_slots"], baseline)
+    lines += ["", "### Tarteel v1 confirm (the full round-1 table)", ""]
+    lines += _tables_lines("Tarteel v1 confirm", report["tarteel_confirm"], baseline)
+    lines += ["", "### Span-trimmed sensitivity", ""]
+    lines += _tables_lines("span-trimmed confirm.1 + confirm.2",
+                           report["sensitivity"]["span_trimmed"], baseline)
+    lines += ["", "### Shaddah, reported only", ""]
+    lines += _single_lines("shaddah agreement with the teacher",
+                           report["mechanism"]["tlog_confirm_shaddah"], baseline)
+    lines += ["", "### Reported companions", ""]
     for name, value in report["bar2_companions"].items():
         lines.append(f"- {name}: {value}")
-    lines += [
-        f"- Tarteel v1 confirm: {_model_point(report['tarteel_confirm']['all_cause'])}",
-        f"- span-trimmed sensitivity: "
-        f"{_model_point(report['sensitivity']['span_trimmed']['all_cause'])}",
-        f"- shaddah-caused false flags: {_model_point(report['main']['shaddah_cause'])}",
-        f"- shaddah agreement with the teacher: "
-        f"{_model_point(report['mechanism']['tlog_confirm_shaddah'])}",
-        f"- per-reciter dose-response on Tadabur dev: "
-        f"{len(report['dose_response']['reciters'])} reciters ({report['dose_response']['caveat']})",
-    ]
-    lines += ["", f"Candidate − control: {report['candidate_vs_control']['caveat']}",
-              f"Gating ∧ {ID_FLOOR_OK}: "
-              f"{report['strata'][ID_FLOOR_OK]['all_cause']['observations']} observations",
-              f"Reported strata: {report['coverage']['reported_strata']['status']} — "
+    lines += ["", "### Per-reciter dose-response on Tadabur dev", "",
+              report["dose_response"]["caveat"], "",
+              "| reciter | clips | candidate | c95 | candidate − c95 |",
+              "|---|---|---|---|---|"]
+    for row in report["dose_response"]["reciters"]:
+        points = row["points"]
+        lines.append(f"| {row['reciter_id']} | {row['clips']} | "
+                     f"{_number(points.get(CANDIDATE))} | {_number(points.get(baseline))} | "
+                     f"{_number(row['candidate_vs_baseline'])} |")
+    lines += ["", "### Candidate − control", "",
+              report["candidate_vs_control"]["caveat"], ""]
+    lines += _single_lines("candidate − control", report["candidate_vs_control"]["table"],
+                           baseline)
+    lines += ["", f"Reported strata: {report['coverage']['reported_strata']['status']} — "
               f"{report['coverage']['reported_strata']['reason']}"]
     return "\n".join(lines) + "\n"
 
 
-def _model_point(table: Mapping) -> str:
-    """One table's candidate point, then each paired comparison with its interval."""
-    candidate = table["models"][CANDIDATE]["point"]
-    versus = ", ".join(f"{name} {value['point']} {value['interval']}"
-                       for name, value in table["comparisons"].items())
-    return f"candidate {candidate}" + (f"; {versus}" if versus else "")
+def _number(value) -> str:
+    return "undefined" if value is None else f"{value:.3f}"
+
+
+def _interval(value: Mapping) -> str:
+    if value.get("lower") is None and value.get("upper") is None:
+        return "no interval"
+    return f"[{_number(value.get('lower'))}, {_number(value.get('upper'))}]"
+
+
+def _single_lines(title: str, table: Mapping, baseline: str) -> list[str]:
+    """One :func:`training.aug_readout_metrics.compare` table: each model's point and each
+    paired difference with its interval."""
+    if "models" not in table:
+        return [f"- {title}: {table.get('status')} — {table.get('reason')}"]
+    out = [f"**{title}** (per 1,000 or points; n = {table['observations']})", "",
+           "| model | point |", "|---|---|"]
+    for name in (CANDIDATE, baseline, BASE, CONTROL):
+        if name in table["models"]:
+            out.append(f"| {name} | {_number(table['models'][name]['point'])} |")
+    for name, versus in table["comparisons"].items():
+        out.append(f"| {name} | {_number(versus['point'])} {_interval(versus['interval'])} |")
+    return out
+
+
+def _tables_lines(title: str, tables: Mapping, baseline: str) -> list[str]:
+    """One cell's cause tables (all-cause, consonant, tashkeel, shaddah) with each model's
+    point and the candidate − baseline difference with its interval."""
+    if "all_cause" not in tables:
+        return [f"- {title}: {tables.get('status')} — {tables.get('reason')}"]
+    first = tables["all_cause"]
+    rows = [name for name in (CANDIDATE, baseline, BASE, CONTROL) if name in first["models"]]
+    out = [f"**{title}** (per 1,000 graded words; n = {first['observations']})", "",
+           "| cause | " + " | ".join(rows) + " | candidate − baseline |",
+           "|---" * (len(rows) + 2) + "|"]
+    for cause, table in tables.items():
+        points = " | ".join(_number(table["models"][name]["point"]) for name in rows)
+        versus = ", ".join(f"{_number(value['point'])} {_interval(value['interval'])}"
+                           for value in table["comparisons"].values())
+        out.append(f"| {cause} | {points} | {versus} |")
+    return out

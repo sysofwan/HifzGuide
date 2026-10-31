@@ -331,14 +331,14 @@ class ConfirmSources(ar.Sources):
     qdat = qud_other = qud = retasy = bench = _refused
 
 
-class Sources:
+class Sources(ar.Sources):
     """Pre-claim inputs, as ``run_preclaim`` asks for them."""
 
     def input_files(self, phase, weights):
         return []
 
     def harness_identity(self):
-        return {"binary_sha256": "a" * 64}
+        return {"muraja_commit": asp.MURAJA_COMMIT, "binary_sha256": asp.HARNESS_SHA256}
 
 
 def _claim(round_: rv.Round, role: str, *, commit: bool = True):
@@ -365,6 +365,7 @@ def _opened(tmp_path, monkeypatch, cv, *, real=10, claims=("confirm.1", "confirm
     (round_.layout.root / "freeze.json").write_text(json.dumps(
         {"substitutions": [{"cause": "other_consonant", "substitution": SUBSTITUTION,
                             "words": 9}]}), encoding="utf-8")
+    round_.commit(round_.layout.root / "freeze.json", message="the freeze")
     return round_
 
 
@@ -553,6 +554,93 @@ def test_the_verdict_never_reads_a_pre_claim_set_or_a_third_tranche(cv, tmp_path
 # --- the doc and the command ------------------------------------------------------------------------
 
 
+def test_an_unchosen_selector_or_checkpoint_refuses_the_pooled_read(cv, tmp_path, monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    records = json.loads(round_.layout.models.read_text(encoding="utf-8"))
+    records["tlog.confirm/r2_candidate_ema"] = fx.model_record(round_.spec,
+                                                               "r2_candidate_live")
+    round_.layout.models.write_text(json.dumps(records), encoding="utf-8")
+    with pytest.raises(REFUSED):
+        _verdict(cv, round_)
+
+    record = fx.model_record(round_.spec, "r2_candidate_ema")
+    record["identity"] = {**record["identity"], "checkpoint_sha256": "0" * 64}
+    records["tlog.confirm/r2_candidate_ema"] = record
+    round_.layout.models.write_text(json.dumps(records), encoding="utf-8")
+    with pytest.raises(REFUSED):
+        _verdict(cv, round_)
+    assert not round_.layout.verdict.exists()
+
+
+def test_a_freeze_edited_after_its_commit_refuses_the_pooled_read(cv, tmp_path, monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    (round_.layout.root / "freeze.json").write_text(
+        json.dumps({"substitutions": []}), encoding="utf-8")
+    with pytest.raises(REFUSED, match="not committed"):
+        _verdict(cv, round_)
+    assert not round_.layout.verdict.exists()
+
+
+class MissingInput(ConfirmSources):
+    """A round whose declared confirm decode is absent: the sitting must not read it."""
+
+    def input_files(self, phase, weights):
+        return [self.decode_path("tlog.confirm", CANDIDATE)]
+
+
+class EmptyTranches(ConfirmSources):
+    """Both claimable tranches hold no gating item."""
+
+    def __init__(self, spec, **kwargs):
+        super().__init__(spec, **kwargs)
+        self.tranches = {"confirm.1": [], "confirm.2": []}
+
+
+class NoFloorItems(ConfirmSources):
+    """Every gating item is outside the id-floor reported set, which stays empty."""
+
+    def __init__(self, spec, **kwargs):
+        super().__init__(spec, **kwargs)
+        self.tranches = {
+            role: [dataclasses.replace(item, labels={"assigned_label": "2:1",
+                                                     "id_floor_ok": False})
+                   for item in items]
+            for role, items in self.tranches.items()}
+
+
+def test_a_declared_input_that_is_absent_cannot_certify_without_reading(cv, tmp_path,
+                                                                        monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    sources = MissingInput(round_.spec)
+    report = _verdict(cv, round_, sources)
+
+    assert report["verdict"]["verdict"] == CANNOT_CERTIFY
+    assert "tlog.confirm" in report["unreadable"]["reason"]
+    assert sources.read == []
+    assert json.loads(round_.layout.verdict.read_text(encoding="utf-8"))["verdict"] == \
+        CANNOT_CERTIFY
+    assert "Nothing was read" in round_.spec.doc_path.read_text(encoding="utf-8")
+
+
+def test_empty_gating_tranches_cannot_certify_without_grading(cv, tmp_path, monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    report = _verdict(cv, round_, EmptyTranches(round_.spec))
+
+    assert report["verdict"]["verdict"] == CANNOT_CERTIFY
+    assert "no item" in report["unreadable"]["reason"]
+    assert json.loads(round_.layout.report.read_text(encoding="utf-8"))["unreadable"]
+
+
+def test_an_empty_reported_stratum_does_not_block_the_gating_verdict(cv, tmp_path,
+                                                                     monkeypatch):
+    round_ = _opened(tmp_path, monkeypatch, cv)
+    report = _verdict(cv, round_, NoFloorItems(round_.spec))
+
+    assert report["strata"][tlog_eval.ID_FLOOR_OK] == cv.EMPTY_CELL
+    assert report["verdict"]["verdict"] == PASS
+    assert "reported empty" in round_.spec.doc_path.read_text(encoding="utf-8")
+
+
 def test_the_doc_states_the_verdict_every_bar_and_the_statement(cv, tmp_path, monkeypatch):
     round_ = _opened(tmp_path, monkeypatch, cv)
     report = _verdict(cv, round_)
@@ -563,6 +651,13 @@ def test_the_doc_states_the_verdict_every_bar_and_the_statement(cv, tmp_path, mo
     for name in BARS:
         assert name in text
     assert "not decoded" in text
+    assert "| all_cause |" in text and "[" in text  # the tables carry their intervals
+    assert f"{report['main']['all_cause']['models']['c95']['point']:.3f}" in text
+    assert f"{report['candidate_vs_control']['table']['models']['candidate']['point']:.3f}" \
+        in text
+    assert "n = 1" in text
+    assert "Tarteel v1 confirm" in text and "shaddah agreement" in text
+    assert "| 30 | 2 |" in text  # the first reciter's clips and its two points
     assert text == cv.render(preclaim, report)  # generated, reproducible
 
 

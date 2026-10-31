@@ -7,15 +7,23 @@
 # writes nothing. `launch` runs the same checks, stages the repository as a bundle clone on the
 # box (the decoder's `committed_choice` reads git at HEAD, so the box needs the history) and
 # starts `run` detached under flock /root/scratch/gpu.lock. A decode of a chosen model that is
-# already committed in the round's decodes/ blocks both: the sitting reads once.
+# already committed in the round's decodes/ blocks all three: the sitting reads once.
 #
-# On the box, `run` stages the G2 and G6 clips under the lock, decodes every shard at 6
-# processes x 1 thread with shared features, then produces both arms' held-out caches under the
-# round's own pins. The models are the ones the committed choice names, never a fixed selector.
+# `resume` restages the current branch and starts `run --resume` the same way, for a run the box
+# stopped early (an OOM-killed shard, a lost connection). It keeps the failed run's events and
+# outputs and queues only the shards with no exit-0 event, then writes the G6 caches, which the
+# failed run never reached. The rerun decodes a couple of shards at a time (RESUME_PARALLEL,
+# default 2): the failure was memory, so the retry must not repeat the 6-process load.
+#
+# On the box, `run` stages the G2 and G6 clips under the lock, decodes every queueable shard at
+# PARALLEL processes x 1 thread with shared features, then produces both arms' held-out caches
+# under the round's own pins. The models are the ones the committed choice names, never a fixed
+# selector.
 #
 # Mac side, from the worktree root (the choice commit must exist first):
 #   scripts/issue-230-decode.sh plan
 #   scripts/issue-230-decode.sh launch
+#   scripts/issue-230-decode.sh resume     # after a failed or interrupted run
 #   scripts/issue-230-decode.sh check
 #   scripts/issue-230-decode.sh fetch      # pull the decodes and the truth-baseline caches
 set -euo pipefail
@@ -25,6 +33,8 @@ ROOT=${ISSUE_ROOT:-/root/scratch/issue-230}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ROUND_DIR=${ROUND_DIR:-tools/tadabur/consonant2_readout}
 PARALLEL=${PARALLEL:-6}
+#: A resume retries after an OOM kill: fewer processes, whatever the first launch used.
+RESUME_PARALLEL=${RESUME_PARALLEL:-2}
 BUDGET=${BUDGET:-18000}
 #: The sets decoded for the round's two arms, in the order the readout reads them.
 SETS=(tarteel_v1.confirm qdat qud_other tadabur_dev_unseen)
@@ -127,12 +137,22 @@ stage_repo() {
 # --- the Mac side -------------------------------------------------------------------------------
 
 
+start_run() {  # <parallel> <run args>
+  ssh "$HOST" "ROUND_DIR='$ROUND_DIR' BUDGET=$BUDGET PARALLEL=$1 nohup flock /root/scratch/gpu.lock \
+    '$ROOT/repo/scripts/issue-230-decode.sh' run $2 \
+    >> '$ROOT/logs/run.out' 2>&1 & echo 'started: '\$!"
+}
+
 launch() {
   require_ready
   stage_repo
-  ssh "$HOST" "ROUND_DIR='$ROUND_DIR' BUDGET=$BUDGET nohup flock /root/scratch/gpu.lock \
-    '$ROOT/repo/scripts/issue-230-decode.sh' run \
-    >> '$ROOT/logs/run.out' 2>&1 & echo 'started: '\$!"
+  start_run "$PARALLEL" ""
+}
+
+resume() {
+  require_ready
+  stage_repo
+  start_run "$RESUME_PARALLEL" --resume
 }
 
 check() {
@@ -279,8 +299,8 @@ run_shard() {  # <set> <shard>
   return "$rc"
 }
 
-decode() {
-  local set_name i n model
+queue_jobs() {
+  local set_name i n
   : > "$ROOT/logs/jobs.txt"
   for set_name in "${SETS[@]}"; do
     n=$(python -m training.aug_readout_decode --spec consonant2 --set "$set_name" \
@@ -288,14 +308,35 @@ decode() {
     for ((i = 0; i < n; i++)); do printf '%s %s\n' "$set_name" "$i"; done \
       >> "$ROOT/logs/jobs.txt"
   done
+}
+
+pending_jobs() {
+  # A resumed run retries only the shards with no exit-0 event: a shard that ran is decoded
+  # once, and its output stays as the sitting wrote it.
+  local set_name shard
+  while read -r set_name shard; do
+    grep -Eq " $set_name shard $shard exit 0\$" "$ROOT/logs/events" 2>/dev/null \
+      || printf '%s %s\n' "$set_name" "$shard"
+  done < "$ROOT/logs/jobs.txt"
+}
+
+decode() {
+  local model status=0 cache_status
+  queue_jobs
+  pending_jobs > "$ROOT/logs/pending.txt"
   export ROOT MODELS
   export -f run_shard
-  xargs -P "$PARALLEL" -n 2 bash -c 'run_shard "$1" "$2"' _ < "$ROOT/logs/jobs.txt"
-  # G6's caches, under the round's own pins: the baseline's already exist from round 1.
+  xargs -P "$PARALLEL" -n 2 bash -c 'run_shard "$1" "$2"' _ < "$ROOT/logs/pending.txt" \
+    || status=$?
+  # G6's caches, under the round's own pins: the baseline's already exist from round 1. They are
+  # independent of the shard decodes, so a still-failing shard must not leave them unwritten.
   for model in ${MODELS//,/ }; do
+    cache_status=0
     python -m training.consonant_baseline held-out --spec consonant2 --audio-dir "$ROOT/clips" \
-      --model "$model" > "$ROOT/logs/held_out.$model.log" 2>&1
+      --model "$model" > "$ROOT/logs/held_out.$model.log" 2>&1 || cache_status=$?
+    [ "$cache_status" -eq 0 ] || [ "$status" -ne 0 ] || status=$cache_status
   done
+  return "$status"
 }
 
 decode_phase() {
@@ -324,17 +365,25 @@ record_run_result() {  # <status>
   return "$code"
 }
 
-run() {
+run() {  # [--resume]
   # A signal's EXIT trap reads the last successful command's status, so translate TERM and INT
   # into their 128+signal codes here; SIGKILL cannot be recorded, so a hard-killed run stays
   # pending. The traps are armed before anything can fail, and the EXIT trap leaves run.exit
   # and run.done for ``check`` on every other failure.
+  local resume=""
+  case "${1:-}" in
+    --resume) resume=1 ;;
+    "") ;;
+    *) die "unknown run argument: $1" ;;
+  esac
   trap 'exit 143' TERM
   trap 'exit 130' INT
   trap 'record_run_result "$?"' EXIT
   mkdir -p "$ROOT/decodes" "$ROOT/logs"
+  # A resumed run keeps the failed run's events: they are what says which shards still need a
+  # decode. A fresh run starts them clean, so a stale line cannot stand in for this sitting.
   rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
-  : > "$ROOT/logs/events"
+  if [ -n "$resume" ]; then touch "$ROOT/logs/events"; else : > "$ROOT/logs/events"; fi
   activate
   MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
     'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
@@ -350,12 +399,17 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   case "${1:-}" in
     plan) plan ;;
     launch) launch ;;
+    resume) resume ;;
     check) check ;;
     fetch) fetch ;;
-    run) run ;;
+    run)
+      shift
+      run "$@"
+      ;;
     decode-phase) decode_phase ;;
     *)
-      echo "usage: $0 {plan|launch|check|fetch}   (run and decode-phase execute on the box)" >&2
+      echo "usage: $0 {plan|launch|resume|check|fetch}
+       (run [--resume] and decode-phase execute on the box)" >&2
       exit 2
       ;;
   esac

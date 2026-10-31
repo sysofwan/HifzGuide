@@ -186,20 +186,40 @@ def write_models(spec: RoundSpec, path: Path | None = None) -> dict:
 
 def input_files(sources, phase: str, weights=None) -> list[Path]:
     """Round 2's sitting inputs: the look set's decodes of every model it reads, or the confirm
-    sitting's every read set plus the two claimable tranches' manifests; and the pinned
-    pre-registration."""
+    sitting's every read set, the teacher's decodes and the committed baselines it reuses, G6's
+    caches, the round's own frozen selections and the two claimable tranches' manifests; and the
+    pinned pre-registration (round 1's roster, ``aug_readout.Sources.input_files``)."""
+    from tadabur.exposure import EVALSET_MANIFEST_PATH
+    from tadabur.nonpro_sources import QDAT, TARTEEL_V1
+    from tadabur.qud_overlap import PILOT
     from tadabur.tlog_tranches import TRANCHES_DIR
     from training.aug_readout import look_graded_models
+    from training.consonant_readout import G6_SITES_PATH, MODELS_PATH, QUD_SELECTION_PATH
+    from training.nonpro_eval import decodes_file as committed
+    from training.nonpro_gap import GRID_PATH
+    from training.qud_pilot import decodes_file as qud_committed
+    from training.truth_baseline import CHECK_STORE, DECODE_STORE
 
     if phase == LOOK:
         decodes = [sources.decode_path(sources.spec.look_set, model)
                    for model in (*look_graded_models(sources.spec), BASE)]
         return [*decodes, TRANCHES_DIR / f"{LOOK}.jsonl", sources.spec.prereg_path]
-    from training.aug_readout_gate import needs
+    from training.aug_readout_gate import BASELINES, needs
 
+    read = needs(phase, weights, sources.spec)
+    models = sorted({model for names in read.values() for model in names})
     decodes = [sources.decode_path(set_name, model)
-               for set_name, models in needs(phase, weights, sources.spec).items()
-               for model in models]
-    return [*decodes,
+               for set_name, names in read.items() for model in names]
+    # The teacher's decode of every set the sitting grades, and G6's caches: declared even when
+    # absent, so a cannot-certify record names what is missing.
+    teachers = [sources.decode_path(set_name, BASE) for set_name in read]
+    caches = [store.path(model) for model in models for store in (CHECK_STORE, DECODE_STORE)]
+    return [*decodes, *teachers,
+            *(committed(dataset, model) for dataset in (TARTEEL_V1, QDAT)
+              for model in (*BASELINES,)),
+            *(qud_committed(slug, model) for slug in PILOT for model in BASELINES),
+            *caches,
+            QUD_SELECTION_PATH, G6_SITES_PATH, MODELS_PATH,
+            sources.spec.root / "freeze.json",
             *(TRANCHES_DIR / f"{role}.jsonl" for role in ("confirm.1", "confirm.2")),
-            sources.spec.prereg_path]
+            EVALSET_MANIFEST_PATH, GRID_PATH, sources.spec.prereg_path]

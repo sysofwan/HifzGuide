@@ -463,14 +463,26 @@ def committed_choice(layout: Layout = Layout(),
     return CommittedChoice(choice, sha256_bytes(raw), commit)
 
 
-def require_preregistration(spec: RoundSpec, harness: Mapping) -> str:
-    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and the
-    round's pins hold: no tlog decode is graded before the pre-registration's commit, and its
-    text is never edited after it (round 2's data discipline 1, #227)."""
+def require_preregistration_text(spec: RoundSpec) -> str:
+    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and
+    equal to the round's pin: its text is never edited after it, and a claim opens a tranche on
+    the text the round froze even where no harness is at hand."""
     if not is_committed(spec.prereg_path):
         raise SystemExit(f"{spec.prereg_path.name} is not committed: nothing grades a tlog "
                          "decode before the pre-registration's commit")
     prereg = sha256_file(spec.prereg_path)
+    pins = spec.pins
+    if pins is not None and prereg != pins.prereg_sha256:
+        raise SystemExit(f"the pre-registration pin differs: {prereg!r} is not the pinned "
+                         f"{pins.prereg_sha256!r}")
+    return prereg
+
+
+def require_preregistration(spec: RoundSpec, harness: Mapping) -> str:
+    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and the
+    round's pins hold: no tlog decode is graded before the pre-registration's commit, and its
+    text is never edited after it (round 2's data discipline 1, #227)."""
+    prereg = require_preregistration_text(spec)
     check_pins(spec, harness, prereg)
     return prereg
 

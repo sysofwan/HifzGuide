@@ -68,6 +68,26 @@ def merged_calls(monkeypatch):
 # --- the merge -------------------------------------------------------------------------------------
 
 
+def test_the_confirm_sitting_declares_the_teacher_decodes_the_caches_and_the_freeze(tmp_path):
+    from tadabur.tarteel_split import CONFIRM
+    from tadabur.tlog_tranches import TRANCHES_DIR
+    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+
+    round_ = rv.committed_round(tmp_path)
+    sources = ar.Sources(round_.spec)
+    files = sources.input_files(CONFIRM, "ema")
+
+    for set_name in ("tlog.confirm", "tarteel_v1.confirm", "tadabur_dev_unseen"):
+        assert sources.decode_path(set_name, "base") in files
+    for model in (CANDIDATE, CONTROL):
+        for store in (CHECK_STORE, DECODE_STORE):
+            assert store.path(model) in files
+    assert round_.spec.root / "freeze.json" in files
+    assert TRANCHES_DIR / "confirm.1.jsonl" in files
+    assert TRANCHES_DIR / "confirm.2.jsonl" in files
+    assert round_.spec.prereg_path in files
+
+
 def test_the_merge_writes_each_chosen_arm_s_file_in_the_rounds_own_root(tmp_path, merged_calls):
     round_ = rv.committed_round(tmp_path)
     ar.merge(_gpu(tmp_path / "gpu", round_), round_.layout, spec=round_.spec)

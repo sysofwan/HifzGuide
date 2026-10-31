@@ -69,6 +69,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
+from tadabur.tlog_tranches import TRANCHES_DIR
 from training.aug_readout_spec import (AUG95, TLOG_CONFIRM, TLOG_LOOK, RoundSpec,
                                        check_pins, tlog_round)
 from training.aug_readout_spec import spec as round_spec
@@ -267,6 +268,9 @@ class Sources:
     another round's immutable inputs."""
 
     spec: RoundSpec = AUG95
+    #: Where the tlog tranches are read: the committed tranches directory, unless a reader
+    #: points the sitting elsewhere (its claims are then checked in the same place).
+    tranches_dir: Path = TRANCHES_DIR
 
     def __init__(self, spec: RoundSpec = AUG95):
         self.spec = spec
@@ -397,12 +401,26 @@ class Sources:
         """One tlog tranche's gating items and their decodes, every model's decoded checks, and
         the rows the item builder left out (with their filename ayah). The manifest is read only
         through :func:`tadabur.tlog_tranches.load_tranche`, whose claim gate refuses an unopened
-        confirm tranche; a confirm tranche reads the pooled ``tlog.confirm`` decodes."""
+        confirm tranche; a confirm tranche reads the pooled ``tlog.confirm`` decodes. The
+        tranches live in :attr:`tranches_dir`, the same directory a reader checks claims in."""
+        return self._tlog_views(role, models)[0]
+
+    def tlog_span_trimmed(self, role: str, models: Sequence[str]) -> SetData:
+        """The same tranche, each item's reference cut to the ``word_from``/``word_to`` its
+        decode records: the reported sensitivity line, never what gating grades."""
+        return self._tlog_views(role, models)[1]
+
+    def tlog_views(self, role: str, models: Sequence[str]) -> tuple[SetData, SetData]:
+        """The gating items and the span-trimmed items of one tranche, from **one** read of its
+        manifest and decodes."""
+        return self._tlog_views(role, models)
+
+    def _tlog_views(self, role: str, models: Sequence[str]) -> tuple[SetData, SetData]:
         from tadabur.tlog_tranches import load_tranche
         from tadabur.waqf_segments import hafs_segment_reference
         from training.external_corpus import read_decode_file
         from training.nonpro_decode import item_key
-        from training.tlog_eval import gating_items
+        from training.tlog_eval import gating_items, span_trimmed_items
 
         if role != LOOK:
             from training.tlog_eval import CONFIRM_TRANCHES
@@ -410,17 +428,23 @@ class Sources:
             if role not in CONFIRM_TRANCHES:
                 raise SystemExit(f"{role}: this round reads the tlog tranches "
                                  f"{[LOOK, *CONFIRM_TRANCHES]}, never {role!r}")
-        rows = load_tranche(role)
+        rows = load_tranche(role, self.tranches_dir)
         set_name = TLOG_LOOK if role == LOOK else TLOG_CONFIRM
         base = read_decode_file(self.decode_path(set_name, BASE))
-        items, unsupported = gating_items(rows, base, reference_of=hafs_segment_reference())
-        keys = {item.key for item in items}
+        reference_of = hafs_segment_reference()
+        gating, unsupported = gating_items(rows, base, reference_of=reference_of)
+        trimmed, span_unsupported = span_trimmed_items(rows, base, reference_of=reference_of)
+        keys = {item.key for item in gating}
         decodes = {BASE: base,
                    **{m: read_readout(set_name, m, base, keys, spec=self.spec)
                       for m in models if m != BASE}}
         labels = {item_key(row["audio_path"]): row["filename_label"] for row in rows}
-        return SetData(items, {m: decodes[m] for m in models},
-                       excluded={key: labels.get(key) for key in unsupported})
+
+        def view(items, left_out) -> SetData:
+            return SetData(items, {m: decodes[m] for m in models},
+                           excluded={key: labels.get(key) for key in left_out})
+
+        return view(gating, unsupported), view(trimmed, span_unsupported)
 
     def bench(self) -> dict[str, str]:
         from training.nonpro_eval import bench_transcripts

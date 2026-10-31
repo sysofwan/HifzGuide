@@ -176,3 +176,54 @@ def test_the_launch_starts_the_detached_run_on_the_box_under_the_gpu_lock(tmp_pa
     while not (tmp_path / "started").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     assert (tmp_path / "started").exists()
+
+
+# --- the box's run --------------------------------------------------------------------------------
+
+
+CHOICE_JSON = '{"models": {"candidate": "r2_candidate_ema", "control": "r2_control_ema"}}'
+
+
+def _run_on_the_box(tmp_path: Path, choice: str, *, phase_exit: int = 0):
+    """``run`` with the box's shell shape: no ``python`` on PATH until the conda env is
+    activated, and a ``timeout`` stub in place of the decode phase (nothing decodes here)."""
+    root = tmp_path / "issue"
+    (root / "repo" / "readout").mkdir(parents=True)
+    (root / "repo" / "readout" / "choice.json").write_text(choice, encoding="utf-8")
+    prefix = tmp_path / "env"
+    (prefix / "bin").mkdir(parents=True)
+    (prefix / "bin" / "python").symlink_to(sys.executable)
+    conda = tmp_path / "conda.sh"
+    conda.write_text(f'conda() {{ PATH="{prefix}/bin:$PATH"; export PATH; }}\n',
+                     encoding="utf-8")
+    bindir = tmp_path / "run-bin"
+    bindir.mkdir()
+    _mock(bindir / "timeout", f"#!/bin/sh\nexit {phase_exit}\n")
+    env = {**os.environ, "PATH": f"{bindir}:/usr/bin:/bin", "CONDA": str(conda),
+           "ISSUE_ROOT": str(root), "ROUND_DIR": "readout"}
+    return subprocess.run(["bash", str(SCRIPT), "run"], env=env, capture_output=True,
+                          text=True, stdin=subprocess.DEVNULL, timeout=60)
+
+
+def test_the_run_reads_the_choice_with_the_activated_env_python(tmp_path):
+    done = _run_on_the_box(tmp_path, CHOICE_JSON)
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode == 0, done.stderr
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "0"
+    assert "exit 0" in (logs / "run.done").read_text(encoding="utf-8")
+
+
+def test_a_run_that_dies_before_the_decode_phase_still_records_the_failure(tmp_path):
+    done = _run_on_the_box(tmp_path, "{edited")
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode != 0
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == str(done.returncode)
+    assert (logs / "run.done").exists()
+
+
+def test_a_failed_decode_phase_is_recorded_for_check(tmp_path):
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, phase_exit=7)
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode == 7
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "7"
+    assert "exit 7" in (logs / "run.done").read_text(encoding="utf-8")

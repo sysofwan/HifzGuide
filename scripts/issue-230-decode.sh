@@ -275,16 +275,9 @@ decode_phase() {
   decode
 }
 
-run() {
-  mkdir -p "$ROOT/decodes" "$ROOT/logs"
-  rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
-  : > "$ROOT/logs/events"
-  MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
-    'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
-  export MODELS
-  local status=0
-  timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?
-  local code=$status done
+record_run_result() {  # <status>
+  # ``check`` keys off done and then reads exit: write exit first.
+  local status=$1 code=$1 done
   if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
     code=2
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
@@ -292,10 +285,27 @@ run() {
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi
-  # ``check`` keys off done and then reads exit: write exit first.
   printf '%s\n' "$code" > "$ROOT/logs/run.exit"
   printf '%s\n' "$done" > "$ROOT/logs/run.done"
   return "$code"
+}
+
+run() {
+  mkdir -p "$ROOT/decodes" "$ROOT/logs"
+  rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
+  : > "$ROOT/logs/events"
+  # The box's shell has no python until the env is activated, and a failure anywhere in run
+  # must still leave run.exit and run.done for ``check``: the trap records every early exit,
+  # the normal path disarms it and records the decode phase's own status.
+  trap 'record_run_result "$?"' EXIT
+  activate
+  MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
+    'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
+  export MODELS
+  local status=0
+  timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?
+  trap - EXIT
+  record_run_result "$status"
 }
 
 # Sourceable for the local helpers; only a direct run dispatches.

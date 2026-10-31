@@ -19,6 +19,9 @@ commands these tests drive need neither the box nor a GPU:
   directory relative to the repository root; the script runs in the repository it is invoked in.
 * ``launch``: the same refusals, then stages the repository and starts ``run`` detached on the
   box under ``flock /root/scratch/gpu.lock``, printing ``started: <remote pid>``.
+* ``resume``: the same refusals and staging, starting ``run --resume`` at ``RESUME_PARALLEL``
+  processes (default 2): a run the box stopped early retries only the shards with no exit-0
+  event, keeps the outputs the failed run wrote, and then writes the G6 caches.
 
 Round 1's ``--spec consonant1``, its confirm sets and its candidate-only models appear nowhere.
 """
@@ -27,6 +30,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -182,6 +186,30 @@ def test_the_launch_starts_the_detached_run_on_the_box_under_the_gpu_lock(tmp_pa
     assert (tmp_path / "started").exists()
 
 
+def test_the_resume_restages_and_starts_a_resumed_run_at_the_low_parallelism(tmp_path):
+    round_ = rv.committed_round(tmp_path)
+    box = _box(tmp_path)
+    done = _run("resume", round_, tmp_path, **box)
+    assert done.returncode == 0, done.stderr
+    assert re.fullmatch(r"started: \d+", done.stdout.strip()), done.stdout
+    log = (tmp_path / "ssh.log").read_text(encoding="utf-8")
+    assert "nohup flock /root/scratch/gpu.lock" in log
+    assert "run --resume" in log
+    assert "PARALLEL=2" in log
+    deadline = time.monotonic() + 10
+    while not (tmp_path / "started").exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert (tmp_path / "started").exists()
+
+
+def test_the_resume_parallelism_follows_resume_parallel(tmp_path):
+    round_ = rv.committed_round(tmp_path)
+    done = _run("resume", round_, tmp_path, RESUME_PARALLEL="1", **_box(tmp_path))
+    assert done.returncode == 0, done.stderr
+    log = (tmp_path / "ssh.log").read_text(encoding="utf-8")
+    assert "PARALLEL=1" in log and "PARALLEL=2" not in log
+
+
 # --- the box's run --------------------------------------------------------------------------------
 
 
@@ -214,8 +242,10 @@ def _box_run_env(tmp_path: Path, choice: str, *, timeout_body: str = "exit 0",
             "ISSUE_ROOT": str(root), "ROUND_DIR": "readout"}
 
 
-def _run_on_the_box(tmp_path: Path, choice: str, **kwargs) -> subprocess.CompletedProcess:
-    return subprocess.run(["bash", str(SCRIPT), "run"], env=_box_run_env(tmp_path, choice, **kwargs),
+def _run_on_the_box(tmp_path: Path, choice: str, *, args: tuple[str, ...] = (),
+                    **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run(["bash", str(SCRIPT), "run", *args],
+                          env=_box_run_env(tmp_path, choice, **kwargs),
                           capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
 
 
@@ -262,6 +292,30 @@ def test_a_failed_decode_phase_is_recorded_for_check(tmp_path):
     assert done.returncode == 7
     assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "7"
     assert "exit 7" in (logs / "run.done").read_text(encoding="utf-8")
+
+
+FAILED_EVENT = "2026-10-31T08:22:30Z tarteel_v1.confirm shard 5 exit 137\n"
+
+
+def test_a_resumed_run_keeps_the_failed_runs_events(tmp_path):
+    logs = tmp_path / "issue" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "events").write_text(FAILED_EVENT, encoding="utf-8")
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, args=("--resume",))
+    assert done.returncode == 0, done.stderr
+    assert (logs / "events").read_text(encoding="utf-8") == FAILED_EVENT
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "0"
+    assert "exit 0" in (logs / "run.done").read_text(encoding="utf-8")
+
+
+def test_a_fresh_run_starts_the_events_clean(tmp_path):
+    """A stale exit-0 line would let ``fetch`` take a shard this sitting never decoded."""
+    logs = tmp_path / "issue" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "events").write_text(FAILED_EVENT, encoding="utf-8")
+    done = _run_on_the_box(tmp_path, CHOICE_JSON)
+    assert done.returncode == 0, done.stderr
+    assert (logs / "events").read_text(encoding="utf-8") == ""
 
 
 def test_a_terminated_run_records_its_signal_instead_of_a_pass(tmp_path):
@@ -345,3 +399,152 @@ def test_fetch_copies_a_complete_run(tmp_path):
                 FETCH_DIR=str(tmp_path / "fetched"))
     assert done.returncode == 0, done.stderr
     assert "decodes" in (tmp_path / "rsync.log").read_text(encoding="utf-8")
+
+
+# --- the box's decode: retrying only what the failed run left undone -------------------------------
+
+#: Two shards per set: the queue the decode phase plans from ``--list-shards``.
+SHARDS = 2
+PAIRS = [(set_name, shard) for set_name in SETS for shard in range(SHARDS)]
+
+_STUB_BODY = '''import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+with Path(os.environ["PY_LOG"]).open("a", encoding="utf-8") as log:
+    log.write(" ".join(args) + "\\n")
+if any("aug_readout_decode" in arg for arg in args):
+    if "--list-shards" in args:
+        for i in range(int(os.environ["SHARDS"])):
+            print("%d shard%d" % (i, i))
+    else:
+        set_name = args[args.index("--set") + 1]
+        shard = args[args.index("--shard") + 1]
+        if not set_name or not shard:  # argparse refuses an empty --set choice
+            raise SystemExit(2)
+        if os.environ.get("FAIL_SHARD") == set_name + " " + shard:
+            raise SystemExit(1)
+        out = Path(args[args.index("--out-dir") + 1])
+        for model in args[args.index("--models") + 1].split(","):
+            (out / ("%s.%s.%s.jsonl" % (set_name, shard, model))).write_text(
+                "decoded\\n", encoding="utf-8")
+elif any("consonant_baseline" in arg for arg in args):
+    with Path(os.environ["CACHE_LOG"]).open("a", encoding="utf-8") as log:
+        log.write(args[args.index("--model") + 1] + "\\n")
+'''
+
+
+_XARGS_STUB = f'''#!/bin/sh
+# GNU xargs runs its command once when stdin holds nothing (no --no-run-if-empty); BSD xargs
+# does not, so this stub keeps an empty-queue bug visible on a Mac. Non-empty input goes to the
+# real xargs unchanged.
+input=$(cat)
+if [ -n "$input" ]; then
+  printf '%s\\n' "$input" | exec "{shutil.which("xargs")}" "$@"
+  exit $?
+fi
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -P|-n|-I|-d|-s|-L) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+  esac
+done
+exec "$@"
+'''
+
+
+def _decode_env(tmp_path: Path, **extra: str) -> dict[str, str]:
+    """``decode`` without a GPU: ``python`` stands in for both tools, listing shards, writing
+    each shard's outputs, or logging the G6 cache model it was asked for, and an ``xargs`` stub
+    applies GNU's empty-input semantics."""
+    root = tmp_path / "issue"
+    for name in ("logs", "decodes", "clips"):
+        (root / name).mkdir(parents=True)
+    bindir = tmp_path / "decode-bin"
+    bindir.mkdir()
+    _mock(bindir / "python", f"#!{sys.executable}\n" + _STUB_BODY)
+    _mock(bindir / "xargs", _XARGS_STUB)
+    return {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "ISSUE_ROOT": str(root),
+            "MODELS": ",".join(MODELS), "PARALLEL": "1", "SHARDS": str(SHARDS),
+            "PY_LOG": str(tmp_path / "python.log"), "CACHE_LOG": str(tmp_path / "cache.log"),
+            **extra}
+
+
+def _decode(env: dict[str, str]) -> subprocess.CompletedProcess:
+    return subprocess.run(["bash", "-c", f'source "{SCRIPT}"; decode'], env=env,
+                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
+
+
+def _decoded_pairs(tmp_path: Path) -> list[tuple[str, int]]:
+    pairs = []
+    for line in (tmp_path / "python.log").read_text(encoding="utf-8").splitlines():
+        args = line.split()
+        if "--list-shards" in args or not any("aug_readout_decode" in a for a in args):
+            continue
+        pairs.append((args[args.index("--set") + 1], int(args[args.index("--shard") + 1])))
+    return pairs
+
+
+def _event_suffixes(tmp_path: Path) -> set[str]:
+    events = (tmp_path / "issue" / "logs" / "events").read_text(encoding="utf-8")
+    return {line.split(" ", 1)[1] for line in events.splitlines()}
+
+
+def test_a_resumed_decode_retries_only_the_shards_without_an_exit_0_event(tmp_path):
+    env = _decode_env(tmp_path)
+    root = tmp_path / "issue"
+    lines = []
+    for set_name, shard in PAIRS:
+        if (set_name, shard) == ("qdat", 0):
+            continue
+        status = 137 if (set_name, shard) == ("tadabur_dev_unseen", 1) else 0
+        lines.append(f"2026-10-31T00:00:00Z {set_name} shard {shard} exit {status}")
+    (root / "logs" / "events").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    kept = root / "decodes" / f"qdat.1.{MODELS[0]}.jsonl"
+    kept.write_text("first sitting\n", encoding="utf-8")
+    done = _decode(env)
+    assert done.returncode == 0, done.stderr
+    assert _decoded_pairs(tmp_path) == [("qdat", 0), ("tadabur_dev_unseen", 1)]
+    # The failed run's outputs and its history stay; the retried shards record their own events.
+    assert kept.read_text(encoding="utf-8") == "first sitting\n"
+    assert (root / "decodes" / f"qdat.0.{MODELS[0]}.jsonl").read_text(
+        encoding="utf-8") == "decoded\n"
+    expected = {f"{s} shard {i} exit 0" for s, i in PAIRS}
+    expected |= {"tadabur_dev_unseen shard 1 exit 137"}
+    assert _event_suffixes(tmp_path) == expected
+    # G6's caches run after the retries, for both arms.
+    assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"
+    log = (tmp_path / "python.log").read_text(encoding="utf-8").splitlines()
+    assert all("consonant_baseline" in line for line in log[-2:])
+
+
+def test_a_first_decode_queues_every_shard(tmp_path):
+    env = _decode_env(tmp_path)
+    done = _decode(env)
+    assert done.returncode == 0, done.stderr
+    assert _decoded_pairs(tmp_path) == PAIRS
+    assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"
+
+
+def test_a_still_failing_shard_does_not_leave_the_g6_caches_unwritten(tmp_path):
+    env = _decode_env(tmp_path, FAIL_SHARD="qdat 0")
+    done = _decode(env)
+    assert done.returncode != 0
+    assert {"qdat shard 0 exit 1"} <= _event_suffixes(tmp_path)
+    assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"
+
+
+def test_a_g6_only_resume_runs_no_shard_and_still_writes_both_caches(tmp_path):
+    """Every shard already carries an exit-0 event, so the retry queue is empty and only G6 is
+    outstanding: the empty queue must call the decoder zero times and must not fail the run."""
+    env = _decode_env(tmp_path)
+    root = tmp_path / "issue"
+    events = "".join(f"2026-10-31T00:00:00Z {s} shard {i} exit 0\n" for s, i in PAIRS)
+    (root / "logs" / "events").write_text(events, encoding="utf-8")
+    done = _decode(env)
+    assert done.returncode == 0, done.stderr
+    assert _decoded_pairs(tmp_path) == []
+    assert (root / "logs" / "events").read_text(encoding="utf-8") == events
+    assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"

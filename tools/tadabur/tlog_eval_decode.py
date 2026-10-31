@@ -75,7 +75,7 @@ from .tlog_index import (commit_of, head_sha, provenance, read_jsonl, sha256_fil
                          write_shard)
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 from .tlog_pool import default_audio, row_key
-from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR
+from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR, load_tranche
 from training.aug_readout_gate import model_spec
 from training.aug_readout_spec import (C95_SHA256, CANDIDATE_SHA256, CONSONANT1,
                                        CONSONANT2, RoundSpec)
@@ -214,6 +214,39 @@ def read_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR) -> list[dict]
     return rows
 
 
+def read_confirm_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR,
+                          layout=None, spec: RoundSpec = CONSONANT2) -> list[dict]:
+    """One claimable confirm tranche's committed manifest rows, every stratum.
+
+    Only ``confirm.1`` and ``confirm.2`` are read (#230): the role is checked before any file
+    is opened, and the tranche's own claim and its predecessor's must be committed
+    (:func:`tadabur.tlog_tranches.load_tranche`). The round's committed ``choice.json`` is
+    required too, so no confirm row is read before the look chose. A row whose key also sits in
+    any other tranche's manifest (the look's, or another confirm's) is a planted row and is
+    refused, so a row of an unclaimed tranche is never decoded. The caller takes
+    :func:`gating_rows`.
+    """
+    from training.aug_readout_gate import Layout, committed_choice
+    from training.tlog_eval import CONFIRM_TRANCHES
+
+    if role not in CONFIRM_TRANCHES:
+        raise ValueError(f"this decode reads the confirm tranches {list(CONFIRM_TRANCHES)}, "
+                         f"not {role!r}")
+    directory = Path(tranches_dir)
+    rows = load_tranche(role, directory)
+    committed_choice(layout or Layout(spec.root), spec=spec)
+    own = {row_key(row) for row in rows}
+    for name in (LOOK, *CONFIRM_ROLES):
+        path = directory / f"{name}.jsonl"
+        if name == role or not path.exists():
+            continue
+        for other in read_jsonl(path):
+            if row_key(other) in own:
+                raise ValueError(f"{role} row {row_key(other)} is also in {name}: a planted "
+                                 f"row is never decoded here")
+    return rows
+
+
 def gating_rows(rows: Sequence[Mapping]) -> list[dict]:
     """The rows the narrowed run decodes: the manifest's ``gating`` stratum (architect r26).
 
@@ -223,11 +256,21 @@ def gating_rows(rows: Sequence[Mapping]) -> list[dict]:
     return [row for row in rows if row["stratum"] == GATING]
 
 
+def selection_rows(role: str) -> list[dict]:
+    """The role's committed manifest rows: the look's, or one claimable confirm tranche's.
+
+    A confirm role never touches the look manifest: its rows come from
+    :func:`read_confirm_manifest`, which also checks the claim and the committed choice.
+    """
+    return read_manifest(LOOK) if role == LOOK else read_confirm_manifest(role)
+
+
 # --- one shard, every model ---------------------------------------------------------------------
 
 
-def decodes_path(out_dir: Path, shard_file: str, model: str) -> Path:
-    return Path(out_dir) / f"tlog.look.{shard_file}.{model}.jsonl"
+def decodes_path(out_dir: Path, shard_file: str, model: str, role: str = LOOK) -> Path:
+    """One part file: the look's name is unchanged, a confirm tranche's names its role."""
+    return Path(out_dir) / f"tlog.{role}.{shard_file}.{model}.jsonl"
 
 
 def shard_items(rows: Sequence[Mapping], *, stream) -> Iterator[tuple[Mapping, bytes]]:
@@ -323,7 +366,7 @@ def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders:
               stream, word_counts: Callable[[str], int],
               load_audio: Callable[[bytes], object] | None = None,
               stores: Mapping = STORES, clip_cache: Path | None = None,
-              share_features: bool = False) -> dict:
+              share_features: bool = False, role: str = LOOK) -> dict:
     """Read ``shard_file`` once and decode each wanted row with every decoder in ``decoders``.
 
     The records are appended to :func:`decodes_path` (one file per shard and model), so a
@@ -333,11 +376,11 @@ def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders:
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    paths = {name: decodes_path(out_dir, shard_file, name) for name in decoders}
+    paths = {name: decodes_path(out_dir, shard_file, name, role=role) for name in decoders}
     return decode_recordings(
         recordings(rows, stream=stream, word_counts=word_counts, load_audio=load_audio,
                    clip_cache=clip_cache),
-        decoders, paths, f"tlog look {shard_file}", stores=stores,
+        decoders, paths, f"tlog {role} {shard_file}", stores=stores,
         share_features=share_features)
 
 
@@ -378,7 +421,8 @@ def cache_shard(shard_file: str, rows: Sequence[Mapping], clip_cache: Path, *,
 def cache_selection(clip_cache: Path, shard_cache: Path, *,
                     rows: Sequence[Mapping] | None = None, shard_index: int = 0,
                     shard_count: int = 1, stream: Callable | None = None,
-                    on_download: Callable[[str], None] | None = None) -> dict:
+                    on_download: Callable[[str], None] | None = None,
+                    role: str = LOOK) -> dict:
     """Populate the box's clip cache with the selected rows, one pass over their shards.
 
     The rows are the manifest's gating stratum unless given; each clip is stored under its
@@ -387,7 +431,7 @@ def cache_selection(clip_cache: Path, shard_cache: Path, *,
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
-    rows = gating_rows(read_manifest(LOOK)) if rows is None else list(rows)
+    rows = gating_rows(selection_rows(role)) if rows is None else list(rows)
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
@@ -486,6 +530,64 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
     return counts
 
 
+def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, Sequence],
+                          provenance: Mapping, models: Sequence[str]) -> dict:
+    """Pool confirm.1's and confirm.2's parts into one sorted file per model (#230).
+
+    ``manifests`` is exactly the two claimable tranches' rows, from
+    :func:`read_confirm_manifest`. Every model must hold each tranche's **gating** row exactly
+    once: a missing, repeated or foreign row is a ``ValueError`` naming the model, so a partial
+    run can never look complete. A clip in both tranches is refused before anything is written.
+    Each pooled line carries the ``tranche`` it came from, so every tranche is still reportable
+    alone. One gzipped file per model, ``tlog.confirm.<model>.jsonl.gz``, and
+    ``meta.confirm.json`` (never the look's ``meta.json``).
+    """
+    from training.tlog_eval import CONFIRM_TRANCHES
+
+    if set(manifests) != set(CONFIRM_TRANCHES):
+        missing = sorted(set(CONFIRM_TRANCHES) - set(manifests))
+        extra = sorted(set(manifests) - set(CONFIRM_TRANCHES))
+        raise ValueError(f"the pooled confirm merge needs exactly {list(CONFIRM_TRANCHES)}, "
+                         f"not {missing[0] if missing else extra[0]}")
+    owner: dict[str, str] = {}
+    expected = {}
+    for role in CONFIRM_TRANCHES:
+        rows = gating_rows(manifests[role])
+        expected[role] = {item_key(row["audio_path"]) for row in rows}
+        for key in expected[role]:
+            other = owner.setdefault(key, role)
+            if other != role:
+                raise ValueError(f"{key} is in both {other} and {role}: a clip is pooled once")
+    parts_dir = Path(parts_dir)
+    pooled: dict[str, list[dict]] = {}
+    for model in models:
+        lines: list[dict] = []
+        for role in CONFIRM_TRANCHES:
+            parts = sorted(parts_dir.glob(f"tlog.{role}.*.{model}.jsonl"))
+            found = [line for path in parts for line in read_jsonl(path)]
+            keys = [line["key"] for line in found]
+            repeated = [key for key, count in Counter(keys).items() if count > 1]
+            if repeated:
+                raise ValueError(f"{model}: {repeated[0]} appears twice in {role}")
+            missing = sorted(expected[role] - set(keys))
+            extra = sorted(set(keys) - expected[role])
+            if missing or extra:
+                raise ValueError(f"{model}: {len(missing)} {role} rows missing "
+                                 f"(first {missing[:1]}), {len(extra)} not in the manifest "
+                                 f"(first {extra[:1]})")
+            lines.extend({**line, "tranche": role} for line in found)
+        pooled[model] = sorted(lines, key=lambda line: line["key"])
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    counts = {}
+    for model, lines in pooled.items():
+        write_shard(lines, out_dir / f"tlog.confirm.{model}.jsonl.gz")
+        counts[model] = len(lines)
+    write_json({**provenance, "tranches": list(CONFIRM_TRANCHES), "models": list(models),
+                "rows": counts}, out_dir / "meta.confirm.json")
+    return counts
+
+
 # --- the slice gate -----------------------------------------------------------------------------
 
 
@@ -576,7 +678,8 @@ def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]],
                    parts_dir: Path, cache_dir: Path, decoders: dict,
                    word_counts: Callable[[str], int], stores: Mapping,
                    clip_cache: Path | None = None, share_features: bool,
-                   on_download: Callable[[str], None] | None = None) -> list[dict]:
+                   on_download: Callable[[str], None] | None = None,
+                   role: str = LOOK) -> list[dict]:
     """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard.
 
     ``share_features`` is required: it is the one place where the run's sharing choice is
@@ -589,7 +692,7 @@ def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]],
         timing = {"shard_file": shard_file, **run_shard(
             shard_file, by_shard[shard_file], parts_dir, decoders, stream=stream,
             word_counts=word_counts, stores=stores, clip_cache=clip_cache,
-            share_features=share_features)}
+            share_features=share_features, role=role)}
         append_timing(Path(parts_dir) / "timing.jsonl", timing)
         timings.append(timing)
     return timings
@@ -647,8 +750,8 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
                   clip_cache: Path | None = None,
                   on_download: Callable[[str], None] | None = None,
                   shard_files: Sequence[str] | None = None,
-                  share_features: bool = True) -> dict:
-    """Decode one process's share of the look gating rows: ``shards[shard_index::shard_count]``.
+                  share_features: bool = True, role: str = LOOK) -> dict:
+    """Decode one process's share of the look or one confirm tranche's gating rows.
 
     Each shard is streamed once for every model in ``models`` under ``stores``; processes
     write disjoint part files and resume by key, so they share no state but the parts. Clips
@@ -660,7 +763,7 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
-    rows = gating_rows(read_manifest(LOOK))
+    rows = gating_rows(selection_rows(role))
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
@@ -669,14 +772,14 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     else:
         unknown = sorted(set(shard_files) - set(by_shard))
         if unknown:
-            raise ValueError(f"{unknown[0]} is not a gating shard of the {LOOK!r} tranche")
+            raise ValueError(f"{unknown[0]} is not a gating shard of the {role!r} tranche")
         chosen = sorted(set(shard_files))
     shards = chosen[shard_index::shard_count]
     timings = _decode_shards(shards, by_shard, parts_dir=parts_dir, cache_dir=cache_dir,
                              decoders=load_models(parts_dir, models),
                              word_counts=ayah_word_counts(), stores=stores,
                              clip_cache=clip_cache, share_features=share_features,
-                             on_download=on_download)
+                             on_download=on_download, role=role)
     return _totals(timings, models, stores)
 
 
@@ -852,11 +955,13 @@ def main() -> None:
                          help="decode only the named gating shards (the parity selection)")
     decode_.add_argument("--no-share-features", action="store_true",
                          help="featurise every check once per model, as before #213")
+    decode_.add_argument("--role", default=LOOK, help="look, or a claimed confirm tranche")
     cache_ = commands.add_parser("cache", help="persist the gating rows' clips into the box cache")
     cache_.add_argument("--clip-cache", type=Path, required=True)
     cache_.add_argument("--shard-cache", type=Path, required=True)
     cache_.add_argument("--shard-index", type=int, default=0)
     cache_.add_argument("--shard-count", type=int, default=1)
+    cache_.add_argument("--role", default=LOOK, help="look, or a claimed confirm tranche")
     coverage_ = commands.add_parser("coverage", help="verify and count the cached gating clips")
     coverage_.add_argument("--clip-cache", type=Path, required=True)
     gate_ = commands.add_parser("gate", help="project the selection from the timing lines so far")
@@ -877,6 +982,13 @@ def main() -> None:
                         help="the run's own wall, for meta.json")
     merge_.add_argument("--manifest-commit", default=None,
                         help="the commit main holds the frozen manifest at")
+    merge_confirm_ = commands.add_parser(
+        "merge-confirm", help="pool confirm.1 and confirm.2 into one file per model")
+    merge_confirm_.add_argument("--parts-dir", type=Path, required=True)
+    merge_confirm_.add_argument("--out-dir", type=Path, default=DECODES_ROOT)
+    merge_confirm_.add_argument("--models", nargs="+", required=True)
+    merge_confirm_.add_argument("--pr", type=int, default=None,
+                                help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     parity_ = commands.add_parser("parity", help="compare a shared re-decode with the decodes")
     parity_.add_argument("--parts-dir", type=Path, required=True)
     parity_.add_argument("--out", type=Path, default=PARITY_PATH)
@@ -890,7 +1002,7 @@ def main() -> None:
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
                                models=args.models, shard_index=args.shard_index,
                                shard_count=args.shard_count, clip_cache=args.clip_cache,
-                               shard_files=args.shard_files,
+                               shard_files=args.shard_files, role=args.role,
                                share_features=not args.no_share_features)
     elif args.command == "gate":
         result = gate_verdict(args.parts_dir, elapsed_seconds=args.elapsed_seconds,
@@ -898,9 +1010,17 @@ def main() -> None:
                               threads=args.threads)
     elif args.command == "cache":
         result = cache_selection(args.clip_cache, args.shard_cache,
-                                 shard_index=args.shard_index, shard_count=args.shard_count)
+                                 shard_index=args.shard_index, shard_count=args.shard_count,
+                                 role=args.role)
     elif args.command == "coverage":
         result = cache_coverage(gating_rows(read_manifest(LOOK)), args.clip_cache)
+    elif args.command == "merge-confirm":
+        from training.tlog_eval import CONFIRM_TRANCHES
+
+        result = merge_confirm_decodes(
+            args.parts_dir, args.out_dir,
+            manifests={role: read_confirm_manifest(role) for role in CONFIRM_TRANCHES},
+            provenance=provenance(head_sha(), args.pr), models=args.models)
     elif args.command == "parity":
         result = parity_record(args.parts_dir, models=args.models, shards=parity_shards(),
                                processes=args.processes, threads=args.threads,

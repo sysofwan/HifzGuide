@@ -137,14 +137,21 @@ launch() {
 
 check() {
   local status
-  status=$(ssh "$HOST" "if [ -f '$ROOT/logs/run.done' ]; then cat '$ROOT/logs/run.exit'; \
-    else echo pending; fi")
+  status=$(ssh "$HOST" "if [ ! -f '$ROOT/logs/run.done' ]; then echo pending; \
+    elif [ ! -f '$ROOT/logs/run.exit' ]; then echo no-exit; \
+    else cat '$ROOT/logs/run.exit'; fi")
   case "$status" in
     pending)
       echo "pending: $ROOT/logs/run.done is absent"
       ssh "$HOST" "tail -n 3 '$ROOT/logs/events' 2>/dev/null; \
         tail -n 2 '$ROOT/logs/run.out' 2>/dev/null" || true
       return 3
+      ;;
+    no-exit)
+      echo "failed: $ROOT/logs/run.done exists without $ROOT/logs/run.exit"
+      ssh "$HOST" "cat '$ROOT/logs/run.done' 2>/dev/null; \
+        tail -n 20 '$ROOT/logs/run.out' 2>/dev/null" || true
+      return 1
       ;;
     0)
       echo "done: exit 0"
@@ -167,9 +174,35 @@ check() {
   esac
 }
 
+require_decoded() {
+  # ``fetch`` copies the run's output as final, so a partial run must refuse: every job the
+  # decode phase queued needs its exit-0 event and both models' files, and both arms' G6
+  # caches need to exist.
+  ssh "$HOST" bash -s <<EOF || die "the box has no complete run to fetch"
+set -e
+test -f '$ROOT/logs/run.done'
+test "\$(cat '$ROOT/logs/run.exit')" = 0
+test -s '$ROOT/logs/jobs.txt'
+for set_name in ${SETS[*]}; do
+  grep -q "^\$set_name " '$ROOT/logs/jobs.txt'
+done
+while read -r set_name shard; do
+  grep -Eq " \$set_name shard \$shard exit 0\$" '$ROOT/logs/events'
+  for model in ${MODELS//,/ }; do
+    test -f "$ROOT/decodes/\$set_name.\$shard.\$model.jsonl"
+  done
+done < '$ROOT/logs/jobs.txt'
+for model in ${MODELS//,/ }; do
+  test -f "$ROOT/repo/tools/tadabur/truth_baseline/decodes/\$model.json"
+  test -f "$ROOT/repo/tools/tadabur/truth_baseline/checks/\$model.json"
+done
+EOF
+}
+
 fetch() {
   local repo_root dest model
   require_ready
+  require_decoded
   repo_root=$(git rev-parse --show-toplevel)
   dest=${FETCH_DIR:-/tmp/issue-230}
   mkdir -p "$dest"
@@ -190,6 +223,7 @@ fetch() {
 
 
 activate() {
+  [ -r "$CONDA" ] || { echo "no conda at $CONDA" >&2; return 1; }
   # shellcheck source=/dev/null
   source "$CONDA"
   conda activate hifzguide
@@ -275,16 +309,9 @@ decode_phase() {
   decode
 }
 
-run() {
-  mkdir -p "$ROOT/decodes" "$ROOT/logs"
-  rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
-  : > "$ROOT/logs/events"
-  MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
-    'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
-  export MODELS
-  local status=0
-  timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?
-  local code=$status done
+record_run_result() {  # <status>
+  # ``check`` keys off done and then reads exit: write exit first.
+  local status=$1 code=$1 done
   if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
     code=2
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
@@ -292,10 +319,30 @@ run() {
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi
-  # ``check`` keys off done and then reads exit: write exit first.
   printf '%s\n' "$code" > "$ROOT/logs/run.exit"
   printf '%s\n' "$done" > "$ROOT/logs/run.done"
   return "$code"
+}
+
+run() {
+  # A signal's EXIT trap reads the last successful command's status, so translate TERM and INT
+  # into their 128+signal codes here; SIGKILL cannot be recorded, so a hard-killed run stays
+  # pending. The traps are armed before anything can fail, and the EXIT trap leaves run.exit
+  # and run.done for ``check`` on every other failure.
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
+  trap 'record_run_result "$?"' EXIT
+  mkdir -p "$ROOT/decodes" "$ROOT/logs"
+  rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
+  : > "$ROOT/logs/events"
+  activate
+  MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
+    'import json; m = json.load(open("choice.json"))["models"]; print(m["candidate"] + "," + m["control"])')
+  export MODELS
+  local status=0
+  timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?
+  trap - EXIT TERM INT
+  record_run_result "$status"
 }
 
 # Sourceable for the local helpers; only a direct run dispatches.

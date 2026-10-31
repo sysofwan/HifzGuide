@@ -1,0 +1,181 @@
+{
+ "added": {
+  "correct": 40,
+  "decisive": 46,
+  "real": 6,
+  "real_share": 0.13043478260869565,
+  "unclear": 4,
+  "wilson": [
+   0.061177571375,
+   0.256661342304
+  ]
+ },
+ "bars": {
+  "decisive_at_least": 80,
+  "real_at_most": 0.2
+ },
+ "by_cause": {
+  "added": {
+   "other_consonant": {
+    "correct": 30,
+    "decisive": 34,
+    "real": 4,
+    "real_share": 0.11764705882352941,
+    "unclear": 2,
+    "wilson": [
+     0.046713709734,
+     0.266211747963
+    ]
+   },
+   "shaddah": {
+    "correct": 1,
+    "decisive": 1,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.793456708526
+    ]
+   },
+   "skipped": {
+    "correct": 1,
+    "decisive": 1,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.793456708526
+    ]
+   },
+   "soft_pair": {
+    "correct": 0,
+    "decisive": 2,
+    "real": 2,
+    "real_share": 1.0,
+    "unclear": 0,
+    "wilson": [
+     0.34237195289,
+     1.0
+    ]
+   },
+   "target_pair": {
+    "correct": 1,
+    "decisive": 1,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.793456708526
+    ]
+   },
+   "tashkeel": {
+    "correct": 8,
+    "decisive": 9,
+    "real": 1,
+    "real_share": 0.1111111111111111,
+    "unclear": 1,
+    "wilson": [
+     0.019890371327,
+     0.435006214768
+    ]
+   },
+   "unrecorded": {
+    "correct": 0,
+    "decisive": 0,
+    "real": 0,
+    "real_share": null,
+    "unclear": 1,
+    "wilson": null
+   }
+  },
+  "removed": {
+   "other_consonant": {
+    "correct": 80,
+    "decisive": 85,
+    "real": 5,
+    "real_share": 0.058823529411764705,
+    "unclear": 1,
+    "wilson": [
+     0.025384785707,
+     0.130416100364
+    ]
+   },
+   "skipped": {
+    "correct": 6,
+    "decisive": 6,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 1,
+    "wilson": [
+     0.0,
+     0.390343033653
+    ]
+   },
+   "soft_pair": {
+    "correct": 1,
+    "decisive": 1,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.793456708526
+    ]
+   },
+   "tashkeel": {
+    "correct": 6,
+    "decisive": 6,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.390343033653
+    ]
+   },
+   "unrecorded": {
+    "correct": 1,
+    "decisive": 1,
+    "real": 0,
+    "real_share": 0.0,
+    "unclear": 0,
+    "wilson": [
+     0.0,
+     0.793456708526
+    ]
+   }
+  }
+ },
+ "caveats": [
+  "A word's position is the canonical word the grade's Muraja word starts on: a Muraja word spanning two canonical words highlights only the first.",
+  "Each clip is played whole; a row's start/end samples are provenance, not a cut.",
+  "Fewer than 80 decisive removed verdicts certifies nothing, whatever the share is."
+ ],
+ "noisy": {
+  "added": {
+   "decisive": 0,
+   "items": 0,
+   "real": 0
+  },
+  "removed": {
+   "decisive": 0,
+   "items": 0,
+   "real": 0
+  }
+ },
+ "removed": {
+  "correct": 93,
+  "decisive": 98,
+  "real": 5,
+  "real_share": 0.05102040816326531,
+  "unclear": 2,
+  "wilson": [
+   0.021986987166,
+   0.113926038552
+  ]
+ },
+ "verdict": "pass"
+}

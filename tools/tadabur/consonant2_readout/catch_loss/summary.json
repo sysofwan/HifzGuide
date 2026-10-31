@@ -1,0 +1,34 @@
+{
+ "choice_commit": "d0b28b8aa14b015737493fcf307deb862b164ddc",
+ "populations": {
+  "added": {
+   "causes": {
+    "other_consonant": 188,
+    "shaddah": 4,
+    "skipped": 9,
+    "soft_pair": 6,
+    "target_pair": 5,
+    "tashkeel": 65,
+    "unrecorded": 9
+   },
+   "words": 278
+  },
+  "removed": {
+   "causes": {
+    "other_consonant": 1476,
+    "shaddah": 39,
+    "skipped": 80,
+    "soft_pair": 42,
+    "target_pair": 21,
+    "tashkeel": 142,
+    "unrecorded": 8
+   },
+   "words": 1743
+  }
+ },
+ "sampled": {
+  "added": 50,
+  "removed": 100
+ },
+ "seed": "round2-catch-loss-2026-10"
+}

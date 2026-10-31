@@ -192,7 +192,7 @@ def test_the_look_refuses_without_a_committed_pre_registration_and_grades_nothin
 
 def test_the_look_refuses_a_round_whose_arms_are_not_filled_in(tmp_path):
     sitting = Sitting(tmp_path, {m: 1 for m in fx.R2_MODELS})
-    unfilled = dataclasses.replace(asp.CONSONANT2, root=sitting.spec.root,
+    unfilled = dataclasses.replace(fx.unfilled_spec(), root=sitting.spec.root,
                                    prereg_path=sitting.spec.prereg_path, pins=sitting.spec.pins)
     with pytest.raises(REFUSED, match="r2_"):
         sitting.run(unfilled)

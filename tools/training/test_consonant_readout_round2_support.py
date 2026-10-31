@@ -43,7 +43,7 @@ def test_the_models_writer_refuses_an_unpinned_arm(tmp_path):
     from training.consonant2_readout import write_models
 
     with pytest.raises(SystemExit, match="not pinned"):
-        write_models(asp.CONSONANT2, tmp_path / "models.json")
+        write_models(fx.unfilled_spec(), tmp_path / "models.json")
 
 
 def test_the_look_artifact_names_the_rows_it_left_out(tmp_path):

@@ -106,13 +106,31 @@ def test_c95_and_the_178_context_column_are_the_round_1_identities():
 
 @pytest.mark.parametrize("model", fx.R2_MODELS)
 def test_an_unfilled_round_2_role_is_refused_by_name(model):
+    unfilled = fx.unfilled_spec()
     with pytest.raises(REFUSED, match=model):
-        ag.model_spec(model, spec=asp.CONSONANT2)
+        ag.model_spec(model, spec=unfilled)
     record = {"model": model, "fingerprints": {}, "identity": {
         "model_ref": "/x/checkpoint.pt", "weights": model.rsplit("_", 1)[1], "step": 10_000,
         "recipe": asp.CANDIDATE_RECIPE, "checkpoint_sha256": "c" * 64}}
     with pytest.raises(REFUSED):
-        ag.validate_identity("tlog.look", model, record, spec=asp.CONSONANT2)
+        ag.validate_identity("tlog.look", model, record, spec=unfilled)
+
+
+def test_the_four_arm_weights_are_pinned_to_the_run_checkpoints():
+    """The run issues fill the arms (#228's candidate, #223's control): each resolves to its
+    arm's one checkpoint at its own selector, so the look decode names exactly these files."""
+    expected = {
+        "r2_candidate_live": (asp.R2_CANDIDATE_REF, False, asp.R2_CANDIDATE_SHA256),
+        "r2_candidate_ema": (asp.R2_CANDIDATE_REF, True, asp.R2_CANDIDATE_SHA256),
+        "r2_control_live": (asp.R2_CONTROL_REF, False, asp.R2_CONTROL_SHA256),
+        "r2_control_ema": (asp.R2_CONTROL_REF, True, asp.R2_CONTROL_SHA256),
+    }
+    for model, (ref, use_ema, sha) in expected.items():
+        identity = asp.CONSONANT2.models[model]
+        resolved = ag.model_spec(model, spec=asp.CONSONANT2)
+        assert (resolved.ref, resolved.use_ema, resolved.step, resolved.recipe) == (
+            ref, use_ema, 10_000, asp.CANDIDATE_RECIPE)
+        assert identity.checkpoint_sha256 == sha
 
 
 @pytest.mark.parametrize("model", ["candidate_live", "candidate_ema", "control_live",
@@ -318,7 +336,7 @@ def test_the_decoder_resolves_the_round_2_models_from_a_filled_spec_only():
                 specs[model].recipe) == (identity.ref, identity.weights == "ema", 10_000,
                                          fx.RECIPE)
     with pytest.raises(REFUSED, match="r2_"):
-        ted.round2_model_specs(asp.CONSONANT2)
+        ted.round2_model_specs(fx.unfilled_spec())
 
 
 # --- the command line ---------------------------------------------------------------------------

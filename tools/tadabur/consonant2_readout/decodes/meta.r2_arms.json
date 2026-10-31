@@ -1,0 +1,76 @@
+{
+ "base_revision": null,
+ "checkpoint_sha256": {
+  "r2_candidate_ema": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+  "r2_candidate_live": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+  "r2_control_ema": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+  "r2_control_live": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473"
+ },
+ "code_sha": "425c089a59988f9eea3e4987b1175779dc34b6d3",
+ "elapsed_seconds": 3666.0,
+ "gate": {
+  "items": 100,
+  "limit_hours": 11.0,
+  "processes": 6,
+  "projected_hours": 1.521774530527074,
+  "shards": 15,
+  "slice_audio_s": 482.7,
+  "slice_wall_s": 105.0,
+  "threads": 1,
+  "total_audio_s": 25184.933687500066,
+  "within_budget": true
+ },
+ "manifest_commit": "e11fbf52fef85adcadbad4cd468bdd37e6c4b944",
+ "manifest_rows": 2853,
+ "manifest_sha256": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57",
+ "models": [
+  "r2_candidate_live",
+  "r2_candidate_ema",
+  "r2_control_live",
+  "r2_control_ema"
+ ],
+ "processes": 6,
+ "pull_request": null,
+ "pull_request_ref": null,
+ "rows": {
+  "r2_candidate_ema": 2853,
+  "r2_candidate_live": 2853,
+  "r2_control_ema": 2853,
+  "r2_control_live": 2853
+ },
+ "selection": "look.gating",
+ "stores": [
+  "checks"
+ ],
+ "threads": 1,
+ "timings": {
+  "audio_seconds": 25184.8,
+  "decode_seconds": {
+   "r2_candidate_ema": {
+    "checks": 4509.8
+   },
+   "r2_candidate_live": {
+    "checks": 4507.7
+   },
+   "r2_control_ema": {
+    "checks": 4517.8
+   },
+   "r2_control_live": {
+    "checks": 4511.2
+   }
+  },
+  "items": 2853,
+  "shards": 405,
+  "shared_feature_seconds": {
+   "checks": 982.7
+  },
+  "wall_seconds_summed_over_processes": 19060.4
+ },
+ "tranche_meta_sha256": "a49c75e166f63d6509d783b04b79616035a3b291ae9b09951afff732bd7f0462",
+ "word_spans": {
+  "fallback": 0,
+  "identified": 2853,
+  "rule": "the clip's S6 identified word_from/word_to (tlog/ident/look), joined by the row key",
+  "source": "tlog/ident/look"
+ }
+}

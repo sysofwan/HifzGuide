@@ -45,6 +45,15 @@ LIVE = "live"
 EMA = "ema"
 #: Round 2's pre-registration, frozen by #229 on 2026-10-28 (owner-approved).
 CONSONANT2_PREREG_SHA256 = "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a"
+#: Round 2's two arms, one checkpoint each, at step 10,000 under ``aug94-mixture-v2``: the
+#: candidate's (#228) and the control's (#223). Each file holds both weight selectors; the
+#: look sitting decodes all four and chooses one per arm (#227).
+R2_CANDIDATE_REF = "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt"
+R2_CANDIDATE_SHA256 = "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58"
+R2_CONTROL_REF = "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt"
+R2_CONTROL_SHA256 = "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473"
+#: The prefix of the arms' decode names: ``r2_<arm>_<weights>`` (#227).
+R2_ARM_PREFIX = "r2_"
 
 
 @dataclass(frozen=True)
@@ -192,6 +201,15 @@ CONSONANT2 = RoundSpec(
         C95: CONSONANT1.models[C95],
         # #178's one checkpoint at its averaged weights, the round's context column.
         C178: CONSONANT1.models["candidate_ema"],
+        # The round's arms, at both weight selectors: the look sitting picks one per arm.
+        f"{R2_ARM_PREFIX}candidate_{LIVE}": ModelIdentity(
+            R2_CANDIDATE_REF, LIVE, 10_000, CANDIDATE_RECIPE, R2_CANDIDATE_SHA256),
+        f"{R2_ARM_PREFIX}candidate_{EMA}": ModelIdentity(
+            R2_CANDIDATE_REF, EMA, 10_000, CANDIDATE_RECIPE, R2_CANDIDATE_SHA256),
+        f"{R2_ARM_PREFIX}control_{LIVE}": ModelIdentity(
+            R2_CONTROL_REF, LIVE, 10_000, CANDIDATE_RECIPE, R2_CONTROL_SHA256),
+        f"{R2_ARM_PREFIX}control_{EMA}": ModelIdentity(
+            R2_CONTROL_REF, EMA, 10_000, CANDIDATE_RECIPE, R2_CONTROL_SHA256),
     },
     root=CONSONANT2_ROOT,
     #: #212's committed look decodes keep their file names: the file called ``candidate_ema`` in
@@ -215,7 +233,7 @@ CONSONANT2 = RoundSpec(
     prereg_path=CONSONANT2_PREREG_PATH,
     look_set=TLOG_LOOK,
     look_roles=(CANDIDATE, CONTROL),
-    arm_prefix="r2_",
+    arm_prefix=R2_ARM_PREFIX,
     #: G3's shaddah part is reported only (owner 2026-10-28): the catch side of a geminate is
     #: no longer gated; flags the app shows stay in the all-cause bars. The reading is still
     #: computed and shown beside the verdict, never dropped.

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -420,6 +421,8 @@ if any("aug_readout_decode" in arg for arg in args):
     else:
         set_name = args[args.index("--set") + 1]
         shard = args[args.index("--shard") + 1]
+        if not set_name or not shard:  # argparse refuses an empty --set choice
+            raise SystemExit(2)
         if os.environ.get("FAIL_SHARD") == set_name + " " + shard:
             raise SystemExit(1)
         out = Path(args[args.index("--out-dir") + 1])
@@ -432,15 +435,37 @@ elif any("consonant_baseline" in arg for arg in args):
 '''
 
 
+_XARGS_STUB = f'''#!/bin/sh
+# GNU xargs runs its command once when stdin holds nothing (no --no-run-if-empty); BSD xargs
+# does not, so this stub keeps an empty-queue bug visible on a Mac. Non-empty input goes to the
+# real xargs unchanged.
+input=$(cat)
+if [ -n "$input" ]; then
+  printf '%s\\n' "$input" | exec "{shutil.which("xargs")}" "$@"
+  exit $?
+fi
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -P|-n|-I|-d|-s|-L) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+  esac
+done
+exec "$@"
+'''
+
+
 def _decode_env(tmp_path: Path, **extra: str) -> dict[str, str]:
     """``decode`` without a GPU: ``python`` stands in for both tools, listing shards, writing
-    each shard's outputs, or logging the G6 cache model it was asked for."""
+    each shard's outputs, or logging the G6 cache model it was asked for, and an ``xargs`` stub
+    applies GNU's empty-input semantics."""
     root = tmp_path / "issue"
     for name in ("logs", "decodes", "clips"):
         (root / name).mkdir(parents=True)
     bindir = tmp_path / "decode-bin"
     bindir.mkdir()
     _mock(bindir / "python", f"#!{sys.executable}\n" + _STUB_BODY)
+    _mock(bindir / "xargs", _XARGS_STUB)
     return {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "ISSUE_ROOT": str(root),
             "MODELS": ",".join(MODELS), "PARALLEL": "1", "SHARDS": str(SHARDS),
             "PY_LOG": str(tmp_path / "python.log"), "CACHE_LOG": str(tmp_path / "cache.log"),
@@ -508,4 +533,18 @@ def test_a_still_failing_shard_does_not_leave_the_g6_caches_unwritten(tmp_path):
     done = _decode(env)
     assert done.returncode != 0
     assert {"qdat shard 0 exit 1"} <= _event_suffixes(tmp_path)
+    assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"
+
+
+def test_a_g6_only_resume_runs_no_shard_and_still_writes_both_caches(tmp_path):
+    """Every shard already carries an exit-0 event, so the retry queue is empty and only G6 is
+    outstanding: the empty queue must call the decoder zero times and must not fail the run."""
+    env = _decode_env(tmp_path)
+    root = tmp_path / "issue"
+    events = "".join(f"2026-10-31T00:00:00Z {s} shard {i} exit 0\n" for s, i in PAIRS)
+    (root / "logs" / "events").write_text(events, encoding="utf-8")
+    done = _decode(env)
+    assert done.returncode == 0, done.stderr
+    assert _decoded_pairs(tmp_path) == []
+    assert (root / "logs" / "events").read_text(encoding="utf-8") == events
     assert (tmp_path / "cache.log").read_text(encoding="utf-8") == "\n".join(MODELS) + "\n"

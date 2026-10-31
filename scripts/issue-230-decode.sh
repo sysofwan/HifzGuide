@@ -326,8 +326,12 @@ decode() {
   pending_jobs > "$ROOT/logs/pending.txt"
   export ROOT MODELS
   export -f run_shard
-  xargs -P "$PARALLEL" -n 2 bash -c 'run_shard "$1" "$2"' _ < "$ROOT/logs/pending.txt" \
-    || status=$?
+  # GNU xargs runs its command once on empty input (no --no-run-if-empty), handing the decoder
+  # empty --set/--shard and failing a resume whose only work is G6. G6 stays outside this guard.
+  if [ -s "$ROOT/logs/pending.txt" ]; then
+    xargs -P "$PARALLEL" -n 2 bash -c 'run_shard "$1" "$2"' _ < "$ROOT/logs/pending.txt" \
+      || status=$?
+  fi
   # G6's caches, under the round's own pins: the baseline's already exist from round 1. They are
   # independent of the shard decodes, so a still-failing shard must not leave them unwritten.
   for model in ${MODELS//,/ }; do

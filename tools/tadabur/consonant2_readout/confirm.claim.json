@@ -1,0 +1,84 @@
+{
+ "choice_commit": "c436d7a4088256a8e7d0c69f5a5c32decc7bca9c",
+ "choice_sha256": "f2296b22743cb48367f740b2e0482411b0f854dd97fc7fc3fe46792d816a2b1f",
+ "freeze_sha256": "b2f0042a11a9fd87215d892520fd6e3a5a95ef4d97abb958e4b153a6661cf3fe",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identities": {
+  "base": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  },
+  "c95": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "h448": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  },
+  "r2_candidate_ema": {
+   "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+   "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r2_control_ema": {
+   "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+   "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  }
+ },
+ "inputs": {
+  "/Users/sysofwan/repos/HifzGuide-wt/r2-confirm/docs/consonant-round2-preregistration.md": "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.base.jsonl.gz": "c42bac7d9c90bf0cfaf84e095fd6b72061745e32d903c2c3fa3710bf294c8840",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "378faca688f6774531215ad7ccac8916381c71d5e446647bd4f7a71fb5b3af77",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.h448.jsonl.gz": "c707478ab2d4ee39da388b43e9740db2437f626ac18de969997aae1e7af058a3",
+  "tadabur/aug_readout/decodes/tarteel_v1.confirm.candidate_ema.jsonl.gz": "e1b39548997c83f641a910820bcc582429456a5254db15e30dfbd2bc3ad54c7e",
+  "tadabur/consonant2_readout/decodes/tadabur_dev_unseen.r2_candidate_ema.jsonl.gz": "52c077958effed6a7272a43cb50e8018bb95df114098dd664d9f082aad64c866",
+  "tadabur/consonant2_readout/decodes/tadabur_dev_unseen.r2_control_ema.jsonl.gz": "30a4af9baea06c0d3651e622e1071089ea41f31aeaa82d70081b523bfae11eba",
+  "tadabur/consonant2_readout/decodes/tarteel_v1.confirm.r2_candidate_ema.jsonl.gz": "b14a9a2cdb44502bf905929e0a5880bed5c17084a98da419ef9276c15ccd67fb",
+  "tadabur/consonant2_readout/decodes/tarteel_v1.confirm.r2_control_ema.jsonl.gz": "da53b75b7a6736e6ea0a8085738d9493def17a6b9dbf6e1cdf9cc5a7f14c35ac",
+  "tadabur/consonant2_readout/decodes/tlog.confirm.base.jsonl.gz": "91b66205beb25e36044558e91cd96876b6e439c8d33d24ca4165cb896abaf172",
+  "tadabur/consonant2_readout/decodes/tlog.confirm.c95.jsonl.gz": "644a1bd1a3e25ceb320ff32e3d3125729e3d3dc14f5270a82627772d0418a5fc",
+  "tadabur/consonant2_readout/decodes/tlog.confirm.r2_candidate_ema.jsonl.gz": "4de59c3c8dbceb630a854fb00982b16874885414839c7bc63919c8bc53d1c46a",
+  "tadabur/consonant2_readout/decodes/tlog.confirm.r2_control_ema.jsonl.gz": "8852e0b89b7e5fe1f56bcb76dcae59626b8818033894ae39dd7b337fa674d46c",
+  "tadabur/consonant2_readout/freeze.json": "b2f0042a11a9fd87215d892520fd6e3a5a95ef4d97abb958e4b153a6661cf3fe",
+  "tadabur/consonant2_readout/models.json": "a237891f7a1ecd2198f2e27bb799f7e8abc5544e4699b37668da88c5d5e76592",
+  "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "tadabur/nonpro_gap/decodes/clean.base.jsonl.gz": "d5083ec28cdf8e34d4f29a88e90a3b277de9dfea98c1414f53403dbee246e4bd",
+  "tadabur/nonpro_gap/decodes/clean.h448.jsonl.gz": "82eda39d21f35cab49890d71596487b8ca06630f87a722cbe4627d2b009ffa33",
+  "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+  "tadabur/tlog/tranches/confirm.1.jsonl": "b46b96209546a3d67952797a2e6628fe7280ad13bf25ccc68d763a7a743ac7a4",
+  "tadabur/tlog/tranches/confirm.2.jsonl": "c7521a584da7321c4bf13e5cc99b4dae5ae476d7c484465b7b7af0a918d44493"
+ },
+ "missing_inputs": [],
+ "phase": "confirm",
+ "preclaim_sha256": "ce62ee7a476083b56418b27a9c4f5044f7561dfdc7b9c7f6a61a5fa245818d38",
+ "prereg_sha256": "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a"
+}

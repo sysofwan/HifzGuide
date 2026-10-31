@@ -190,7 +190,8 @@ def check_models(set_name: str, models: Sequence[str], layout: Layout | None = N
 
 
 def run(set_name: str, shard_index: int, models: Sequence[str], out_dir: Path, cache_dir: Path,
-        clips_dir: Path | None, spec: RoundSpec = AUG95) -> None:
+        clips_dir: Path | None, spec: RoundSpec = AUG95,
+        share_features: bool = False) -> None:
     check_models(set_name, models, spec=spec)
     out_dir.mkdir(parents=True, exist_ok=True)
     shard = shards(set_name)[shard_index]
@@ -199,7 +200,7 @@ def run(set_name: str, shard_index: int, models: Sequence[str], out_dir: Path, c
     paths = {m: out_dir / f"{set_name}.{shard_index}.{m}.jsonl" for m in models}
     stores = {p: STORES[p] for p in SETS[set_name].protocols}
     timing = decode_recordings(recordings(set_name, shard, cache_dir, clips_dir), decoders, paths,
-                               f"{set_name} {shard}", stores)
+                               f"{set_name} {shard}", stores, share_features=share_features)
     append_timing(out_dir / f"{set_name}.{shard_index}.timing.jsonl",
                   {"set": set_name, "shard": shard, **timing})
 
@@ -216,6 +217,8 @@ def main() -> None:
     parser.add_argument("--clips-dir", type=Path, help="the decode_evalset's clips (Tadabur)")
     parser.add_argument("--spec", default=AUG95.name, choices=sorted(SPECS),
                         help="the round the models and the choice belong to")
+    parser.add_argument("--share-features", action="store_true",
+                        help="featurise each item once for every pending model")
     args = parser.parse_args()
     if args.list_shards:
         print("\n".join(f"{i} {s}" for i, s in enumerate(shards(args.set))))
@@ -223,7 +226,7 @@ def main() -> None:
     if None in (args.shard, args.models, args.out_dir, args.cache_dir):
         parser.error("--shard, --models, --out-dir and --cache-dir are required")
     run(args.set, args.shard, args.models.split(","), args.out_dir, args.cache_dir,
-        args.clips_dir, spec=round_spec(args.spec))
+        args.clips_dir, spec=round_spec(args.spec), share_features=args.share_features)
 
 
 if __name__ == "__main__":

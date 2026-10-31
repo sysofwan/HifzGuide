@@ -966,16 +966,18 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     identity is validated first, and a gated set's decodes are not read before the choice is
     committed and names their weights."""
     from training.external_corpus import merge_decode_files
+    from training.aug_readout_spec import TLOG_PREFIX
 
-    if tlog_round(spec):
-        raise SystemExit(f"{spec.name}'s tlog decodes are merged by "
-                         "`python -m tadabur.tlog_eval_decode merge`, and its readout "
-                         "identities are written by `consonant_readout models "
-                         f"--spec {spec.name}`: this merge has no tlog set to count")
     found = {}
     for path in sorted(decodes_dir.glob("*.identity.json")):
         set_name, model = path.name.removesuffix(".identity.json").rsplit(".", 1)
         found[(set_name, model)] = path
+    tlog_sets = sorted({set_name for set_name, _ in found
+                        if set_name.startswith(TLOG_PREFIX)})
+    if tlog_sets:  # a tlog set is the tlog decoder's to merge, never this one's
+        raise SystemExit(f"{', '.join(tlog_sets)} are merged by "
+                         "`python -m tadabur.tlog_eval_decode merge`: this merge has no tlog "
+                         "set to count")
     reused = sorted(key for key in found if key in spec.decode_sources)
     if reused:  # a reused source is another round's committed file: the merge never writes it
         raise SystemExit(
@@ -987,7 +989,7 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     # A candidate-only merge leaves the reused sources' identities unmerged. Resolve each one
     # from the manifest that committed its decodes and validate it under this round's spec, so
     # the round's manifest is complete for the confirm sitting (R1.1).
-    inherited_needs = needs(CONFIRM, "ema", spec)
+    inherited_needs = needs(CONFIRM, choice["weights"] if choice is not None else "ema", spec)
     for (set_name, model), source in spec.decode_sources.items():
         key = f"{set_name}/{model}"
         if key in records or model not in inherited_needs.get(set_name, ()):

@@ -38,6 +38,7 @@ from training import aug_readout as ar
 from training.acceptance_stats import PASS, aggregate
 from training.aug_readout_gate import (
     Layout,
+    claim as hold_sitting,
     committed_choice,
     is_committed,
     sha256_file,
@@ -61,7 +62,7 @@ from training.aug_readout_metrics import (
     teacher_agreement_terms,
     word_agreement_terms,
 )
-from training.aug_readout_spec import C95, RoundSpec
+from training.aug_readout_spec import RoundSpec
 from training.aug_readout_verdict import (
     CONSONANT_BAR_TEXT,
     bound_condition,
@@ -91,8 +92,6 @@ PRECLAIM_GATES = (
 #: one ``g5.<substitution>`` per frozen substitution.
 POOLED_BARS = ("bar1.all_cause", "bar2.reduction", "bar3.consonant_cause",
                "bar4a.tlog_confirm", "bar4b.tlog_confirm", "g4.tashkeel_cause")
-#: The roles the pooled read grades, in report order.
-ROLES = (CANDIDATE, CONTROL, C95, BASE)
 #: The control comparison's caveat: one training run per arm, so it never gates.
 CONTROL_CAVEAT = ("n = 1 per arm: one training run each, so candidate − control is "
                   "descriptive, not a test")
@@ -180,8 +179,7 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
 
     weights = choice["weights"]
     chosen = ar.choice_models(spec, weights)
-    students = tuple(chosen.values())
-    models = (*students, spec.baseline, BASE)
+    models = (*chosen.values(), spec.baseline, BASE)
     roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
              spec.baseline: spec.baseline, BASE: BASE}
     present = tuple(roles.values())
@@ -461,33 +459,29 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
                "choice_commit": committed.commit, "choice_sha256": committed.sha256,
                "inputs": _digests(sources, spec, committed.choice),
                "harness": sources.harness_identity()}
-    from training.aug_readout_gate import claim as hold
-
-    with hold(layout.claim("confirm"), sitting):
+    with hold_sitting(layout.claim("confirm"), sitting):
         tranches = {}
         for role in CONFIRM_TRANCHES:
             data = sources.tlog(role, models)
             bound = _bound_set(data, roles)
             tranches[role] = ar.SetData(
                 bound.items, bound.decodes,
-                sources.grade(bound.items, bound.decodes, ROLES))
+                sources.grade(bound.items, bound.decodes, present))
         pooled = confirm_views({role: data.items for role, data in tranches.items()})
         items = pooled[POOLED_CONFIRM]
         decodes = {role: {**tranches["confirm.1"].decodes[role],
                           **tranches["confirm.2"].decodes[role]} for role in present}
-        grades = sources.grade(items, decodes, ROLES)
+        grades = sources.grade(items, decodes, present)
         comparisons = spec.comparisons
+        texts = ar.checks_text(ar.SetData(items, decodes), present)
         main = _tables(grades, present, comparisons)
         mechanism = {
             "tlog_confirm": compare(
-                word_agreement_terms(items, ar.checks_text(ar.SetData(items, decodes), ROLES),
-                                     (CANDIDATE, spec.baseline), workers=workers),
-                POINTS, comparisons),
+                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                     workers=workers), POINTS, comparisons),
             "tlog_confirm_departs": compare(
-                word_agreement_terms(items, ar.checks_text(ar.SetData(items, decodes), present),
-                                     (CANDIDATE, spec.baseline), subset=DEPARTS,
-                                     workers=workers),
-                POINTS, comparisons),
+                word_agreement_terms(items, texts, (CANDIDATE, spec.baseline),
+                                     subset=DEPARTS, workers=workers), POINTS, comparisons),
         }
         shipped = SHIPPED_DEFAULT.name
         frozen = frozen_substitutions(spec)

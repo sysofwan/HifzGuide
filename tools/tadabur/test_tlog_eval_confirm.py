@@ -248,8 +248,11 @@ def _manifest_rows() -> dict[str, list[dict]]:
 def test_the_merge_pools_both_tranches_into_one_sorted_file_per_model(tmp_path):
     manifests = _manifest_rows()
     out = tmp_path / "decodes"
+    claims = {"confirm.1": {"commit": "a" * 40, "date": "2026-11-02",
+                            "claim_sha256": "b" * 64, "manifest_sha256": "d" * 64}}
     counts = ted.merge_confirm_decodes(_parts(tmp_path, manifests), out, manifests=manifests,
-                                       provenance={"code_sha": "c" * 40}, models=MODELS)
+                                       provenance={"code_sha": "c" * 40}, models=MODELS,
+                                       claims=claims)
     assert counts == {"base": 4, "c95": 4}
     for model in MODELS:
         with gzip.open(out / f"tlog.confirm.{model}.jsonl.gz", "rt", encoding="utf-8") as handle:
@@ -263,6 +266,7 @@ def test_the_merge_pools_both_tranches_into_one_sorted_file_per_model(tmp_path):
     meta = json.loads((out / "meta.confirm.json").read_text(encoding="utf-8"))
     assert meta["code_sha"] == "c" * 40 and meta["models"] == list(MODELS)
     assert meta["rows"] == {"base": 4, "c95": 4}
+    assert meta["claims"] == claims
     assert not (out / "meta.json").exists()
 
 

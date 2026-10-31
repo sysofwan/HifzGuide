@@ -531,7 +531,8 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
 
 
 def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, Sequence],
-                          provenance: Mapping, models: Sequence[str]) -> dict:
+                          provenance: Mapping, models: Sequence[str],
+                          claims: Mapping[str, Mapping] | None = None) -> dict:
     """Pool confirm.1's and confirm.2's parts into one sorted file per model (#230).
 
     ``manifests`` is exactly the two claimable tranches' rows, from
@@ -540,7 +541,8 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
     run can never look complete. A clip in both tranches is refused before anything is written.
     Each pooled line carries the ``tranche`` it came from, so every tranche is still reportable
     alone. One gzipped file per model, ``tlog.confirm.<model>.jsonl.gz``, and
-    ``meta.confirm.json`` (never the look's ``meta.json``).
+    ``meta.confirm.json`` (never the look's ``meta.json``) with each tranche's
+    :func:`tadabur.tlog_tranches.claim_record` under ``claims`` when the caller supplies them.
     """
     from training.tlog_eval import CONFIRM_TRANCHES
 
@@ -583,8 +585,11 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
     for model, lines in pooled.items():
         write_shard(lines, out_dir / f"tlog.confirm.{model}.jsonl.gz")
         counts[model] = len(lines)
-    write_json({**provenance, "tranches": list(CONFIRM_TRANCHES), "models": list(models),
-                "rows": counts}, out_dir / "meta.confirm.json")
+    meta = {**provenance, "tranches": list(CONFIRM_TRANCHES), "models": list(models),
+            "rows": counts}
+    if claims is not None:
+        meta["claims"] = {role: dict(record) for role, record in claims.items()}
+    write_json(meta, out_dir / "meta.confirm.json")
     return counts
 
 
@@ -964,6 +969,8 @@ def main() -> None:
     cache_.add_argument("--role", default=LOOK, help="look, or a claimed confirm tranche")
     coverage_ = commands.add_parser("coverage", help="verify and count the cached gating clips")
     coverage_.add_argument("--clip-cache", type=Path, required=True)
+    coverage_.add_argument("--role", default=LOOK,
+                           help="look, or a claimed confirm tranche whose clips are cached")
     gate_ = commands.add_parser("gate", help="project the selection from the timing lines so far")
     gate_.add_argument("--parts-dir", type=Path, required=True)
     gate_.add_argument("--elapsed-seconds", type=float, required=True)
@@ -1013,13 +1020,15 @@ def main() -> None:
                                  shard_index=args.shard_index, shard_count=args.shard_count,
                                  role=args.role)
     elif args.command == "coverage":
-        result = cache_coverage(gating_rows(read_manifest(LOOK)), args.clip_cache)
+        result = cache_coverage(gating_rows(selection_rows(args.role)), args.clip_cache)
     elif args.command == "merge-confirm":
+        from tadabur.tlog_tranches import claim_record
         from training.tlog_eval import CONFIRM_TRANCHES
 
         result = merge_confirm_decodes(
             args.parts_dir, args.out_dir,
             manifests={role: read_confirm_manifest(role) for role in CONFIRM_TRANCHES},
+            claims={role: claim_record(role) for role in CONFIRM_TRANCHES},
             provenance=provenance(head_sha(), args.pr), models=args.models)
     elif args.command == "parity":
         result = parity_record(args.parts_dir, models=args.models, shards=parity_shards(),

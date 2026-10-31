@@ -301,6 +301,18 @@ def require_claim(role: str, tranches_dir: Path = TRANCHES_DIR) -> None:
     _require_own_claim(role, tranches_dir)
 
 
+def claim_record(role: str, tranches_dir: Path = TRANCHES_DIR) -> dict:
+    """The role's committed claim and the manifest it opened, each hashed: what a pooled read
+    cites to show which commitment its rows came under."""
+    _require_own_claim(role, tranches_dir)
+    directory = Path(tranches_dir)
+    claim_path = directory / f"{role}.claim.json"
+    record = json.loads(claim_path.read_text(encoding="utf-8"))
+    return {"commit": record["commit"], "date": record["date"],
+            "claim_sha256": sha256_file(claim_path),
+            "manifest_sha256": sha256_file(directory / f"{role}.jsonl")}
+
+
 def _require_own_claim(role: str, tranches_dir: Path) -> None:
     """The requested role's own claim: present, committed, unchanged, and naming that role."""
     path = Path(tranches_dir) / f"{role}.claim.json"

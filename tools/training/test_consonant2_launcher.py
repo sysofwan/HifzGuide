@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -38,6 +39,9 @@ from training import round2_verdict_fixtures as rv
 
 TOOLS = Path(__file__).resolve().parents[1]
 SCRIPT = TOOLS.parent / "scripts" / "issue-230-decode.sh"
+#: The sets the launcher decodes for both arms, and the two chosen models.
+SETS = ["tarteel_v1.confirm", "qdat", "qud_other", "tadabur_dev_unseen"]
+MODELS = ["r2_candidate_ema", "r2_control_ema"]
 DECODE_LINES = [
     "decode tarteel_v1.confirm r2_candidate_ema,r2_control_ema",
     "decode qdat r2_candidate_ema,r2_control_ema",
@@ -184,31 +188,43 @@ def test_the_launch_starts_the_detached_run_on_the_box_under_the_gpu_lock(tmp_pa
 CHOICE_JSON = '{"models": {"candidate": "r2_candidate_ema", "control": "r2_control_ema"}}'
 
 
-def _run_on_the_box(tmp_path: Path, choice: str, *, phase_exit: int = 0):
-    """``run`` with the box's shell shape: no ``python`` on PATH until the conda env is
-    activated, and a ``timeout`` stub in place of the decode phase (nothing decodes here)."""
+def _box_run_env(tmp_path: Path, choice: str, *, timeout_body: str = "exit 0",
+                 conda: bool = True) -> dict[str, str]:
+    """The box's shell shape for ``run``: no ``python`` on PATH until the conda env is
+    activated, and a ``timeout`` stub in place of the decode phase (nothing decodes here).
+
+    The env's ``python`` touches ``activated`` and the stub records ``$MODELS``, so a test can
+    see which interpreter read the choice and what it read."""
     root = tmp_path / "issue"
     (root / "repo" / "readout").mkdir(parents=True)
     (root / "repo" / "readout" / "choice.json").write_text(choice, encoding="utf-8")
     prefix = tmp_path / "env"
     (prefix / "bin").mkdir(parents=True)
-    (prefix / "bin" / "python").symlink_to(sys.executable)
-    conda = tmp_path / "conda.sh"
-    conda.write_text(f'conda() {{ PATH="{prefix}/bin:$PATH"; export PATH; }}\n',
-                     encoding="utf-8")
+    _mock(prefix / "bin" / "python",
+          f'#!/bin/sh\ntouch "{tmp_path / "activated"}"\nexec "{sys.executable}" "$@"\n')
+    conda_script = tmp_path / "conda.sh"
+    if conda:
+        conda_script.write_text(f'conda() {{ PATH="{prefix}/bin:$PATH"; export PATH; }}\n',
+                                encoding="utf-8")
     bindir = tmp_path / "run-bin"
     bindir.mkdir()
-    _mock(bindir / "timeout", f"#!/bin/sh\nexit {phase_exit}\n")
-    env = {**os.environ, "PATH": f"{bindir}:/usr/bin:/bin", "CONDA": str(conda),
-           "ISSUE_ROOT": str(root), "ROUND_DIR": "readout"}
-    return subprocess.run(["bash", str(SCRIPT), "run"], env=env, capture_output=True,
-                          text=True, stdin=subprocess.DEVNULL, timeout=60)
+    _mock(bindir / "timeout",
+          f'#!/bin/sh\nprintf "%s" "$MODELS" > "{tmp_path / "models"}"\n{timeout_body}\n')
+    return {**os.environ, "PATH": f"{bindir}:/usr/bin:/bin", "CONDA": str(conda_script),
+            "ISSUE_ROOT": str(root), "ROUND_DIR": "readout"}
+
+
+def _run_on_the_box(tmp_path: Path, choice: str, **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run(["bash", str(SCRIPT), "run"], env=_box_run_env(tmp_path, choice, **kwargs),
+                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
 
 
 def test_the_run_reads_the_choice_with_the_activated_env_python(tmp_path):
     done = _run_on_the_box(tmp_path, CHOICE_JSON)
     logs = tmp_path / "issue" / "logs"
     assert done.returncode == 0, done.stderr
+    assert (tmp_path / "activated").exists()
+    assert (tmp_path / "models").read_text(encoding="utf-8") == "r2_candidate_ema,r2_control_ema"
     assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "0"
     assert "exit 0" in (logs / "run.done").read_text(encoding="utf-8")
 
@@ -221,9 +237,111 @@ def test_a_run_that_dies_before_the_decode_phase_still_records_the_failure(tmp_p
     assert (logs / "run.done").exists()
 
 
+def test_a_run_that_cannot_make_its_directories_still_records_the_failure(tmp_path):
+    (tmp_path / "issue" / "logs").mkdir(parents=True)
+    (tmp_path / "issue" / "decodes").write_text("a stale file\n", encoding="utf-8")
+    done = _run_on_the_box(tmp_path, CHOICE_JSON)
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode != 0
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == str(done.returncode)
+    assert (logs / "run.done").exists()
+
+
+def test_a_missing_conda_script_is_a_recorded_failure_not_a_pass(tmp_path):
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, conda=False)
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode != 0
+    assert "no conda" in done.stderr
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == str(done.returncode)
+    assert (logs / "run.done").exists()
+
+
 def test_a_failed_decode_phase_is_recorded_for_check(tmp_path):
-    done = _run_on_the_box(tmp_path, CHOICE_JSON, phase_exit=7)
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, timeout_body="exit 7")
     logs = tmp_path / "issue" / "logs"
     assert done.returncode == 7
     assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "7"
     assert "exit 7" in (logs / "run.done").read_text(encoding="utf-8")
+
+
+def test_a_terminated_run_records_its_signal_instead_of_a_pass(tmp_path):
+    started = tmp_path / "phase-started"
+    env = _box_run_env(tmp_path, CHOICE_JSON,
+                       timeout_body=f'touch "{started}"; sleep 30')
+    proc = subprocess.Popen(["bash", str(SCRIPT), "run"], env=env, start_new_session=True,
+                            stdin=subprocess.DEVNULL)
+    deadline = time.monotonic() + 10
+    while not started.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert started.exists()
+    os.killpg(proc.pid, signal.SIGTERM)
+    assert proc.wait(timeout=30) == 143
+    assert (tmp_path / "issue" / "logs" / "run.exit").read_text(encoding="utf-8").strip() == "143"
+
+
+# --- check and fetch ------------------------------------------------------------------------------
+
+
+def _local_box(tmp_path: Path) -> dict[str, str]:
+    """``ssh`` runs its command here, so the remote paths in these tests are local tmp dirs;
+    ``rsync`` only logs the source it was given."""
+    bindir = tmp_path / "local-bin"
+    bindir.mkdir()
+    _mock(bindir / "ssh", '#!/bin/sh\nshift\nexec sh -c "$*"\n')
+    _mock(bindir / "rsync", f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{tmp_path / "rsync.log"}"\n')
+    return {"PATH": f"{bindir}:{_env(tmp_path)['PATH']}", "HOST": "box",
+            "ISSUE_ROOT": str(tmp_path / "issue")}
+
+
+def test_check_reports_a_done_marker_that_has_no_exit_marker(tmp_path):
+    logs = tmp_path / "issue" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "run.done").write_text("2026-01-01T00:00:00Z exit 0\n", encoding="utf-8")
+    done = subprocess.run(["bash", str(SCRIPT), "check"], env=_env(tmp_path, **_local_box(tmp_path)),
+                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
+    assert done.returncode == 1
+    assert "failed" in done.stdout and "run.exit" in done.stdout
+
+
+def _completed_run(tmp_path: Path) -> None:
+    """The box-side output of a finished run: every queued job exited 0, both models' shard
+    files exist, and both arms' G6 caches exist."""
+    root = tmp_path / "issue"
+    logs = root / "logs"
+    logs.mkdir(parents=True)
+    (logs / "run.exit").write_text("0\n", encoding="utf-8")
+    (logs / "run.done").write_text("2026-01-01T00:00:00Z exit 0\n", encoding="utf-8")
+    jobs, events = [], []
+    (root / "decodes").mkdir()
+    for set_name in SETS:
+        jobs.append(f"{set_name} 0")
+        events.append(f"2026-01-01T00:00:00Z {set_name} shard 0 exit 0")
+        for model in MODELS:
+            (root / "decodes" / f"{set_name}.0.{model}.jsonl").write_text("{}\n", encoding="utf-8")
+    (logs / "jobs.txt").write_text("\n".join(jobs) + "\n", encoding="utf-8")
+    (logs / "events").write_text("\n".join(events) + "\n", encoding="utf-8")
+    for model in MODELS:
+        for kind in ("decodes", "checks"):
+            cache = root / "repo" / "tools" / "tadabur" / "truth_baseline" / kind / f"{model}.json"
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_text("{}\n", encoding="utf-8")
+
+
+def test_fetch_refuses_a_run_that_did_not_finish_every_decode(tmp_path):
+    round_ = rv.committed_round(tmp_path)
+    _completed_run(tmp_path)
+    (tmp_path / "issue" / "decodes" / f"qdat.0.{MODELS[0]}.jsonl").unlink()
+    done = _run("fetch", round_, tmp_path, **_local_box(tmp_path),
+                FETCH_DIR=str(tmp_path / "fetched"))
+    assert done.returncode != 0
+    assert "complete" in done.stderr
+    assert not (tmp_path / "rsync.log").exists()
+
+
+def test_fetch_copies_a_complete_run(tmp_path):
+    round_ = rv.committed_round(tmp_path)
+    _completed_run(tmp_path)
+    done = _run("fetch", round_, tmp_path, **_local_box(tmp_path),
+                FETCH_DIR=str(tmp_path / "fetched"))
+    assert done.returncode == 0, done.stderr
+    assert "decodes" in (tmp_path / "rsync.log").read_text(encoding="utf-8")

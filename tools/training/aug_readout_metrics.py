@@ -47,7 +47,8 @@ from training.acceptance_stats import (
     ratio,
     ratio_interval,
 )
-from training.word_flags import OTHER_CONSONANT, SOFT_PAIR, TARGET_PAIR, TASHKEEL
+from training.word_flags import (OTHER_CONSONANT, SHADDAH_CAUSE, SOFT_PAIR, TARGET_PAIR,
+                                 TASHKEEL)
 
 #: Scales a ratio is reported on.
 PER_1000 = 1000.0
@@ -60,10 +61,11 @@ C95 = "c95"
 #: "every table is shown twice"), and against C95, the consonant round's baseline (#174). A
 #: comparison whose model a set does not carry is left out, so #95's tables are unchanged.
 COMPARISONS = ((CANDIDATE, H448), (CANDIDATE, CONTROL), (CANDIDATE, C95))
-#: The consonant round's two causes (#174): a consonant substitution other than the madd alif,
-#: or a tashkeel error as :mod:`training.word_flags` reads it.
+#: The consonant round's cause cells (#174, and round 2's reported shaddah line): a consonant
+#: substitution other than the madd alif, a tashkeel error as :mod:`training.word_flags` reads
+#: it, or a collapsed geminate.
 CONSONANT, TASHKEEL_CAUSE = "consonant", "tashkeel"
-CAUSES = (CONSONANT, TASHKEEL_CAUSE)
+CAUSES = (CONSONANT, TASHKEEL_CAUSE, SHADDAH_CAUSE)
 #: The flag causes a consonant error carries; ``ا→∅`` is the madd alif (Muraja#263).
 CONSONANT_FLAG_CAUSES = frozenset({OTHER_CONSONANT, SOFT_PAIR, TARGET_PAIR})
 MADD_ALIF = "ا→∅"
@@ -74,10 +76,13 @@ SUBSETS = (DEPARTS, EQUALS)
 
 def carries_cause(flag, cause: str) -> bool:
     """Whether one flagged word's :class:`training.word_flags.Flag` carries ``cause`` in the
-    round's sense: ``tashkeel`` exactly as ``word_flags`` records it; ``consonant`` through a
-    consonant substitution other than the madd alif (``ا→∅``, Muraja#263)."""
+    round's sense: ``tashkeel`` and ``shaddah`` exactly as ``word_flags`` records them;
+    ``consonant`` through a consonant substitution other than the madd alif (``ا→∅``,
+    Muraja#263)."""
     if cause == TASHKEEL_CAUSE:
         return TASHKEEL in flag.causes
+    if cause == SHADDAH_CAUSE:
+        return SHADDAH_CAUSE in flag.causes
     if cause == CONSONANT:
         return any(c in CONSONANT_FLAG_CAUSES and substitution != MADD_ALIF
                    for c, substitution in flag.consonants)
@@ -255,7 +260,7 @@ def word_segments(decode: str, reference: str) -> tuple[str, ...]:
 
 def _agreeing_words(job: tuple[str, str, str, str | None]) -> tuple[int, int]:
     """The reference words the decoded ones equal, over the words ``subset`` keeps: the words
-    whose teacher word differs from the reference word (:data:`DEPARTS`), or those where it is
+    whose teacher word differs from the reference word (:data:`DEPARTS`), those where it is
     equal (:data:`EQUALS`), or every word (``None``)."""
     decode, teacher, reference, subset = job
     mine, theirs = word_segments(decode, reference), word_segments(teacher, reference)
@@ -291,6 +296,48 @@ def word_agreement_terms(items: Sequence, decodes: Mapping[str, Mapping[str, str
                 for i in items]
         rows[model] = [(float(a), float(n)) for a, n in _map(_agreeing_words, jobs, workers)]
     return _terms([i.cluster for i in items], rows)
+
+
+def _geminate_sites(job: tuple[str, str, str]) -> list[bool]:
+    """One entry per shaddah the teacher holds: whether the model holds it too. The sites are
+    the reference's doubled consonant runs (a geminate ``دد``, by
+    :func:`training.site_outcomes.consonant_run`) the teacher's decode commits a doubled run at
+    (``held``); the model agrees when its own ``shaddah_outcome`` at that carrier is ``held``."""
+    from tadabur.contrast_attribution import align_on_carriers
+    from tadabur.listening_session import run_start
+    from tadabur.truth_sites import CONSONANTS
+    from training.site_outcomes import HELD, consonant_run, shaddah_outcome
+
+    decode, teacher, reference = job
+    theirs = align_on_carriers(teacher, reference)
+    mine = align_on_carriers(decode, reference)
+    raw = theirs.raw_reference
+    sites = [index for index, char in enumerate(raw)
+             if char in CONSONANTS and run_start(raw, index) == index
+             and len(consonant_run(raw, index)) > 1
+             and shaddah_outcome(theirs, index).committed == HELD]
+    return [shaddah_outcome(mine, index).committed == HELD for index in sites]
+
+
+def shaddah_agreement_terms(items: Sequence, decodes: Mapping[str, Mapping[str, str]],
+                            models: Sequence[str], teacher: str = BASE,
+                            workers: int = 1) -> Terms:
+    """One observation per shaddah the teacher holds on an item — several within a word are
+    separate sites — over the shaddah sites: whether the model holds it too
+    (:func:`_geminate_sites`, the canonical gemination outcome at the reference's carriers).
+    ``decodes`` is the committed text of the checks, projected onto the teacher's vocabulary as
+    :func:`word_agreement_terms` does."""
+    clusters: list[int] = []
+    rows: dict[str, list[tuple[float, float]]] = {}
+    for model in models:
+        jobs = [(project_to_teacher(decodes[model][i.key]),
+                 project_to_teacher(decodes[teacher][i.key]), i.reference.reference)
+                for i in items]
+        per_item = _map(_geminate_sites, jobs, workers)
+        if not rows:  # the site count reads the teacher alone, so it is every model's
+            clusters = [item.cluster for item, sites in zip(items, per_item) for _ in sites]
+        rows[model] = [(1.0 if held else 0.0, 1.0) for sites in per_item for held in sites]
+    return _terms(clusters, rows)
 
 
 def observed_substitutions(grades: Sequence, models: Sequence[str],

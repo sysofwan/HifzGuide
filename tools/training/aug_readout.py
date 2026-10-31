@@ -69,7 +69,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
-from training.aug_readout_spec import AUG95, RoundSpec, check_pins, tlog_round
+from tadabur.tlog_tranches import TRANCHES_DIR
+from training.aug_readout_spec import (AUG95, TLOG_CONFIRM, TLOG_LOOK, RoundSpec,
+                                       check_pins, tlog_round)
 from training.aug_readout_spec import spec as round_spec
 from training.aug_readout_spec import SPECS
 from training.aug_readout_gate import (
@@ -266,6 +268,9 @@ class Sources:
     another round's immutable inputs."""
 
     spec: RoundSpec = AUG95
+    #: Where the tlog tranches are read: the committed tranches directory, unless a reader
+    #: points the sitting elsewhere (its claims are then checked in the same place).
+    tranches_dir: Path = TRANCHES_DIR
 
     def __init__(self, spec: RoundSpec = AUG95):
         self.spec = spec
@@ -294,7 +299,7 @@ class Sources:
         if tlog_round(self.spec):
             from training.consonant2_readout import input_files as round_inputs
 
-            return round_inputs(self, phase)
+            return round_inputs(self, phase, weights)
         readout = [self.decode_path(s, m)
                    for s, models in needs(phase, weights, self.spec).items() for m in models]
         if self.spec.name == "consonant1":
@@ -396,28 +401,50 @@ class Sources:
         """One tlog tranche's gating items and their decodes, every model's decoded checks, and
         the rows the item builder left out (with their filename ayah). The manifest is read only
         through :func:`tadabur.tlog_tranches.load_tranche`, whose claim gate refuses an unopened
-        confirm tranche; part 1 reads the look tranche (its pooled confirm read is part 2,
-        #227)."""
+        confirm tranche; a confirm tranche reads the pooled ``tlog.confirm`` decodes. The
+        tranches live in :attr:`tranches_dir`, the same directory a reader checks claims in."""
+        return self._tlog_views(role, models)[0]
+
+    def tlog_span_trimmed(self, role: str, models: Sequence[str]) -> SetData:
+        """The same tranche, each item's reference cut to the ``word_from``/``word_to`` its
+        decode records: the reported sensitivity line, never what gating grades."""
+        return self._tlog_views(role, models)[1]
+
+    def tlog_views(self, role: str, models: Sequence[str]) -> tuple[SetData, SetData]:
+        """The gating items and the span-trimmed items of one tranche, from **one** read of its
+        manifest and decodes."""
+        return self._tlog_views(role, models)
+
+    def _tlog_views(self, role: str, models: Sequence[str]) -> tuple[SetData, SetData]:
         from tadabur.tlog_tranches import load_tranche
         from tadabur.waqf_segments import hafs_segment_reference
         from training.external_corpus import read_decode_file
         from training.nonpro_decode import item_key
-        from training.tlog_eval import gating_items
+        from training.tlog_eval import gating_items, span_trimmed_items
 
         if role != LOOK:
-            raise SystemExit(f"{role}: the pooled confirm read is part 2 (#227); this readout "
-                             "reads tlog look gating only")
-        rows = load_tranche(role)
-        set_name = f"tlog.{role}"
+            from training.tlog_eval import CONFIRM_TRANCHES
+
+            if role not in CONFIRM_TRANCHES:
+                raise SystemExit(f"{role}: this round reads the tlog tranches "
+                                 f"{[LOOK, *CONFIRM_TRANCHES]}, never {role!r}")
+        rows = load_tranche(role, self.tranches_dir)
+        set_name = TLOG_LOOK if role == LOOK else TLOG_CONFIRM
         base = read_decode_file(self.decode_path(set_name, BASE))
-        items, unsupported = gating_items(rows, base, reference_of=hafs_segment_reference())
-        keys = {item.key for item in items}
+        reference_of = hafs_segment_reference()
+        gating, unsupported = gating_items(rows, base, reference_of=reference_of)
+        trimmed, span_unsupported = span_trimmed_items(rows, base, reference_of=reference_of)
+        keys = {item.key for item in gating}
         decodes = {BASE: base,
                    **{m: read_readout(set_name, m, base, keys, spec=self.spec)
                       for m in models if m != BASE}}
         labels = {item_key(row["audio_path"]): row["filename_label"] for row in rows}
-        return SetData(items, {m: decodes[m] for m in models},
-                       excluded={key: labels.get(key) for key in unsupported})
+
+        def view(items, left_out) -> SetData:
+            return SetData(items, {m: decodes[m] for m in models},
+                           excluded={key: labels.get(key) for key in left_out})
+
+        return view(gating, unsupported), view(trimmed, span_unsupported)
 
     def bench(self) -> dict[str, str]:
         from training.nonpro_eval import bench_transcripts
@@ -966,16 +993,18 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     identity is validated first, and a gated set's decodes are not read before the choice is
     committed and names their weights."""
     from training.external_corpus import merge_decode_files
+    from training.aug_readout_spec import TLOG_PREFIX
 
-    if tlog_round(spec):
-        raise SystemExit(f"{spec.name}'s tlog decodes are merged by "
-                         "`python -m tadabur.tlog_eval_decode merge`, and its readout "
-                         "identities are written by `consonant_readout models "
-                         f"--spec {spec.name}`: this merge has no tlog set to count")
     found = {}
     for path in sorted(decodes_dir.glob("*.identity.json")):
         set_name, model = path.name.removesuffix(".identity.json").rsplit(".", 1)
         found[(set_name, model)] = path
+    tlog_sets = sorted({set_name for set_name, _ in found
+                        if set_name.startswith(TLOG_PREFIX)})
+    if tlog_sets:  # a tlog set is the tlog decoder's to merge, never this one's
+        raise SystemExit(f"{', '.join(tlog_sets)} are merged by "
+                         "`python -m tadabur.tlog_eval_decode merge`: this merge has no tlog "
+                         "set to count")
     reused = sorted(key for key in found if key in spec.decode_sources)
     if reused:  # a reused source is another round's committed file: the merge never writes it
         raise SystemExit(
@@ -987,7 +1016,7 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     # A candidate-only merge leaves the reused sources' identities unmerged. Resolve each one
     # from the manifest that committed its decodes and validate it under this round's spec, so
     # the round's manifest is complete for the confirm sitting (R1.1).
-    inherited_needs = needs(CONFIRM, "ema", spec)
+    inherited_needs = needs(CONFIRM, choice["weights"] if choice is not None else "ema", spec)
     for (set_name, model), source in spec.decode_sources.items():
         key = f"{set_name}/{model}"
         if key in records or model not in inherited_needs.get(set_name, ()):

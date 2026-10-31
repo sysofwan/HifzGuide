@@ -50,12 +50,14 @@ from training.aug_readout_gate import (
     Layout,
     committed_choice,
     identity_record,
+    look_models,
     model_spec,
     round_decodes_file,
     validate_identity,
 )
 from training.aug_readout_metrics import C95
-from training.aug_readout_spec import CONSONANT1
+from training.aug_readout_spec import CONSONANT1, SPECS, RoundSpec
+from training.aug_readout_spec import spec as round_spec
 from training import consonant_readout as cr
 from training.external_corpus import merge_decode_files
 from training.external_decode import append_timing, decode_recordings, load_decoders
@@ -172,24 +174,26 @@ def held_out_items(registry: Mapping | None = None) -> dict:
     return items_of(held_out_sites(), registry)
 
 
-def held_out_identity(model: str = BASELINE) -> dict:
-    """The round's identity for one held-out cache producer: C95's pin or the candidate's
-    chosen weights (``candidate_live``/``candidate_ema``)."""
-    return identity_record(CONSONANT1.models[model])
+def held_out_identity(model: str = BASELINE, spec: RoundSpec | None = None) -> dict:
+    """The round's identity for one held-out cache producer: the baseline's pin or the arm's
+    chosen weights (``candidate_live``/``candidate_ema``, ``r2_<arm>_<weights>``)."""
+    return identity_record((spec or CONSONANT1).models[model])
 
 
-def update_held_out(audio_dir: Path, model: str = BASELINE) -> dict:
+def update_held_out(audio_dir: Path, model: str = BASELINE,
+                    spec: RoundSpec | None = None) -> dict:
     """Decode one model's decodes and check sequences of every held-out item, then prove the
-    caches are the round's pin; the baselines' caches already hold the same items. The
-    candidate's caches are built at the weights the look half chose (#179), so they wait for
-    the committed choice and read only its selected model (R1.3)."""
-    if model != BASELINE:
-        choice = committed_choice(Layout(CONSONANT1.root), spec=CONSONANT1).choice
-        chosen = choice["models"].get("candidate")
-        if chosen != model:
-            raise SystemExit(f"{model}: the committed choice reads {chosen}; the guard sites "
-                             "are decoded at the chosen weights only")
-    expected = held_out_identity(model)
+    caches are the round's pin; the baselines' caches already hold the same items. An arm's
+    caches are built at the weights the look half chose (#179), so they wait for the committed
+    choice and read only its selected model (R1.3)."""
+    spec = spec or CONSONANT1
+    if model != spec.baseline:
+        choice = committed_choice(Layout(spec.root), spec=spec).choice
+        chosen = sorted(choice["models"].values())
+        if model not in chosen:
+            raise SystemExit(f"{model}: the committed choice reads {', '.join(chosen)}; the "
+                             "guard sites are decoded at the chosen weights only")
+    expected = held_out_identity(model, spec=spec)
     ref = expected["model_ref"]
     if not Path(ref).is_file():
         raise SystemExit(f"{ref}: the round's checkpoint is not on this machine")
@@ -200,16 +204,18 @@ def update_held_out(audio_dir: Path, model: str = BASELINE) -> dict:
     items = held_out_items(registry)
     model_caches(model, ref, items, registry, Path(audio_dir),
                  use_ema=expected.get("weights") == "ema")
-    return assert_held_out_caches(items, model=model)
+    return assert_held_out_caches(items, model=model, spec=spec)
 
 
 def assert_held_out_caches(items: Sequence, model: str = BASELINE,
                            check_dir: Path | None = None,
-                           decode_dir: Path | None = None) -> dict:
+                           decode_dir: Path | None = None,
+                           spec: RoundSpec | None = None) -> dict:
     """Refuse anything but the round's pin, holding every item's decode and check sequence."""
+    spec = spec or CONSONANT1
     check_dir = Path(check_dir or CHECK_STORE.directory)
     decode_dir = Path(decode_dir or DECODE_STORE.directory)
-    expected = held_out_identity(model)
+    expected = held_out_identity(model, spec=spec)
     for store, directory, protocols in ((CHECK_STORE, check_dir, CHECK_PROTOCOLS),
                                         (DECODE_STORE, decode_dir, PROTOCOLS)):
         path = directory / f"{model}.json"
@@ -288,9 +294,11 @@ def main() -> None:
     held = commands.add_parser("held-out", help="decode Ship A's held-out verified sites")
     held.add_argument("--audio-dir", type=Path)
     held.add_argument("--list-clips", action="store_true")
-    held.add_argument("--model", default=BASELINE, choices=tuple(CONSONANT1.models),
-                      help="the model whose caches to produce (the candidate's chosen weights "
-                           "for G6; C95's are the round's baseline)")
+    held.add_argument("--spec", default=CONSONANT1.name, choices=tuple(SPECS),
+                      help="the round whose pins G6's caches are built under")
+    held.add_argument("--model", default=None,
+                      help="the model whose caches to produce (an arm at its chosen weights; "
+                           "the baseline's are the round's)")
 
     merged = commands.add_parser("merge", help="the shard decodes as the round's one file")
     merged.add_argument("--decodes-dir", type=Path, required=True)
@@ -314,7 +322,13 @@ def main() -> None:
             return
         if args.audio_dir is None:
             parser.error("--audio-dir is required")
-        print(json.dumps(update_held_out(args.audio_dir, args.model),
+        specification = round_spec(args.spec)
+        model = args.model or specification.baseline
+        offered = (specification.baseline, *look_models(specification))
+        if model not in offered:
+            parser.error(f"--model {model} is not a {specification.name} held-out model "
+                         f"{list(offered)}")
+        print(json.dumps(update_held_out(args.audio_dir, model, spec=specification),
                          ensure_ascii=False, indent=1))
     elif args.command == "merge":
         print(json.dumps(merge_qother(args.decodes_dir, args.destination,

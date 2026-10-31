@@ -190,3 +190,45 @@ def test_the_catch_difference_is_the_paired_count_of_flagged_sites():
     assert cr.catch_difference(5, 3) == 2
     assert cr.catch_difference(4, 4) == 0
     assert cr.catch_difference(0, 2) == -2
+
+
+# --- shaddah agreement: gemination, not the whole word ------------------------------------------
+
+
+def _geminate_item(reference: str) -> ClipItem:
+    name = "g000.wav"
+    words = tuple(reference.split(" "))
+    return ClipItem(f"{name}#0", "qdat", name, 5, 109, 0, 16000, "e" * 64,
+                    ItemReference(words, tuple(range(len(words))), reference,
+                                  tuple(0 for _ in words)), "g0", 1, {})
+
+
+def _shaddah_agreement(item: ClipItem, candidate: str, teacher: str) -> am.Terms:
+    return am.shaddah_agreement_terms(
+        [item], {"candidate": {item.key: candidate}, "base": {item.key: teacher}},
+        ("candidate",))
+
+
+def test_shaddah_agreement_reads_the_geminate_not_the_enclosing_word():
+    item = _item(0)
+    # The candidate swaps س→ش elsewhere in the word but holds the geminate.
+    kept = _shaddah_agreement(item, SWAPPED, CLEAN)
+    assert kept.by_model["candidate"][0].tolist() == [1.0]
+    assert kept.by_model["candidate"][1].tolist() == [1.0]
+
+    dropped = _shaddah_agreement(item, "قَالَسَطَ", CLEAN)
+    assert dropped.by_model["candidate"][0].tolist() == [0.0]
+    assert dropped.by_model["candidate"][1].tolist() == [1.0]
+
+
+def test_each_held_geminate_is_its_own_observation():
+    item = _geminate_item("سَططَ سَططَ")
+    terms = _shaddah_agreement(item, "سَططَسَطَ", "سَططَسَططَ")
+    assert terms.by_model["candidate"][0].tolist() == [1.0, 0.0]
+    assert terms.by_model["candidate"][1].tolist() == [1.0, 1.0]  # each site its own row
+
+
+def test_a_geminate_the_teacher_does_not_hold_is_not_a_site():
+    item = _geminate_item("سَططَ")
+    terms = _shaddah_agreement(item, "سَططَ", "سَطَ")
+    assert terms.by_model["candidate"][1].tolist() == []  # no held site, no observation

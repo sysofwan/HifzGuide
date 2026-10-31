@@ -67,6 +67,10 @@ class Layout:
         return self.root / "choice.json"
 
     @property
+    def preclaim(self) -> Path:
+        return self.root / "preclaim.json"
+
+    @property
     def report(self) -> Path:
         return self.root / "report.json"
 
@@ -225,9 +229,10 @@ def allowed_models(set_name: str, choice: Mapping | None,
                    spec: RoundSpec | None = None) -> tuple[str, ...]:
     """The models a set may be decoded (and read) for: a look set, its round's look roles at
     both weights; any gated set only with a committed choice (``choice``, from
-    :func:`committed_choice`), for the round's students at the chosen weights (and, on Tadabur,
-    the two baselines, for the blank share). A round with no control (``consonant1``) reads no
-    control decodes."""
+    :func:`committed_choice`), for the round's students at the chosen weights (and, on the
+    tlog confirm tranches, the teacher, whose checks the bars read beside the candidate's; on
+    Tadabur, the two baselines, for the blank share). A round with no control (``consonant1``)
+    reads no control decodes."""
     specification = spec or AUG95
     if not SETS[set_name].gated:
         if set_name != specification.look_set:
@@ -239,7 +244,8 @@ def allowed_models(set_name: str, choice: Mapping | None,
     chosen = chosen_weights(specification, choice)
     students = tuple(arm_model(role, chosen[role], specification) if role in chosen else role
                      for role in specification.students)
-    baselines = BASELINES if set_name == TADABUR_SET else ()
+    baselines = ((BASE,) if set_name == TLOG_CONFIRM
+                 else BASELINES if set_name == TADABUR_SET else ())
     return tuple(dict.fromkeys((*students, *baselines)))
 
 
@@ -459,14 +465,26 @@ def committed_choice(layout: Layout = Layout(),
     return CommittedChoice(choice, sha256_bytes(raw), commit)
 
 
-def require_preregistration(spec: RoundSpec, harness: Mapping) -> str:
-    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and the
-    round's pins hold: no tlog decode is graded before the pre-registration's commit, and its
-    text is never edited after it (round 2's data discipline 1, #227)."""
+def require_preregistration_text(spec: RoundSpec) -> str:
+    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and
+    equal to the round's pin: its text is never edited after it, and a claim opens a tranche on
+    the text the round froze even where no harness is at hand."""
     if not is_committed(spec.prereg_path):
         raise SystemExit(f"{spec.prereg_path.name} is not committed: nothing grades a tlog "
                          "decode before the pre-registration's commit")
     prereg = sha256_file(spec.prereg_path)
+    pins = spec.pins
+    if pins is not None and prereg != pins.prereg_sha256:
+        raise SystemExit(f"the pre-registration pin differs: {prereg!r} is not the pinned "
+                         f"{pins.prereg_sha256!r}")
+    return prereg
+
+
+def require_preregistration(spec: RoundSpec, harness: Mapping) -> str:
+    """The round's pre-registration's SHA-256, refused unless it is committed in HEAD and the
+    round's pins hold: no tlog decode is graded before the pre-registration's commit, and its
+    text is never edited after it (round 2's data discipline 1, #227)."""
+    prereg = require_preregistration_text(spec)
     check_pins(spec, harness, prereg)
     return prereg
 

@@ -540,12 +540,13 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run one step; the card gate's own refusal exits 3, any other failure propagates."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--work-dir", type=Path, default=DEFAULT_WORK_DIR)
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--work-dir", type=Path, default=DEFAULT_WORK_DIR)
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("fetch")
-    disjoint = commands.add_parser("disjointness")
+    commands.add_parser("fetch", parents=[common])
+    disjoint = commands.add_parser("disjointness", parents=[common])
     disjoint.add_argument("--store-dir", type=Path, default=DEFAULT_STORE_DIR)
-    card = commands.add_parser("gate")
+    card = commands.add_parser("gate", parents=[common])
     card.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     args = parser.parse_args(argv)
 

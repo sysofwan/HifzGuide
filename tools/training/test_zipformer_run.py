@@ -21,6 +21,7 @@ from training.zipformer_gate import card_norm, card_table, reference_units
 from training.zipformer_run import (
     CARD_SOURCES,
     FETCH_NAME,
+    main,
     _file_entry,
     _read_plan,
     files_from_record,
@@ -199,6 +200,13 @@ def test_a_plan_that_decodes_a_sealed_clip_is_refused(tmp_path, monkeypatch):
     }), encoding="utf-8")
     with pytest.raises(ValueError, match="sealed"):
         _read_plan(SimpleNamespace(manifest=manifest))
+
+
+def test_each_subcommand_takes_the_work_dir_after_its_name(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr("training.zipformer_run.fetch", lambda work: seen.append(work))
+    assert main(["fetch", "--work-dir", str(tmp_path)]) == 0
+    assert seen == [tmp_path]
 
 
 # --- the export's symbolic batch axis --------------------------------------------------------

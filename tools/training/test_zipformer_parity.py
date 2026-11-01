@@ -4,8 +4,10 @@
 as amended by principal r2 and astra r1): each benchmark source must decode identically on 99%
 of its clips with at most 1 native-unit edit per thousand of our units, the phone table-hit
 cohort must stay within 1 character per thousand reference characters, and the verdict-adapter
-probe's cut decisions must agree. Only the arithmetic is tested here; the two phases that decode
-need torch or sherpa-onnx and run on the box.
+probe's cut decisions must agree. No call may be padded: the streams follow sherpa-onnx's
+readiness rule, and the gate compares the two runtimes' call counts on every clip. Only the
+arithmetic is tested here; the two phases that decode need torch or sherpa-onnx and run on the
+box.
 """
 
 from __future__ import annotations
@@ -21,22 +23,19 @@ from training.zipformer_parity import (
     cut_certainty,
     cut_decision,
     identical_clip,
-    our_calls,
+    chunk_calls,
     phone_rule,
     probe_check,
     require_parity,
-    sherpa_calls,
     source_rule,
 )
 
 
-def _row(key: str, source: str, *, units: int = 2, edits: int = 0,
-         padded: int = 0) -> dict:
+def _row(key: str, source: str, *, units: int = 2, edits: int = 0) -> dict:
     """One clip's rule row: ``units`` units of ours, ``edits`` of them different in sherpa's."""
     ours = ["ب"] * units
     theirs = ["ب"] * (units - edits) + ["ت"] * edits
-    return {"key": key, "source": source, "ours": ours, "sherpa": theirs,
-            "padded_tokens": [17] * padded}
+    return {"key": key, "source": source, "ours": ours, "sherpa": theirs}
 
 
 def _record(*, sources=None, phone=None, checks=None) -> dict:
@@ -98,21 +97,14 @@ def test_the_edit_rule_is_one_edit_per_thousand_of_our_units():
     assert source_rule(rows, ["studio"])["studio"]["passes"] is False
 
 
-def test_a_padded_call_emission_differences_a_clip_whose_text_agrees():
-    totals = source_rule([_row("a", "phone", units=10, padded=1)], ["phone"])
-    assert totals["phone"]["identical"] == 0
-    assert totals["phone"]["padded_clips"] == 1
-    assert totals["phone"]["differing"] == ["a"]
-
-
 def test_a_source_with_no_clips_cannot_pass():
     assert source_rule([], ["unseen"])["unseen"]["passes"] is False
 
 
-def test_identical_means_the_same_units_and_no_padded_emission():
-    assert identical_clip(["ب", "ت"], ["ب", "ت"], [])
-    assert not identical_clip(["ب", "ت"], ["ب", "ت"], [17])
-    assert not identical_clip(["ب", "تت"], ["ب", "ت"], [])
+def test_identical_means_the_same_units_in_the_same_order():
+    assert identical_clip(["ب", "ت"], ["ب", "ت"])
+    assert not identical_clip(["ب", "تت"], ["ب", "ت"])
+    assert not identical_clip(["ب", "ت"], ["ت", "ب"])
 
 
 # --- the phone table-hit bound ---------------------------------------------------------------
@@ -182,13 +174,15 @@ def test_a_probe_check_fails_when_the_runtimes_emit_different_units():
 # --- the call counts the padded-chunk rule rests on ------------------------------------------
 
 
-def test_our_loop_pads_the_last_call_and_sherpa_never_runs_a_padded_one():
-    assert our_calls(61, chunk_frames=48) == 2
-    assert sherpa_calls(61, input_frames=61, chunk_frames=48) == 0
-    assert our_calls(605, chunk_frames=48) == 13
-    assert sherpa_calls(605, input_frames=61, chunk_frames=48) == 12
-    assert our_calls(852, chunk_frames=48) == 18
-    assert sherpa_calls(852, input_frames=61, chunk_frames=48) == 17
+def test_the_readiness_rule_never_runs_a_call_it_would_have_to_pad():
+    # both runtimes stop while `processed + 61 < frames`: 61 frames is no call at all, and
+    # 605 frames is 12 calls where the old loop padded a 13th
+    assert chunk_calls(61, input_frames=61, chunk_frames=48) == 0
+    assert chunk_calls(62, input_frames=61, chunk_frames=48) == 1
+    assert chunk_calls(109, input_frames=61, chunk_frames=48) == 1
+    assert chunk_calls(110, input_frames=61, chunk_frames=48) == 2
+    assert chunk_calls(605, input_frames=61, chunk_frames=48) == 12
+    assert chunk_calls(852, input_frames=61, chunk_frames=48) == 17
 
 
 # --- the gate itself -------------------------------------------------------------------------

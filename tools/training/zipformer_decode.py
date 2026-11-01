@@ -12,6 +12,11 @@ protocol are the card's, so this module owns all three and shares none of them w
 * **One continuous stream per item** (``spans`` and ``checks``). The kaldi fbank is computed
   once over the item plus 1.05 s of silence (the card's flush), the encoder's cache state is
   carried from call to call, and every call's 12 log-prob frames form one 40 ms timeline.
+  **No call is padded**: a call runs only while a whole :data:`INPUT_FRAMES` window is
+  available, which is sherpa-onnx's readiness rule. Our zero-padded final call emitted tokens
+  the reference runtime never produces (the parity gate's phone differences), so the one
+  diagnosis round removed it (parity r1, 2026-11-01). The tail's silence is still what lets
+  the last *complete* chunk flush a delayed word out.
   :func:`stream_checks` slices that one timeline with the transcriber's own schedule
   (:func:`training.decoding.check_schedule`); a window never restarts the model from zero.
 * **One fresh inference per check** (``checks-w1``, architect r2 + principal r1). Muraja runs
@@ -126,15 +131,17 @@ def _w1_mode(windows: bool) -> str:
     """The mode of a warm-started per-check arm, naming its two constants in milliseconds."""
     warm_up_ms = WARMUP_SAMPLES * 1000 // SAMPLE_RATE
     flush_ms = TAIL_SAMPLES * 1000 // SAMPLE_RATE
-    return (f"zipformer-checks-v1-w{warm_up_ms}ms-flush{flush_ms}ms"
+    return (f"zipformer-checks-v2-w{warm_up_ms}ms-flush{flush_ms}ms"
             + ("-windows" if windows else ""))
 
 
 #: The decode mode of each arm, and its fingerprint policy. All four differ from every mode and
-#: policy our own decodes carry, so the two kinds can never be compared by accident.
+#: policy our own decodes carry, so the two kinds can never be compared by accident. ``v2`` is
+#: the end-of-input repair (parity r1): a decode made under ``v1`` decoded a zero-padded final
+#: chunk the reference runtime never decodes, so the two protocols must never be pooled.
 ZIPFORMER_PROTOCOLS = {
-    "spans": "zipformer-spans-v1",
-    "checks": "zipformer-checks-v1",
+    "spans": "zipformer-spans-v2",
+    "checks": "zipformer-checks-v2",
     CHECKS_W1: _w1_mode(windows=False),
     CHECKS_W1_WINDOWS: _w1_mode(windows=True),
 }
@@ -325,11 +332,13 @@ class ZipformerDecoder:
     def stream_calls(self, samples: np.ndarray) -> list[np.ndarray]:
         """Every call's argmax frame ids over one stream, in call order, from a zero cache.
 
-        The parity gate (:mod:`training.zipformer_parity`) reads this to see what the decoder's
-        zero-padded final chunk emits: sherpa-onnx stops before a call it would have to pad, so
-        a non-blank id in a call past that point is a difference between the runtimes' streams.
-        :meth:`_stream` scans the same calls, so the diagnostic and the production decode can
-        never disagree about them.
+        A call is made only while a whole :data:`INPUT_FRAMES` window is available --
+        sherpa-onnx's readiness rule, ``processed + input_frames < num_frames`` -- so no call
+        is ever padded with zero feature rows. The zero-padded final call this decoder used to
+        make emitted tokens the reference runtime never produces; the parity gate caught that
+        on the phone source and the one diagnosis round removed it (parity r1, 2026-11-01).
+        The card's 1.05 s tail still gives the last complete chunk the silence a delayed word
+        needs to reach it.
         """
         features = featurize(samples, self.fbank, scale=self.scale)
         if not len(features):
@@ -338,11 +347,9 @@ class ZipformerDecoder:
                  for name, shape, dtype in self._state_specs}
         calls: list[np.ndarray] = []
         cursor = 0
-        while cursor < len(features):
-            chunk = np.zeros((INPUT_FRAMES, features.shape[1]), dtype=np.float32)
-            piece = features[cursor:cursor + INPUT_FRAMES]
-            chunk[:len(piece)] = piece
-            outputs = self.session.run(None, {"x": chunk[None], **state})
+        while cursor + INPUT_FRAMES < len(features):
+            window = features[cursor:cursor + INPUT_FRAMES][None]
+            outputs = self.session.run(None, {"x": window, **state})
             if len(outputs) != len(self._state_specs) + 1:
                 raise ValueError(
                     f"the ONNX session returned {len(outputs)} outputs for "

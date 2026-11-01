@@ -4,7 +4,7 @@
    "autocast": false,
    "batch_size": 1,
    "device_type": "cpu",
-   "mode": "zipformer-checks-v1",
+   "mode": "zipformer-checks-v2",
    "model": "zipformer",
    "policy": "kaldi-fbank-v1",
    "weights_dtype": "fp32"
@@ -13,7 +13,7 @@
    "autocast": false,
    "batch_size": 1,
    "device_type": "cpu",
-   "mode": "zipformer-checks-v1-w1000ms-flush1050ms",
+   "mode": "zipformer-checks-v2-w1000ms-flush1050ms",
    "model": "zipformer",
    "policy": "kaldi-fbank-v1",
    "weights_dtype": "fp32"
@@ -22,7 +22,7 @@
    "autocast": false,
    "batch_size": 1,
    "device_type": "cpu",
-   "mode": "zipformer-checks-v1-w1000ms-flush1050ms-windows",
+   "mode": "zipformer-checks-v2-w1000ms-flush1050ms-windows",
    "model": "zipformer",
    "policy": "kaldi-fbank-v1",
    "weights_dtype": "fp32"
@@ -31,7 +31,7 @@
    "autocast": false,
    "batch_size": 1,
    "device_type": "cpu",
-   "mode": "zipformer-spans-v1",
+   "mode": "zipformer-spans-v2",
    "model": "zipformer",
    "policy": "kaldi-fbank-v1",
    "weights_dtype": "fp32"

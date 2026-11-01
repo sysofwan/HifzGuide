@@ -11,10 +11,11 @@ same units on the same 577 benchmark clips?
   :data:`EDITS_PER_MILLE` per mille of our emitted units. Pooling would let the phone clips --
   the ones a front-end difference hurts most -- hide inside the studio and unseen allowance
   (principal r2 §2).
-* **The padded final chunk counts as a difference** (parity-gate.md rule 4). Ours advances while
-  it has feature frames left and zero-pads the last call; sherpa decodes only while
-  ``processed + input_frames < num_frames``. Any non-blank token the padded call emits makes the
-  clip differing even when the transcripts agree.
+* **No call may be padded** (parity-gate.md rule 4, as repaired by the one diagnosis round).
+  Ours used to advance while it had frames left and zero-padded its last call, which emitted
+  tokens sherpa-onnx never produces; the decoder now stops before an incomplete chunk exactly
+  as the reference runtime does, and the two runtimes' call counts must agree on every clip.
+  A padded call would show there immediately, before any token is compared.
 * **The phone table-hit bound** (astra r1 §4.2): on the phone clips the card's table holds, the
   character distance between the two runtimes over the reference's own characters must stay
   within :data:`CHARACTER_PER_MILLE` per mille. By the edit-distance triangle inequality that
@@ -112,46 +113,33 @@ class ParityStop(RuntimeError):
 # --- the pre-declared rule -------------------------------------------------------------------
 
 
-def our_calls(num_frames: int, *, chunk_frames: int) -> int:
-    """How many calls our streaming loop makes over ``num_frames`` feature frames.
+def chunk_calls(num_frames: int, *, input_frames: int, chunk_frames: int) -> int:
+    """How many calls a stream makes over ``num_frames`` feature frames.
 
-    Ours advances ``chunk_frames`` frames per call while any frames remain, zero-padding the
-    last one: ``ceil(num_frames / chunk_frames)``.
-    """
-    return -(-num_frames // chunk_frames)
-
-
-def sherpa_calls(num_frames: int, *, input_frames: int, chunk_frames: int) -> int:
-    """How many calls sherpa's readiness rule makes over the same features.
-
-    sherpa decodes only while ``processed + input_frames < num_frames``, so it never runs a call
-    it would have to pad. The calls ours makes beyond this count are the padded tail
-    parity-gate.md rule 4 watches.
+    Both runtimes now follow sherpa-onnx's readiness rule: a call runs only while
+    ``processed + input_frames < num_frames``, so no call is ever padded with zero feature rows
+    and an item shorter than one window makes none. The gate compares the two runtimes' actual
+    counts on every clip; this is the arithmetic they must both equal.
     """
     remaining = num_frames - input_frames
     return -(-remaining // chunk_frames) if remaining > 0 else 0
 
 
-def identical_clip(ours: Sequence[str], sherpa: Sequence[str],
-                   padded_tokens: Sequence[int]) -> bool:
-    """Whether a clip decodes identically: the same units *and* no padded-call emission.
-
-    A padded emission is a difference even when the transcripts agree (parity-gate.md rule 4);
-    it means the two runtimes' streams diverged where one of them had run out of audio.
-    """
-    return not padded_tokens and list(ours) == list(sherpa)
+def identical_clip(ours: Sequence[str], sherpa: Sequence[str]) -> bool:
+    """Whether a clip decodes identically: the same units, in the same order."""
+    return list(ours) == list(sherpa)
 
 
 def source_rule(rows: Iterable[Mapping], sources: Sequence[str]) -> dict:
     """Each source's parity against the rule: identical clips and native-unit edits.
 
-    ``rows`` are one per decoded clip (``key``, ``source``, ``ours``, ``sherpa`` and
-    ``padded_tokens``). Both thresholds are compared in integers, so an exact boundary passes
-    (:func:`our_calls`' ``>=``, as the gate's other rules are inclusive): ``identical * 100 >=
-    percent * clips`` and ``edits * 1000 <= per_mille * units_ours``.
+    ``rows`` are one per decoded clip (``key``, ``source``, ``ours``, ``sherpa``). Both
+    thresholds are compared in integers, so an exact boundary passes (as the gate's other rules
+    are inclusive): ``identical * 100 >= percent * clips`` and ``edits * 1000 <= per_mille *
+    units_ours``.
     """
     totals = {source: {"clips": 0, "identical": 0, "differing": [], "unit_edits": 0,
-                       "units_ours": 0, "units_sherpa": 0, "padded_clips": 0}
+                       "units_ours": 0, "units_sherpa": 0}
               for source in sources}
     for row in rows:
         entry = totals[row["source"]]
@@ -160,9 +148,7 @@ def source_rule(rows: Iterable[Mapping], sources: Sequence[str]) -> dict:
         entry["unit_edits"] += edits
         entry["units_ours"] += units
         entry["units_sherpa"] += len(sherpa)
-        if row["padded_tokens"]:
-            entry["padded_clips"] += 1
-        if identical_clip(ours, sherpa, row["padded_tokens"]):
+        if identical_clip(ours, sherpa):
             entry["identical"] += 1
         else:
             entry["differing"].append(row["key"])
@@ -410,8 +396,7 @@ def _ours_clip(item: tuple) -> dict:
 
     from tadabur.audio import decode_to_mono_16k_with_rate_and_decoder, read_audio_bytes
     from training.distill_data import SAMPLE_RATE
-    from training.zipformer_decode import (BLANK_ID, CHUNK_FRAMES, INPUT_FRAMES, featurize,
-                                           scan_units)
+    from training.zipformer_decode import featurize, scan_units
     from training.zipformer_run import worker_decoder
 
     key, source, audio, fbank_path, probes = item
@@ -424,8 +409,6 @@ def _ours_clip(item: tuple) -> dict:
             "wheel ships no reader that could test a resampler difference (principal r2 §1)")
     calls = decoder.stream_calls(samples)
     features = featurize(samples, decoder.fbank, scale=decoder.scale)
-    predicted = sherpa_calls(len(features), input_frames=INPUT_FRAMES,
-                             chunk_frames=CHUNK_FRAMES)
     emissions = scan_units(np.concatenate(calls), decoder.tokens)
     record = {
         "key": key,
@@ -438,9 +421,6 @@ def _ours_clip(item: tuple) -> dict:
         "num_samples": int(samples.size),
         "num_frames": int(len(features)),
         "calls": len(calls),
-        "sherpa_calls": predicted,
-        "padded_tokens": [int(frame) for call in calls[predicted:] for frame in call
-                          if int(frame) != BLANK_ID],
         "waveform_sha256": _sha256(samples.tobytes()),
         "ours": [emission.text for emission in emissions],
     }
@@ -845,19 +825,17 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
             f"{len(unpaired)} clips were decoded by one runtime only, e.g. {unpaired[:3]}")
 
     rule_rows = [{"key": row["key"], "source": row["source"], "ours": row["ours"],
-                  "sherpa": sherpa_rows[row["key"]]["tokens"],
-                  "padded_tokens": row["padded_tokens"]} for row in rows]
+                  "sherpa": sherpa_rows[row["key"]]["tokens"]} for row in rows]
     sources = source_rule(rule_rows, sorted({row["source"] for row in rule_rows}))
     pooled = {field: sum(entry[field] for entry in sources.values())
-              for field in ("clips", "identical", "unit_edits", "units_ours", "units_sherpa",
-                            "padded_clips")}
+              for field in ("clips", "identical", "unit_edits", "units_ours", "units_sherpa")}
     pooled["reported_only"] = "the pass rule is per source (principal r2 §2)"
 
     call_mismatches = [row["key"] for row in rows
-                       if row["sherpa_calls"] != sherpa_rows[row["key"]]["calls"]]
+                       if row["calls"] != sherpa_rows[row["key"]]["calls"]]
     if call_mismatches:
         raise ParityStop(
-            f"{len(call_mismatches)} clips: sherpa's call count is not the readiness rule's, "
+            f"{len(call_mismatches)} clips: the two runtimes made different numbers of calls, "
             f"e.g. {call_mismatches[:3]}")
     waveform_mismatches = [row["key"] for row in rows
                            if sherpa_rows[row["key"]]["waveform_sha256"]
@@ -906,8 +884,9 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
             "unit_edits_per_mille": EDITS_PER_MILLE,
             "phone_character_per_mille": CHARACTER_PER_MILLE,
             "per_source": True,
-            "padded_final_chunk": "a non-blank token the padded call emits makes the clip "
-                                  "differing (rule 4)",
+            "padded_final_chunk": "no call may be padded: both runtimes stop before an "
+                                  "incomplete chunk and their call counts must agree on every "
+                                  "clip (rule 4, repaired in the diagnosis round)",
             "probe_checks": list(PROBE_CHECKS),
             "frame_allowance": "a start frame may shift only where no sampled cut changes "
                                "(astra r1 §3)",
@@ -925,10 +904,11 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
         },
         "sources": sources,
         "pooled": pooled,
-        "padded_calls": {
-            "clips": sum(1 for row in rows if row["padded_tokens"]),
-            "tokens": sum(len(row["padded_tokens"]) for row in rows),
-            "call_counts_agree": not call_mismatches,
+        "calls": {
+            "agree": not call_mismatches,
+            "note": "both runtimes stop before an incomplete chunk (the diagnosis round), so no "
+                    "call is padded and no padded-call emission can exist; the counts agreeing "
+                    "on every clip is what upholds rule 4",
         },
         "fbank": fbank,
         "phone_table_hits": _phone_table_hits(rows, sherpa_rows, work_dir),
@@ -947,13 +927,11 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
         "channels": row["channels"],
         "num_samples": row["num_samples"],
         "num_frames": row["num_frames"],
-        "identical": identical_clip(row["ours"], sherpa_rows[row["key"]]["tokens"],
-                                    row["padded_tokens"]),
+        "identical": identical_clip(row["ours"], sherpa_rows[row["key"]]["tokens"]),
         "ours": row["ours"],
         "sherpa": sherpa_rows[row["key"]]["tokens"],
         "calls": row["calls"],
         "sherpa_calls": sherpa_rows[row["key"]]["calls"],
-        "padded_tokens": row["padded_tokens"],
         "fbank_max_abs": sherpa_rows[row["key"]]["fbank_max_abs"],
     } for row in rows))
     try:

@@ -312,11 +312,30 @@ def test_a_tlog_decode_must_carry_its_whole_provenance(tmp_path):
 # --- the confirm tranches stay sealed -------------------------------------------------------------
 
 
-@pytest.mark.parametrize("role", ["confirm", "confirm.1", "confirm.2", "confirm.3", "confirm.4"])
+@pytest.mark.parametrize("role", ["confirm", "confirm.3", "confirm.4"])
 def test_no_confirm_row_is_read_without_the_committed_claims(role):
+    """The real repository's unclaimed roles refuse before any row is read."""
     sources = ar.Sources(asp.CONSONANT2)
     with pytest.raises(REFUSED, match="claim|confirm"):
         sources.tlog(role, ("base", "c95", "c178"))
+
+
+@pytest.mark.parametrize("role", ["confirm.1", "confirm.2"])
+def test_a_claimed_role_without_its_claim_refuses_before_any_read(role, tmp_path):
+    """This round's claims are committed, so the missing-claim gate is pinned on a temporary,
+    deliberately sealed tree: the manifest is committed, the claim is not, and no decode
+    exists. The refusal must be the claim's, not a missing-decode error."""
+    repo = fx.init_repo(tmp_path / "sealed")
+    directory = repo / "tranches"
+    directory.mkdir()
+    (directory / f"{role}.jsonl").write_text("", encoding="utf-8")
+    fx.git(repo, "add", ".")
+    fx.git(repo, "commit", "-qm", "the sealed manifest")
+    sources = ar.Sources(asp.CONSONANT2)
+    sources.tranches_dir = directory
+    with pytest.raises(REFUSED, match="claim"):
+        sources.tlog(role, ("base", "c95", "c178"))
+    assert [path.name for path in directory.iterdir()] == [f"{role}.jsonl"]
 
 
 # --- the decoder -----------------------------------------------------------------------------------

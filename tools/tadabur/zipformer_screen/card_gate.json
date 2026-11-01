@@ -1,0 +1,118 @@
+{
+ "card": {
+  "phone": 3.65,
+  "studio": 1.43,
+  "unseen": 9.1
+ },
+ "clips": {
+  "decoded": 577,
+  "manifest": 599,
+  "sealed_dropped": 22,
+  "trained": 158
+ },
+ "identity": "tools/tadabur/zipformer_screen/identity.json",
+ "issue": 245,
+ "limit_points": 0.5,
+ "passed": false,
+ "pinned_scale": 1.0,
+ "scales": {
+  "1.0": {
+   "character_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 3.961180431768667
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 1.2468030690537084
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 4.0750287939450445
+    }
+   },
+   "roundtrip": {
+    "clips": 577,
+    "failed_clips": [
+     "everyayah_heldout/test-00003-of-00013_662",
+     "everyayah_heldout/test-00003-of-00013_978",
+     "everyayah_heldout/test-00003-of-00013_982",
+     "everyayah_heldout/test-00009-of-00013_117",
+     "everyayah_heldout/test-00009-of-00013_293",
+     "tlog_holdout/48_9_2871003400",
+     "tlog_holdout/80_22_5254111871"
+    ],
+    "identical": 570,
+    "share": 0.9878682842287695
+   },
+   "unit_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 4.43190975020145
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 1.3993659123209796
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 4.217548620533695
+    }
+   }
+  },
+  "32768.0": {
+   "character_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 62.38859180035651
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 81.20204603580562
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 93.22656721329457
+    }
+   },
+   "roundtrip": {
+    "clips": 577,
+    "identical": 542,
+    "share": 0.9393414211438474
+   },
+   "unit_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 66.68009669621273
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 84.06034765496884
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 94.5838986883763
+    }
+   }
+  }
+ },
+ "schema_version": 1,
+ "sources": {
+  "everyayah_heldout": "studio",
+  "qul_alnufais": "unseen",
+  "tlog_holdout": "phone"
+ },
+ "stop": "only 570 of 577 clips (0.9879) re-tokenise to their emitted units, below 0.9900: the longest-match stand-in is not the card's tokenizer, so no PER against it can be trusted"
+}

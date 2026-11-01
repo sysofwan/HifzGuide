@@ -147,7 +147,7 @@ chmod +x '$ROOT/run-batch.sh' && bash -n '$ROOT/run-batch.sh'"
 launch() {
   stage_repo
   write_runner
-  remote "rm -f '$LOGS'/batch.exit '$LOGS'/batch.pid
+  remote "rm -f '$LOGS'/*.exit '$LOGS'/batch.pid
           setsid bash '$ROOT/run-batch.sh' </dev/null >'$LOGS/batch.log' 2>&1 &
           echo \$! > '$LOGS/batch.pid'"
   echo "batch started on $HOST"

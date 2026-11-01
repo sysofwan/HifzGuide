@@ -29,7 +29,8 @@ def test_a_decoded_clip_the_plan_does_not_classify_is_refused():
 
 def test_the_three_sets_each_name_a_store():
     assert sorted(STORES) == sorted([BENCHMARK_SET, EDITS_SET, QDAT_SPANS_SET])
-    assert set(STORES[QDAT_SPANS_SET].protocols) == {"spans"}
+    assert [set(stores) for stores in STORES.values()] == [{"decode"}, {"decode"}, {"spans"}]
+    assert set(STORES[QDAT_SPANS_SET]["spans"].protocols) == {"spans"}
 
 
 def test_an_edit_booked_at_another_checksum_is_refused_before_it_is_decoded(tmp_path):

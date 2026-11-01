@@ -110,6 +110,20 @@ decode_group() {  # set [args...]: one process per model, so three cards' worth 
   return \$code
 }
 
+edits_verify() {
+  local stale
+  stale=$(git -C "$EDITS_REPO" status --porcelain tools/tadabur/synthetic_edits/)
+  if [ -n "$stale" ]; then
+    echo "the render is not byte-identical to the commit:"
+    echo "$stale"
+    return 1
+  fi
+  echo "manifest, summary and worklist are byte-identical to the commit"
+  python -u -m tadabur.synthetic_edits verify \
+    --manifest "$EDITS_REPO/tools/tadabur/synthetic_edits/edits.jsonl" \
+    --audio-dir "$REGEN/audio"
+}
+
 gpu_phase() {
   local code=0
   decode_group benchmark --work-dir \"\$WORK\" || code=1
@@ -127,8 +141,7 @@ fi
 failed=0
 step edits-gen \"\$EDITS_REPO/tools\" python -u -m tadabur.synthetic_edits generate \
   --audio-dir \"\$CLIPS\" --out-dir \"\$REGEN\" || failed=1
-step edits-verify \"\$REPO/tools\" python -u -m tadabur.synthetic_edits verify \
-  --out-dir \"\$REGEN\" || failed=1
+step edits-verify \"\$REPO/tools\" edits_verify || failed=1
 step sherpa \"\$ROOT\" sherpa || failed=1
 step gpu \"\$ROOT\" flock \"\$GPU_LOCK\" bash \"\$ROOT/run-batch.sh\" gpu || failed=1
 echo \"\$failed\" > \"\$LOGS/batch.exit\"

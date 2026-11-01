@@ -804,8 +804,10 @@ def test_a_regenerated_render_that_matches_the_manifest_verifies(tmp_path):
     from tadabur.synthetic_edits import verify_render
 
     out, lines = _render(tmp_path, _pair())
-    assert verify_render(out, _committed(tmp_path, lines)) == {
-        "items": 2, "audio_matched": 2, "manifest": str(out / "edits.jsonl")}
+    assert verify_render(out / "edits.jsonl", out / "audio",
+                         _committed(tmp_path, lines)) == {
+        "items": 2, "audio_matched": 2, "manifest": str(out / "edits.jsonl"),
+        "audio_dir": str(out / "audio")}
 
 
 def test_audio_that_is_not_the_manifests_bytes_is_refused(tmp_path):
@@ -815,7 +817,7 @@ def test_audio_that_is_not_the_manifests_bytes_is_refused(tmp_path):
     path = out / "audio" / lines[0]["output"]["audio_filename"]
     path.write_bytes(b"regenerated differently")
     with pytest.raises(ValueError, match="not the committed"):
-        verify_render(out, _committed(tmp_path, lines))
+        verify_render(out / "edits.jsonl", out / "audio", _committed(tmp_path, lines))
 
 
 def test_a_render_of_other_items_is_refused(tmp_path):
@@ -824,4 +826,5 @@ def test_a_render_of_other_items_is_refused(tmp_path):
     _, committed = _render(tmp_path, _pair(0), name="a")
     other, _ = _render(tmp_path, _pair(1), name="b")
     with pytest.raises(ValueError, match="not the committed"):
-        verify_render(other, _committed(tmp_path, committed))
+        verify_render(other / "edits.jsonl", other / "audio",
+                      _committed(tmp_path, committed))

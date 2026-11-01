@@ -64,9 +64,11 @@ def _spans(decoder, span: np.ndarray) -> dict:
 #: qdat's whole-item string without its ratchet: the arm the external model's ``spans`` is
 #: compared with on the sets that hold it, and the one #156's qdat decodes lack for our models.
 SPANS_STORE = Store(DECODE_STORE.directory, {"spans": PROTOCOLS["spans"]}, _spans)
-#: What each set decodes: the benchmark and the edits are whole items (``spans`` beside
-#: ``stream_b0`` in one pass), qdat's spans arm alone.
-STORES = {BENCHMARK_SET: DECODE_STORE, EDITS_SET: DECODE_STORE, QDAT_SPANS_SET: SPANS_STORE}
+#: What each set decodes, by store label (:func:`training.external_decode.decode_recordings`
+#: takes a label per store it times): the benchmark and the edits are whole items (``spans``
+#: beside ``stream_b0`` in one pass), qdat's spans arm alone.
+STORES = {BENCHMARK_SET: {"decode": DECODE_STORE}, EDITS_SET: {"decode": DECODE_STORE},
+          QDAT_SPANS_SET: {"spans": SPANS_STORE}}
 
 
 def _clip_outcome(plan: dict) -> dict[str, str]:

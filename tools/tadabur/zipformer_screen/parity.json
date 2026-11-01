@@ -1,0 +1,4657 @@
+{
+ "audio": {
+  "clips": 577,
+  "direct_read_matches": 577,
+  "readers": {
+   "soundfile": 577
+  },
+  "sample_rates": {
+   "16000": 577
+  }
+ },
+ "explanatory": {
+  "v1_0_reference_check": "not run here and not gated: the card-explanation check is explanatory only (parity-gate.md rule 8) and is recorded by the readout"
+ },
+ "fbank": {
+  "phone": {
+   "clips": 177,
+   "max_abs": 0.0036449432373046875,
+   "shape_mismatches": 0
+  },
+  "studio": {
+   "clips": 200,
+   "max_abs": 0.004273414611816406,
+   "shape_mismatches": 0
+  },
+  "unseen": {
+   "clips": 200,
+   "max_abs": 0.0031871795654296875,
+   "shape_mismatches": 0
+  }
+ },
+ "gate": "sherpa-parity",
+ "issue": 245,
+ "ours": {
+  "blank_id": 250,
+  "chunk": 24,
+  "chunk_frames": 48,
+  "fbank": {
+   "dither": 0.0,
+   "frame_shift": 10.0,
+   "high_freq": -400.0,
+   "num_mel_bins": 80,
+   "sample_frequency": 16000,
+   "snip_edges": false,
+   "window_type": "povey"
+  },
+  "identity": "tools/tadabur/zipformer_screen/identity.json",
+  "identity_sha256": "13bf110bcda68059655887644a81e28270d2e2340ec7bcc7b4d76a0bcef8dd85",
+  "input_frames": 61,
+  "sample_rate": 16000,
+  "sample_scale": 1.0,
+  "step_samples": 640,
+  "tail_samples": 16800,
+  "tokens_sha256": "252c10687e442aa9291973065fae19fa39bcd681c4f5612ec496a647e20b43a1"
+ },
+ "padded_calls": {
+  "call_counts_agree": true,
+  "clips": 6,
+  "tokens": 9
+ },
+ "passed": false,
+ "phone_table_hits": {
+  "character_distance": 9,
+  "clips": 105,
+  "ours": {
+   "clips": 105,
+   "misses": 0,
+   "per": 3.961180431768667
+  },
+  "passes": false,
+  "per_mille": 1.7825311942959001,
+  "reference_characters": 5049,
+  "sherpa": {
+   "clips": 105,
+   "misses": 0,
+   "per": 4.139433551198257
+  }
+ },
+ "pooled": {
+  "clips": 577,
+  "identical": 571,
+  "padded_clips": 6,
+  "reported_only": "the pass rule is per source (principal r2 §2)",
+  "unit_edits": 9,
+  "units_ours": 25290,
+  "units_sherpa": 25281
+ },
+ "probe": {
+  "ambiguous_decisions": 10,
+  "canaries": [
+   "everyayah_heldout/test-00003-of-00013_919",
+   "everyayah_heldout/test-00008-of-00013_1683",
+   "everyayah_heldout/test-00010-of-00013_558",
+   "qul_alnufais/4_118",
+   "qul_alnufais/60_1",
+   "qul_alnufais/74_26",
+   "tlog_holdout/6_148_3624514734",
+   "tlog_holdout/70_17_344663896",
+   "tlog_holdout/87_10_2995714032"
+  ],
+  "checks": [
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "everyayah_heldout/test-00008-of-00013_1683",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "م"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "start": 50,
+      "text": "م"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "everyayah_heldout/test-00008-of-00013_1683",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "م"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ءُ"
+     },
+     {
+      "end": 71,
+      "start": 71,
+      "text": "ممممَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "اا"
+     },
+     {
+      "end": 88,
+      "start": 88,
+      "text": "تُ"
+     },
+     {
+      "end": 94,
+      "start": 94,
+      "text": "كُ"
+     },
+     {
+      "end": 99,
+      "start": 99,
+      "text": "م"
+     },
+     {
+      "end": 103,
+      "start": 103,
+      "text": "وَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "بَ"
+     },
+     {
+      "end": 114,
+      "start": 114,
+      "text": "نَ"
+     },
+     {
+      "end": 120,
+      "start": 120,
+      "text": "اا"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "تُ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "م"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "start": 51,
+      "text": "م"
+     },
+     {
+      "start": 55,
+      "text": "ءُ"
+     },
+     {
+      "start": 71,
+      "text": "ممممَ"
+     },
+     {
+      "start": 82,
+      "text": "اا"
+     },
+     {
+      "start": 88,
+      "text": "تُ"
+     },
+     {
+      "start": 94,
+      "text": "كُ"
+     },
+     {
+      "start": 99,
+      "text": "م"
+     },
+     {
+      "start": 103,
+      "text": "وَ"
+     },
+     {
+      "start": 108,
+      "text": "بَ"
+     },
+     {
+      "start": 114,
+      "text": "نَ"
+     },
+     {
+      "start": 120,
+      "text": "اا"
+     },
+     {
+      "start": 125,
+      "text": "تُ"
+     },
+     {
+      "start": 132,
+      "text": "م"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 2,
+    "boundaries": [
+     25,
+     50
+    ],
+    "check": "later-window",
+    "key": "everyayah_heldout/test-00008-of-00013_1683",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "لَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "اا"
+     },
+     {
+      "end": 16,
+      "start": 16,
+      "text": "مَ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "اا"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "قَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "د"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "سَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "لَ"
+     },
+     {
+      "end": 61,
+      "start": 61,
+      "text": "ءِ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ننننَ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "للَ"
+     },
+     {
+      "end": 90,
+      "start": 90,
+      "text": "اا"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "هَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "كَ"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "اا"
+     },
+     {
+      "end": 109,
+      "start": 109,
+      "text": "نَ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "غَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "فُ"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "رَ"
+     },
+     {
+      "end": 141,
+      "start": 141,
+      "text": "ررَ"
+     },
+     {
+      "end": 147,
+      "start": 147,
+      "text": "حِ"
+     },
+     {
+      "end": 161,
+      "start": 161,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 163,
+      "start": 163,
+      "text": "م"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 7,
+      "text": "لَ"
+     },
+     {
+      "start": 12,
+      "text": "اا"
+     },
+     {
+      "start": 16,
+      "text": "مَ"
+     },
+     {
+      "start": 20,
+      "text": "اا"
+     },
+     {
+      "start": 24,
+      "text": "قَ"
+     },
+     {
+      "start": 29,
+      "text": "د"
+     },
+     {
+      "start": 36,
+      "text": "سَ"
+     },
+     {
+      "start": 40,
+      "text": "لَ"
+     },
+     {
+      "start": 61,
+      "text": "ءِ"
+     },
+     {
+      "start": 76,
+      "text": "ننننَ"
+     },
+     {
+      "start": 86,
+      "text": "للَ"
+     },
+     {
+      "start": 90,
+      "text": "اا"
+     },
+     {
+      "start": 93,
+      "text": "هَ"
+     },
+     {
+      "start": 100,
+      "text": "كَ"
+     },
+     {
+      "start": 105,
+      "text": "اا"
+     },
+     {
+      "start": 109,
+      "text": "نَ"
+     },
+     {
+      "start": 115,
+      "text": "غَ"
+     },
+     {
+      "start": 121,
+      "text": "فُ"
+     },
+     {
+      "start": 125,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 130,
+      "text": "رَ"
+     },
+     {
+      "start": 141,
+      "text": "ررَ"
+     },
+     {
+      "start": 147,
+      "text": "حِ"
+     },
+     {
+      "start": 161,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 163,
+      "text": "م"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     880000,
+     976000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "everyayah_heldout/test-00008-of-00013_1683",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 5,
+      "start": 5,
+      "text": "يَ"
+     },
+     {
+      "end": 7,
+      "start": 7,
+      "text": "اا"
+     },
+     {
+      "end": 11,
+      "start": 11,
+      "text": "سَ"
+     },
+     {
+      "end": 16,
+      "start": 16,
+      "text": "رَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ءِ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "ننننَ"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "للَ"
+     },
+     {
+      "end": 65,
+      "start": 65,
+      "text": "اا"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "هَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "كَ"
+     },
+     {
+      "end": 80,
+      "start": 80,
+      "text": "اا"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "نَ"
+     },
+     {
+      "end": 90,
+      "start": 90,
+      "text": "غَ"
+     },
+     {
+      "end": 96,
+      "start": 96,
+      "text": "فُ"
+     },
+     {
+      "end": 101,
+      "start": 101,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "رَ"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ررَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "حِ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 134,
+      "start": 134,
+      "text": "مَ"
+     },
+     {
+      "end": 142,
+      "start": 142,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 5,
+      "text": "يَ"
+     },
+     {
+      "start": 7,
+      "text": "اا"
+     },
+     {
+      "start": 11,
+      "text": "سَ"
+     },
+     {
+      "start": 16,
+      "text": "رَ"
+     },
+     {
+      "start": 36,
+      "text": "ءِ"
+     },
+     {
+      "start": 51,
+      "text": "ننننَ"
+     },
+     {
+      "start": 62,
+      "text": "للَ"
+     },
+     {
+      "start": 65,
+      "text": "اا"
+     },
+     {
+      "start": 68,
+      "text": "هَ"
+     },
+     {
+      "start": 75,
+      "text": "كَ"
+     },
+     {
+      "start": 80,
+      "text": "اا"
+     },
+     {
+      "start": 84,
+      "text": "نَ"
+     },
+     {
+      "start": 90,
+      "text": "غَ"
+     },
+     {
+      "start": 96,
+      "text": "فُ"
+     },
+     {
+      "start": 101,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 105,
+      "text": "رَ"
+     },
+     {
+      "start": 116,
+      "text": "ررَ"
+     },
+     {
+      "start": 123,
+      "text": "حِ"
+     },
+     {
+      "start": 130,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 134,
+      "text": "مَ"
+     },
+     {
+      "start": 142,
+      "text": "اا"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     896000,
+     989309
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "everyayah_heldout/test-00003-of-00013_919",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "لَ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "start": 52,
+      "text": "لَ"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "everyayah_heldout/test-00003-of-00013_919",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "لَ"
+     },
+     {
+      "end": 58,
+      "start": 58,
+      "text": "ي"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "هِ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "م"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ءِ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "بڇ"
+     },
+     {
+      "end": 81,
+      "start": 81,
+      "text": "لِ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 91,
+      "start": 91,
+      "text": "سُ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "ظَ"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ننننَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "هُ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "ۥۥ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "start": 53,
+      "text": "لَ"
+     },
+     {
+      "start": 58,
+      "text": "ي"
+     },
+     {
+      "start": 63,
+      "text": "هِ"
+     },
+     {
+      "start": 68,
+      "text": "م"
+     },
+     {
+      "start": 72,
+      "text": "ءِ"
+     },
+     {
+      "start": 76,
+      "text": "بڇ"
+     },
+     {
+      "start": 81,
+      "text": "لِ"
+     },
+     {
+      "start": 86,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 91,
+      "text": "سُ"
+     },
+     {
+      "start": 98,
+      "text": "ظَ"
+     },
+     {
+      "start": 116,
+      "text": "ننننَ"
+     },
+     {
+      "start": 123,
+      "text": "هُ"
+     },
+     {
+      "start": 130,
+      "text": "ۥۥ"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     25,
+     50
+    ],
+    "check": "later-window",
+    "key": "everyayah_heldout/test-00003-of-00013_919",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "فَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "تتَ"
+     },
+     {
+      "end": 23,
+      "start": 23,
+      "text": "بَ"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "عُ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "هُ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ءِ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "للَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "اا"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "فَ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "رِ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "قَ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "ممممِ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "نَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ل"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "مُ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "ء"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "مِ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "نِ"
+     },
+     {
+      "end": 150,
+      "start": 150,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 152,
+      "start": 152,
+      "text": "ن"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 7,
+      "text": "فَ"
+     },
+     {
+      "start": 19,
+      "text": "تتَ"
+     },
+     {
+      "start": 23,
+      "text": "بَ"
+     },
+     {
+      "start": 30,
+      "text": "عُ"
+     },
+     {
+      "start": 36,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 40,
+      "text": "هُ"
+     },
+     {
+      "start": 44,
+      "text": "ءِ"
+     },
+     {
+      "start": 53,
+      "text": "للَ"
+     },
+     {
+      "start": 60,
+      "text": "اا"
+     },
+     {
+      "start": 63,
+      "text": "فَ"
+     },
+     {
+      "start": 68,
+      "text": "رِ"
+     },
+     {
+      "start": 74,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 78,
+      "text": "قَ"
+     },
+     {
+      "start": 98,
+      "text": "ممممِ"
+     },
+     {
+      "start": 102,
+      "text": "نَ"
+     },
+     {
+      "start": 108,
+      "text": "ل"
+     },
+     {
+      "start": 112,
+      "text": "مُ"
+     },
+     {
+      "start": 117,
+      "text": "ء"
+     },
+     {
+      "start": 121,
+      "text": "مِ"
+     },
+     {
+      "start": 127,
+      "text": "نِ"
+     },
+     {
+      "start": 150,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 152,
+      "text": "ن"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     80000,
+     176000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "everyayah_heldout/test-00003-of-00013_919",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءِ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "للَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "اا"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "فَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "رِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ممممِ"
+     },
+     {
+      "end": 77,
+      "start": 77,
+      "text": "نَ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "ل"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مُ"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "ء"
+     },
+     {
+      "end": 95,
+      "start": 95,
+      "text": "مِ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "نِ"
+     },
+     {
+      "end": 124,
+      "start": 124,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 126,
+      "start": 126,
+      "text": "ن"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 20,
+      "text": "ءِ"
+     },
+     {
+      "start": 28,
+      "text": "للَ"
+     },
+     {
+      "start": 34,
+      "text": "اا"
+     },
+     {
+      "start": 38,
+      "text": "فَ"
+     },
+     {
+      "start": 43,
+      "text": "رِ"
+     },
+     {
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "start": 72,
+      "text": "ممممِ"
+     },
+     {
+      "start": 77,
+      "text": "نَ"
+     },
+     {
+      "start": 84,
+      "text": "ل"
+     },
+     {
+      "start": 87,
+      "text": "مُ"
+     },
+     {
+      "start": 92,
+      "text": "ء"
+     },
+     {
+      "start": 95,
+      "text": "مِ"
+     },
+     {
+      "start": 102,
+      "text": "نِ"
+     },
+     {
+      "start": 124,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 126,
+      "text": "ن"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     96000,
+     177633
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "stop",
+    "key": "everyayah_heldout/test-00010-of-00013_558",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 9,
+      "start": 9,
+      "text": "وَ"
+     },
+     {
+      "end": 15,
+      "start": 14,
+      "text": "ل"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "فَ"
+     },
+     {
+      "end": 23,
+      "start": 23,
+      "text": "جڇ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ر"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 9,
+      "text": "وَ"
+     },
+     {
+      "start": 14,
+      "text": "ل"
+     },
+     {
+      "start": 18,
+      "text": "فَ"
+     },
+     {
+      "start": 23,
+      "text": "جڇ"
+     },
+     {
+      "start": 27,
+      "text": "ر"
+     }
+    ],
+    "source": "studio",
+    "span": [
+     0,
+     20480
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "tlog_holdout/87_10_2995714032",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "ييِ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "start": 52,
+      "text": "ييِ"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "tlog_holdout/87_10_2995714032",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 54,
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "end": 128,
+      "start": 128,
+      "text": "خ"
+     },
+     {
+      "end": 134,
+      "start": 134,
+      "text": "شَ"
+     },
+     {
+      "end": 140,
+      "start": 140,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "start": 128,
+      "text": "خ"
+     },
+     {
+      "start": 134,
+      "text": "شَ"
+     },
+     {
+      "start": 140,
+      "text": "اا"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "tlog_holdout/87_10_2995714032",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 54,
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "خ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "شَ"
+     },
+     {
+      "end": 139,
+      "start": 139,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "start": 127,
+      "text": "خ"
+     },
+     {
+      "start": 132,
+      "text": "شَ"
+     },
+     {
+      "start": 139,
+      "text": "اا"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     90650
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "tlog_holdout/6_148_3624514734",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 16,
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "نَ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 50,
+      "text": "نَ"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "tlog_holdout/6_148_3624514734",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 16,
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "نَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ءَ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "ش"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "رَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "كُ"
+     },
+     {
+      "end": 70,
+      "start": 70,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 73,
+      "start": 73,
+      "text": "لَ"
+     },
+     {
+      "end": 77,
+      "start": 77,
+      "text": "و"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "شَ"
+     },
+     {
+      "end": 89,
+      "start": 89,
+      "text": "اااا"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "ءَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "للَ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "اا"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "هُ"
+     },
+     {
+      "end": 110,
+      "start": 110,
+      "text": "مَ"
+     },
+     {
+      "end": 114,
+      "start": 114,
+      "text": "اااا"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "ءَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "ش"
+     },
+     {
+      "end": 125,
+      "start": 124,
+      "text": "رَ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 50,
+      "text": "نَ"
+     },
+     {
+      "start": 55,
+      "text": "ءَ"
+     },
+     {
+      "start": 59,
+      "text": "ش"
+     },
+     {
+      "start": 62,
+      "text": "رَ"
+     },
+     {
+      "start": 66,
+      "text": "كُ"
+     },
+     {
+      "start": 70,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 73,
+      "text": "لَ"
+     },
+     {
+      "start": 77,
+      "text": "و"
+     },
+     {
+      "start": 84,
+      "text": "شَ"
+     },
+     {
+      "start": 89,
+      "text": "اااا"
+     },
+     {
+      "start": 92,
+      "text": "ءَ"
+     },
+     {
+      "start": 100,
+      "text": "للَ"
+     },
+     {
+      "start": 102,
+      "text": "اا"
+     },
+     {
+      "start": 105,
+      "text": "هُ"
+     },
+     {
+      "start": 110,
+      "text": "مَ"
+     },
+     {
+      "start": 114,
+      "text": "اااا"
+     },
+     {
+      "start": 117,
+      "text": "ءَ"
+     },
+     {
+      "start": 123,
+      "text": "ش"
+     },
+     {
+      "start": 124,
+      "text": "رَ"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     25,
+     50
+    ],
+    "check": "later-window",
+    "key": "tlog_holdout/6_148_3624514734",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 3,
+      "start": 3,
+      "text": "ءَ"
+     },
+     {
+      "end": 5,
+      "start": 5,
+      "text": "خ"
+     },
+     {
+      "end": 9,
+      "start": 9,
+      "text": "رِ"
+     },
+     {
+      "end": 14,
+      "start": 14,
+      "text": "جُ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "هُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "لَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "نَ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "اا"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "ءِ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "ںںں"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "تَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "تتَ"
+     },
+     {
+      "end": 64,
+      "start": 64,
+      "text": "بِ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "عُ"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 73,
+      "start": 73,
+      "text": "نَ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "ءِ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "للَ"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "ظظَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "ننننَ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "وَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "ن"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ءَ"
+     },
+     {
+      "end": 122,
+      "start": 122,
+      "text": "ںںں"
+     },
+     {
+      "end": 126,
+      "start": 126,
+      "text": "تُ"
+     },
+     {
+      "end": 129,
+      "start": 129,
+      "text": "م"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ءِ"
+     },
+     {
+      "end": 139,
+      "start": 139,
+      "text": "للَ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "اا"
+     },
+     {
+      "end": 147,
+      "start": 147,
+      "text": "تَ"
+     },
+     {
+      "end": 150,
+      "start": 150,
+      "text": "خ"
+     },
+     {
+      "end": 154,
+      "start": 154,
+      "text": "رُ"
+     },
+     {
+      "end": 174,
+      "start": 174,
+      "text": "ۥۥۥۥ"
+     }
+    ],
+    "passes": false,
+    "sherpa": [
+     {
+      "start": 3,
+      "text": "ءَ"
+     },
+     {
+      "start": 5,
+      "text": "خ"
+     },
+     {
+      "start": 9,
+      "text": "رِ"
+     },
+     {
+      "start": 14,
+      "text": "جُ"
+     },
+     {
+      "start": 17,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 20,
+      "text": "هُ"
+     },
+     {
+      "start": 24,
+      "text": "لَ"
+     },
+     {
+      "start": 28,
+      "text": "نَ"
+     },
+     {
+      "start": 32,
+      "text": "اا"
+     },
+     {
+      "start": 46,
+      "text": "ءِ"
+     },
+     {
+      "start": 50,
+      "text": "ںںں"
+     },
+     {
+      "start": 53,
+      "text": "تَ"
+     },
+     {
+      "start": 60,
+      "text": "تتَ"
+     },
+     {
+      "start": 64,
+      "text": "بِ"
+     },
+     {
+      "start": 68,
+      "text": "عُ"
+     },
+     {
+      "start": 72,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 73,
+      "text": "نَ"
+     },
+     {
+      "start": 78,
+      "text": "ءِ"
+     },
+     {
+      "start": 84,
+      "text": "للَ"
+     },
+     {
+      "start": 93,
+      "text": "ظظَ"
+     },
+     {
+      "start": 100,
+      "text": "ننننَ"
+     },
+     {
+      "start": 104,
+      "text": "وَ"
+     },
+     {
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "start": 112,
+      "text": "ن"
+     },
+     {
+      "start": 116,
+      "text": "ءَ"
+     },
+     {
+      "start": 122,
+      "text": "ںںں"
+     },
+     {
+      "start": 126,
+      "text": "تُ"
+     },
+     {
+      "start": 129,
+      "text": "م"
+     },
+     {
+      "start": 133,
+      "text": "ءِ"
+     },
+     {
+      "start": 139,
+      "text": "للَ"
+     },
+     {
+      "start": 144,
+      "text": "اا"
+     },
+     {
+      "start": 147,
+      "text": "تَ"
+     },
+     {
+      "start": 150,
+      "text": "خ"
+     },
+     {
+      "start": 154,
+      "text": "رُ"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     288000,
+     384000
+    ],
+    "starts_equal": false,
+    "tokens_equal": false
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "tlog_holdout/6_148_3624514734",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ءِ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ںںں"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "تَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "تتَ"
+     },
+     {
+      "end": 39,
+      "start": 39,
+      "text": "بِ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "عُ"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "نَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "ءِ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "للَ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "ظظَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "ننننَ"
+     },
+     {
+      "end": 79,
+      "start": 79,
+      "text": "وَ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "ءِ"
+     },
+     {
+      "end": 88,
+      "start": 88,
+      "text": "ن"
+     },
+     {
+      "end": 91,
+      "start": 91,
+      "text": "ءَ"
+     },
+     {
+      "end": 97,
+      "start": 97,
+      "text": "ںںں"
+     },
+     {
+      "end": 101,
+      "start": 101,
+      "text": "تُ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "م"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "للَ"
+     },
+     {
+      "end": 118,
+      "start": 118,
+      "text": "اا"
+     },
+     {
+      "end": 122,
+      "start": 122,
+      "text": "تَ"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "خ"
+     },
+     {
+      "end": 129,
+      "start": 129,
+      "text": "رُ"
+     },
+     {
+      "end": 135,
+      "start": 135,
+      "text": "صُ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 145,
+      "start": 145,
+      "text": "ن"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 24,
+      "text": "ءِ"
+     },
+     {
+      "start": 26,
+      "text": "ںںں"
+     },
+     {
+      "start": 29,
+      "text": "تَ"
+     },
+     {
+      "start": 36,
+      "text": "تتَ"
+     },
+     {
+      "start": 39,
+      "text": "بِ"
+     },
+     {
+      "start": 43,
+      "text": "عُ"
+     },
+     {
+      "start": 46,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 48,
+      "text": "نَ"
+     },
+     {
+      "start": 53,
+      "text": "ءِ"
+     },
+     {
+      "start": 60,
+      "text": "للَ"
+     },
+     {
+      "start": 68,
+      "text": "ظظَ"
+     },
+     {
+      "start": 75,
+      "text": "ننننَ"
+     },
+     {
+      "start": 79,
+      "text": "وَ"
+     },
+     {
+      "start": 84,
+      "text": "ءِ"
+     },
+     {
+      "start": 88,
+      "text": "ن"
+     },
+     {
+      "start": 91,
+      "text": "ءَ"
+     },
+     {
+      "start": 97,
+      "text": "ںںں"
+     },
+     {
+      "start": 101,
+      "text": "تُ"
+     },
+     {
+      "start": 104,
+      "text": "م"
+     },
+     {
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "start": 115,
+      "text": "للَ"
+     },
+     {
+      "start": 118,
+      "text": "اا"
+     },
+     {
+      "start": 122,
+      "text": "تَ"
+     },
+     {
+      "start": 125,
+      "text": "خ"
+     },
+     {
+      "start": 129,
+      "text": "رُ"
+     },
+     {
+      "start": 135,
+      "text": "صُ"
+     },
+     {
+      "start": 144,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 145,
+      "text": "ن"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     304000,
+     394553
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "tlog_holdout/70_17_344663896",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "end": 13,
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "end": 45,
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "وَ"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "start": 55,
+      "text": "وَ"
+     },
+     {
+      "start": 63,
+      "text": "اا"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "stop",
+    "key": "tlog_holdout/70_17_344663896",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "end": 13,
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "end": 45,
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "وَ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "للَ"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "start": 53,
+      "text": "وَ"
+     },
+     {
+      "start": 59,
+      "text": "للَ"
+     },
+     {
+      "start": 63,
+      "text": "اا"
+     }
+    ],
+    "source": "phone",
+    "span": [
+     0,
+     35665
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "qul_alnufais/74_26",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 14,
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 41,
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "end": 57,
+      "start": 57,
+      "text": "ر"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "start": 57,
+      "text": "ر"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "stop",
+    "key": "qul_alnufais/74_26",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 14,
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 41,
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "قَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "ر"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "start": 55,
+      "text": "قَ"
+     },
+     {
+      "start": 60,
+      "text": "ر"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     42649
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "qul_alnufais/60_1",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "end": 31,
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "نَ"
+     },
+     {
+      "end": 57,
+      "start": 57,
+      "text": "اا"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "مَ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 51,
+      "text": "نَ"
+     },
+     {
+      "start": 57,
+      "text": "اا"
+     },
+     {
+      "start": 62,
+      "text": "مَ"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "qul_alnufais/60_1",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "end": 31,
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "نَ"
+     },
+     {
+      "end": 58,
+      "start": 58,
+      "text": "ءَ"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "اا"
+     },
+     {
+      "end": 65,
+      "start": 65,
+      "text": "مَ"
+     },
+     {
+      "end": 70,
+      "start": 70,
+      "text": "نُ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "لَ"
+     },
+     {
+      "end": 81,
+      "start": 81,
+      "text": "اا"
+     },
+     {
+      "end": 85,
+      "start": 85,
+      "text": "تَ"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "تتَ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "خِ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "ذُ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "عَ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "دُ"
+     },
+     {
+      "end": 124,
+      "start": 124,
+      "text": "ووِ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 52,
+      "text": "نَ"
+     },
+     {
+      "start": 58,
+      "text": "ءَ"
+     },
+     {
+      "start": 62,
+      "text": "اا"
+     },
+     {
+      "start": 65,
+      "text": "مَ"
+     },
+     {
+      "start": 70,
+      "text": "نُ"
+     },
+     {
+      "start": 74,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 78,
+      "text": "لَ"
+     },
+     {
+      "start": 81,
+      "text": "اا"
+     },
+     {
+      "start": 85,
+      "text": "تَ"
+     },
+     {
+      "start": 93,
+      "text": "تتَ"
+     },
+     {
+      "start": 98,
+      "text": "خِ"
+     },
+     {
+      "start": 104,
+      "text": "ذُ"
+     },
+     {
+      "start": 108,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 112,
+      "text": "عَ"
+     },
+     {
+      "start": 117,
+      "text": "دُ"
+     },
+     {
+      "start": 124,
+      "text": "ووِ"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     25,
+     50
+    ],
+    "check": "later-window",
+    "key": "qul_alnufais/60_1",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "فَ"
+     },
+     {
+      "end": 14,
+      "start": 14,
+      "text": "قَ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "دڇ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ضَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "للَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "سَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "وَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "اااا"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "ءَ"
+     },
+     {
+      "end": 111,
+      "start": 111,
+      "text": "سسَ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "بِ"
+     },
+     {
+      "end": 153,
+      "start": 153,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "end": 155,
+      "start": 155,
+      "text": "ل"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 8,
+      "text": "فَ"
+     },
+     {
+      "start": 14,
+      "text": "قَ"
+     },
+     {
+      "start": 20,
+      "text": "دڇ"
+     },
+     {
+      "start": 26,
+      "text": "ضَ"
+     },
+     {
+      "start": 34,
+      "text": "للَ"
+     },
+     {
+      "start": 43,
+      "text": "سَ"
+     },
+     {
+      "start": 49,
+      "text": "وَ"
+     },
+     {
+      "start": 100,
+      "text": "اااا"
+     },
+     {
+      "start": 102,
+      "text": "ءَ"
+     },
+     {
+      "start": 111,
+      "text": "سسَ"
+     },
+     {
+      "start": 117,
+      "text": "بِ"
+     },
+     {
+      "start": 153,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "start": 155,
+      "text": "ل"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     928000,
+     1024000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "qul_alnufais/60_1",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "سَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "وَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "اااا"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "ءَ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "سسَ"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "بِ"
+     },
+     {
+      "end": 128,
+      "start": 128,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "ل"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "start": 18,
+      "text": "سَ"
+     },
+     {
+      "start": 24,
+      "text": "وَ"
+     },
+     {
+      "start": 75,
+      "text": "اااا"
+     },
+     {
+      "start": 78,
+      "text": "ءَ"
+     },
+     {
+      "start": 86,
+      "text": "سسَ"
+     },
+     {
+      "start": 92,
+      "text": "بِ"
+     },
+     {
+      "start": 128,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "start": 132,
+      "text": "ل"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     944000,
+     1034467
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     0
+    ],
+    "check": "first-preview",
+    "key": "qul_alnufais/4_118",
+    "kind": "preview",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 13,
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "اا"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "هُ"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "start": 53,
+      "text": "اا"
+     },
+     {
+      "start": 55,
+      "text": "هُ"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     32000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     0,
+     25
+    ],
+    "check": "first-window",
+    "key": "qul_alnufais/4_118",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 13,
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "اا"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "ه"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "start": 127,
+      "text": "اا"
+     },
+     {
+      "start": 132,
+      "text": "ه"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     0,
+     80000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 1,
+    "boundaries": [
+     25,
+     50
+    ],
+    "check": "later-window",
+    "key": "qul_alnufais/4_118",
+    "kind": "window",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 18,
+      "start": 18,
+      "text": "ءِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ننننَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "مِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ن"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "عِ"
+     },
+     {
+      "end": 47,
+      "start": 47,
+      "text": "بَ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "اا"
+     },
+     {
+      "end": 56,
+      "start": 56,
+      "text": "دِ"
+     },
+     {
+      "end": 61,
+      "start": 61,
+      "text": "كَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "نَ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "صِ"
+     },
+     {
+      "end": 80,
+      "start": 80,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "بَ"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ممممَ"
+     },
+     {
+      "end": 140,
+      "start": 140,
+      "text": "ف"
+     },
+     {
+      "end": 153,
+      "start": 153,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 155,
+      "start": 155,
+      "text": "م"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 18,
+      "text": "ءِ"
+     },
+     {
+      "start": 24,
+      "text": "ننننَ"
+     },
+     {
+      "start": 29,
+      "text": "مِ"
+     },
+     {
+      "start": 36,
+      "text": "ن"
+     },
+     {
+      "start": 40,
+      "text": "عِ"
+     },
+     {
+      "start": 47,
+      "text": "بَ"
+     },
+     {
+      "start": 51,
+      "text": "اا"
+     },
+     {
+      "start": 56,
+      "text": "دِ"
+     },
+     {
+      "start": 61,
+      "text": "كَ"
+     },
+     {
+      "start": 66,
+      "text": "نَ"
+     },
+     {
+      "start": 74,
+      "text": "صِ"
+     },
+     {
+      "start": 80,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 84,
+      "text": "بَ"
+     },
+     {
+      "start": 133,
+      "text": "ممممَ"
+     },
+     {
+      "start": 140,
+      "text": "ف"
+     },
+     {
+      "start": 153,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 155,
+      "text": "م"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     128000,
+     224000
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   },
+   {
+    "ambiguous": 0,
+    "boundaries": [
+     25
+    ],
+    "check": "stop",
+    "key": "qul_alnufais/4_118",
+    "kind": "stop",
+    "mismatches": [],
+    "ours": [
+     {
+      "end": 15,
+      "start": 15,
+      "text": "عِ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "بَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "اا"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "دِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "كَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "نَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "صِ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "بَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "مَ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "ف"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "رُ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ضَ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "اا"
+     }
+    ],
+    "passes": true,
+    "sherpa": [
+     {
+      "start": 15,
+      "text": "عِ"
+     },
+     {
+      "start": 21,
+      "text": "بَ"
+     },
+     {
+      "start": 27,
+      "text": "اا"
+     },
+     {
+      "start": 32,
+      "text": "دِ"
+     },
+     {
+      "start": 36,
+      "text": "كَ"
+     },
+     {
+      "start": 42,
+      "text": "نَ"
+     },
+     {
+      "start": 49,
+      "text": "صِ"
+     },
+     {
+      "start": 55,
+      "text": "ۦۦ"
+     },
+     {
+      "start": 59,
+      "text": "بَ"
+     },
+     {
+      "start": 108,
+      "text": "مَ"
+     },
+     {
+      "start": 115,
+      "text": "ف"
+     },
+     {
+      "start": 121,
+      "text": "رُ"
+     },
+     {
+      "start": 127,
+      "text": "ۥۥ"
+     },
+     {
+      "start": 133,
+      "text": "ضَ"
+     },
+     {
+      "start": 144,
+      "text": "اا"
+     }
+    ],
+    "source": "unseen",
+    "span": [
+     144000,
+     238254
+    ],
+    "starts_equal": true,
+    "tokens_equal": true
+   }
+  ],
+  "passes": false
+ },
+ "rule": {
+  "frame_allowance": "a start frame may shift only where no sampled cut changes (astra r1 §3)",
+  "identical_percent": 99,
+  "padded_final_chunk": "a non-blank token the padded call emits makes the clip differing (rule 4)",
+  "per_source": true,
+  "phone_character_per_mille": 1,
+  "probe_checks": [
+   "first-preview",
+   "first-window",
+   "later-window",
+   "stop"
+  ],
+  "unit_edits_per_mille": 1
+ },
+ "schema_version": 1,
+ "sherpa": {
+  "extension_sha256": "d2ae6773d6e85ece622fe1fb21bcf7f9bb42e4b72cf451f41003fbec0f6b23ee",
+  "front_end": {
+   "fbank_options": {
+    "energy_floor": 0.0,
+    "eps": 1.1920928955078125e-07,
+    "frame_opts": {
+     "blackman_coeff": 0.41999998688697815,
+     "dither": 0.0,
+     "frame_length_ms": 25.0,
+     "frame_shift_ms": 10.0,
+     "preemph_coeff": 0.9700000286102295,
+     "remove_dc_offset": true,
+     "round_to_power_of_two": true,
+     "samp_freq": 16000.0,
+     "snip_edges": false,
+     "window_type": "povey"
+    },
+    "htk_compat": false,
+    "mel_opts": {
+     "debug_mel": false,
+     "floor_to_int_bin": false,
+     "high_freq": -400.0,
+     "htk_mode": false,
+     "is_librosa": false,
+     "low_freq": 20.0,
+     "norm": "slaney",
+     "num_bins": 80,
+     "use_slaney_mel_scale": true,
+     "vtln_high": -500.0,
+     "vtln_low": 100.0
+    },
+    "raw_energy": true,
+    "use_energy": false,
+    "use_log_fbank": true,
+    "use_log_floor": true,
+    "use_power": true
+   },
+   "feature_config": {
+    "dither": 0.0,
+    "feature_dim": 80,
+    "high_freq": -400.0,
+    "low_freq": 20.0,
+    "normalize_samples": true,
+    "sampling_rate": 16000,
+    "snip_edges": false
+   },
+   "frame_options": {
+    "blackman_coeff": 0.41999998688697815,
+    "dither": 0.0,
+    "frame_length_ms": 25.0,
+    "frame_shift_ms": 10.0,
+    "preemph_coeff": 0.9700000286102295,
+    "remove_dc_offset": true,
+    "round_to_power_of_two": true,
+    "samp_freq": 16000.0,
+    "snip_edges": false,
+    "window_type": "povey"
+   },
+   "library": "kaldi-native-fbank",
+   "mel_options": {
+    "debug_mel": false,
+    "floor_to_int_bin": false,
+    "high_freq": -400.0,
+    "htk_mode": false,
+    "is_librosa": false,
+    "low_freq": 20.0,
+    "norm": "slaney",
+    "num_bins": 80,
+    "use_slaney_mel_scale": true,
+    "vtln_high": -500.0,
+    "vtln_low": 100.0
+   },
+   "version": "1.22.5"
+  },
+  "model": {
+   "path": "/root/scratch/zipformer/data/model/zipformer_p_arabic_v3.2.onnx",
+   "sha256": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa"
+  },
+  "onnxruntime": "1.28.2",
+  "protocol": {
+   "decoding": "greedy_search",
+   "endpoint_detection": false,
+   "num_threads": 1,
+   "provider": "cpu",
+   "sample_rate": 16000,
+   "steps_per_second": 25,
+   "tail_samples": 16800,
+   "text_rewrites": []
+  },
+  "tokens": {
+   "path": "/root/scratch/zipformer/data/model/tokens.txt",
+   "sha256": "252c10687e442aa9291973065fae19fa39bcd681c4f5612ec496a647e20b43a1"
+  },
+  "version": "2.0.1",
+  "wheel": "sherpa-onnx==2.0.1"
+ },
+ "sources": {
+  "phone": {
+   "clips": 177,
+   "differing": [
+    "tlog_holdout/71_23_2048851382",
+    "tlog_holdout/78_3_2930787496",
+    "tlog_holdout/56_62_null_FEpkBhC",
+    "tlog_holdout/102_8_5916463777",
+    "tlog_holdout/37_25_6209858434",
+    "tlog_holdout/67_6_9183881301"
+   ],
+   "edits_per_mille": 1.6822429906542056,
+   "identical": 171,
+   "identical_percent": 96.61016949152543,
+   "padded_clips": 6,
+   "passes": false,
+   "unit_edits": 9,
+   "units_ours": 5350,
+   "units_sherpa": 5341
+  },
+  "studio": {
+   "clips": 200,
+   "differing": [],
+   "edits_per_mille": 0.0,
+   "identical": 200,
+   "identical_percent": 100.0,
+   "padded_clips": 0,
+   "passes": true,
+   "unit_edits": 0,
+   "units_ours": 10041,
+   "units_sherpa": 10041
+  },
+  "unseen": {
+   "clips": 200,
+   "differing": [],
+   "edits_per_mille": 0.0,
+   "identical": 200,
+   "identical_percent": 100.0,
+   "padded_clips": 0,
+   "passes": true,
+   "unit_edits": 0,
+   "units_ours": 9899,
+   "units_sherpa": 9899
+  }
+ },
+ "stop": "phone: 171/177 identical (96.61%, need 99%), 9/5350 unit edits (1.682 per mille, limit 1); phone table hits: 9 characters of 5049 (1.783 per mille, limit 1); probe tlog_holdout/6_148_3624514734 later-window: the runtimes emitted different units"
+}

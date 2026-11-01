@@ -114,7 +114,8 @@ def _disjointness(record: Mapping) -> list[str]:
     dis = record["disjointness"]
     plan = dis["plan"]
     tlog = dis["tlog"]
-    rows = [[name, str(count)] for name, count in sorted(plan.items())]
+    rows = [[("same_group (of verdict)" if name == "same_group" else name), str(count)]
+            for name, count in sorted(plan.items())]
     rows.extend([["clips screened", str(dis["clips"])],
                  ["tlog roles screened", str(dis["roles"])],
                  ["tlog rows", str(tlog["rows"])],
@@ -124,9 +125,13 @@ def _disjointness(record: Mapping) -> list[str]:
                  ["tlog pool rows (tlog.training)", str(tlog["training"]["rows"])]])
     return ["## Disjointness", "",
             f"**{dis['verdict']}** benchmark clips carry the verdict; the {dis['trained']} the "
-            f"candidate trained on are reported apart, {dis['same_group']} share a group, and "
-            f"{dis['sealed']} sealed clips were dropped before any decode. No benchmark audio "
-            "is committed; the screen is by fingerprint and name, never by listening.", "",
+            f"candidate trained on are reported apart, {dis['same_group']} share a group (they "
+            "stay inside the verdict set and are read apart below), and "
+            f"{dis['sealed']} sealed clips were dropped before any decode. The manifest's "
+            f"{dis['benchmark']['rows']} rows hold {dis['benchmark']['duplicate_rows']} verbatim "
+            f"duplicate, collapsed to the {dis['benchmark']['clips']} clips screened. No "
+            "benchmark audio is committed; the screen is by fingerprint and name, never by "
+            "listening.", "",
             f"The candidate's \"trained on\" set is rebuilt from the committed consumed log — "
             f"the {tlog['consumed']['rows']:,} rows the round-2 run actually read — not "
             f"`tlog.training`'s {tlog['training']['rows']:,}-row pool: a pool row the run never "
@@ -164,6 +169,12 @@ def _correct(record: Mapping) -> list[str]:
                             _cell(errors["consonant"]["error"]) +
                             _interval(errors["consonant"]),
                             _cell(errors["haraka"]["error"]) + _interval(errors["haraka"])])
+    sensitivity = benchmark["sensitivity"]
+    split_rows = [[model, _cell(row["with"]["consonant"]["error"]),
+                   _cell(row["without"]["consonant"]["error"]),
+                   _cell(row["with"]["haraka"]["error"]),
+                   _cell(row["without"]["haraka"]["error"])]
+                  for model, row in sensitivity["models"].items()]
     return ["## The correct side", "",
             "### qdat: all-cause false flags per 1,000 graded words", "",
             "The app outcome, replayed through Muraja's own engine at the shipped default. "
@@ -178,7 +189,12 @@ def _correct(record: Mapping) -> list[str]:
             "the same realized reference ours are scored against. Clusters are surahs. "
             "tlog_holdout is the verdict source; everyayah_heldout and qul_alnufais are "
             "report-only.", "",
-            _table(["source", "model", "consonant error %", "haraka error %"], sources)]
+            _table(["source", "model", "consonant error %", "haraka error %"], sources),
+            f"Sensitivity (architect r3): the {sensitivity['clips']} tlog_holdout verdict clips "
+            "that share a group with a training row, read with them and without them "
+            f"({sensitivity['without_clips']} clips).", "",
+            _table(["model", "consonant with", "consonant without", "haraka with",
+                    "haraka without"], split_rows)]
 
 
 def _catch(record: Mapping) -> list[str]:
@@ -203,6 +219,53 @@ def _catch(record: Mapping) -> list[str]:
             "candidate's committed cache holds; the candidate's cache covers 363 of the 512 "
             "Ship A items, so 46 of its 75 mistake sites are read.", "",
             _table(["arm", "flagged %", "flagged/sites"], ship_rows)]
+
+
+def _commit(record: Mapping) -> list[str]:
+    commit = record["commit"]
+
+    def bounds(row) -> str:
+        interval = row.get("interval") or row
+        return f" [{_cell(interval['lower'])}, {_cell(interval['upper'])}]"
+
+    def side(section: Mapping) -> list[list[str]]:
+        rates = section["rates"]
+        models = sorted(rates["empty_slot_haraka"]["models"])
+
+        def cell(metric: str, model: str) -> str:
+            row = rates[metric]["models"][model]
+            return (f"{_cell(row['point'])}{bounds(row)} "
+                    f"({row['num']:.0f}/{row['den']:.0f})")
+
+        return [[model] + [cell(metric, model) for metric in
+                           ("empty_slot_haraka", "empty_slot_sukun", "commit_rate",
+                            "committed_accuracy")] for model in models]
+
+    def percent(value):
+        return value * 100 if isinstance(value, (int, float)) else value
+
+    agreement = [[model, _cell(percent(row["point"])) + bounds({
+                     "lower": percent(row["lower"]), "upper": percent(row["upper"])}),
+                  f"{row['num']:.0f}/{row['den']:.0f} teacher units"]
+                 for model, row in sorted(
+                     commit["correct_side"]["rates"].get("teacher_agreement", {}).items())]
+    header = ["model", "empty haraka slot %", "empty sukun slot %", "commit rate %",
+              "committed accuracy %"]
+    correct = commit["correct_side"]
+    catch = commit["catch_side"]
+    return ["## Commit, empty slots and teacher agreement (step 6)", "",
+            commit["rule"] + ".", "",
+            "### The correct side: the benchmark's verdict clips", "",
+            f"{correct['clips']} clips with a phonetizer reference; a sukun slot is a carrier "
+            "the mushaf writes with no haraka, so an empty one is the expected form.", "",
+            _table(header, side(correct)),
+            "### The catch side: the 150 edits", "",
+            f"Each edit's own labelled reference; {catch['items']} items, paired by edit.", "",
+            _table(header, side(catch)),
+            "### Teacher agreement (our students only, a clone diagnostic)", "",
+            "Share of the teacher's units a student reproduces after projection onto the "
+            "teacher's vocabulary; zipformer is not scored this way.", "",
+            _table(["student", "agreement %", "units"], agreement)]
 
 
 def _match(record: Mapping) -> list[str]:
@@ -316,9 +379,16 @@ def _notes(record: Mapping) -> list[str]:
             "**Neither `likely_hallucination` nor `strip_padding_artifacts` is applied.** Both "
             "guard our model's zero-padded, zero-state windows; zipformer never decodes a padded "
             "window, and applying them would delete genuine edge letters.", "",
-            "**v3.2's card-gate numbers are a v1-protocol baseline**, reported beside the gate "
-            "table only; the card's table describes v3, which never appears in a comparison set.",
-            "",
+            "**Both card-gate runs are v1-protocol, and both predate the repair.** The gate's "
+            "round-trip is the card's own v1 tokenizer rule, and both runs decoded with the "
+            "zero-padded final chunk the diagnosis round removed. v3.2's numbers are a baseline "
+            "(the card's table is v3's, which never appears in a comparison set), and v3's STOP "
+            "(570/577 = 98.79%, 4 of 7 failures a rule-segmentation the longest-match stand-in "
+            "invents) is kept as the record of what that decoder did, not re-run here. The "
+            "reference-runtime parity gate replaced them, and it is the one that decides.", "",
+            "**The int8 export is a numerics line only.** Its single piece of evidence is the "
+            "identity's pinned SHA-256; no int8 decode is committed, compared or used, and no "
+            "call in this screen loads it.", "",
             "**qdat_bench is not read.** Its 159 clips are qdat's own bytes, so their decodes "
             "are qdat's; only its expert `phonetic_transcript` would add, and that read needs "
             "the gated Hub token, which lives on cuda-dev. The qdat side scores every model "
@@ -334,5 +404,5 @@ def render(record: Mapping) -> str:
     rule, the explanation tables and the notes."""
     return "\n".join([HEADER, *_verdict(record), *_gates(record), *_sets(record),
                       *_disjointness(record), *_correct(record), *_catch(record),
-                      *_match(record), *_diversity(record), *_compute(record),
+                      *_commit(record), *_match(record), *_diversity(record), *_compute(record),
                       *_report_only(record), *_exposure(record), *_notes(record)]).rstrip() + "\n"

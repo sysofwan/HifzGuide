@@ -57,14 +57,14 @@ Every metric reads one arm per model, fixed before any decode (`training.zipform
 
 ## Disjointness
 
-**547** benchmark clips carry the verdict; the 30 the candidate trained on are reported apart, 8 share a group, and 22 sealed clips were dropped before any decode. No benchmark audio is committed; the screen is by fingerprint and name, never by listening.
+**547** benchmark clips carry the verdict; the 30 the candidate trained on are reported apart, 8 share a group (they stay inside the verdict set and are read apart below), and 22 sealed clips were dropped before any decode. The manifest's 600 rows hold 1 verbatim duplicate, collapsed to the 599 clips screened. No benchmark audio is committed; the screen is by fingerprint and name, never by listening.
 
 The candidate's "trained on" set is rebuilt from the committed consumed log — the 73,990 rows the round-2 run actually read — not `tlog.training`'s 426,825-row pool: a pool row the run never read is not exposure (architect r3, D3).
 
 | plan | clips |
 |---|---|
 | decode | 577 |
-| same_group | 8 |
+| same_group (of verdict) | 8 |
 | sealed | 22 |
 | trained | 30 |
 | verdict | 547 |
@@ -119,6 +119,15 @@ The app outcome, replayed through Muraja's own engine at the shipped default. Zi
 | tlog_holdout | r2_candidate_ema | 10.67 [9.38, 12.10] | 11.63 [10.34, 12.93] |
 | tlog_holdout | zipformer | 2.40 [1.69, 3.12] | 1.97 [1.33, 2.71] |
 
+Sensitivity (architect r3): the 8 tlog_holdout verdict clips that share a group with a training row, read with them and without them (137 clips).
+
+| model | consonant with | consonant without | haraka with | haraka without |
+|---|---|---|---|---|
+| base | 11.15 | 10.62 | 12.81 | 12.70 |
+| c95 | 13.95 | 13.43 | 12.02 | 11.83 |
+| r2_candidate_ema | 10.67 | 10.30 | 11.63 | 11.51 |
+| zipformer | 2.40 | 2.21 | 1.97 | 1.82 |
+
 ## The catch side
 
 ### The synthetic edits
@@ -146,6 +155,41 @@ On the 46 mistake sites (of 377 sites) in the items the candidate's committed ca
 | r2_candidate_ema | 34.78 [21.74, 50.00] | 16/46 |
 | zipformer-checks | 30.43 [17.39, 43.48] | 14/46 |
 | zipformer-checks-w1 | 30.43 [17.39, 43.48] | 14/46 |
+
+## Commit, empty slots and teacher agreement (step 6)
+
+Step 6's carrier lines, never pooled across the correct and catch sides: the empty-slot rate where the mushaf prescribes a haraka (an omission) and where it prescribes a sukun (no written haraka, so an empty slot is the expected form); the commit rate and committed accuracy separately, because a unit may carry the haraka inside its consonant token; and teacher agreement for our students only, projected onto the teacher's vocabulary, a clone diagnostic that is never computed for zipformer.
+
+### The correct side: the benchmark's verdict clips
+
+545 clips with a phonetizer reference; a sukun slot is a carrier the mushaf writes with no haraka, so an empty one is the expected form.
+
+| model | empty haraka slot % | empty sukun slot % | commit rate % | committed accuracy % |
+|---|---|---|---|---|
+| base | 9.25 [8.60, 9.80] (1471/15896) | 99.72 [99.66, 99.78] (20999/21058) | 90.75 [90.20, 91.40] (14425/15896) | 99.95 [99.90, 99.99] (14418/14425) |
+| c95 | 7.95 [7.38, 8.44] (1265/15916) | 99.63 [99.56, 99.70] (21021/21099) | 92.05 [91.56, 92.62] (14651/15916) | 99.85 [99.78, 99.91] (14629/14651) |
+| r2_candidate_ema | 7.78 [7.18, 8.32] (1239/15918) | 99.65 [99.57, 99.73] (21027/21101) | 92.22 [91.68, 92.82] (14679/15918) | 99.91 [99.86, 99.95] (14666/14679) |
+| zipformer | 0.30 [0.20, 0.42] (49/16080) | 99.95 [99.93, 99.98] (21529/21539) | 99.70 [99.58, 99.80] (16031/16080) | 99.94 [99.89, 99.97] (16021/16031) |
+
+### The catch side: the 150 edits
+
+Each edit's own labelled reference; 150 items, paired by edit.
+
+| model | empty haraka slot % | empty sukun slot % | commit rate % | committed accuracy % |
+|---|---|---|---|---|
+| base | 10.96 [10.18, 11.72] (649/5924) | 99.61 [99.42, 99.77] (7943/7974) | 89.04 [88.28, 89.82] (5275/5924) | 99.85 [99.74, 99.94] (5267/5275) |
+| c95 | 8.79 [8.10, 9.51] (522/5937) | 99.60 [99.42, 99.76] (7973/8005) | 91.21 [90.49, 91.90] (5415/5937) | 99.82 [99.66, 99.94] (5405/5415) |
+| r2_candidate_ema | 8.97 [8.23, 9.73] (533/5943) | 99.68 [99.52, 99.81] (7978/8004) | 91.03 [90.27, 91.77] (5410/5943) | 99.80 [99.65, 99.92] (5399/5410) |
+| zipformer | 1.08 [0.52, 1.87] (65/6044) | 99.94 [99.87, 99.99] (8208/8213) | 98.92 [98.13, 99.48] (5979/6044) | 99.85 [99.73, 99.95] (5970/5979) |
+
+### Teacher agreement (our students only, a clone diagnostic)
+
+Share of the teacher's units a student reproduces after projection onto the teacher's vocabulary; zipformer is not scored this way.
+
+| student | agreement % | units |
+|---|---|---|
+| c95 | 94.11 [93.81, 94.42] | 43700/46433 teacher units |
+| r2_candidate_ema | 94.44 [94.18, 94.72] | 43851/46433 teacher units |
 
 ## The owner's match rule
 
@@ -185,7 +229,7 @@ Decoded audio per audio-second and calls per audio-second, from the check schedu
 | arm | decoded audio s / audio s | inferences / audio s | ONNX chunk calls / audio s |
 |---|---|---|---|
 | checks-w1 | 37.44 | 5.80 | 78.00 |
-| checks-w1-windows | 7.56 | 5.80 | 15.80 |
+| checks-w1-windows | 7.56 | 0.93 | 15.80 |
 | ours | 25.82 | 5.80 | 53.80 |
 | zipformer-single-stream | 1.00 | 2.08 | — |
 
@@ -203,7 +247,7 @@ The timing probe measured 50.86 audio-seconds per wall-second on 20 qdat items a
 
 ## Report only: the ratchet-free lines
 
-whole-item decodes only, no app check sequence and no ratchet: the reading of each model's ability without Muraja's engine in the loop.
+whole-item decodes only, no app check sequence and no ratchet: the reading of each model's ability without Muraja's engine in the loop, each on its metric arm (stream_b0 for ours, spans for zipformer).
 
 qdat's whole-item per-class error against the mushaf (reporters without Muraja's engine):
 
@@ -246,7 +290,9 @@ share of the edit set's reciters in the lineage's Tadabur training uses; the tea
 
 **Neither `likely_hallucination` nor `strip_padding_artifacts` is applied.** Both guard our model's zero-padded, zero-state windows; zipformer never decodes a padded window, and applying them would delete genuine edge letters.
 
-**v3.2's card-gate numbers are a v1-protocol baseline**, reported beside the gate table only; the card's table describes v3, which never appears in a comparison set.
+**Both card-gate runs are v1-protocol, and both predate the repair.** The gate's round-trip is the card's own v1 tokenizer rule, and both runs decoded with the zero-padded final chunk the diagnosis round removed. v3.2's numbers are a baseline (the card's table is v3's, which never appears in a comparison set), and v3's STOP (570/577 = 98.79%, 4 of 7 failures a rule-segmentation the longest-match stand-in invents) is kept as the record of what that decoder did, not re-run here. The reference-runtime parity gate replaced them, and it is the one that decides.
+
+**The int8 export is a numerics line only.** Its single piece of evidence is the identity's pinned SHA-256; no int8 decode is committed, compared or used, and no call in this screen loads it.
 
 **qdat_bench is not read.** Its 159 clips are qdat's own bytes, so their decodes are qdat's; only its expert `phonetic_transcript` would add, and that read needs the gated Hub token, which lives on cuda-dev. The qdat side scores every model against the phonetizer reference over the mushaf, as the other readouts do.
 

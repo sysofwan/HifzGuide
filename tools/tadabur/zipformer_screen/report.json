@@ -52,6 +52,478 @@
    ],
    "verdict": 547
   },
+  "sensitivity": {
+   "clips": 8,
+   "models": {
+    "base": {
+     "with": {
+      "consonant": {
+       "clusters": 61,
+       "error": 11.15,
+       "interval": {
+        "lower": 10.02,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.38
+       },
+       "slots": 3712
+      },
+      "focus": {
+       "clusters": 61,
+       "error": 11.65,
+       "interval": {
+        "lower": 9.61,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.97
+       },
+       "slots": 1331
+      },
+      "haraka": {
+       "clusters": 61,
+       "error": 12.81,
+       "interval": {
+        "lower": 11.22,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 14.44
+       },
+       "slots": 3044
+      },
+      "phoneme": {
+       "clusters": 61,
+       "error": 24.42,
+       "interval": {
+        "lower": 22.63,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 26.04
+       },
+       "slots": 10126
+      },
+      "shaddah": {
+       "clusters": 61,
+       "error": 31.95,
+       "interval": {
+        "lower": 25.53,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 37.46
+       },
+       "slots": 338
+      }
+     },
+     "without": {
+      "consonant": {
+       "clusters": 60,
+       "error": 10.62,
+       "interval": {
+        "lower": 9.28,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 11.87
+       },
+       "slots": 3485
+      },
+      "focus": {
+       "clusters": 60,
+       "error": 11.03,
+       "interval": {
+        "lower": 8.73,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.39
+       },
+       "slots": 1251
+      },
+      "haraka": {
+       "clusters": 60,
+       "error": 12.7,
+       "interval": {
+        "lower": 11.04,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 14.21
+       },
+       "slots": 2858
+      },
+      "phoneme": {
+       "clusters": 60,
+       "error": 24.37,
+       "interval": {
+        "lower": 22.38,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 26.06
+       },
+       "slots": 9519
+      },
+      "shaddah": {
+       "clusters": 60,
+       "error": 32.19,
+       "interval": {
+        "lower": 25.55,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 38.28
+       },
+       "slots": 320
+      }
+     }
+    },
+    "c95": {
+     "with": {
+      "consonant": {
+       "clusters": 61,
+       "error": 13.95,
+       "interval": {
+        "lower": 12.3,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 15.85
+       },
+       "slots": 3712
+      },
+      "focus": {
+       "clusters": 61,
+       "error": 14.35,
+       "interval": {
+        "lower": 12.12,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 16.77
+       },
+       "slots": 1331
+      },
+      "haraka": {
+       "clusters": 61,
+       "error": 12.02,
+       "interval": {
+        "lower": 10.57,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.37
+       },
+       "slots": 3044
+      },
+      "phoneme": {
+       "clusters": 61,
+       "error": 25.52,
+       "interval": {
+        "lower": 23.74,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 27.18
+       },
+       "slots": 10126
+      },
+      "shaddah": {
+       "clusters": 61,
+       "error": 32.84,
+       "interval": {
+        "lower": 26.07,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 39.05
+       },
+       "slots": 338
+      }
+     },
+     "without": {
+      "consonant": {
+       "clusters": 60,
+       "error": 13.43,
+       "interval": {
+        "lower": 11.65,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 15.18
+       },
+       "slots": 3485
+      },
+      "focus": {
+       "clusters": 60,
+       "error": 13.75,
+       "interval": {
+        "lower": 11.52,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 16.1
+       },
+       "slots": 1251
+      },
+      "haraka": {
+       "clusters": 60,
+       "error": 11.83,
+       "interval": {
+        "lower": 10.2,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.19
+       },
+       "slots": 2858
+      },
+      "phoneme": {
+       "clusters": 60,
+       "error": 25.45,
+       "interval": {
+        "lower": 23.54,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 27.1
+       },
+       "slots": 9519
+      },
+      "shaddah": {
+       "clusters": 60,
+       "error": 33.13,
+       "interval": {
+        "lower": 26.05,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 39.48
+       },
+       "slots": 320
+      }
+     }
+    },
+    "r2_candidate_ema": {
+     "with": {
+      "consonant": {
+       "clusters": 61,
+       "error": 10.67,
+       "interval": {
+        "lower": 9.38,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.1
+       },
+       "slots": 3712
+      },
+      "focus": {
+       "clusters": 61,
+       "error": 11.35,
+       "interval": {
+        "lower": 9.33,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.49
+       },
+       "slots": 1331
+      },
+      "haraka": {
+       "clusters": 61,
+       "error": 11.63,
+       "interval": {
+        "lower": 10.34,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.93
+       },
+       "slots": 3044
+      },
+      "phoneme": {
+       "clusters": 61,
+       "error": 23.75,
+       "interval": {
+        "lower": 22.16,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 25.27
+       },
+       "slots": 10126
+      },
+      "shaddah": {
+       "clusters": 61,
+       "error": 31.06,
+       "interval": {
+        "lower": 24.85,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 36.78
+       },
+       "slots": 338
+      }
+     },
+     "without": {
+      "consonant": {
+       "clusters": 60,
+       "error": 10.3,
+       "interval": {
+        "lower": 8.88,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 11.73
+       },
+       "slots": 3485
+      },
+      "focus": {
+       "clusters": 60,
+       "error": 10.95,
+       "interval": {
+        "lower": 8.73,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 13.11
+       },
+       "slots": 1251
+      },
+      "haraka": {
+       "clusters": 60,
+       "error": 11.51,
+       "interval": {
+        "lower": 10.06,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.82
+       },
+       "slots": 2858
+      },
+      "phoneme": {
+       "clusters": 60,
+       "error": 23.74,
+       "interval": {
+        "lower": 21.98,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 25.3
+       },
+       "slots": 9519
+      },
+      "shaddah": {
+       "clusters": 60,
+       "error": 31.56,
+       "interval": {
+        "lower": 24.91,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 37.8
+       },
+       "slots": 320
+      }
+     }
+    },
+    "zipformer": {
+     "with": {
+      "consonant": {
+       "clusters": 61,
+       "error": 2.4,
+       "interval": {
+        "lower": 1.69,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 3.12
+       },
+       "slots": 3712
+      },
+      "focus": {
+       "clusters": 61,
+       "error": 2.33,
+       "interval": {
+        "lower": 1.49,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 3.18
+       },
+       "slots": 1331
+      },
+      "haraka": {
+       "clusters": 61,
+       "error": 1.97,
+       "interval": {
+        "lower": 1.33,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 2.71
+       },
+       "slots": 3044
+      },
+      "phoneme": {
+       "clusters": 61,
+       "error": 11.25,
+       "interval": {
+        "lower": 10.42,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.11
+       },
+       "slots": 10126
+      },
+      "shaddah": {
+       "clusters": 61,
+       "error": 1.78,
+       "interval": {
+        "lower": 0.36,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 3.53
+       },
+       "slots": 338
+      }
+     },
+     "without": {
+      "consonant": {
+       "clusters": 60,
+       "error": 2.21,
+       "interval": {
+        "lower": 1.54,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 2.97
+       },
+       "slots": 3485
+      },
+      "focus": {
+       "clusters": 60,
+       "error": 2.16,
+       "interval": {
+        "lower": 1.32,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 3.07
+       },
+       "slots": 1251
+      },
+      "haraka": {
+       "clusters": 60,
+       "error": 1.82,
+       "interval": {
+        "lower": 1.24,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 2.54
+       },
+       "slots": 2858
+      },
+      "phoneme": {
+       "clusters": 60,
+       "error": 11.24,
+       "interval": {
+        "lower": 10.37,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 12.14
+       },
+       "slots": 9519
+      },
+      "shaddah": {
+       "clusters": 60,
+       "error": 1.88,
+       "interval": {
+        "lower": 0.4,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 3.69
+       },
+       "slots": 320
+      }
+     }
+    }
+   },
+   "rule": "the tlog_holdout verdict clips that share a group with a training row, read apart: each model's per-class error with them and without them (architect r3's sensitivity split); every other source stays whole",
+   "source": "tlog_holdout",
+   "without_clips": 137
+  },
   "sources": {
    "everyayah_heldout": {
     "base": {
@@ -748,6 +1220,657 @@
    }
   }
  },
+ "commit": {
+  "catch_side": {
+   "items": 150,
+   "rates": {
+    "commit_rate": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": 1.6906646418136242,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 2.647554575575377
+       },
+       "point": 2.163116163334189
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": 1.4671275715957068,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 2.505353525167512
+       },
+       "point": 1.9869011063123554
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": 8.828949392785736,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 10.866789989731892
+       },
+       "point": 9.879988792519057
+      }
+     },
+     "models": {
+      "base": {
+       "den": 5924.0,
+       "interval": {
+        "lower": 88.27802499696863,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 89.82036189082528
+       },
+       "num": 5275.0,
+       "point": 89.04456448345712
+      },
+      "c95": {
+       "den": 5937.0,
+       "interval": {
+        "lower": 90.49269206019855,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 91.90263308380983
+       },
+       "num": 5415.0,
+       "point": 91.20768064679132
+      },
+      "r2_candidate_ema": {
+       "den": 5943.0,
+       "interval": {
+        "lower": 90.2702585091619,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 91.77060762228945
+       },
+       "num": 5410.0,
+       "point": 91.03146558976948
+      },
+      "zipformer": {
+       "den": 6044.0,
+       "interval": {
+        "lower": 98.12519137767298,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.47772156030685
+       },
+       "num": 5979.0,
+       "point": 98.92455327597618
+      }
+     }
+    },
+    "committed_accuracy": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -0.16737861254578185,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.07967959844024568
+       },
+       "point": -0.033013439060358696
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -0.19592270577797416,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.08196228191620802
+       },
+       "point": -0.05166840413136642
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": -0.14827419238870376,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.15113814366024206
+       },
+       "point": 0.001131923818675773
+      }
+     },
+     "models": {
+      "base": {
+       "den": 5275.0,
+       "interval": {
+        "lower": 99.73767911575409,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.94274891057943
+       },
+       "num": 5267.0,
+       "point": 99.84834123222748
+      },
+      "c95": {
+       "den": 5415.0,
+       "interval": {
+        "lower": 99.65603543297217,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.94348233543523
+       },
+       "num": 5405.0,
+       "point": 99.81532779316713
+      },
+      "r2_candidate_ema": {
+       "den": 5410.0,
+       "interval": {
+        "lower": 99.64598307210149,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.92286437869437
+       },
+       "num": 5399.0,
+       "point": 99.79667282809612
+      },
+      "zipformer": {
+       "den": 5979.0,
+       "interval": {
+        "lower": 99.73341641366787,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.94865673170762
+       },
+       "num": 5970.0,
+       "point": 99.84947315604616
+      }
+     }
+    },
+    "empty_slot_haraka": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -2.647554575575378,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -1.690664641813626
+       },
+       "point": -2.163116163334185
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -2.5053535251675147,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -1.4671275715957017
+       },
+       "point": -1.9869011063123527
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": -10.86678998973189,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -8.828949392785743
+       },
+       "point": -9.87998879251905
+      }
+     },
+     "models": {
+      "base": {
+       "den": 5924.0,
+       "interval": {
+        "lower": 10.179638109174713,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 11.721975003031368
+       },
+       "num": 649.0,
+       "point": 10.955435516542876
+      },
+      "c95": {
+       "den": 5937.0,
+       "interval": {
+        "lower": 8.097366916190166,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 9.507307939801454
+       },
+       "num": 522.0,
+       "point": 8.792319353208692
+      },
+      "r2_candidate_ema": {
+       "den": 5943.0,
+       "interval": {
+        "lower": 8.229392377710553,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 9.729741490838096
+       },
+       "num": 533.0,
+       "point": 8.968534410230523
+      },
+      "zipformer": {
+       "den": 6044.0,
+       "interval": {
+        "lower": 0.5222784396931615,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 1.8748086223270386
+       },
+       "num": 65.0,
+       "point": 1.0754467240238252
+      }
+     }
+    },
+    "empty_slot_sukun": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -0.11224299798685583,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.09653286380079534
+       },
+       "point": -0.010986674838131538
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -0.045061400071553515,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.1835404584715297
+       },
+       "point": 0.06392590010487753
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": 0.16701846187831326,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.5138808999927291
+       },
+       "point": 0.32788438719518753
+      }
+     },
+     "models": {
+      "base": {
+       "den": 7974.0,
+       "interval": {
+        "lower": 99.41683602863567,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.77336253878354
+       },
+       "num": 7943.0,
+       "point": 99.61123651868573
+      },
+      "c95": {
+       "den": 8005.0,
+       "interval": {
+        "lower": 99.41595934784236,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.7648720733842
+       },
+       "num": 7973.0,
+       "point": 99.60024984384759
+      },
+      "r2_candidate_ema": {
+       "den": 8004.0,
+       "interval": {
+        "lower": 99.51922632260451,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.80916091226278
+       },
+       "num": 7978.0,
+       "point": 99.6751624187906
+      },
+      "zipformer": {
+       "den": 8213.0,
+       "interval": {
+        "lower": 99.86770696977393,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.98820340862108
+       },
+       "num": 8208.0,
+       "point": 99.93912090588091
+      }
+     }
+    }
+   },
+   "set": "edits"
+  },
+  "correct_side": {
+   "clips": 545,
+   "rates": {
+    "commit_rate": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": 1.0206745671795665,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 1.5848339563193197
+       },
+       "point": 1.3059234736771619
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": 1.1877976032498105,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 1.7542673392685768
+       },
+       "point": 1.4702591913400065
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": 8.298270420988828,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 9.499318384341095
+       },
+       "point": 8.949173984130676
+      }
+     },
+     "models": {
+      "base": {
+       "den": 15896.0,
+       "interval": {
+        "lower": 90.20239575069758,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 91.404186788313
+       },
+       "num": 14425.0,
+       "point": 90.74609964771012
+      },
+      "c95": {
+       "den": 15916.0,
+       "interval": {
+        "lower": 91.55648480536794,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 92.61967432146717
+       },
+       "num": 14651.0,
+       "point": 92.05202312138728
+      },
+      "r2_candidate_ema": {
+       "den": 15918.0,
+       "interval": {
+        "lower": 91.68333951119284,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 92.8220463480762
+       },
+       "num": 14679.0,
+       "point": 92.21635883905013
+      },
+      "zipformer": {
+       "den": 16080.0,
+       "interval": {
+        "lower": 99.5801337046117,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.79811348977071
+       },
+       "num": 16031.0,
+       "point": 99.69527363184079
+      }
+     }
+    },
+    "committed_accuracy": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -0.18409184531383765,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -0.02365871067660735
+       },
+       "point": -0.10163353552268273
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -0.09648594707954317,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.02077987232022986
+       },
+       "point": -0.040035028052076704
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": -0.0718008940257106,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.04507137282837107
+       },
+       "point": -0.013852277330528295
+      }
+     },
+     "models": {
+      "base": {
+       "den": 14425.0,
+       "interval": {
+        "lower": 99.90206187962197,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.986471266366
+       },
+       "num": 14418.0,
+       "point": 99.95147313691508
+      },
+      "c95": {
+       "den": 14651.0,
+       "interval": {
+        "lower": 99.77662376153334,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.91145139360978
+       },
+       "num": 14629.0,
+       "point": 99.8498396013924
+      },
+      "r2_candidate_ema": {
+       "den": 14679.0,
+       "interval": {
+        "lower": 99.86244816918565,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.9548721521081
+       },
+       "num": 14666.0,
+       "point": 99.91143810886301
+      },
+      "zipformer": {
+       "den": 16031.0,
+       "interval": {
+        "lower": 99.89074499652196,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.97360794266444
+       },
+       "num": 16021.0,
+       "point": 99.93762085958456
+      }
+     }
+    },
+    "empty_slot_haraka": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -1.5848339563193155,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -1.0206745671795625
+       },
+       "point": -1.3059234736771674
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -1.7542673392685713,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -1.1877976032498012
+       },
+       "point": -1.4702591913400163
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": -9.499318384341091,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -8.298270420988825
+       },
+       "point": -8.949173984130681
+      }
+     },
+     "models": {
+      "base": {
+       "den": 15896.0,
+       "interval": {
+        "lower": 8.595813211686993,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 9.797604249302427
+       },
+       "num": 1471.0,
+       "point": 9.253900352289884
+      },
+      "c95": {
+       "den": 15916.0,
+       "interval": {
+        "lower": 7.380325678532827,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 8.443515194632054
+       },
+       "num": 1265.0,
+       "point": 7.947976878612717
+      },
+      "r2_candidate_ema": {
+       "den": 15918.0,
+       "interval": {
+        "lower": 7.177953651923811,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 8.316660488807168
+       },
+       "num": 1239.0,
+       "point": 7.783641160949868
+      },
+      "zipformer": {
+       "den": 16080.0,
+       "interval": {
+        "lower": 0.2018865102292968,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.4198662953882986
+       },
+       "num": 49.0,
+       "point": 0.304726368159204
+      }
+     }
+    },
+    "empty_slot_sukun": {
+     "comparisons": {
+      "c95−base": {
+       "interval": {
+        "lower": -0.1523702798976137,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -0.032633756429527316
+       },
+       "point": -0.08950721262935835
+      },
+      "r2_candidate_ema−base": {
+       "interval": {
+        "lower": -0.13366947045691774,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": -0.008872715040332841
+       },
+       "point": -0.07051572542333684
+      },
+      "zipformer−base": {
+       "interval": {
+        "lower": 0.17082999526570414,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 0.29726298808571777
+       },
+       "point": 0.2337511437253137
+      }
+     },
+     "models": {
+      "base": {
+       "den": 21058.0,
+       "interval": {
+        "lower": 99.6598011233022,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.78124515342732
+       },
+       "num": 20999.0,
+       "point": 99.71982144553138
+      },
+      "c95": {
+       "den": 21099.0,
+       "interval": {
+        "lower": 99.55946891477178,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.7002909715716
+       },
+       "num": 21021.0,
+       "point": 99.63031423290202
+      },
+      "r2_candidate_ema": {
+       "den": 21101.0,
+       "interval": {
+        "lower": 99.56562690035521,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.7326216347865
+       },
+       "num": 21027.0,
+       "point": 99.64930572010805
+      },
+      "zipformer": {
+       "den": 21539.0,
+       "interval": {
+        "lower": 99.92650689037322,
+        "method": "bootstrap",
+        "reason": "",
+        "upper": 99.97929429764358
+       },
+       "num": 21529.0,
+       "point": 99.9535725892567
+      }
+     }
+    },
+    "teacher_agreement": {
+     "c95": {
+      "den": 46433.0,
+      "lower": 0.9380659846369239,
+      "method": "bootstrap",
+      "num": 43700.0,
+      "point": 0.9411409988585704,
+      "reason": "",
+      "upper": 0.9441724986522373
+     },
+     "r2_candidate_ema": {
+      "den": 46433.0,
+      "lower": 0.9417573337743834,
+      "method": "bootstrap",
+      "num": 43851.0,
+      "point": 0.9443929963603471,
+      "reason": "",
+      "upper": 0.947207732759639
+     }
+    }
+   },
+   "set": "benchmark"
+  },
+  "rule": "Step 6's carrier lines, never pooled across the correct and catch sides: the empty-slot rate where the mushaf prescribes a haraka (an omission) and where it prescribes a sukun (no written haraka, so an empty slot is the expected form); the commit rate and committed accuracy separately, because a unit may carry the haraka inside its consonant token; and teacher agreement for our students only, projected onto the teacher's vocabulary, a clone diagnostic that is never computed for zipformer"
+ },
  "compute": {
   "arms": {
    "checks-w1": {
@@ -757,7 +1880,7 @@
    },
    "checks-w1-windows": {
     "decoded_audio_seconds_per_audio_second": 7.56,
-    "inferences_per_audio_second": 5.8,
+    "inferences_per_audio_second": 0.93,
     "onnx_chunk_calls_per_audio_second": 15.8
    },
    "ours": {
@@ -823,6 +1946,12 @@
   }
  },
  "disjointness": {
+  "benchmark": {
+   "clips": 599,
+   "duplicate_rows": 1,
+   "manifest_sha256": "5d54d855872fc2f110840c80683a1ca2799efcd18d244cf18662e421e6fd9c1f",
+   "rows": 600
+  },
   "clips": 599,
   "name_screen": {
    "everyayah_heldout": {
@@ -1286,9 +2415,10 @@
  "probe": {
   "horizon_hours": 12.0,
   "measured_rate": 50.86,
+  "measured_unit": "seconds",
   "measured_wall_seconds": 104.8,
   "projected_hours": 3.6,
-  "rule": "the checks-w1 store's rate on 20 qdat items, projected over every job; the batch stops past 12 h (architect r2, AC 6)",
+  "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat items, projected over every job; the batch stops past 12 h (architect r2, AC 6)",
   "stop": false
  },
  "qdat": {
@@ -1653,7 +2783,7 @@
     }
    }
   },
-  "rule": "whole-item decodes only, no app check sequence and no ratchet: the reading of each model's ability without Muraja's engine in the loop",
+  "rule": "whole-item decodes only, no app check sequence and no ratchet: the reading of each model's ability without Muraja's engine in the loop, each on its metric arm (stream_b0 for ours, spans for zipformer)",
   "ship_a_whole_item": {
    "base": {
     "correct": {

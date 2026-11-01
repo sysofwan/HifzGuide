@@ -17,6 +17,9 @@ round-2 candidate and C95 on sets our models never trained on. Every metric read
   gain against the single-decode approximation) and the compute table.
 * **Report only.** The ratchet-free lines: whole-item per-class error on qdat, and whole-item
   Ship A outcomes, beside the verdict they are read next to.
+* **Step 6's carrier lines.** The empty-slot rate by the mushaf's prescription (haraka versus
+  sukun), the commit rate and committed accuracy separately, and teacher agreement for our
+  students only; the correct and catch sides are never pooled.
 
 The verdict is the pre-registered rule (issue #245, unchanged, ``checks-w1`` the verdict arm):
 **GO** when zipformer closes at least half the candidate−teacher gap on qdat and tlog_holdout
@@ -36,6 +39,7 @@ import argparse
 import gzip
 import json
 import re
+import unicodedata
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -155,7 +159,17 @@ def _bare(text: str) -> str:
 def ayah_index() -> dict[str, tuple[int, int]]:
     """Each ayah's imlaey words (marks folded) to its ``(surah, ayah)``: the benchmark's
     ``reference_text`` is imlaey, which the phonetizer cannot read, so a clip whose id carries
-    no ayah is matched to the Qur'an through this index."""
+    no ayah is matched to the Qur'an through this index. Built once per process: it is a
+    function of the Qur'an alone, and the report reads it from two sections."""
+    if not _AYAH_INDEX:
+        _AYAH_INDEX.append(_build_ayah_index())
+    return _AYAH_INDEX[0]
+
+
+_AYAH_INDEX: list[dict[str, tuple[int, int]]] = []
+
+
+def _build_ayah_index() -> dict[str, tuple[int, int]]:
     from quran_transcript import Aya
 
     index: dict[str, tuple[int, int]] = {}
@@ -224,8 +238,10 @@ def _class_errors(rates: Mapping) -> dict:
     return out
 
 
-def benchmark_rates(verdict: set[str]) -> dict:
-    """The verdict clips' per-source, per-model per-class phoneme error, surah-clustered."""
+def benchmark_rates(verdict: set[str], same_group: set[str]) -> dict:
+    """The verdict clips' per-source, per-model per-class phoneme error, surah-clustered; and
+    the tlog_holdout verdict clips a training row shares a group with, read apart (architect
+    r3's sensitivity split)."""
     from training.nonpro_gap import rates, tally
 
     lines = zipformer_lines("benchmark")
@@ -236,12 +252,28 @@ def benchmark_rates(verdict: set[str]) -> dict:
     out = {"clips": {"verdict": len(verdict), "scored": len(scored),
                      "unsupported": sorted(set(unsupported) & verdict)},
            "arms": WHOLE_ITEM, "sources": {}}
+
+    def errors(model: str, keys: Sequence[str]) -> dict:
+        rows = [(surahs[key], tally(texts[model][key], references[key])) for key in keys]
+        return _class_errors(rates(rows))
+
     for source in sorted({sources[key] for key in scored}):
         keys = [key for key in scored if sources[key] == source]
         out["sources"][source] = {"clips": len(keys)}
         for model in MODELS:
-            rows = [(surahs[key], tally(texts[model][key], references[key])) for key in keys]
-            out["sources"][source][model] = _class_errors(rates(rows))
+            out["sources"][source][model] = errors(model, keys)
+
+    holdout = [key for key in scored if sources[key] == "tlog_holdout"]
+    split = [key for key in holdout if key in same_group]
+    apart = [key for key in holdout if key not in same_group]
+    out["sensitivity"] = {
+        "rule": "the tlog_holdout verdict clips that share a group with a training row, read "
+                "apart: each model's per-class error with them and without them (architect "
+                "r3's sensitivity split); every other source stays whole",
+        "source": "tlog_holdout", "clips": len(split), "without_clips": len(apart),
+        "models": {model: {"with": errors(model, holdout), "without": errors(model, apart)}
+                   for model in MODELS},
+    }
     return out
 
 
@@ -303,6 +335,123 @@ def edits_rates() -> dict:
         out["arms"][role] = {model: view["models"][model] for model in MODELS}
         out["differences"][role] = view["comparisons"]
     return out
+
+
+# --- step 6's carrier lines -----------------------------------------------------------------
+
+#: Each line's (numerator, denominator) in :func:`_mark_counts`; the empty-slot share is the
+#: rate the mushaf's own prescription sets, and a committed unit is one that carried *any*
+#: explicit mark on the carrier (zipformer writes the haraka inside the consonant token).
+CARRIER_METRICS = {
+    "empty_slot_haraka": ("haraka_empty", "haraka_slots"),
+    "empty_slot_sukun": ("sukun_empty", "sukun_slots"),
+    "commit_rate": ("committed", "haraka_slots"),
+    "committed_accuracy": ("accurate", "committed"),
+}
+
+
+def _mark_counts(decode: str, reference: str) -> dict:
+    """One clip's carrier counts, read off the carrier-anchored alignment.
+
+    A reference carrier's prescription is the mark written after it (past a shaddah) — one of
+    the three harakat, or no mark, which is how the mushaf writes a sukun. A carrier the local
+    alignment never reached is counted apart (``unaligned``), not as an empty slot: its slot
+    may be missing with its consonant, which the per-class error already measures.
+    """
+    from training.acceptance_stats import SHADDAH_MARK
+    from training.tashkeel_eval import SHORT_VOWELS, carrier_readings
+
+    readings = carrier_readings(decode, reference)
+    out = {"haraka_slots": 0, "haraka_empty": 0, "sukun_slots": 0, "sukun_empty": 0,
+           "committed": 0, "accurate": 0, "unaligned": 0}
+    for index, char in enumerate(reference):
+        if unicodedata.combining(char):
+            continue
+        reading = readings.get(index)
+        if reading is None:
+            out["unaligned"] += 1
+            continue
+        after = index + 1
+        if after < len(reference) and reference[after] == SHADDAH_MARK:
+            after += 1
+        prescribed = reference[after] if after < len(reference) else None
+        marks = reading.marks
+        if prescribed in SHORT_VOWELS:
+            out["haraka_slots"] += 1
+            out["haraka_empty"] += not marks
+            out["committed"] += bool(marks)
+            out["accurate"] += prescribed in marks
+        else:
+            out["sukun_slots"] += 1
+            out["sukun_empty"] += not marks
+    return out
+
+
+def _carrier_rates(texts: Mapping[str, Mapping[str, str]], references: Mapping[str, str],
+                   clusters: Mapping[str, object]) -> dict:
+    """Each model's carrier lines over the same clips, one observation per clip and cluster."""
+    keys = sorted(references)
+    counts = {model: [_mark_counts(texts[model][key], references[key]) for key in keys]
+              for model in texts}
+    out = {}
+    for metric, (num, den) in CARRIER_METRICS.items():
+        observations = {model: [(clusters[key], counts[model][index][num],
+                                 counts[model][index][den]) for index, key in enumerate(keys)]
+                        for model in texts}
+        view = rate_view(observations, [(model, TEACHER) for model in texts if model != TEACHER],
+                         PERCENT)
+        out[metric] = {"models": view["models"], "comparisons": view["comparisons"]}
+    return out
+
+
+def commit_lines() -> dict:
+    """Issue #245 step 6's three lines, never pooled across the two sides.
+
+    * **Empty-slot rate** where the mushaf prescribes a haraka, and where it prescribes a sukun
+      (no written haraka): the share of carriers the decode left bare. The first is an omission,
+      the second the expected form.
+    * **Commit rate and committed accuracy** separately: a unit that carries the haraka inside
+      its consonant token still commits the slot; only an emitted mark can be accurate.
+    * **Teacher agreement** for our students only, on the correct side: the projected edit
+      distance to ``base`` over the same clips, a clone diagnostic, never a reference a student
+      is judged against and never computed for zipformer.
+    """
+    from training.acceptance_stats import AgreementRecord, Resample, agreement_terms
+    from training.truth_scorer import estimate
+
+    plan = json.loads((ZIPFORMER_DIR / "disjointness.json").read_text(encoding="utf-8"))["plan"]
+    lines = zipformer_lines("benchmark")
+    references, surahs, _ = benchmark_references(lines)
+    scored = {key: references[key] for key in plan["verdict"] if key in references}
+    texts = whole_item_texts("benchmark")
+    correct = {"set": "benchmark", "clips": len(scored),
+               "rates": _carrier_rates({model: texts[model] for model in MODELS}, scored, surahs)}
+    for model in STUDENTS:
+        if model == TEACHER:
+            continue
+        records = [AgreementRecord(surahs[key], texts[TEACHER][key], texts[model][key])
+                   for key in sorted(scored)]
+        clusters, num, den = agreement_terms(records)
+        correct["rates"].setdefault("teacher_agreement", {})[model] = estimate(
+            clusters, (num, den), np.ones(len(clusters)), Resample.by_cluster(clusters))
+
+    from tadabur.synthetic_edits import read_items
+
+    items = [item for item in read_items() if item["role"] == "edit"]
+    edit_texts = whole_item_texts("edits")
+    catch = {"set": "edits", "items": len(items),
+             "rates": _carrier_rates({model: edit_texts[model] for model in MODELS},
+                                     {item["item_id"]: item["labelled_reference"]
+                                      for item in items},
+                                     {item["item_id"]: item["pair_id"] for item in items})}
+    return {"rule": "Step 6's carrier lines, never pooled across the correct and catch sides: "
+                    "the empty-slot rate where the mushaf prescribes a haraka (an omission) and "
+                    "where it prescribes a sukun (no written haraka, so an empty slot is the "
+                    "expected form); the commit rate and committed accuracy separately, because "
+                    "a unit may carry the haraka inside its consonant token; and teacher "
+                    "agreement for our students only, projected onto the teacher's vocabulary, "
+                    "a clone diagnostic that is never computed for zipformer",
+            "correct_side": correct, "catch_side": catch}
 
 
 # --- Ship A ---------------------------------------------------------------------------------
@@ -540,11 +689,13 @@ def look_diversity() -> dict:
 def compute_table() -> dict:
     """Decoded audio per audio-second and calls per audio-second per arm, from the schedule; the
     batch's measured wall per job sits under ``measured``."""
-    from training.decoding import check_schedule
+    from training.decoding import WINDOW, check_schedule
     from training.zipformer_decode import decoded_audio_ratio
 
     samples = 60 * SAMPLE_RATE
-    checks = len(check_schedule(samples)) / 60.0
+    schedule = check_schedule(samples)
+    checks = len(schedule) / 60.0
+    windows = sum(1 for span in schedule if span.kind == WINDOW) / 60.0
     arms = {
         "ours": {"decoded_audio_seconds_per_audio_second": decoded_audio_ratio("ours", samples),
                  "inferences_per_audio_second": checks},
@@ -553,9 +704,10 @@ def compute_table() -> dict:
         ZIP_CHECKS: {"decoded_audio_seconds_per_audio_second":
                      decoded_audio_ratio(ZIP_CHECKS, samples),
                      "inferences_per_audio_second": checks},
+        # only its windows are inferred: its previews and stop are cut from the one stream
         ZIP_WINDOWS: {"decoded_audio_seconds_per_audio_second":
                       decoded_audio_ratio(ZIP_WINDOWS, samples) + 1.0,
-                      "inferences_per_audio_second": checks},
+                      "inferences_per_audio_second": windows},
     }
     for row in arms.values():
         row["decoded_audio_seconds_per_audio_second"] = round(
@@ -568,15 +720,22 @@ def compute_table() -> dict:
 
 
 def _measured_wall() -> dict:
-    """Each batch job's measured wall and rate, from the committed timing files."""
+    """Each batch job's measured wall and rate, from the committed timing files.
+
+    ``decoded_audio_seconds`` is seconds in both the record and its files
+    (``decoded_audio_unit``); a row written in samples predates the unit fix and is refused
+    rather than silently divided.
+    """
     out = {}
     for path in sorted(DECODES.glob("*.zipformer*.timing.jsonl.gz")):
         for row in read_rows(path):
+            if row.get("decoded_audio_unit") != "seconds":
+                raise ValueError(f"{path}: {row['set']}/{row.get('store')} has no "
+                                 f"decoded_audio_unit: seconds")
             store = row.get("store", "decode")
             name = f"{row['set']}/{store}"
             out[name] = {"items": row["items"], "audio_seconds": row["audio_seconds"],
-                         "decoded_audio_seconds": round(row["decoded_audio_seconds"] /
-                                                        SAMPLE_RATE, 1),
+                         "decoded_audio_seconds": row["decoded_audio_seconds"],
                          "wall_seconds": row["wall_seconds"], "workers": row["workers"]}
     return out
 
@@ -643,7 +802,9 @@ def disjointness() -> dict:
     """The committed disjointness screen's counts, and the decode plan's verdict set."""
     record = json.loads((ZIPFORMER_DIR / "disjointness.json").read_text(encoding="utf-8"))
     plan = record["plan"]
-    return {"clips": len(record["clips"]),
+    return {"clips": record["benchmark"]["clips"],
+            "benchmark": {key: record["benchmark"][key]
+                          for key in ("rows", "clips", "duplicate_rows", "manifest_sha256")},
             "plan": {name: len(keys) for name, keys in plan.items() if name != "by_role"},
             "roles": len(plan["by_role"]),
             "verdict": len(plan["verdict"]), "trained": len(plan["trained"]),
@@ -743,28 +904,30 @@ def _single_stream_ship_a(record: Mapping) -> dict | None:
 
 
 def ratchet_free(record: Mapping) -> dict:
-    """The report-only ratchet-free lines: qdat's per-class error from whole-item decodes, and
-    Ship A's whole-item outcomes, beside (never inside) the verdict."""
+    """The report-only ratchet-free lines: qdat's per-class error from the whole-item decodes,
+    and Ship A's whole-item outcomes, beside (never inside) the verdict."""
     return {"rule": "whole-item decodes only, no app check sequence and no ratchet: the reading "
-                    "of each model's ability without Muraja's engine in the loop",
+                    "of each model's ability without Muraja's engine in the loop, each on its "
+                    "metric arm (stream_b0 for ours, spans for zipformer)",
             "qdat_per_class": _qdat_per_class(),
             "ship_a_whole_item": record["ship_a"]["whole_item"]}
 
 
 def _qdat_per_class() -> dict:
-    """qdat's whole-item per-class error against the mushaf, reciter-clustered (``spans`` for
-    zipformer, ``stream_b0`` for ours)."""
+    """qdat's whole-item per-class error against the mushaf, reciter-clustered, each model on
+    its own metric arm (``stream_b0`` for ours, ``spans`` for zipformer, which has no
+    ``stream_b0``): the report-only line reads the arm map, never a mixed comparison."""
     from training.nonpro_gap import rates, tally
 
     items, decodes = qdat_set()
-    arms = {"zipformer": zipformer_lines("qdat"), "base": decodes["base"],
-            "c95": decodes["c95"], "r2_candidate_ema": decodes["r2_candidate_ema"]}
+    arms = {"zipformer": zipformer_lines("qdat"),
+            **{model: decodes[model] for model in STUDENTS}}
     out = {}
     for model, source in arms.items():
         rows = [(item.cluster,
-                 tally(line[WHOLE_ITEM[model] if model != "zipformer" else "spans"],
+                 tally(source[item.key][WHOLE_ITEM[model]],
                        item.reference.reference))
-                for item in items for line in [source[item.key]]]
+                for item in items]
         out[model] = _class_errors(rates(rows))
     return out
 
@@ -777,6 +940,8 @@ def report() -> dict:
     harness = _harness()
     plan = json.loads((ZIPFORMER_DIR / "disjointness.json").read_text(encoding="utf-8"))["plan"]
     probe = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
+    if probe.get("decoded_audio_unit") != "seconds":
+        raise ValueError(f"{PROBE_PATH}: no decoded_audio_unit: seconds")
     record = {
         "issue": 245,
         "schema": 1,
@@ -784,16 +949,19 @@ def report() -> dict:
         "disjointness": disjointness(),
         "arm_map": arm_map(),
         "exposure": exposure(),
-        "probe": {"measured_rate": round(probe["decoded_audio_per_second"] / SAMPLE_RATE, 2),
+        "probe": {"measured_rate": round(probe["decoded_audio_per_second"], 2),
+                  "measured_unit": probe["decoded_audio_unit"],
                   "measured_wall_seconds": probe["probe"]["wall_seconds"],
                   "projected_hours": round(probe["projected_seconds"] / 3600.0, 2),
                   "horizon_hours": HORIZON_HOURS, "stop": bool(probe["stop"]),
-                  "rule": "the checks-w1 store's rate on 20 qdat items, projected over every "
-                          "job; the batch stops past 12 h (architect r2, AC 6)"},
+                  "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat "
+                          "items, projected over every job; the batch stops past 12 h "
+                          "(architect r2, AC 6)"},
         "compute": compute_table(),
-        "benchmark": benchmark_rates(set(plan["verdict"])),
+        "benchmark": benchmark_rates(set(plan["verdict"]), set(plan["same_group"])),
         "qdat": qdat_false_flags(harness),
         "edits": edits_rates(),
+        "commit": commit_lines(),
         "ship_a": ship_a_outcomes(harness),
         "look_diversity": look_diversity(),
     }

@@ -69,12 +69,19 @@ def test_the_manifest_rows_are_read_with_their_sources(tmp_path):
     assert [row["source"] for row in rows] == list(CARD_SOURCES)
 
 
-def test_a_repeated_clip_id_is_refused(tmp_path):
+def test_an_exact_duplicate_row_is_the_same_clip_counted_once(tmp_path):
+    row = {"id": "qul_alnufais/1", "source": "qul_alnufais", "reference_text": "ب",
+           "audio": "a"}
+    path = _manifest(tmp_path, [row, dict(row)])
+    assert manifest_rows(path) == [row]
+
+
+def test_one_id_with_two_different_rows_is_refused(tmp_path):
     path = _manifest(tmp_path, [
         {"id": "qul_alnufais/1", "source": "qul_alnufais", "reference_text": "ب", "audio": "a"},
         {"id": "qul_alnufais/1", "source": "qul_alnufais", "reference_text": "ت", "audio": "b"},
     ])
-    with pytest.raises(ValueError, match="repeats"):
+    with pytest.raises(ValueError, match="twice with different rows"):
         manifest_rows(path)
 
 

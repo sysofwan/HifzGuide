@@ -102,19 +102,32 @@ CLIPS_PER_SOURCE = 200
 
 
 def manifest_rows(path: Path) -> list[dict]:
-    """The benchmark manifest's rows, each with an id, a known source, a text and audio path."""
-    rows = [json.loads(line) for line in
-            Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    ids = [row.get("id") for row in rows]
-    if len(set(ids)) != len(ids):
-        raise ValueError(f"{path} repeats a clip id")
-    for row in rows:
+    """The benchmark manifest's rows, each with an id, a known source, a text and audio path.
+
+    The published v1.1 manifest repeats one row verbatim (``tlog_holdout/11_90_2170378964``,
+    same audio and text): the clip is counted once, and ``fetch`` records the collapse. The
+    same id with *different* content is refused: that is not a repeated clip but a collision
+    between two.
+    """
+    rows: dict[str, dict] = {}
+    for row in _printed_rows(path):
         missing = {"id", "source", "reference_text", "audio"} - set(row)
         if missing:
             raise ValueError(f"{path}: {row.get('id')!r} lacks {sorted(missing)}")
         if row["source"] not in CARD_SOURCES:
             raise ValueError(f"{path}: {row['id']} has the unknown source {row['source']!r}")
-    return rows
+        seen = rows.get(row["id"])
+        if seen is None:
+            rows[row["id"]] = row
+        elif seen != row:
+            raise ValueError(f"{path} names {row['id']!r} twice with different rows")
+    return list(rows.values())
+
+
+def _printed_rows(path: Path) -> list[dict]:
+    """The manifest's rows as printed, exact duplicates included."""
+    return [json.loads(line) for line in
+            Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def _file_entry(work_dir: Path, path: Path) -> dict:
@@ -195,8 +208,9 @@ def fetch(work_dir: Path) -> dict:
     snapshot_download(BENCHMARK_REPO, repo_type="dataset", revision=benchmark.sha,
                       local_dir=benchmark_dir, allow_patterns=[MANIFEST_FILE, "audio/**"])
     manifest = benchmark_dir / MANIFEST_FILE
+    printed = _printed_rows(manifest)
     rows = manifest_rows(manifest)
-    counts = Counter(row["source"] for row in rows)
+    counts = Counter(row["source"] for row in printed)
     wanted = {source: CLIPS_PER_SOURCE for source in CARD_SOURCES}
     if dict(counts) != wanted:
         raise ValueError(f"{manifest} holds {dict(counts)} clips; the benchmark is {wanted}")
@@ -216,6 +230,7 @@ def fetch(work_dir: Path) -> dict:
         "tadabur": {"repo": TADABUR_DATASET, "revision": tadabur.sha},
         "files": files,
         "manifest": {**_file_entry(work_dir, manifest), "clips": len(rows),
+                     "rows": len(printed), "duplicate_rows": len(printed) - len(rows),
                      "by_source": dict(sorted(counts.items()))},
         "sheikh_dict": _file_entry(work_dir, sheikh),
     }

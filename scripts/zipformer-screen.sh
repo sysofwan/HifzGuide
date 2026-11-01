@@ -48,7 +48,7 @@ OUT=tools/tadabur/zipformer_screen
 #: edit audio is the 300 item render whose SHA-256 matches edits.jsonl), and its scratch.
 SCREEN=${SCREEN_DIR:-$ROOT/screen}
 EDITS_DIR=${EDITS_DIR:-/root/scratch/issue-117/stage/edits/audio}
-SHIP_A_DIR=${SHIP_A_DIR:-/root/scratch/issue-88/stage/clips}
+SHIP_A_DIR=${SHIP_A_DIR:-/root/scratch/issue-90/clips}
 QDAT_CACHE=${QDAT_CACHE:-$SCREEN/qdat_cache}
 QUD_CACHE=${QUD_CACHE:-$SCREEN/qud_cache}
 #: The committed files a step's `fetchout` pulls back.

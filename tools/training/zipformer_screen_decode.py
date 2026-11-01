@@ -38,7 +38,7 @@ Usage (on the run box, from ``tools/``)::
         --work-dir /root/scratch/zipformer/data \\
         --edits-dir /root/scratch/issue-117/stage/edits/audio \\
         --qdat-cache /root/scratch/zipformer/screen/qdat_cache \\
-        --ship-a-dir /root/scratch/issue-88/stage/clips \\
+        --ship-a-dir /root/scratch/issue-90/clips \\
         --qud-cache /root/scratch/zipformer/screen/qud_cache
 
     # one job, resumed by key (a smoke, or a relaunch after a stop)

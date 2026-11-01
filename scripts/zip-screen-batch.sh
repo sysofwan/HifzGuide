@@ -13,8 +13,8 @@
 #   2. edits-verify  every item and its audio's SHA-256 against the committed manifest
 #   3. sherpa        a throwaway sherpa-onnx venv under /root/scratch (never a repo dependency),
 #                    pinned, recording its version and whether the zipformer2-CTC entry point exists
-#   4. gpu           our three models on the benchmark (the plan's 577 clips), the 300 edits and
-#                    qdat's spans arm, three model processes per set, one gpu.lock for the group
+#   4. gpu           our three models on the benchmark (the plan's 577 clips) and the 300 edits,
+#                    three model processes per set, one gpu.lock for the group
 #
 # Nothing here decodes zipformer: the parity gate decides that, and this batch is what runs
 # while it is cross-checked. Each step resumes: a relaunch decodes only the items still missing.
@@ -121,7 +121,6 @@ gpu_phase() {
   local code=0
   decode_group benchmark --work-dir \"\$WORK\" || code=1
   decode_group edits --audio-dir \"\$REGEN/audio\" || code=1
-  decode_group qdat-spans --cache-dir \"\$ROOT/qdat_cache\" || code=1
   return \$code
 }
 

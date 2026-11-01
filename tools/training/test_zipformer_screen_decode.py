@@ -12,8 +12,10 @@ probe's throughput. Torch-free: no ONNX file, no audio, no download.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from training import zipformer_screen_decode as screen
@@ -99,3 +101,59 @@ def test_a_batch_that_leaves_a_set_without_its_directory_is_refused():
                            ship_a_dir="clips", qud_cache="qud")
     with pytest.raises(SystemExit):
         screen.directories(args)
+
+
+# --- resuming: the keep set is read before a recording is loaded ---------------------------
+
+
+def test_a_recording_whose_keys_are_all_done_is_never_loaded():
+    loaded = []
+    source = [screen.Recording(("a", "b"), lambda: loaded.append(True) or (None, []))]
+    assert list(screen.pending_items(iter(source), {"a", "b"})) == []
+    assert loaded == []
+
+
+def test_keep_is_applied_before_a_recording_is_loaded():
+    loaded = []
+    # the source holds its ayah's read and unread segments; only the unread half is the set
+    source = [screen.Recording(("ayad#0", "ayah#1"),
+                               lambda: loaded.append(True) or (None, []))]
+    assert list(screen.pending_items(iter(source), {"ayah#1"}, keep={"ayah#1"})) == []
+    assert loaded == []
+
+
+def test_a_recording_with_one_pending_key_loads_and_yields_only_that_key(monkeypatch):
+    record = {"key": "ayah#1", "start_sample": 0, "end_sample": 2}
+    samples = np.arange(2)
+    source = [screen.Recording(("ayah#0", "ayah#1"),
+                               lambda: (samples, [dict(record)]))]
+    pending = list(screen.pending_items(iter(source), {"ayah#0"}, keep={"ayah#0", "ayah#1"}))
+    assert [item["key"] for item, _ in pending] == ["ayah#1"]
+
+
+# --- the probe: measured in scratch, never the batch's own files ---------------------------
+
+
+def test_the_probe_decodes_in_a_scratch_directory_and_records_seconds(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(screen, "pinned", lambda work_dir: ("files", 1.0))
+    monkeypatch.setattr(screen, "load_zipformer", lambda *args, **kwargs: None)
+    monkeypatch.setattr(screen, "recordings", lambda *args: iter(()))
+    monkeypatch.setattr(screen, "probe_projection",
+                        lambda timing: {"stop": False, "decoded_audio_per_second": 50.0,
+                                        "projected_hours": 3.6, "horizon_hours": 12.0})
+
+    def fake_decode(*args, **kwargs):
+        seen.append(Path(kwargs["out_dir"]))
+        return {"items": 20, "audio_seconds": 191.0, "decoded_audio_seconds": 191.0,
+                "wall_seconds": 60.0, "workers": 2}
+
+    monkeypatch.setattr(screen, "decode", fake_decode)
+    record = screen.probe(tmp_path / "work", tmp_path / "cache", tmp_path / "probe.json",
+                          workers=2)
+    (scratch,) = seen
+    assert scratch != tmp_path
+    # the scratch directory is the probe's own and is gone once it has measured
+    assert scratch.exists() is False
+    assert record["decoded_audio_unit"] == "seconds"
+    assert record["probe"]["decoded_audio_seconds"] == 191.0

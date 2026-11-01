@@ -54,6 +54,7 @@ import gzip
 import itertools
 import json
 import os
+import tempfile
 import time
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
@@ -225,14 +226,18 @@ def _decoded_lengths(path: Path, keep: set[str] | None = None) -> list[int]:
 
 
 def item_lengths(set_name: str) -> list[int]:
-    """Every item of a setup set's length in samples, from the committed decode of the same
-    items (the probe has no audio to measure and must not download a shard to project)."""
+    """Every item of a setup set's length in samples, from a committed decode of the same items
+    (the probe has no audio to measure and must not download a shard to project)."""
     if set_name == BENCHMARK:
         return _decoded_lengths(COMMITTED_DECODES / "benchmark.base.jsonl.gz")
     if set_name == EDITS:
         return _decoded_lengths(COMMITTED_DECODES / "edits.base.jsonl.gz")
     if set_name == QDAT:
-        return _decoded_lengths(COMMITTED_DECODES / "qdat-spans.base.jsonl.gz")
+        # base's #156 qdat decode: the same clips the batch reads, with their sample spans
+        from tadabur.nonpro_sources import QDAT as QDAT_DATASET
+        from training.nonpro_eval import decodes_file
+
+        return _decoded_lengths(decodes_file(QDAT_DATASET, "base"))
     if set_name == SHIP_A:
         from tadabur.truth_sites import TRUTH_SITES_DIR, load_truth_sites
         from training.truth_scorer import item_key
@@ -289,11 +294,14 @@ def pending_items(source: Iterable[Recording], done: set[str],
     """Each item still to decode, as its provenance record and its sample span.
 
     A recording with no pending item is never loaded (its shard is never downloaded). ``keep``
-    selects the items of a source that holds more than the set (QUD's unread half).
+    selects the items of a source that holds more than the set (QUD's unread half), and is
+    applied before the recording is loaded: a source whose every segment sits in the read half
+    or is already decoded is skipped whole, never downloaded and filtered afterwards.
     """
     try:
         for recording in source:
-            if all(key in done for key in recording.keys):
+            wanted = set(recording.keys) if keep is None else set(recording.keys) & keep
+            if not wanted - done:
                 continue
             samples, records = recording.load()
             for record in records:
@@ -409,30 +417,37 @@ def run(set_name: str, store: str, out_dir: Path, *, directory: Path, work_dir: 
                     workers=workers, keep=keep_keys(set_name), limit=limit)
     suffix = "" if store == DECODE else f".{store}"
     append_timing(out_dir / f"{set_name}.zipformer{suffix}.timing.jsonl",
-                  {"set": set_name, "store": store, "model": "zipformer", **timing})
+                  {"set": set_name, "store": store, "model": "zipformer",
+                   "decoded_audio_unit": "seconds", **timing})
     print(json.dumps({"set": set_name, "store": store, **timing}), flush=True)
     return timing
 
 
-def probe(work_dir: Path, cache_dir: Path, out_dir: Path, record_path: Path, *,
+def probe(work_dir: Path, cache_dir: Path, record_path: Path, *,
           workers: int, limit: int = PROBE_ITEMS) -> dict:
-    """The timing probe: ``limit`` qdat items through the verdict arm, and the projection."""
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    """The timing probe: ``limit`` qdat items through the verdict arm, and the projection.
+
+    The probe decodes into a scratch directory, never the batch's own decode files: a relaunch
+    whose qdat job is already complete must still measure throughput, where resuming onto the
+    finished file would leave a zero-item run with nothing to project. The probe's decodes are
+    discarded, which is why a stopped batch has decoded no set.
+    """
     files, scale = pinned(work_dir)
-    load_zipformer(files, scale=scale,
-                   identity_path=identity_path(out_dir, QDAT, W1))
-    timing = decode(recordings(QDAT, cache_dir),
-                    set_name=QDAT, store=W1, out_dir=out_dir, files=files, scale=scale,
-                    workers=workers, limit=limit)
+    with tempfile.TemporaryDirectory(prefix="zipformer-probe-") as scratch:
+        load_zipformer(files, scale=scale)
+        timing = decode(recordings(QDAT, cache_dir),
+                        set_name=QDAT, store=W1, out_dir=Path(scratch), files=files,
+                        scale=scale, workers=workers, limit=limit)
     record = {
         "issue": 245,
         "step": "timing-probe",
         "rule": "stop before any screen decode if the projected decode of every set exceeds "
                 "12 h (architect r2, AC 6); the rate is the checks-w1 store at this worker count",
+        "decoded_audio_unit": "seconds",
         "probe": {"set": QDAT, "store": W1, **timing},
         **probe_projection(timing),
     }
+    Path(record_path).parent.mkdir(parents=True, exist_ok=True)
     write_json(record, record_path)
     print(json.dumps({key: record[key] for key in
                       ("decoded_audio_per_second", "projected_hours", "horizon_hours", "stop")}),
@@ -454,10 +469,10 @@ def batch(out_dir: Path, *, dirs: Mapping[str, Path], probe_record: Path,
           workers: int) -> int:
     """The probe, then every job; a projection past the horizon stops before any decode.
 
-    The probe's items are the qdat store's own first items, decoded under the same identity,
-    so the qdat job resumes from them instead of repeating them.
+    The probe runs in a scratch directory, so it neither resumes a finished qdat job nor adds
+    its items to the batch's files; a stop at that point has decoded no set.
     """
-    record = probe(dirs[BENCHMARK], dirs[QDAT], out_dir, probe_record, workers=workers)
+    record = probe(dirs[BENCHMARK], dirs[QDAT], probe_record, workers=workers)
     if record["stop"]:
         print(f"STOP: the probe projects {record['projected_hours']:.1f} h of decode, past the "
               f"{record['horizon_hours']:.0f} h horizon; no set was decoded", flush=True)

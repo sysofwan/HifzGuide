@@ -12,12 +12,10 @@ spec's pinned identities, so every line carries the provenance and arms the read
 * **edits** — the 300 synthetic-edit items, each line recording the operation, mark and role the
   item's audited predicate reads, with the audio's SHA-256 checked against the manifest before it
   is decoded.
-* **qdat-spans** — qdat's ``spans`` arm only. Its ``stream_b0`` and ``checks`` arms are #156's
-  committed decodes, which every whole-item metric already reads; the external model's own
-  ``spans`` arm is read beside ours on the sets both are decoded on.
 
 Zipformer itself is decoded by :mod:`training.zipformer_decode`; this module only ever loads our
-models. Usage (on the GPU box, from a copy of ``tools/``)::
+models. qdat and Ship A are not re-decoded here: #156 and Ship A's committed decodes already
+carry every arm the readout reads. Usage (on the GPU box, from a copy of ``tools/``)::
 
   flock /root/scratch/gpu.lock env OMP_NUM_THREADS=1 python -m training.zip_screen_decode \\
       --set benchmark --models base,c95,r2_candidate_ema \\
@@ -35,8 +33,6 @@ import itertools
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
-import numpy as np
-
 from tadabur.audio import decode_to_mono_16k
 from training.aug_readout_gate import model_spec
 from training.aug_readout_spec import CONSONANT2, RoundSpec
@@ -46,29 +42,19 @@ from training.external_decode import (
     decode_recordings,
     load_decoders,
 )
-from training.truth_baseline import DECODE_STORE, PROTOCOLS, Store
+from training.truth_baseline import DECODE_STORE
 
 BENCHMARK_SET = "benchmark"
 EDITS_SET = "edits"
-QDAT_SPANS_SET = "qdat-spans"
 #: The three models this screen decodes: the teacher and the two candidates named in #245.
 MODELS = ("base", "c95", "r2_candidate_ema")
 #: The benchmark plan's outcomes, in the order a line records them.
 OUTCOMES = ("verdict", "trained", "same_group")
 
-
-def _spans(decoder, span: np.ndarray) -> dict:
-    return {"spans": decoder.decode_spans([span])[0]}
-
-
-#: qdat's whole-item string without its ratchet: the arm the external model's ``spans`` is
-#: compared with on the sets that hold it, and the one #156's qdat decodes lack for our models.
-SPANS_STORE = Store(DECODE_STORE.directory, {"spans": PROTOCOLS["spans"]}, _spans)
 #: What each set decodes, by store label (:func:`training.external_decode.decode_recordings`
 #: takes a label per store it times): the benchmark and the edits are whole items (``spans``
-#: beside ``stream_b0`` in one pass), qdat's spans arm alone.
-STORES = {BENCHMARK_SET: {"decode": DECODE_STORE}, EDITS_SET: {"decode": DECODE_STORE},
-          QDAT_SPANS_SET: {"spans": SPANS_STORE}}
+#: beside ``stream_b0`` in one pass).
+STORES = {BENCHMARK_SET: {"decode": DECODE_STORE}, EDITS_SET: {"decode": DECODE_STORE}}
 
 
 def _clip_outcome(plan: dict) -> dict[str, str]:
@@ -137,29 +123,16 @@ def edit_recordings(audio_dir: Path) -> Iterator[Recording]:
         yield Recording((item["item_id"],), load)
 
 
-def qdat_recordings(cache_dir: Path) -> Iterator[Recording]:
-    """Every qdat clip, shard by shard, as #156's decode reads it."""
-    from tadabur.nonpro_sources import QDAT
-    from training import nonpro_decode
-
-    for shard in QDAT.shards:
-        yield from nonpro_decode.recordings(QDAT, shard, cache_dir)
-
-
-def recordings(set_name: str, work_dir: Path | None, audio_dir: Path | None,
-               cache_dir: Path | None) -> Iterator[Recording]:
+def recordings(set_name: str, work_dir: Path | None,
+               audio_dir: Path | None) -> Iterator[Recording]:
     """The set's recordings; each source's own directory is required, never defaulted."""
     if set_name == BENCHMARK_SET:
         if work_dir is None:
             raise SystemExit(f"{BENCHMARK_SET} reads the pinned fetch: pass --work-dir")
         return benchmark_recordings(work_dir)
-    if set_name == EDITS_SET:
-        if audio_dir is None:
-            raise SystemExit(f"{EDITS_SET} reads the rendered audio: pass --audio-dir")
-        return edit_recordings(audio_dir)
-    if cache_dir is None:
-        raise SystemExit(f"{QDAT_SPANS_SET} reads qdat's shards: pass --cache-dir")
-    return qdat_recordings(cache_dir)
+    if audio_dir is None:
+        raise SystemExit(f"{EDITS_SET} reads the rendered audio: pass --audio-dir")
+    return edit_recordings(audio_dir)
 
 
 def decodes_path(out_dir: Path, set_name: str, model: str) -> Path:
@@ -171,7 +144,7 @@ def identity_path(out_dir: Path, set_name: str, model: str) -> Path:
 
 
 def run(set_name: str, models: Sequence[str], out_dir: Path, work_dir: Path | None,
-        audio_dir: Path | None, cache_dir: Path | None, limit: int | None = None,
+        audio_dir: Path | None, limit: int | None = None,
         spec: RoundSpec = CONSONANT2) -> None:
     """Decode ``set_name`` for ``models``, appending to the files already there (resumable).
 
@@ -183,7 +156,7 @@ def run(set_name: str, models: Sequence[str], out_dir: Path, work_dir: Path | No
     decoders = load_decoders(lambda model: identity_path(out_dir, set_name, model),
                              {model: model_spec(model, spec=spec) for model in models})
     paths = {model: decodes_path(out_dir, set_name, model) for model in decoders}
-    source = recordings(set_name, work_dir, audio_dir, cache_dir)
+    source = recordings(set_name, work_dir, audio_dir)
     timing = decode_recordings(
         source if limit is None else itertools.islice(source, limit), decoders, paths,
         f"{set_name} {','.join(models)}", STORES[set_name])
@@ -199,11 +172,10 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, help="the benchmark fetch's work directory")
     parser.add_argument("--audio-dir", type=Path, help="the rendered edit audio")
-    parser.add_argument("--cache-dir", type=Path, help="qdat's shard download cache")
     parser.add_argument("--limit", type=int, help="decode only the set's first items (smoke)")
     args = parser.parse_args()
     run(args.set, args.models.split(","), args.out_dir, args.work_dir, args.audio_dir,
-        args.cache_dir, limit=args.limit)
+        limit=args.limit)
 
 
 if __name__ == "__main__":

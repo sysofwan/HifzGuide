@@ -5,7 +5,8 @@ The 600 clips of ``Quran-Lab/quranic-asr-benchmark`` are fingerprinted against e
 each hit names the tlog row's pre-registered role. This module turns those hits into the plan
 every model's decode list follows, **before any clip is decoded**:
 
-* a clip matching a sealed row (``look`` or ``confirm.1``-``confirm.4``) is dropped from every
+* a clip matching a sealed row — every pre-registered role but ``train``
+  (:func:`sealed_roles`), so a tranche added later is sealed too — is dropped from every
   model's decode list: decoding it would read a sealed tranche;
 * a clip matching a row ``tlog.training`` consumed is decoded but excluded from the verdict and
   reported apart: the candidate may have trained on it;
@@ -21,10 +22,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
-from tadabur.tlog_index import CONFIRM_1, CONFIRM_2, CONFIRM_3, CONFIRM_4, LOOK, ROLES, TRAIN
+from tadabur.tlog_index import ROLES, TRAIN
 
-#: The roles whose tranche is sealed: a clip matching one may not be decoded at all.
-SEALED_ROLES = (LOOK, CONFIRM_1, CONFIRM_2, CONFIRM_3, CONFIRM_4)
 #: Table categories that are not roles: whether a ``train`` hit was consumed, and no hit.
 TRAIN_CONSUMED = "train_consumed"
 TRAIN_UNCONSUMED = "train_unconsumed"
@@ -47,6 +46,15 @@ class DisjointnessPlan:
     by_role: dict[str, int]
 
 
+def sealed_roles() -> tuple[str, ...]:
+    """Every pre-registered role that is not ``train``: exactly the sealed tranches today.
+
+    Derived from :data:`tadabur.tlog_index.ROLES` at call time, so a role pre-registered later
+    is sealed (dropped before any decode) rather than silently decoded and scored.
+    """
+    return tuple(role for role in ROLES if role != TRAIN)
+
+
 def plan_disjointness(clips: Sequence[str], hits: Mapping[str, Iterable[tuple[str, str]]],
                       consumed: Iterable[str]) -> DisjointnessPlan:
     """Plan ``clips`` from their fingerprint ``hits`` (``(role, row)`` each) and consumed rows.
@@ -55,11 +63,12 @@ def plan_disjointness(clips: Sequence[str], hits: Mapping[str, Iterable[tuple[st
     unverified one. A hit whose role is not pre-registered is refused too.
     """
     consumed = set(consumed)
-    by_role = {role: 0 for role in SEALED_ROLES}
+    sealed_tranches = sealed_roles()
+    by_role = {role: 0 for role in sealed_tranches}
     by_role.update({TRAIN_CONSUMED: 0, TRAIN_UNCONSUMED: 0, NO_HIT: 0})
     decode: list[str] = []
     trained: list[str] = []
-    sealed: dict[str, tuple[str, ...]] = {}
+    sealed_clips: dict[str, tuple[str, ...]] = {}
     for clip in clips:
         if clip not in hits:
             raise ValueError(f"{clip} has no fingerprint result; refusing to assume it clean")
@@ -69,7 +78,7 @@ def plan_disjointness(clips: Sequence[str], hits: Mapping[str, Iterable[tuple[st
             if role not in ROLES:
                 raise ValueError(f"{clip} hits a row with the unknown role {role!r}")
             roles.add(role)
-        for role in SEALED_ROLES:
+        for role in sealed_tranches:
             if role in roles:
                 by_role[role] += 1
         train_rows = [row for role, row in clip_hits if role == TRAIN]
@@ -80,10 +89,10 @@ def plan_disjointness(clips: Sequence[str], hits: Mapping[str, Iterable[tuple[st
             by_role[TRAIN_UNCONSUMED] += 1
         if not clip_hits:
             by_role[NO_HIT] += 1
-        sealed_roles = tuple(dict.fromkeys(role for role, _ in clip_hits
-                                           if role in SEALED_ROLES))
-        if sealed_roles:
-            sealed[clip] = sealed_roles
+        hit_sealed = tuple(dict.fromkeys(role for role, _ in clip_hits
+                                         if role in sealed_tranches))
+        if hit_sealed:
+            sealed_clips[clip] = hit_sealed
             continue
         decode.append(clip)
         if consumed_hit:
@@ -94,6 +103,6 @@ def plan_disjointness(clips: Sequence[str], hits: Mapping[str, Iterable[tuple[st
         decode=tuple(decode),
         verdict=verdict,
         trained=tuple(trained),
-        sealed=sealed,
+        sealed=sealed_clips,
         by_role=by_role,
     )

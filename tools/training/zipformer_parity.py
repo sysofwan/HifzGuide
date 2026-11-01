@@ -324,6 +324,21 @@ def _read_jsonl(path: Path) -> list[dict]:
             Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _write_json(record: Mapping, path: Path) -> None:
+    """Write one phase's scratch record, indent 1 and sorted keys.
+
+    ``tadabur.tlog_index.write_json`` is the canonical writer for a committed record, but it
+    imports the corpus readers and therefore librosa; the sherpa phase must run in the throwaway
+    venv, which holds only numpy, soundfile, sherpa-onnx and kaldi-native-fbank. The committed
+    ``parity.json`` still goes through the canonical writer in the verdict.
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(dict(record), ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+        encoding="utf-8")
+
+
 def _write_jsonl_gz(path: Path, rows: Iterable[Mapping]) -> None:
     """The committed per-clip record: gzipped with a zero mtime, so a re-run is identical."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -523,9 +538,7 @@ def ours(work_dir: Path, out_dir: Path, workers: int, limit: int | None = None) 
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
             if done % 100 == 0:
                 print(f"  ours: {done}/{len(items)} clips", flush=True)
-    from tadabur.tlog_index import write_json
-
-    write_json(_ours_protocol(scale), out_dir / "ours-protocol.json")
+    _write_json(_ours_protocol(scale), out_dir / "ours-protocol.json")
     print(f"parity ours: {len(items)} clips decoded -> {out_dir}", flush=True)
 
 
@@ -731,9 +744,8 @@ def sherpa(ours_dir: Path, model: Path, tokens: Path, workers: int) -> None:
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
             if done % 100 == 0:
                 print(f"  sherpa: {done}/{len(items)} clips", flush=True)
-    from tadabur.tlog_index import write_json
-
-    write_json(_sherpa_protocol(Path(model), Path(tokens)), ours_dir / "sherpa-protocol.json")
+    _write_json(_sherpa_protocol(Path(model), Path(tokens)),
+                ours_dir / "sherpa-protocol.json")
     print(f"parity sherpa: {len(items)} clips decoded -> {ours_dir}", flush=True)
 
 

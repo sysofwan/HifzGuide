@@ -1,7 +1,11 @@
 {
  "audio": {
+  "channels": {
+   "1": 577
+  },
   "clips": 577,
   "direct_read_matches": 577,
+  "per_clip": "audio_sha256, waveform_sha256, channels, num_samples and num_frames are in parity_decodes.jsonl.gz",
   "readers": {
    "soundfile": 577
   },
@@ -4512,6 +4516,10 @@
  },
  "schema_version": 1,
  "sherpa": {
+  "audio_reader": {
+   "libsndfile": "1.2.2",
+   "soundfile": "0.14.0"
+  },
   "extension_sha256": "d2ae6773d6e85ece622fe1fb21bcf7f9bb42e4b72cf451f41003fbec0f6b23ee",
   "front_end": {
    "fbank_options": {

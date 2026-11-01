@@ -577,6 +577,30 @@ def load_training_rows(registry: exposure.ExposureRegistry | None = None, *,
     return rows
 
 
+def read_run_log(path: Path) -> list[dict]:
+    """The row keys a reader logged to ``run_log``, in first-read order, duplicates dropped.
+
+    :func:`iter_training_rows` appends one line per consumed row, and a resumed run reads some
+    rows again, so a repeated key is the same row read twice, not more exposure. Each row is
+    returned as its key fields, the shape ``rows_digest`` and the pool's rows share. A missing
+    or empty log refuses: a row set re-materialised from absent evidence would read as
+    "consumed nothing", which is exactly the substitution a per-run log exists to prevent.
+    """
+    path = Path(path)
+    if not path.is_file():
+        raise ValueError(f"{path} is missing; a run's consumed row log must be kept")
+    keys: dict[tuple[str, str, int], dict] = {}
+    for line in read_jsonl_gz(path):
+        try:
+            key = (line["split"], line["shard_file"], int(line["row"]))
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"{path}: {line!r} is not a consumed row key") from None
+        keys.setdefault(key, {"split": key[0], "shard_file": key[1], "row": key[2]})
+    if not keys:
+        raise ValueError(f"{path} holds no rows; an empty log reads as an empty prefix")
+    return list(keys.values())
+
+
 def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
                        cache_dir: Path, schedule: tlog_schedule.Schedule, stream=None,
                        load_audio=None, run_log: Path | None = None

@@ -76,6 +76,9 @@ MODEL_REPO = "Quran-Lab/zipformer_p-arabic-v3"
 BENCHMARK_REPO = "Quran-Lab/quranic-asr-benchmark"
 ONNX_FILE = "zipformer_p_arabic_v3.2.onnx"
 INT8_FILE = "zipformer_p_arabic_v3.2.int8.onnx"
+#: v3's own export: the model the card's PER table describes (its README table is dated
+#: 2026-08-16, before v3.1). Decoded once as a decoder check, never on a comparison set.
+CARD_ONNX_FILE = "zipformer_p_arabic_v3.onnx"
 TEXT2PHONEME_FILE = "quran_text2phoneme.json"
 MANIFEST_FILE = "benchmark.jsonl"
 #: The card's left context: 256 frames at 50 Hz, about 5.1 s (its left-context probe README).

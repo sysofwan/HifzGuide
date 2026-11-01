@@ -5,9 +5,11 @@ benchmark (:data:`GATE_LIMIT_POINTS`). Three rules are pinned before any decode:
 
 * **The unit rule.** The card's tokenizer is unpublished, and ``phoneme_units.json`` is the
   inventory, not the segmentation. :func:`encode_units` stands in with greedy longest match,
-  and :func:`require_roundtrip` justifies it: re-tokenising a clip's emitted units must
-  reproduce them on at least :data:`ROUNDTRIP_FLOOR` of clips, else :class:`GateStop` and no
-  other rule is tuned against it.
+  and :func:`require_stand_in` justifies it: re-tokenising a clip's emitted units must
+  reproduce them on at least :data:`ROUNDTRIP_FLOOR` of clips, or every clip it does not
+  must be a model quirk (:func:`roundtrip_failures`, architect r3's D2 sort) -- a
+  segmentation the model emits nowhere is a rule difference and stops the gate. No other
+  rule is tuned against the stand-in.
 * **The scale rule.** The card does not say whether kaldi fbank expects [-1, 1] or
   int16-scaled samples. :func:`pin_scale` keeps the scale with the lower PER on every
   benchmark source; sources that disagree, or a scale within :data:`SCALE_GAP_POINTS` on any
@@ -136,36 +138,127 @@ def roundtrip_identical(emitted: Sequence[str], units: Iterable[str]) -> bool:
     return encode_units("".join(emitted), units) == list(emitted)
 
 
-def roundtrip_share(clips: Iterable[Sequence[str]], units: Iterable[str]) -> dict:
+def _segments(units: Sequence[str]) -> tuple[dict[int, str], int]:
+    """Each unit by its character offset, and the string's length."""
+    segments: dict[int, str] = {}
+    position = 0
+    for unit in units:
+        segments[position] = unit
+        position += len(unit)
+    return segments, position
+
+
+def first_divergence(emitted: Sequence[str],
+                     standin: Sequence[str]) -> tuple[int, int, list[str], list[str]] | None:
+    """Where two segmentations of one string first disagree, and the units on each side.
+
+    Both sequences cover the same characters (the stand-in is the greedy encoding of the
+    emitted string's concatenation). The divergence opens at the first offset holding a
+    different unit on either side -- a unit the other side splits, merges or lacks -- and runs
+    to the next offset where both start the same unit, after which the two can no longer
+    differ: the shortest window that resynchronises. ``None`` when the segmentations are the
+    same.
+    """
+    mine, total = _segments(emitted)
+    theirs, their_total = _segments(standin)
+    if mine == theirs and total == their_total:
+        return None
+    if total != their_total:
+        raise ValueError("the two segmentations do not cover the same characters")
+    start = min(offset for offset in set(mine) | set(theirs)
+                if mine.get(offset) != theirs.get(offset))
+    resync = [offset for offset in mine
+              if offset > start and mine[offset] == theirs.get(offset)]
+    end = min(resync) if resync else total
+    return (start, end,
+            [unit for offset, unit in sorted(mine.items()) if start <= offset < end],
+            [unit for offset, unit in sorted(theirs.items()) if start <= offset < end])
+
+
+def _emits(clips: Iterable[Sequence[str]], run: Sequence[str]) -> bool:
+    """Whether any clip's emitted units hold ``run`` as a contiguous stretch."""
+    run = tuple(run)
+    width = len(run)
+    for clip in clips:
+        units = tuple(clip)
+        if any(units[start:start + width] == run
+               for start in range(len(units) - width + 1)):
+            return True
+    return False
+
+
+def roundtrip_share(clips: Mapping[str, Sequence[str]], units: Iterable[str]) -> dict:
     """``{"clips", "identical", "share"}`` for the emitted units of ``clips``.
 
     No clips at all is an error, not a pass: an empty set proves nothing.
     """
     inventory = list(units)
-    total = 0
-    identical = 0
-    for clip in clips:
-        total += 1
-        identical += roundtrip_identical(clip, inventory)
-    if not total:
+    identical = sum(roundtrip_identical(clip, inventory) for clip in clips.values())
+    if not clips:
         raise ValueError("the round trip needs clips; an empty set proves nothing")
-    return {"clips": total, "identical": identical, "share": identical / total}
+    return {"clips": len(clips), "identical": identical,
+            "share": identical / len(clips)}
 
 
-def require_roundtrip(clips: Iterable[Sequence[str]], units: Iterable[str],
-                      minimum: float = ROUNDTRIP_FLOOR) -> float:
-    """The round trip's share of ``clips``, or :class:`GateStop` below ``minimum``.
+def roundtrip_failures(clips: Mapping[str, Sequence[str]], units: Iterable[str]) -> list[dict]:
+    """Every clip whose units do not re-tokenise, with the pre-declared sort of the cause.
 
-    ``clips`` is each clip's emitted units; no clips at all is an error, not a pass.
+    Architect r3's D2 rule, written before the failures were looked at: a *model quirk* is a
+    clip whose divergent window the model emits with the stand-in's segmentation somewhere in
+    this decode set -- an uncertain frame, not a rule. A *rule difference* is a window the
+    model never segments the stand-in's way anywhere, which would mean the stand-in is not the
+    card's tokenizer. Each entry carries both segmentations at the first divergence so the
+    sort can be checked by eye.
+    """
+    inventory = list(units)
+    failures = []
+    for clip, emitted in clips.items():
+        standin = encode_units("".join(emitted), inventory)
+        divergence = first_divergence(emitted, standin)
+        if divergence is None:
+            continue
+        start, end, mine, theirs = divergence
+        failures.append({
+            "clip": clip,
+            "offset": start,
+            "characters": "".join(mine),
+            "emitted": mine,
+            "standin": theirs,
+            "classification": "quirk" if _emits(clips.values(), theirs) else "rule",
+        })
+    return failures
+
+
+def stand_in_record(clips: Mapping[str, Sequence[str]], units: Iterable[str],
+                    minimum: float = ROUNDTRIP_FLOOR) -> dict:
+    """The unit rule's round trip, sorted by D2: the share, the failures, the verdict.
+
+    The stand-in is accepted when the share clears ``minimum``, or when it does not but every
+    failing clip is a model quirk (architect r3's D2: no failure is a rule difference). No
+    clips at all is an error, not a pass.
     """
     record = roundtrip_share(clips, units)
-    if record["share"] < minimum:
-        raise GateStop(
-            f"only {record['identical']} of {record['clips']} clips ({record['share']:.4f}) "
-            f"re-tokenise to their emitted units, below {minimum:.4f}: the longest-match "
-            "stand-in is not the card's tokenizer, so no PER against it can be trusted"
-        )
-    return record["share"]
+    failures = roundtrip_failures(clips, units)
+    rule = [failure for failure in failures if failure["classification"] == "rule"]
+    record.update(minimum=minimum, failures=failures,
+                  accepted=record["share"] >= minimum or not rule)
+    return record
+
+
+def require_stand_in(record: Mapping) -> None:
+    """Stop unless :func:`stand_in_record` accepted the longest-match stand-in."""
+    if record["accepted"]:
+        return
+    rule = [failure for failure in record["failures"]
+            if failure["classification"] == "rule"]
+    raise GateStop(
+        f"only {record['identical']} of {record['clips']} clips "
+        f"({record['share']:.4f}) re-tokenise to their emitted units, below "
+        f"{record['minimum']:.4f}, and {len(rule)} of {len(record['failures'])} failures "
+        "register a segmentation the model never emits: the longest-match stand-in is not the "
+        "card's tokenizer, so no PER against it can be trusted"
+    )
+
 
 
 def edit_counts(reference: Sequence, hypothesis: Sequence) -> tuple[int, int]:

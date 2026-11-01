@@ -6,7 +6,8 @@ fetches the card's files, runs the pass over the audio and writes the provenance
 steps and the report read. Every step runs on cuda-dev, where the gated Hub token and the
 tlog fingerprint store live, and every step writes its result inside the checkout:
 
-* **fetch** — the v3.2 fp32 ONNX (chunk 24), its int8 file (a numerics line only), the card's
+* **fetch** — the v3.2 fp32 ONNX (chunk 24, the comparison arm), v3's fp32 export (the model
+  the card's table describes), v3.2's int8 file (a numerics line only), the card's
   ``quran_text2phoneme.json``, the benchmark manifest and its 600 clips, and Tadabur's
   ``sheikh_dict.json``, at the Hub revisions read now. Every file's SHA-256 is pinned in
   ``fetch.json`` in the work directory; the model files' hashes reach the committed identity
@@ -17,20 +18,24 @@ tlog fingerprint store live, and every step writes its result inside the checkou
   only ``tlog.training``, with :class:`tadabur.tlog_overlap.EvalIndex`, its line and vote
   threshold. Each hit names the row's pre-registered role; `tadabur.benchmark_overlap` turns
   them into the plan every later decode follows: a clip matching a sealed row is dropped
-  before any decode, a clip matching a row ``tlog.training`` consumed is decoded but excluded
-  from the verdict, everything else counts. The per-source reciter-name screen and the
-  "Tadabur audio not read" note are recorded beside the table (#156's precedent).
+  before any decode, a clip matching a row the candidate's run consumed is decoded but
+  excluded from the verdict, a clip matching an unread pool row in a shard it partly read is
+  named as the sensitivity split, everything else counts. The per-source reciter-name screen
+  and the "Tadabur audio not read" note are recorded beside the table (#156's precedent).
 * **gate** — the card's own unit PER (its table, its normalization, the units' greedy
   longest-match stand-in) on every clip the plan allows, at both pre-declared front-end
   scales. The scale is pinned by the pre-declared rule, both scales' PER are kept, and the
-  round trip must hold before the identity is written; a failure writes the evidence and stops
-  with exit code 3. Nothing outside the plan's decode list is ever decoded.
+  round trip is sorted by D2's quirk/rule rule. On v3 -- the model the card's table describes
+  -- a failure writes the evidence and stops with exit code 3; on v3.2 fp32 the numbers are a
+  baseline with no pass/fail and the arm's identity is pinned. Nothing outside the plan's
+  decode list is ever decoded.
 
 Usage (from ``tools/``, on the run box)::
 
     python -m training.zipformer_run fetch --work-dir /root/scratch/zipformer
     python -m training.zipformer_run disjointness --work-dir /root/scratch/zipformer
-    python -m training.zipformer_run gate --work-dir /root/scratch/zipformer --workers 12
+    python -m training.zipformer_run gate --model v3 --work-dir /root/scratch/zipformer
+    python -m training.zipformer_run gate --model v3.2 --work-dir /root/scratch/zipformer
 """
 
 from __future__ import annotations
@@ -40,14 +45,16 @@ import hashlib
 import json
 import os
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
-from tadabur.benchmark_overlap import plan_disjointness
+from tadabur.benchmark_overlap import plan_disjointness, row_group
 from tadabur.tlog_index import sha256_file, write_json
 from training.zipformer_decode import (
     BENCHMARK_REPO,
+    CARD_ONNX_FILE,
     IDENTITY_PATH,
     INT8_FILE,
     MANIFEST_FILE,
@@ -67,11 +74,12 @@ from training.zipformer_gate import (
     pin_scale,
     reference_units,
     require_card_reproduction,
-    require_roundtrip,
-    roundtrip_identical,
+    require_stand_in,
     roundtrip_share,
     source_per,
+    stand_in_record,
 )
+
 
 #: The run box's scratch: the fetched files, the benchmark audio and the fetch record. Nothing
 #: here is committed (the card's benchmark is research/evaluation-use only).
@@ -81,11 +89,50 @@ FETCH_NAME = "fetch.json"
 #: The committed outputs of the disjointness and gate steps.
 DISJOINTNESS_PATH = ZIPFORMER_DIR / "disjointness.json"
 GATE_PATH = ZIPFORMER_DIR / "card_gate.json"
+#: The model repo's files this screen reads: v3.2 fp32 (the comparison arm), v3's fp32 (the
+#: model the card's table describes), v3.2's int8 (a numerics line only), the card's phoneme
+#: table, and the symbol table with its inventory.
+MODEL_FILES = (ONNX_FILE, CARD_ONNX_FILE, INT8_FILE, TEXT2PHONEME_FILE, "tokens.txt",
+               "phoneme_units.json")
+#: The candidate's consumed-key log: the tlog rows ``choice.json``'s ``r2_candidate_*`` run
+#: actually read (``training.distill_mixed.TLOG_RUN_LOG_NAME``), against ``tlog.training``'s
+#: pool. A clip matching a pool row the run never read is not exposure to the candidate
+#: (architect r3, D3).
+CONSUMED_LOG = ZIPFORMER_DIR.parent / "consonant2_readout" / "tlog_consumed.jsonl.gz"
 #: The card's PER sources, by the benchmark's own ``source`` column (its README).
 CARD_SOURCES = {"everyayah_heldout": "studio", "tlog_holdout": "phone",
                 "qul_alnufais": "unseen"}
 #: The two front-end scales the gate decides between, pre-declared (architect r1, Q4).
 SCALES = (1.0, 32_768.0)
+
+
+@dataclass(frozen=True)
+class GateModel:
+    """One card export a gate run decodes: its file, where its record goes, how it is judged.
+
+    ``card`` is true for the model the card's PER table describes: its run applies the gate's
+    rules and can pass or stop. The comparison arm's run measures the same table as a baseline
+    (no pass/fail: the card's numbers are another model's) and pins the identity every
+    comparison decode rests on.
+    """
+
+    onnx: str
+    record: Path
+    card: bool
+
+
+#: The amendment's two runs (2026-11-01). v3 is the card's model, decoded once as a decoder
+#: check and never on a comparison set; v3.2 fp32 is the comparison arm, its own numbers
+#: recorded as a baseline.
+GATE_MODELS = {
+    "v3": GateModel(CARD_ONNX_FILE, ZIPFORMER_DIR / "card_gate.v3.json", card=True),
+    "v3.2": GateModel(ONNX_FILE, GATE_PATH, card=False),
+}
+#: The gate's default run is the card's model's: it is the only one the table can judge.
+DEFAULT_GATE_MODEL = "v3"
+#: The arm the screen compares: the gate run that pins the identity.
+COMPARISON_MODEL = "v3.2"
+
 #: The tlog fingerprint store (``tadabur.tlog_overlap.STORE_DIR`` on cuda-dev).
 DEFAULT_STORE_DIR = Path("/root/scratch/tlog/fp")
 #: Tadabur's name dictionary, its dataset and the benchmark reciter it can look up. The
@@ -157,11 +204,17 @@ def load_fetch(work_dir: Path) -> dict:
     return record
 
 
-def files_from_record(work_dir: Path, record: Mapping) -> ZipformerFiles:
-    """The card's files a fetch record names, as the loader takes them."""
+def files_from_record(work_dir: Path, record: Mapping,
+                      *, onnx: str = ONNX_FILE) -> ZipformerFiles:
+    """The card's files a fetch record names, as the loader takes them.
+
+    ``onnx`` picks the export to decode: the comparison arm's by default, the card's own model
+    for the amendment's decoder check. ``int8`` stays the arm's file in both: the numerics line
+    compares the arm's exports, not the card's.
+    """
     base = Path(work_dir)
     return ZipformerFiles(
-        onnx=base / record["files"][ONNX_FILE]["path"],
+        onnx=base / record["files"][onnx]["path"],
         int8=base / record["files"][INT8_FILE]["path"],
         text2phoneme=base / record["files"][TEXT2PHONEME_FILE]["path"],
         manifest=base / record["manifest"]["path"],
@@ -178,17 +231,36 @@ def _check_committed_card_files(model_dir: Path) -> None:
             raise ValueError(f"{committed} is not the card's {name} at the pinned revision")
 
 
+def _model_files(work_dir: Path, revision: str, names: Sequence[str]) -> dict[str, dict]:
+    """Download ``names`` at ``revision`` and pin each byte count and SHA-256."""
+    from huggingface_hub import hf_hub_download
+
+    model_dir = Path(work_dir) / "model"
+    return {name: _file_entry(work_dir, Path(hf_hub_download(
+        MODEL_REPO, name, revision=revision, local_dir=model_dir))) for name in names}
+
+
 def fetch(work_dir: Path) -> dict:
     """Fetch and pin the card's files, the benchmark and Tadabur's name dictionary.
 
     A work directory that already holds a fetch record is verified rather than refreshed: the
-    revisions are pinned on the first run, so a card update never moves a running screen.
+    revisions are pinned on the first run, so a card update never moves a running screen. A
+    file the pinned set has since grown by (the amendment added v3's export) is fetched at the
+    *pinned* revision and its hash added to the record.
     """
     work_dir = Path(work_dir)
     fetch_path = work_dir / FETCH_NAME
     if fetch_path.is_file():
         record = load_fetch(work_dir)
-        print(f"fetch: {fetch_path} is pinned; every file still matches its SHA-256")
+        missing = [name for name in MODEL_FILES if name not in record["files"]]
+        if not missing:
+            print(f"fetch: {fetch_path} is pinned; every file still matches its SHA-256")
+            return record
+        record["files"].update(_model_files(work_dir, record["model"]["revision"], missing))
+        _check_committed_card_files(work_dir / "model")
+        write_json(record, fetch_path)
+        print(f"fetch: pinned {len(missing)} more model file(s) at "
+              f"{record['model']['revision']}: {', '.join(missing)} -> {fetch_path}")
         return record
 
     from huggingface_hub import HfApi, hf_hub_download, snapshot_download
@@ -197,14 +269,10 @@ def fetch(work_dir: Path) -> dict:
     model = api.model_info(MODEL_REPO)
     benchmark = api.dataset_info(BENCHMARK_REPO)
     tadabur = api.dataset_info(TADABUR_DATASET)
-    model_dir = work_dir / "model"
     benchmark_dir = work_dir / "benchmark"
 
-    files = {}
-    for name in (ONNX_FILE, INT8_FILE, TEXT2PHONEME_FILE, "tokens.txt", "phoneme_units.json"):
-        path = Path(hf_hub_download(MODEL_REPO, name, revision=model.sha, local_dir=model_dir))
-        files[name] = _file_entry(work_dir, path)
-    _check_committed_card_files(model_dir)
+    files = _model_files(work_dir, model.sha, MODEL_FILES)
+    _check_committed_card_files(work_dir / "model")
 
     snapshot_download(BENCHMARK_REPO, repo_type="dataset", revision=benchmark.sha,
                       local_dir=benchmark_dir, allow_patterns=[MANIFEST_FILE, "audio/**"])
@@ -247,6 +315,23 @@ def fetch(work_dir: Path) -> dict:
 def _row_id(row: Mapping) -> str:
     """A tlog row's identity, in the form ``training.tlog_pool.rows_digest`` hashes."""
     return f"{row['split']}:{row['shard_file']}:{row['row']}"
+
+
+def consumed_rows(pool_ids: Collection[str],
+                  log_path: Path = CONSUMED_LOG) -> tuple[list[dict], set[str]]:
+    """The candidate's consumed rows and their ids, checked against the training pool.
+
+    A consumed row outside ``tlog.training`` refuses: the log is then some other run's, or
+    some other pool's, and excluding from it would be excluding on the wrong evidence.
+    """
+    from tadabur.tlog_pool import read_run_log
+
+    rows = read_run_log(log_path)
+    ids = {_row_id(row) for row in rows}
+    if outside := sorted(ids - set(pool_ids)):
+        raise ValueError(f"{log_path} names {len(outside)} rows outside tlog.training, e.g. "
+                         f"{outside[0]}: it is not this candidate's log against this pool")
+    return rows, ids
 
 
 def name_screen(rows: Sequence[Mapping], sheikh: Mapping[str, int],
@@ -303,7 +388,9 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
     The tlog index is built one split at a time (the store is 2.3 GB of fingerprints; one
     index over both splits would hold three arrays of every frame at once), and every clip is
     queried against each. A row's role comes from the committed freeze, not from a re-derived
-    hash, and ``tlog.training``'s consumed rows are the verified registry row set.
+    hash; ``tlog.training`` is still verified as the registry's row set, but the "trained on"
+    rows are the ones the candidate's committed ``tlog_consumed.jsonl.gz`` names: the pool is
+    a superset the schedule never read whole (architect r3, D3).
     """
     from tadabur.exposure import load_registry
     from tadabur.qud_selection import tadabur_uses_of
@@ -357,12 +444,13 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
 
     training = load_training_rows(pool_rows=pool_rows)
     del pool_rows
-    consumed = {_row_id(row) for row in training}
+    read, consumed = consumed_rows({_row_id(row) for row in training})
+    read_groups = {row_group(_row_id(row)) for row in read}
     for hits in matched.values():
         hits.sort(key=lambda hit: (hit["ber"], hit["row"]))
     hits = {clip: [(hit["role"], hit["row"]) for hit in found]
             for clip, found in matched.items()}
-    plan = plan_disjointness([row["id"] for row in rows], hits, consumed)
+    plan = plan_disjointness([row["id"] for row in rows], hits, consumed, read_groups)
 
     sheikh = json.loads((Path(work_dir) / fetch_record["sheikh_dict"]["path"])
                         .read_text(encoding="utf-8-sig"))
@@ -370,13 +458,15 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
 
     sealed = set(plan.sealed)
     trained = set(plan.trained)
+    same_group = set(plan.same_group)
     clip_table = [{
         "id": row["id"],
         "source": row["source"],
         "audio_sha256": clip_prints[row["id"]][0],
         "hits": matched[row["id"]],
         "outcome": "sealed" if row["id"] in sealed else
-                   ("trained" if row["id"] in trained else "verdict"),
+                   ("trained" if row["id"] in trained else
+                    ("verdict_same_group" if row["id"] in same_group else "verdict")),
     } for row in rows]
 
     printed_rows = _printed_rows(files.manifest)
@@ -394,9 +484,19 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
             "unfingerprinted_rows": len(roles) - indexed_rows,
             "training": {"use": "tlog.training", "rows": len(training),
                          "rows_sha256": rows_digest(training)},
+            "consumed": {
+                "log": str(CONSUMED_LOG.relative_to(ZIPFORMER_DIR.parents[2])),
+                "sha256": sha256_file(CONSUMED_LOG),
+                "rows": len(read),
+                "shards": len(read_groups),
+                "rows_sha256": rows_digest(read),
+                "note": "the rows the round-2 candidate read, not tlog.training's pool: a "
+                        "pool row the run never read is not exposure (architect r3, D3)",
+            },
         },
         "plan": {"decode": list(plan.decode), "verdict": list(plan.verdict),
                  "trained": list(plan.trained),
+                 "same_group": list(plan.same_group),
                  "sealed": {clip: list(hit_roles) for clip, hit_roles in plan.sealed.items()},
                  "by_role": plan.by_role},
         "name_screen": screen,
@@ -409,7 +509,8 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
     }
     write_json(record, DISJOINTNESS_PATH)
     print(f"disjointness: {len(plan.decode)} decodable ({len(plan.verdict)} verdict, "
-          f"{len(plan.trained)} trained), {len(plan.sealed)} sealed -> {DISJOINTNESS_PATH}")
+          f"{len(plan.trained)} trained, {len(plan.same_group)} same-shard sensitivity), "
+          f"{len(plan.sealed)} sealed -> {DISJOINTNESS_PATH}")
     return record
 
 
@@ -480,18 +581,30 @@ def _read_plan(files: ZipformerFiles) -> dict:
     return plan
 
 
-def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
-    """Reproduce the card's PER, pin the front-end scale, and write the identity.
+def gate(work_dir: Path, *, model: str = DEFAULT_GATE_MODEL,
+         workers: int = DEFAULT_WORKERS) -> dict:
+    """Measure the card's benchmark with one card export, and judge it or record a baseline.
 
-    Every clip the plan allows is decoded at both scales. The scale is pinned first, then the
-    round trip is checked before any PER is trusted (the golden units are the stand-in
-    tokenizer's, so a PER against a different segmentation means nothing), then the card's
-    unit PER is reproduced: pooled edits over pooled reference units per source, a clip whose
-    reference the card's table lacks counted as a miss. The character PER is recorded beside
-    it so a tokenizer mismatch can be told apart from a broken decoder. A failure writes the
-    evidence and is a stop: :class:`training.zipformer_gate.GateStop`.
+    Every clip the plan allows is decoded at both scales, and the scale is pinned by the
+    pre-declared rule. The amendment (2026-11-01) gives the two runs different jobs:
+
+    * **the card's model (v3)** — the decoder check. The round trip is sorted by D2's rule and
+      must hold, then the card's unit PER is reproduced: pooled edits over pooled reference
+      units per source, a clip whose reference the card's table lacks counted as a miss. A
+      failure writes the evidence and is a stop:
+      :class:`training.zipformer_gate.GateStop`.
+    * **the comparison arm (v3.2 fp32)** — its own numbers on this benchmark are a baseline
+      with no pass/fail, because the card's table is v3's. Its identity (the files, front end
+      and pinned scale every comparison decode rests on) is pinned here.
+
+    The character PER is recorded beside the unit PER in both runs, so a tokenizer mismatch
+    can be told apart from a broken decoder.
     """
-    files = files_from_record(work_dir, load_fetch(work_dir))
+    if model not in GATE_MODELS:
+        raise ValueError(f"{model!r} is not a gate model; the runs are {sorted(GATE_MODELS)}")
+    spec = GATE_MODELS[model]
+    fetch_record = load_fetch(work_dir)
+    files = files_from_record(work_dir, fetch_record, onnx=spec.onnx)
     rows = manifest_rows(files.manifest)
     plan = _read_plan(files)
     by_id = {row["id"]: row for row in rows}
@@ -511,18 +624,19 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
     scales: dict[str, dict] = {}
     pinned: float | None = None
     base = {
-        "schema_version": 1,
+        "schema_version": 2,
         "issue": 245,
+        "model": {"name": model, **fetch_record["files"][spec.onnx]},
+        "role": "card" if spec.card else "baseline",
         "card": CARD_PER,
         "limit_points": GATE_LIMIT_POINTS,
         "sources": CARD_SOURCES,
         "clips": {"manifest": len(rows), "decoded": len(decoded_rows),
                   "sealed_dropped": len(plan["sealed"]), "trained": len(plan["trained"])},
-        "identity": str(IDENTITY_PATH.relative_to(ZIPFORMER_DIR.parents[2])),
     }
     try:
         for scale in SCALES:
-            print(f"gate: decoding {len(items)} clips at scale {scale}", flush=True)
+            print(f"gate: {model}: decoding {len(items)} clips at scale {scale}", flush=True)
             predictions = _decode_items(files, scale, items, workers, f"scale {scale}")
             decoded[scale] = predictions
             scoring = [{"source": CARD_SOURCES[row["source"]],
@@ -531,7 +645,7 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
             scales[str(scale)] = {
                 "unit_per": source_per(scoring),
                 "character_per": character_per(scoring),
-                "roundtrip": roundtrip_share(predictions.values(), inventory),
+                "roundtrip": roundtrip_share(predictions, inventory),
             }
             measured = scales[str(scale)]["unit_per"]
             print(f"  scale {scale}: " + ", ".join(
@@ -543,20 +657,37 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
                     for source, entry in scales[str(scale)]["unit_per"].items()}
             for scale in SCALES
         })
-        scales[str(pinned)]["roundtrip"]["failed_clips"] = sorted(
-            clip for clip, units in decoded[pinned].items()
-            if not roundtrip_identical(units, inventory))
-        require_roundtrip(decoded[pinned].values(), inventory)
-        require_card_reproduction(scales[str(pinned)]["unit_per"])
+        stand_in = stand_in_record(decoded[pinned], inventory)
+        scales[str(pinned)]["roundtrip"] = stand_in
+        print(f"  round trip: {stand_in['identical']}/{stand_in['clips']} "
+              f"({stand_in['share']:.4f}), {len(stand_in['failures'])} failures, "
+              f"{sum(failure['classification'] == 'rule' for failure in stand_in['failures'])}"
+              " rule differences", flush=True)
+        if spec.card:
+            require_stand_in(stand_in)
+            require_card_reproduction(scales[str(pinned)]["unit_per"])
     except GateStop as stop:
         write_json({**base, "scales": scales, "pinned_scale": pinned, "passed": False,
-                    "stop": str(stop)}, GATE_PATH)
+                    "stop": str(stop)}, spec.record)
         raise
 
-    load_zipformer(files, scale=pinned, identity_path=IDENTITY_PATH)
-    record = {**base, "scales": scales, "pinned_scale": pinned, "passed": True}
-    write_json(record, GATE_PATH)
-    print(f"gate: PASSED at scale {pinned}; identity pinned at {IDENTITY_PATH}")
+    if spec.card:
+        record = {**base, "scales": scales, "pinned_scale": pinned, "passed": True}
+        write_json(record, spec.record)
+        print(f"gate: {model} PASSED at scale {pinned} -> {spec.record}")
+        return record
+
+    arm_files = files_from_record(work_dir, fetch_record)
+    load_zipformer(arm_files, scale=pinned, identity_path=IDENTITY_PATH)
+    record = {
+        **base, "scales": scales, "pinned_scale": pinned, "passed": None,
+        "identity": str(IDENTITY_PATH.relative_to(ZIPFORMER_DIR.parents[2])),
+        "note": "baseline, no pass/fail: the card's PER table is v3's (its README, 2026-08-16, "
+                "before v3.1 existed), so it cannot judge this arm (amendment 2026-11-01)",
+    }
+    write_json(record, spec.record)
+    print(f"gate: {model} baseline recorded at scale {pinned}; identity pinned at "
+          f"{IDENTITY_PATH}")
     return record
 
 
@@ -573,6 +704,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     disjoint = commands.add_parser("disjointness", parents=[common])
     disjoint.add_argument("--store-dir", type=Path, default=DEFAULT_STORE_DIR)
     card = commands.add_parser("gate", parents=[common])
+    card.add_argument("--model", choices=sorted(GATE_MODELS), default=DEFAULT_GATE_MODEL)
     card.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     args = parser.parse_args(argv)
 
@@ -582,7 +714,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "disjointness":
             disjointness(args.work_dir, store_dir=args.store_dir)
         else:
-            gate(args.work_dir, workers=args.workers)
+            gate(args.work_dir, model=args.model, workers=args.workers)
     except GateStop as stop:
         print(f"STOP: {stop}", flush=True)
         return 3

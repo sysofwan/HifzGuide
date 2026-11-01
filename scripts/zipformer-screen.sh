@@ -7,7 +7,8 @@
 #
 #   scripts/zipformer-screen.sh fetch          # Hugging Face fetch, SHA-256 pinned
 #   scripts/zipformer-screen.sh disjointness   # 600 benchmark clips vs every tlog row
-#   scripts/zipformer-screen.sh gate           # card reproduction, scale pin, identity
+#   scripts/zipformer-screen.sh gate           # the card gate: MODEL=v3 (the card's model,
+#                                              # judged) or v3.2 (the arm, a baseline + identity)
 #   scripts/zipformer-screen.sh check <step>   # pid, status and log tail of a running/ended step
 #   scripts/zipformer-screen.sh fetchout <step> DIR   # pull the committed JSON outputs back
 #
@@ -28,9 +29,12 @@ LOGS=$ROOT/logs
 WORK=$ROOT/data
 STORE=${STORE_DIR:-/root/scratch/tlog/fp}
 WORKERS=${WORKERS:-12}
+#: Which card export the gate decodes: v3 is the model the card's table describes (the decoder
+#: check); v3.2 is the comparison arm (its baseline, and the identity every decode rests on).
+MODEL=${MODEL:-v3}
 OUT=tools/tadabur/zipformer_screen
 #: The committed files a step's `fetchout` pulls back.
-FETCH_OUT_FILES=(disjointness.json card_gate.json identity.json)
+FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.json)
 
 step=${1:-}
 action=${2:-}
@@ -41,6 +45,9 @@ case "$step" in
     exit 2
     ;;
 esac
+#: The step's log/pid/exit name. The gate runs once per model, so its two runs keep their own.
+LABEL=$step
+[ "$step" = gate ] && LABEL="gate-$MODEL"
 
 remote() { ssh -n "$HOST" "$@"; }
 
@@ -65,12 +72,12 @@ command_for() {
     fetch) echo "python -u -m training.zipformer_run fetch --work-dir '$WORK'" ;;
     disjointness)
       echo "python -u -m training.zipformer_run disjointness --work-dir '$WORK' --store-dir '$STORE'" ;;
-    gate) echo "python -u -m training.zipformer_run gate --work-dir '$WORK' --workers '$WORKERS'" ;;
+    gate) echo "python -u -m training.zipformer_run gate --model '$MODEL' --work-dir '$WORK' --workers '$WORKERS'" ;;
   esac
 }
 
 write_runner() {
-  remote "cat > '$ROOT/run-$step.sh' <<'SH'
+  remote "cat > '$ROOT/run-$LABEL.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
 source '$CONDA'
@@ -78,32 +85,32 @@ conda activate '$ENV_NAME'
 cd '$REPO/tools' || exit 1
 $(command_for)
 code=\$?
-echo \"\$code\" > '$LOGS/$step.exit'
+echo \"\$code\" > '$LOGS/$LABEL.exit'
 exit \$code
 SH
-chmod +x '$ROOT/run-$step.sh'"
+chmod +x '$ROOT/run-$LABEL.sh'"
 }
 
 launch() {
   stage_repo
   write_runner
-  remote "rm -f '$LOGS/$step.exit' '$LOGS/$step.pid'
-          setsid bash '$ROOT/run-$step.sh' </dev/null >'$LOGS/$step.log' 2>&1 &
-          echo \$! > '$LOGS/$step.pid'"
-  echo "step $step started on $HOST"
-  echo "  pid:  $(remote "cat '$LOGS/$step.pid'")"
-  echo "  log:  $HOST:$LOGS/$step.log"
-  echo "  exit: $HOST:$LOGS/$step.exit (0 = clean; absent while running)"
+  remote "rm -f '$LOGS/$LABEL.exit' '$LOGS/$LABEL.pid'
+          setsid bash '$ROOT/run-$LABEL.sh' </dev/null >'$LOGS/$LABEL.log' 2>&1 &
+          echo \$! > '$LOGS/$LABEL.pid'"
+  echo "step $LABEL started on $HOST"
+  echo "  pid:  $(remote "cat '$LOGS/$LABEL.pid'")"
+  echo "  log:  $HOST:$LOGS/$LABEL.log"
+  echo "  exit: $HOST:$LOGS/$LABEL.exit (0 = clean; absent while running)"
 }
 
 check() {
-  if remote "test -f '$LOGS/$step.exit'"; then
-    echo "step $step exited $(remote "cat '$LOGS/$step.exit'")"
+  if remote "test -f '$LOGS/$LABEL.exit'"; then
+    echo "step $LABEL exited $(remote "cat '$LOGS/$LABEL.exit'")"
   else
-    echo "step $step is running (pid $(remote "cat '$LOGS/$step.pid' 2>/dev/null || echo unknown"))"
-    remote "ps -p \"\$(cat '$LOGS/$step.pid')\" -o pid=,etime=,stat= 2>/dev/null || true"
+    echo "step $LABEL is running (pid $(remote "cat '$LOGS/$LABEL.pid' 2>/dev/null || echo unknown"))"
+    remote "ps -p \"\$(cat '$LOGS/$LABEL.pid')\" -o pid=,etime=,stat= 2>/dev/null || true"
   fi
-  remote "tail -n 12 '$LOGS/$step.log' 2>/dev/null || true"
+  remote "tail -n 12 '$LOGS/$LABEL.log' 2>/dev/null || true"
 }
 
 fetchout() {

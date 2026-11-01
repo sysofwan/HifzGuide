@@ -568,12 +568,17 @@ def _decode_items(files: ZipformerFiles, scale: float, items: Sequence[tuple[str
     return decoded
 
 
-def _read_plan(files: ZipformerFiles) -> dict:
-    """The disjointness plan, checked against this manifest; no plan means no decode."""
+def decode_plan(manifest: Path) -> dict:
+    """The committed disjointness plan, checked against ``manifest``; no plan, no decode.
+
+    The plan is the only list a decode may follow: it already dropped the sealed clips and
+    split the rest by exposure. Binding it to the manifest's SHA-256 means a re-fetched or
+    re-published benchmark cannot silently reuse a plan screened against another one.
+    """
     if not DISJOINTNESS_PATH.is_file():
         raise ValueError(f"{DISJOINTNESS_PATH} is missing; run the disjointness step first")
     record = json.loads(DISJOINTNESS_PATH.read_text(encoding="utf-8"))
-    if record["benchmark"]["manifest_sha256"] != sha256_file(files.manifest):
+    if record["benchmark"]["manifest_sha256"] != sha256_file(manifest):
         raise ValueError(f"{DISJOINTNESS_PATH} screened another benchmark manifest")
     plan = record["plan"]
     if set(plan["decode"]) & set(plan["sealed"]):
@@ -606,7 +611,7 @@ def gate(work_dir: Path, *, model: str = DEFAULT_GATE_MODEL,
     fetch_record = load_fetch(work_dir)
     files = files_from_record(work_dir, fetch_record, onnx=spec.onnx)
     rows = manifest_rows(files.manifest)
-    plan = _read_plan(files)
+    plan = decode_plan(files.manifest)
     by_id = {row["id"]: row for row in rows}
     decode_ids = set(plan["decode"])
     unknown = decode_ids - set(by_id)

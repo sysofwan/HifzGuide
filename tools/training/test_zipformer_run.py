@@ -25,7 +25,7 @@ from training.zipformer_run import (
     FETCH_NAME,
     main,
     _file_entry,
-    _read_plan,
+    decode_plan,
     consumed_rows,
     files_from_record,
     load_fetch,
@@ -205,7 +205,7 @@ def test_a_plan_screened_against_another_manifest_is_refused(tmp_path, monkeypat
     }), encoding="utf-8")
     files = SimpleNamespace(manifest=manifest)
     with pytest.raises(ValueError, match="another benchmark manifest"):
-        _read_plan(files)
+        decode_plan(files.manifest)
 
 
 def test_a_plan_that_decodes_a_sealed_clip_is_refused(tmp_path, monkeypatch):
@@ -219,7 +219,7 @@ def test_a_plan_that_decodes_a_sealed_clip_is_refused(tmp_path, monkeypatch):
                  "trained": [], "sealed": {"qul_alnufais/1": ["look"]}},
     }), encoding="utf-8")
     with pytest.raises(ValueError, match="sealed"):
-        _read_plan(SimpleNamespace(manifest=manifest))
+        decode_plan(manifest)
 
 
 def test_each_subcommand_takes_the_work_dir_after_its_name(tmp_path, monkeypatch):

@@ -617,6 +617,44 @@ def read_items(path: Path = EDITS_PATH) -> list[dict]:
     return items
 
 
+def verify_render(out_dir: Path, committed: Path = EDITS_PATH) -> dict:
+    """A regenerated render against the committed manifest: the same items, the same bytes.
+
+    ``out_dir`` is a ``generate`` run's output directory. Every item line must equal the
+    committed manifest's for its id, and every rendered file's SHA-256 must be the one its
+    line records -- so "the regenerated audio matches" is decided by the checksums the
+    committed manifest pins, not by the run's own word. The count must be the committed
+    manifest's too: a run that rendered a subset is not a reproduction.
+    """
+    from .truth_sites import audio_sha256
+
+    out_dir = Path(out_dir)
+    regenerated = read_items(out_dir / "edits.jsonl")
+    expected = {item["item_id"]: item for item in read_items(committed)}
+    found = {item["item_id"]: item for item in regenerated}
+    if set(found) != set(expected):
+        missing = sorted(set(expected) - set(found))
+        extra = sorted(set(found) - set(expected))
+        raise ValueError(
+            f"{out_dir / 'edits.jsonl'} is not the committed manifest's item set: "
+            f"{len(missing)} missing ({missing[0] if missing else '-'}), "
+            f"{len(extra)} not the committed ones ({extra[0] if extra else '-'})")
+    for item_id, item in found.items():
+        if item != expected[item_id]:
+            raise ValueError(f"{item_id}: the regenerated manifest differs from the committed "
+                             "one")
+    for item in regenerated:
+        path = out_dir / "audio" / item["output"]["audio_filename"]
+        if (checksum := audio_sha256(path)) != item["output"]["audio_sha256"]:
+            raise ValueError(f"{path} is {checksum}, not the committed "
+                             f"{item['output']['audio_sha256']}")
+        if path.stat().st_size == 0:
+            raise ValueError(f"{path} is empty")
+    return {"items": len(regenerated),
+            "audio_matched": len(regenerated),
+            "manifest": str(out_dir / "edits.jsonl")}
+
+
 # --- the blind check ---------------------------------------------------------------------
 
 BLIND_CHECK_STRATUM = "synthetic_edit:blind_check"
@@ -820,6 +858,10 @@ def write_blind_check(items: list[dict]) -> dict[str, int]:
     ).items()))
 
 
+def _verify(args) -> None:
+    print(json.dumps(verify_render(args.out_dir), indent=2, ensure_ascii=False))
+
+
 def _blind_check(args) -> None:
     """Redraw the blind check from the committed manifest (no audio needed) and record
     its make-up in the summary; ``generate`` draws it the same way."""
@@ -901,13 +943,16 @@ def main() -> None:
     generate.add_argument("--audio-dir", type=Path, required=True)
     generate.add_argument("--out-dir", type=Path, required=True)
     commands.add_parser("blind-check", help="redraw the blind-check worklist from the manifest")
+    verify = commands.add_parser("verify", help="check a regenerated render against the manifest")
+    verify.add_argument("--out-dir", type=Path, required=True,
+                        help="a generate run's output directory")
     audit = commands.add_parser("audit", help="record whether the teacher hears each label")
     audit.add_argument("--out-dir", type=Path, required=True)
     audit.add_argument("--device", default="cuda")
     args = parser.parse_args()
     commands_by_name = {"frame": _frame, "stage": _stage, "decode": _decode,
                         "generate": _generate, "blind-check": _blind_check,
-                        "audit": _audit}
+                        "verify": _verify, "audit": _audit}
     commands_by_name[args.command](args)
 
 

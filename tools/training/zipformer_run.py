@@ -378,11 +378,14 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
                    ("trained" if row["id"] in trained else "verdict"),
     } for row in rows]
 
+    printed_rows = _printed_rows(files.manifest)
     record = {
         "schema_version": 1,
         "issue": 245,
         "benchmark": {"repo": BENCHMARK_REPO, "revision": files.benchmark_revision,
-                      "manifest_sha256": sha256_file(files.manifest), "clips": len(rows)},
+                      "manifest_sha256": sha256_file(files.manifest), "clips": len(rows),
+                      "rows": len(printed_rows),
+                      "duplicate_rows": len(printed_rows) - len(rows)},
         "tlog": {
             "store_dir": str(store_dir),
             "rows": len(roles),
@@ -511,7 +514,7 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
         "sources": CARD_SOURCES,
         "clips": {"manifest": len(rows), "decoded": len(decoded_rows),
                   "sealed_dropped": len(plan["sealed"]), "trained": len(plan["trained"])},
-        "identity": str(IDENTITY_PATH),
+        "identity": str(IDENTITY_PATH.relative_to(ZIPFORMER_DIR.parents[2])),
     }
     try:
         for scale in SCALES:

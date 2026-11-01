@@ -27,6 +27,8 @@ unit-free character-level PER beside it, which the report carries for Q4.
 from __future__ import annotations
 
 import math
+import re
+import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 
 #: How much worse than the card a run may be, in PER points, before the screen stops.
@@ -44,9 +46,52 @@ BOUNDARY_TOLERANCE = 1e-9
 #: The card's inventory key that is not a unit.
 BLANK_UNIT = "<blank>"
 
+#: The card's table key rule (``quran_per_eval.py``'s ``norm``): diacritics and tatweel stripped,
+#: then the hamza/alif/ya/ta-marbuta spellings folded.
+_DIACRITICS = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭـ]")
+_LETTER_VARIANTS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي",
+                                 "ة": "ه", "ؤ": "و", "ئ": "ي"})
+
 
 class GateStop(RuntimeError):
     """The gate refused to go on: its inputs cannot support the claim it would make."""
+
+
+def card_norm(text: str) -> str:
+    """The card's lookup key: NFC, its diacritic/tatweel strip, its letter folding.
+
+    Ported from ``quran_per_eval.py``'s ``norm``. The whitespace collapse is part of the key,
+    not cosmetic: a reference the table has must reproduce it exactly.
+    """
+    folded = _DIACRITICS.sub("", unicodedata.normalize("NFC", str(text)))
+    return re.sub(r"\s+", " ", folded.translate(_LETTER_VARIANTS)).strip()
+
+
+def card_table(raw: Mapping[str, str]) -> dict[str, str]:
+    """The card's ``quran_text2phoneme.json`` keyed by :func:`card_norm`.
+
+    Two raw keys may normalize to one. The card's own dict comprehension silently keeps the
+    last; a collision whose phonemes differ would make a reference depend on JSON order, so it
+    is refused instead.
+    """
+    table: dict[str, str] = {}
+    for text, phonemes in raw.items():
+        key = card_norm(text)
+        if key in table and table[key] != phonemes:
+            raise ValueError(f"the card's table maps {key!r} to two phoneme strings")
+        table[key] = phonemes
+    return table
+
+
+def reference_units(table: Mapping[str, str], text: str,
+                    units: Iterable[str]) -> list[str] | None:
+    """The card's gold units for a reference text, or ``None`` where its table has none.
+
+    A miss is the card's own "table-miss": the clip is excluded from PER and counted, never
+    scored against a guessed reference.
+    """
+    phonemes = table.get(card_norm(text))
+    return None if phonemes is None else encode_units(phonemes, units)
 
 
 def _beyond(gap: float, limit: float) -> bool:
@@ -91,11 +136,10 @@ def roundtrip_identical(emitted: Sequence[str], units: Iterable[str]) -> bool:
     return encode_units("".join(emitted), units) == list(emitted)
 
 
-def require_roundtrip(clips: Iterable[Sequence[str]], units: Iterable[str],
-                      minimum: float = ROUNDTRIP_FLOOR) -> float:
-    """The round trip's share of ``clips``, or :class:`GateStop` below ``minimum``.
+def roundtrip_share(clips: Iterable[Sequence[str]], units: Iterable[str]) -> dict:
+    """``{"clips", "identical", "share"}`` for the emitted units of ``clips``.
 
-    ``clips`` is each clip's emitted units; no clips at all is an error, not a pass.
+    No clips at all is an error, not a pass: an empty set proves nothing.
     """
     inventory = list(units)
     total = 0
@@ -105,14 +149,23 @@ def require_roundtrip(clips: Iterable[Sequence[str]], units: Iterable[str],
         identical += roundtrip_identical(clip, inventory)
     if not total:
         raise ValueError("the round trip needs clips; an empty set proves nothing")
-    share = identical / total
-    if share < minimum:
+    return {"clips": total, "identical": identical, "share": identical / total}
+
+
+def require_roundtrip(clips: Iterable[Sequence[str]], units: Iterable[str],
+                      minimum: float = ROUNDTRIP_FLOOR) -> float:
+    """The round trip's share of ``clips``, or :class:`GateStop` below ``minimum``.
+
+    ``clips`` is each clip's emitted units; no clips at all is an error, not a pass.
+    """
+    record = roundtrip_share(clips, units)
+    if record["share"] < minimum:
         raise GateStop(
-            f"only {identical} of {total} clips ({share:.4f}) re-tokenise to their emitted "
-            f"units, below {minimum:.4f}: the longest-match stand-in is not the card's "
-            "tokenizer, so no PER against it can be trusted"
+            f"only {record['identical']} of {record['clips']} clips ({record['share']:.4f}) "
+            f"re-tokenise to their emitted units, below {minimum:.4f}: the longest-match "
+            "stand-in is not the card's tokenizer, so no PER against it can be trusted"
         )
-    return share
+    return record["share"]
 
 
 def edit_counts(reference: Sequence, hypothesis: Sequence) -> tuple[int, int]:

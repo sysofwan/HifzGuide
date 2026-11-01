@@ -46,15 +46,12 @@ they are decoded only on the sets the Muraja harness grades.
 
 Usage (from ``tools/``)::
 
-    import onnxruntime as ort
-    from torchaudio.compliance import kaldi
-    from training.zipformer_decode import ZipformerDecoder, read_tokens
+    from training.zipformer_decode import ZipformerFiles, load_zipformer
 
-    session = ort.InferenceSession("zipformer_p_arabic_v3.2.onnx")
-    decoder = ZipformerDecoder(session, read_tokens(ZIPFORMER_DIR / "tokens.txt"),
-                               lambda wave, **options: kaldi.fbank(
-                                   torch.from_numpy(wave)[None], **options),
-                               scale=32_768.0)
+    files = ZipformerFiles(onnx=Path("..."), int8=Path("..."),
+                           text2phoneme=Path("..."), manifest=Path("..."),
+                           revision="...", benchmark_revision="...")
+    decoder = load_zipformer(files, scale=1.0)   # writes identity.json when given its path
 """
 
 from __future__ import annotations
@@ -68,10 +65,25 @@ import numpy as np
 from training import decoding
 from training.decoding import DecodeFingerprint
 from training.distill_data import SAMPLE_RATE
-from training.truth_baseline import Store
+from training.external_decode import record_identity
+from training.truth_baseline import Store, file_sha256
 
 #: The card's committed symbol table, unit inventory and licence, beside the decodes they back.
 ZIPFORMER_DIR = Path(__file__).resolve().parent.parent / "tadabur" / "zipformer_screen"
+
+#: The Hub repositories the card and the benchmark live in, and the files this screen reads.
+MODEL_REPO = "Quran-Lab/zipformer_p-arabic-v3"
+BENCHMARK_REPO = "Quran-Lab/quranic-asr-benchmark"
+ONNX_FILE = "zipformer_p_arabic_v3.2.onnx"
+INT8_FILE = "zipformer_p_arabic_v3.2.int8.onnx"
+TEXT2PHONEME_FILE = "quran_text2phoneme.json"
+MANIFEST_FILE = "benchmark.jsonl"
+#: The card's left context: 256 frames at 50 Hz, about 5.1 s (its left-context probe README).
+LEFT_CONTEXT_FRAMES = 256
+#: The card's chunk: 24 output frames (0.48 s) per call, :data:`CHUNK_FRAMES` input frames.
+CHUNK_SIZE = 24
+#: The identity the decodes, and the gate's pinned scale, rest on.
+IDENTITY_PATH = ZIPFORMER_DIR / "identity.json"
 
 #: ``tokens.txt``'s blank. Ours is 0, so no zipformer id is ever one of ours.
 BLANK_ID = 250
@@ -233,12 +245,17 @@ _NUMPY_DTYPES = {
 
 
 def _state_spec(spec) -> tuple[str, tuple[int, ...], type]:
-    """One cache input's name, constant shape and numpy dtype, from the ONNX session."""
+    """One cache input's name, concrete shape and numpy dtype, from the ONNX session.
+
+    The export leaves its batch axis symbolic (``"N"``); this decoder runs one stream at a
+    time, so that axis is 1. Any other symbolic axis is refused: its size would not be known
+    before the first call.
+    """
     try:
         dtype = _NUMPY_DTYPES[spec.type]
     except KeyError as error:
         raise ValueError(f"the ONNX input {spec.name!r} has the type {spec.type!r}") from error
-    shape = tuple(spec.shape)
+    shape = tuple(1 if dim == "N" else dim for dim in spec.shape)
     if any(not isinstance(dim, int) or dim <= 0 for dim in shape):
         raise ValueError(
             f"the ONNX input {spec.name!r} has the non-constant shape {spec.shape}; the "
@@ -541,6 +558,87 @@ def zipformer_fingerprint(model: str, arm: str) -> DecodeFingerprint:
         autocast=False,
         policy=ZIPFORMER_POLICY,
     )
+
+
+@dataclass(frozen=True)
+class ZipformerFiles:
+    """The card's files a run fetched, and the Hub revisions ``tokens.txt``/the table came at.
+
+    The ONNX, int8 and text-to-phoneme paths are the fetched copies outside the checkout;
+    ``tokens.txt`` and ``phoneme_units.json`` are the committed copies the card's own hashes
+    pin, so an identity record can name them by SHA-256 without a path.
+    """
+
+    onnx: Path
+    int8: Path
+    text2phoneme: Path
+    manifest: Path
+    revision: str
+    benchmark_revision: str
+
+    def identity(self, *, scale: float) -> dict:
+        """The weights, front end and gate constants every decode under these files rests on."""
+        return {
+            "model_ref": MODEL_REPO,
+            "hub_revision": self.revision,
+            "benchmark": {
+                "model_ref": BENCHMARK_REPO,
+                "hub_revision": self.benchmark_revision,
+                "manifest_sha256": file_sha256(self.manifest),
+            },
+            "files": {path.name: file_sha256(path)
+                      for path in (self.onnx, self.int8, self.text2phoneme)},
+            "tokens_sha256": file_sha256(ZIPFORMER_DIR / "tokens.txt"),
+            "units_sha256": file_sha256(ZIPFORMER_DIR / "phoneme_units.json"),
+            "chunk": CHUNK_SIZE,
+            "chunk_frames": CHUNK_FRAMES,
+            "input_frames": INPUT_FRAMES,
+            "left_context_frames": LEFT_CONTEXT_FRAMES,
+            "fbank": dict(FBANK_OPTIONS),
+            "sample_scale": scale,
+        }
+
+
+def load_zipformer(files: ZipformerFiles, *, scale: float,
+                   identity_path: Path | None = None) -> ZipformerDecoder:
+    """The card's decoder on CPU, and the identity its decodes rest on when asked.
+
+    The front end is the card's own (kaldi fbank, povey, no dither, ``snip_edges`` false) with
+    :data:`TAIL_SAMPLES` of silence appended, and ``scale`` multiplying the waveform first:
+    the card does not say whether kaldi wants [-1, 1] or int16-scaled samples, so the gate pins
+    it (:func:`training.zipformer_gate.pin_scale`) before any screen set is decoded. ONNX runs
+    with one thread per session: the screen parallelises whole items across processes, and a
+    per-session thread pool would oversubscribe the box.
+
+    ``identity_path`` writes the shared record (or refuses a run whose weights, table or
+    settings differ). The record is the same shape as every other model's
+    (:func:`training.external_decode.load_decoders`), so the arms' fingerprints key the same.
+    """
+    import onnxruntime as ort
+    from torchaudio.compliance import kaldi
+
+    def fbank(waveform, **options):
+        """The card's kaldi fbank over one 1-D float32 waveform (torchaudio wants 2-D)."""
+        import torch
+
+        return kaldi.fbank(torch.from_numpy(np.asarray(waveform))[None], **options).numpy()
+
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
+    session = ort.InferenceSession(str(Path(files.onnx)), sess_options=options,
+                                   providers=["CPUExecutionProvider"])
+    decoder = ZipformerDecoder(session, read_tokens(ZIPFORMER_DIR / "tokens.txt"), fbank,
+                               scale=scale)
+    if identity_path is not None:
+        record = {
+            "model": "zipformer",
+            "identity": files.identity(scale=scale),
+            "fingerprints": {arm: zipformer_fingerprint("zipformer", arm).as_dict()
+                             for arm in ZIPFORMER_PROTOCOLS},
+        }
+        record_identity(Path(identity_path), record, label="zipformer")
+    return decoder
 
 
 #: What one check's inference decodes, in samples: ours its span, zipformer's warm-started

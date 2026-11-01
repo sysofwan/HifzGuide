@@ -112,16 +112,12 @@ decode_group() {  # set [args...]: one process per model, so three cards' worth 
 
 edits_verify() {
   local stale
-  stale=$(git -C "$EDITS_REPO" status --porcelain tools/tadabur/synthetic_edits/)
-  if [ -n "$stale" ]; then
-    echo "the render is not byte-identical to the commit:"
-    echo "$stale"
-    return 1
+  stale=\$(git -C \"\$EDITS_REPO\" status --porcelain tools/tadabur/synthetic_edits/)
+  if [ -n \"\$stale\" ]; then
+    echo \"the render is not byte-identical to the commit:\"; echo \"\$stale\"; return 1
   fi
-  echo "manifest, summary and worklist are byte-identical to the commit"
-  python -u -m tadabur.synthetic_edits verify \
-    --manifest "$EDITS_REPO/tools/tadabur/synthetic_edits/edits.jsonl" \
-    --audio-dir "$REGEN/audio"
+  echo \"manifest, summary and worklist are byte-identical to the commit\"
+  python -u -m tadabur.synthetic_edits verify --manifest \"\$EDITS_REPO/tools/tadabur/synthetic_edits/edits.jsonl\" --audio-dir \"\$REGEN/audio\"
 }
 
 gpu_phase() {
@@ -148,7 +144,7 @@ echo \"\$failed\" > \"\$LOGS/batch.exit\"
 echo \"batch finished with \$failed (0 = every step clean)\"
 exit \"\$failed\"
 RUN
-chmod +x '$ROOT/run-batch.sh'"
+chmod +x '$ROOT/run-batch.sh' && bash -n '$ROOT/run-batch.sh'"
 }
 
 launch() {

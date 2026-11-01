@@ -1,0 +1,1941 @@
+{
+ "arm_map": {
+  "base": {
+   "benchmark_per_class": "stream_b0",
+   "edits_heard": "stream_b0",
+   "qdat_bench": "stream_b0",
+   "qdat_false_flags": "checks",
+   "qdat_per_class": "stream_b0",
+   "ship_a_catches": "checks",
+   "ship_a_whole_item": "stream_b0"
+  },
+  "c95": {
+   "benchmark_per_class": "stream_b0",
+   "edits_heard": "stream_b0",
+   "qdat_bench": "stream_b0",
+   "qdat_false_flags": "checks",
+   "qdat_per_class": "stream_b0",
+   "ship_a_catches": "checks",
+   "ship_a_whole_item": "stream_b0"
+  },
+  "r2_candidate_ema": {
+   "benchmark_per_class": "stream_b0",
+   "edits_heard": "stream_b0",
+   "qdat_bench": "stream_b0",
+   "qdat_false_flags": "checks",
+   "qdat_per_class": "stream_b0",
+   "ship_a_catches": "checks",
+   "ship_a_whole_item": "stream_b0"
+  },
+  "zipformer": {
+   "benchmark_per_class": "spans",
+   "edits_heard": "spans",
+   "qdat_bench": "spans",
+   "qdat_false_flags": "checks-w1",
+   "qdat_per_class": "spans",
+   "ship_a_catches": "checks-w1",
+   "ship_a_whole_item": "spans"
+  }
+ },
+ "benchmark": {
+  "arms": {
+   "base": "stream_b0",
+   "c95": "stream_b0",
+   "r2_candidate_ema": "stream_b0",
+   "zipformer": "spans"
+  },
+  "clips": {
+   "scored": 545,
+   "unsupported": [
+    "tlog_holdout/106_3_9963478690",
+    "tlog_holdout/106_4_6330156112"
+   ],
+   "verdict": 547
+  },
+  "sources": {
+   "everyayah_heldout": {
+    "base": {
+     "consonant": {
+      "clusters": 75,
+      "error": 9.44,
+      "interval": {
+       "lower": 8.72,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.2
+      },
+      "slots": 8125
+     },
+     "focus": {
+      "clusters": 75,
+      "error": 10.49,
+      "interval": {
+       "lower": 9.45,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 11.71
+      },
+      "slots": 2917
+     },
+     "haraka": {
+      "clusters": 75,
+      "error": 10.07,
+      "interval": {
+       "lower": 9.15,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.97
+      },
+      "slots": 6726
+     },
+     "phoneme": {
+      "clusters": 75,
+      "error": 21.66,
+      "interval": {
+       "lower": 20.66,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 22.6
+      },
+      "slots": 22503
+     },
+     "shaddah": {
+      "clusters": 75,
+      "error": 23.18,
+      "interval": {
+       "lower": 20.31,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.83
+      },
+      "slots": 785
+     }
+    },
+    "c95": {
+     "consonant": {
+      "clusters": 75,
+      "error": 9.11,
+      "interval": {
+       "lower": 8.45,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.78
+      },
+      "slots": 8125
+     },
+     "focus": {
+      "clusters": 75,
+      "error": 10.15,
+      "interval": {
+       "lower": 9.16,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 11.23
+      },
+      "slots": 2917
+     },
+     "haraka": {
+      "clusters": 75,
+      "error": 8.68,
+      "interval": {
+       "lower": 7.81,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.5
+      },
+      "slots": 6726
+     },
+     "phoneme": {
+      "clusters": 75,
+      "error": 21.06,
+      "interval": {
+       "lower": 20.03,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 22.04
+      },
+      "slots": 22503
+     },
+     "shaddah": {
+      "clusters": 75,
+      "error": 22.42,
+      "interval": {
+       "lower": 19.6,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.13
+      },
+      "slots": 785
+     }
+    },
+    "clips": 200,
+    "r2_candidate_ema": {
+     "consonant": {
+      "clusters": 75,
+      "error": 9.0,
+      "interval": {
+       "lower": 8.37,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.6
+      },
+      "slots": 8125
+     },
+     "focus": {
+      "clusters": 75,
+      "error": 10.32,
+      "interval": {
+       "lower": 9.33,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 11.34
+      },
+      "slots": 2917
+     },
+     "haraka": {
+      "clusters": 75,
+      "error": 8.59,
+      "interval": {
+       "lower": 7.76,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.36
+      },
+      "slots": 6726
+     },
+     "phoneme": {
+      "clusters": 75,
+      "error": 20.91,
+      "interval": {
+       "lower": 19.89,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 21.85
+      },
+      "slots": 22503
+     },
+     "shaddah": {
+      "clusters": 75,
+      "error": 22.93,
+      "interval": {
+       "lower": 20.06,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.63
+      },
+      "slots": 785
+     }
+    },
+    "zipformer": {
+     "consonant": {
+      "clusters": 75,
+      "error": 0.46,
+      "interval": {
+       "lower": 0.28,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.62
+      },
+      "slots": 8125
+     },
+     "focus": {
+      "clusters": 75,
+      "error": 0.48,
+      "interval": {
+       "lower": 0.22,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.76
+      },
+      "slots": 2917
+     },
+     "haraka": {
+      "clusters": 75,
+      "error": 0.24,
+      "interval": {
+       "lower": 0.14,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.35
+      },
+      "slots": 6726
+     },
+     "phoneme": {
+      "clusters": 75,
+      "error": 9.66,
+      "interval": {
+       "lower": 9.22,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.16
+      },
+      "slots": 22503
+     },
+     "shaddah": {
+      "clusters": 75,
+      "error": 0.89,
+      "interval": {
+       "lower": 0.23,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 1.73
+      },
+      "slots": 785
+     }
+    }
+   },
+   "qul_alnufais": {
+    "base": {
+     "consonant": {
+      "clusters": 81,
+      "error": 9.49,
+      "interval": {
+       "lower": 8.66,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.24
+      },
+      "slots": 7663
+     },
+     "focus": {
+      "clusters": 81,
+      "error": 10.55,
+      "interval": {
+       "lower": 9.15,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 11.82
+      },
+      "slots": 2777
+     },
+     "haraka": {
+      "clusters": 81,
+      "error": 9.78,
+      "interval": {
+       "lower": 9.0,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.47
+      },
+      "slots": 6353
+     },
+     "phoneme": {
+      "clusters": 81,
+      "error": 28.43,
+      "interval": {
+       "lower": 25.38,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 31.7
+      },
+      "slots": 21205
+     },
+     "shaddah": {
+      "clusters": 81,
+      "error": 23.87,
+      "interval": {
+       "lower": 21.36,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 26.25
+      },
+      "slots": 750
+     }
+    },
+    "c95": {
+     "consonant": {
+      "clusters": 81,
+      "error": 8.73,
+      "interval": {
+       "lower": 8.07,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.31
+      },
+      "slots": 7663
+     },
+     "focus": {
+      "clusters": 81,
+      "error": 9.79,
+      "interval": {
+       "lower": 8.85,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.69
+      },
+      "slots": 2777
+     },
+     "haraka": {
+      "clusters": 81,
+      "error": 8.0,
+      "interval": {
+       "lower": 7.35,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.58
+      },
+      "slots": 6353
+     },
+     "phoneme": {
+      "clusters": 81,
+      "error": 27.52,
+      "interval": {
+       "lower": 24.43,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 30.85
+      },
+      "slots": 21205
+     },
+     "shaddah": {
+      "clusters": 81,
+      "error": 23.73,
+      "interval": {
+       "lower": 21.15,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 26.02
+      },
+      "slots": 750
+     }
+    },
+    "clips": 200,
+    "r2_candidate_ema": {
+     "consonant": {
+      "clusters": 81,
+      "error": 8.59,
+      "interval": {
+       "lower": 7.95,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.14
+      },
+      "slots": 7663
+     },
+     "focus": {
+      "clusters": 81,
+      "error": 9.54,
+      "interval": {
+       "lower": 8.61,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.39
+      },
+      "slots": 2777
+     },
+     "haraka": {
+      "clusters": 81,
+      "error": 8.04,
+      "interval": {
+       "lower": 7.33,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.7
+      },
+      "slots": 6353
+     },
+     "phoneme": {
+      "clusters": 81,
+      "error": 27.58,
+      "interval": {
+       "lower": 24.47,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 30.92
+      },
+      "slots": 21205
+     },
+     "shaddah": {
+      "clusters": 81,
+      "error": 23.2,
+      "interval": {
+       "lower": 20.64,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.7
+      },
+      "slots": 750
+     }
+    },
+    "zipformer": {
+     "consonant": {
+      "clusters": 81,
+      "error": 0.47,
+      "interval": {
+       "lower": 0.26,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.72
+      },
+      "slots": 7663
+     },
+     "focus": {
+      "clusters": 81,
+      "error": 0.47,
+      "interval": {
+       "lower": 0.18,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.78
+      },
+      "slots": 2777
+     },
+     "haraka": {
+      "clusters": 81,
+      "error": 0.33,
+      "interval": {
+       "lower": 0.14,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.59
+      },
+      "slots": 6353
+     },
+     "phoneme": {
+      "clusters": 81,
+      "error": 15.32,
+      "interval": {
+       "lower": 12.74,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 18.59
+      },
+      "slots": 21205
+     },
+     "shaddah": {
+      "clusters": 81,
+      "error": 1.6,
+      "interval": {
+       "lower": 0.61,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.8
+      },
+      "slots": 750
+     }
+    }
+   },
+   "tlog_holdout": {
+    "base": {
+     "consonant": {
+      "clusters": 61,
+      "error": 11.15,
+      "interval": {
+       "lower": 10.02,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 12.38
+      },
+      "slots": 3712
+     },
+     "focus": {
+      "clusters": 61,
+      "error": 11.65,
+      "interval": {
+       "lower": 9.61,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 13.97
+      },
+      "slots": 1331
+     },
+     "haraka": {
+      "clusters": 61,
+      "error": 12.81,
+      "interval": {
+       "lower": 11.22,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 14.44
+      },
+      "slots": 3044
+     },
+     "phoneme": {
+      "clusters": 61,
+      "error": 24.42,
+      "interval": {
+       "lower": 22.63,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 26.04
+      },
+      "slots": 10126
+     },
+     "shaddah": {
+      "clusters": 61,
+      "error": 31.95,
+      "interval": {
+       "lower": 25.53,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 37.46
+      },
+      "slots": 338
+     }
+    },
+    "c95": {
+     "consonant": {
+      "clusters": 61,
+      "error": 13.95,
+      "interval": {
+       "lower": 12.3,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 15.85
+      },
+      "slots": 3712
+     },
+     "focus": {
+      "clusters": 61,
+      "error": 14.35,
+      "interval": {
+       "lower": 12.12,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 16.77
+      },
+      "slots": 1331
+     },
+     "haraka": {
+      "clusters": 61,
+      "error": 12.02,
+      "interval": {
+       "lower": 10.57,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 13.37
+      },
+      "slots": 3044
+     },
+     "phoneme": {
+      "clusters": 61,
+      "error": 25.52,
+      "interval": {
+       "lower": 23.74,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 27.18
+      },
+      "slots": 10126
+     },
+     "shaddah": {
+      "clusters": 61,
+      "error": 32.84,
+      "interval": {
+       "lower": 26.07,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 39.05
+      },
+      "slots": 338
+     }
+    },
+    "clips": 145,
+    "r2_candidate_ema": {
+     "consonant": {
+      "clusters": 61,
+      "error": 10.67,
+      "interval": {
+       "lower": 9.38,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 12.1
+      },
+      "slots": 3712
+     },
+     "focus": {
+      "clusters": 61,
+      "error": 11.35,
+      "interval": {
+       "lower": 9.33,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 13.49
+      },
+      "slots": 1331
+     },
+     "haraka": {
+      "clusters": 61,
+      "error": 11.63,
+      "interval": {
+       "lower": 10.34,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 12.93
+      },
+      "slots": 3044
+     },
+     "phoneme": {
+      "clusters": 61,
+      "error": 23.75,
+      "interval": {
+       "lower": 22.16,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.27
+      },
+      "slots": 10126
+     },
+     "shaddah": {
+      "clusters": 61,
+      "error": 31.06,
+      "interval": {
+       "lower": 24.85,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 36.78
+      },
+      "slots": 338
+     }
+    },
+    "zipformer": {
+     "consonant": {
+      "clusters": 61,
+      "error": 2.4,
+      "interval": {
+       "lower": 1.69,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 3.12
+      },
+      "slots": 3712
+     },
+     "focus": {
+      "clusters": 61,
+      "error": 2.33,
+      "interval": {
+       "lower": 1.49,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 3.18
+      },
+      "slots": 1331
+     },
+     "haraka": {
+      "clusters": 61,
+      "error": 1.97,
+      "interval": {
+       "lower": 1.33,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.71
+      },
+      "slots": 3044
+     },
+     "phoneme": {
+      "clusters": 61,
+      "error": 11.25,
+      "interval": {
+       "lower": 10.42,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 12.11
+      },
+      "slots": 10126
+     },
+     "shaddah": {
+      "clusters": 61,
+      "error": 1.78,
+      "interval": {
+       "lower": 0.36,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 3.53
+      },
+      "slots": 338
+     }
+    }
+   }
+  }
+ },
+ "compute": {
+  "arms": {
+   "checks-w1": {
+    "decoded_audio_seconds_per_audio_second": 37.44,
+    "inferences_per_audio_second": 5.8,
+    "onnx_chunk_calls_per_audio_second": 78.0
+   },
+   "checks-w1-windows": {
+    "decoded_audio_seconds_per_audio_second": 7.56,
+    "inferences_per_audio_second": 5.8,
+    "onnx_chunk_calls_per_audio_second": 15.8
+   },
+   "ours": {
+    "decoded_audio_seconds_per_audio_second": 25.82,
+    "inferences_per_audio_second": 5.8,
+    "onnx_chunk_calls_per_audio_second": 53.8
+   },
+   "zipformer-single-stream": {
+    "decoded_audio_seconds_per_audio_second": 1.0,
+    "inferences_per_audio_second": 2.08
+   }
+  },
+  "measured": {
+   "benchmark/decode": {
+    "audio_seconds": 7515.7,
+    "decoded_audio_seconds": 7515.7,
+    "items": 577,
+    "wall_seconds": 154.4,
+    "workers": 12
+   },
+   "edits/decode": {
+    "audio_seconds": 5834.7,
+    "decoded_audio_seconds": 5834.7,
+    "items": 300,
+    "wall_seconds": 117.9,
+    "workers": 12
+   },
+   "qdat/decode": {
+    "audio_seconds": 13939.4,
+    "decoded_audio_seconds": 13939.4,
+    "items": 1505,
+    "wall_seconds": 302.1,
+    "workers": 12
+   },
+   "qdat/w1": {
+    "audio_seconds": 13748.4,
+    "decoded_audio_seconds": 380747.2,
+    "items": 1485,
+    "wall_seconds": 6833.3,
+    "workers": 12
+   },
+   "qud-other/decode": {
+    "audio_seconds": 86479.7,
+    "decoded_audio_seconds": 86479.7,
+    "items": 10261,
+    "wall_seconds": 1872.1,
+    "workers": 12
+   },
+   "ship-a/decode": {
+    "audio_seconds": 5301.3,
+    "decoded_audio_seconds": 5301.3,
+    "items": 512,
+    "wall_seconds": 109.8,
+    "workers": 12
+   },
+   "ship-a/w1": {
+    "audio_seconds": 5301.3,
+    "decoded_audio_seconds": 154108.4,
+    "items": 512,
+    "wall_seconds": 2760.2,
+    "workers": 12
+   }
+  }
+ },
+ "disjointness": {
+  "clips": 599,
+  "name_screen": {
+   "everyayah_heldout": {
+    "note": "no published name to look up; names prove nothing (qud_overlap.py)",
+    "reciter": "3 EveryAyah reciters, unnamed in the benchmark",
+    "tadabur": null
+   },
+   "qul_alnufais": {
+    "query_name": "احمد النفيس",
+    "reciter": "Al-Nufais (the source's name)",
+    "tadabur": {
+     "tadabur_id": 106,
+     "uses": {
+      "aug.control": 1010,
+      "aug.training": 1010,
+      "consonant1.training": 822,
+      "consonant2.control.training": 625,
+      "consonant2.training": 625,
+      "decode_evalset.dev": 4,
+      "decode_evalset.legacy_stratified": 3,
+      "h448.init_validation": 56,
+      "h448.training": 1015,
+      "human_label.waqf_events": 1,
+      "muraja.reread_corpus": 1,
+      "ship_a.mining": 83,
+      "ship_a.verified_train": 4,
+      "truth_site.new_audit": 2,
+      "truth_site.waqf_boundary": 1
+     }
+    }
+   },
+   "tlog_holdout": {
+    "note": "no published name to look up; names prove nothing (qud_overlap.py)",
+    "reciter": "anonymous tlog recordings (recording ids only)",
+    "tadabur": null
+   }
+  },
+  "plan": {
+   "decode": 577,
+   "same_group": 8,
+   "sealed": 22,
+   "trained": 30,
+   "verdict": 547
+  },
+  "roles": 9,
+  "same_group": 8,
+  "sealed": 22,
+  "tlog": {
+   "consumed": {
+    "log": "tools/tadabur/consonant2_readout/tlog_consumed.jsonl.gz",
+    "note": "the rows the round-2 candidate read, not tlog.training's pool: a pool row the run never read is not exposure (architect r3, D3)",
+    "rows": 73990,
+    "rows_sha256": "3aee9273aaa9f533bc20cc1d604005c4e4c505f1e2741243c85719958f5ec970",
+    "sha256": "5e95c3c06f498768323781fc04b4394093233c2a7717ae193f80feda87929238",
+    "shards": 130
+   },
+   "indexed_rows": 713183,
+   "rows": 719853,
+   "training": {
+    "rows": 426825,
+    "rows_sha256": "6a608bc72ffa54bebe7402c6ff91bfbb72f89866c469822729761d0facf7cb58",
+    "use": "tlog.training"
+   },
+   "unfingerprinted_rows": 6670
+  },
+  "trained": 30,
+  "verdict": 547
+ },
+ "edits": {
+  "arms": {
+   "decoy": {
+    "base": {
+     "den": 150.0,
+     "interval": {
+      "lower": 50.66666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.66666666666666
+     },
+     "num": 88.0,
+     "point": 58.666666666666664
+    },
+    "c95": {
+     "den": 150.0,
+     "interval": {
+      "lower": 54.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 70.0
+     },
+     "num": 93.0,
+     "point": 62.0
+    },
+    "r2_candidate_ema": {
+     "den": 150.0,
+     "interval": {
+      "lower": 52.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 68.0
+     },
+     "num": 90.0,
+     "point": 60.0
+    },
+    "zipformer": {
+     "den": 150.0,
+     "interval": {
+      "lower": 90.66666666666666,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 98.0
+     },
+     "num": 142.0,
+     "point": 94.66666666666667
+    }
+   },
+   "edit": {
+    "base": {
+     "den": 150.0,
+     "interval": {
+      "lower": 16.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 29.333333333333332
+     },
+     "num": 34.0,
+     "point": 22.666666666666664
+    },
+    "c95": {
+     "den": 150.0,
+     "interval": {
+      "lower": 28.666666666666668,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 44.0
+     },
+     "num": 54.0,
+     "point": 36.0
+    },
+    "r2_candidate_ema": {
+     "den": 150.0,
+     "interval": {
+      "lower": 24.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 38.666666666666664
+     },
+     "num": 47.0,
+     "point": 31.333333333333336
+    },
+    "zipformer": {
+     "den": 150.0,
+     "interval": {
+      "lower": 11.333333333333332,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 23.333333333333332
+     },
+     "num": 26.0,
+     "point": 17.333333333333336
+    }
+   }
+  },
+  "differences": {
+   "decoy": {
+    "base−r2_candidate_ema": {
+     "interval": {
+      "lower": -7.9999999999999964,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 5.333333333333334
+     },
+     "point": -1.3333333333333308
+    },
+    "c95−r2_candidate_ema": {
+     "interval": {
+      "lower": -1.3333333333333308,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 5.333333333333334
+     },
+     "point": 2.0000000000000018
+    },
+    "zipformer−r2_candidate_ema": {
+     "interval": {
+      "lower": 26.66666666666666,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 42.666666666666664
+     },
+     "point": 34.66666666666667
+    }
+   },
+   "edit": {
+    "base−r2_candidate_ema": {
+     "interval": {
+      "lower": -16.666666666666664,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -1.3333333333333335
+     },
+     "point": -8.66666666666667
+    },
+    "c95−r2_candidate_ema": {
+     "interval": {
+      "lower": 0.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 9.999999999999998
+     },
+     "point": 4.666666666666663
+    },
+    "zipformer−r2_candidate_ema": {
+     "interval": {
+      "lower": -22.666666666666668,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -5.333333333333329
+     },
+     "point": -14.000000000000002
+    }
+   }
+  },
+  "items": 300
+ },
+ "exposure": {
+  "models": {
+   "base": {
+    "synthetic_edit.donor": {
+     "exposed": null,
+     "reciters": 22,
+     "share": null
+    },
+    "synthetic_edit.source": {
+     "exposed": null,
+     "reciters": 44,
+     "share": null
+    }
+   },
+   "c95": {
+    "synthetic_edit.donor": {
+     "exposed": 22,
+     "reciters": 22,
+     "share": 100.0
+    },
+    "synthetic_edit.source": {
+     "exposed": 44,
+     "reciters": 44,
+     "share": 100.0
+    }
+   },
+   "r2_candidate_ema": {
+    "synthetic_edit.donor": {
+     "exposed": 22,
+     "reciters": 22,
+     "share": 100.0
+    },
+    "synthetic_edit.source": {
+     "exposed": 44,
+     "reciters": 44,
+     "share": 100.0
+    }
+   },
+   "zipformer": {
+    "synthetic_edit.donor": {
+     "exposed": null,
+     "reciters": 22,
+     "share": null
+    },
+    "synthetic_edit.source": {
+     "exposed": null,
+     "reciters": 44,
+     "share": null
+    }
+   }
+  },
+  "rule": "share of the edit set's reciters in the lineage's Tadabur training uses; the teacher (Muaalem) and zipformer trained outside Tadabur, so their exposure is unknown by name, not zero",
+  "uses": {
+   "base": null,
+   "c95": [
+    "aug.training",
+    "consonant1.training"
+   ],
+   "r2_candidate_ema": [
+    "consonant1.training",
+    "consonant2.training"
+   ],
+   "zipformer": null
+  }
+ },
+ "gates": {
+  "card_gate_v3_2_baseline": {
+   "character_per": {
+    "1.0": {
+     "phone": 3.961180431768667,
+     "studio": 1.2468030690537084,
+     "unseen": 4.0750287939450445
+    },
+    "32768.0": {
+     "phone": 62.38859180035651,
+     "studio": 81.20204603580562,
+     "unseen": 93.22656721329457
+    }
+   },
+   "model": "v3.2",
+   "passed": null,
+   "pinned_scale": 1.0,
+   "role": "baseline",
+   "roundtrip": {
+    "accepted": false,
+    "clips": 577,
+    "failures": {
+     "quirk": 4,
+     "rule": 3
+    },
+    "identical": 570,
+    "minimum": 0.99
+   },
+   "sha256": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa",
+   "stop": null
+  },
+  "card_gate_v3_decoder_check": {
+   "character_per": {
+    "1.0": {
+     "phone": 4.33749257278669,
+     "studio": 1.2841005967604433,
+     "unseen": 4.4041024515987495
+    },
+    "32768.0": {
+     "phone": 68.38978015448603,
+     "studio": 97.42647058823529,
+     "unseen": 99.29249163604453
+    }
+   },
+   "model": "v3",
+   "passed": false,
+   "pinned_scale": 1.0,
+   "role": "card",
+   "roundtrip": {
+    "accepted": false,
+    "clips": 577,
+    "failures": {
+     "quirk": 3,
+     "rule": 4
+    },
+    "identical": 570,
+    "minimum": 0.99
+   },
+   "sha256": "65e5077932160ba9b5e4f418cf315d31dddf42210db4fea3113bf64359462cf2",
+   "stop": "only 570 of 577 clips (0.9879) re-tokenise to their emitted units, below 0.9900, and 4 of 7 failures register a segmentation the model never emits: the longest-match stand-in is not the card's tokenizer, so no PER against it can be trusted"
+  },
+  "parity": {
+   "passed": true,
+   "rule": {
+    "frame_allowance": "a start frame may shift only where no sampled cut changes (astra r1 §3)",
+    "identical_percent": 99,
+    "padded_final_chunk": "no call may be padded: both runtimes stop before an incomplete chunk and their call counts must agree on every clip (rule 4, repaired in the diagnosis round)",
+    "per_source": true,
+    "phone_character_per_mille": 1,
+    "probe_checks": [
+     "first-preview",
+     "first-window",
+     "later-window",
+     "stop"
+    ],
+    "unit_edits_per_mille": 1
+   }
+  }
+ },
+ "issue": 245,
+ "look_diversity": {
+  "qdat": {
+   "base": {
+    "flagged": 3710,
+    "flagged_single_decode": 1857,
+    "multi_look_share": 98.58,
+    "ratchet_gain": 1853,
+    "rescue_rate": 83.83,
+    "words": 11950
+   },
+   "c95": {
+    "flagged": 3884,
+    "flagged_single_decode": 2140,
+    "multi_look_share": 97.31,
+    "ratchet_gain": 1744,
+    "rescue_rate": 74.74,
+    "words": 11890
+   },
+   "r2_candidate_ema": {
+    "flagged": 3215,
+    "flagged_single_decode": 1697,
+    "multi_look_share": 97.89,
+    "ratchet_gain": 1518,
+    "rescue_rate": 78.82,
+    "words": 11970
+   },
+   "zipformer-checks": {
+    "flagged": 528,
+    "flagged_single_decode": 413,
+    "multi_look_share": 99.14,
+    "ratchet_gain": 115,
+    "rescue_rate": 22.92,
+    "words": 12011
+   },
+   "zipformer-checks-w1": {
+    "flagged": 1590,
+    "flagged_single_decode": 413,
+    "multi_look_share": 99.57,
+    "ratchet_gain": 1177,
+    "rescue_rate": 78.49,
+    "words": 12006
+   },
+   "zipformer-checks-w1-windows": {
+    "flagged": 1343,
+    "flagged_single_decode": 413,
+    "multi_look_share": 99.23,
+    "ratchet_gain": 930,
+    "rescue_rate": 72.08,
+    "words": 12011
+   }
+  },
+  "ship_a": {
+   "r2_candidate_ema": {
+    "flagged_any": 26,
+    "graded": 46,
+    "hidden_catches": 10,
+    "hidden_rate": 21.74
+   },
+   "zipformer-checks-w1": {
+    "flagged_any": 27,
+    "graded": 46,
+    "hidden_catches": 13,
+    "hidden_rate": 28.26
+   }
+  }
+ },
+ "match_rule": {
+  "matches": false,
+  "rows": {
+   "qdat_false_flags": {
+    "interval": {
+     "lower": 1.9597825895284038,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 6.126603734533509
+    },
+    "point": 3.952014349341986
+   },
+   "ship_a_catches": {
+    "interval": {
+     "lower": -6.521739130434784,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 6.521739130434784
+    },
+    "point": 0.0
+   }
+  },
+  "rule": "single-stream checks matches checks-w1 when the paired 95% interval of the difference contains 0 on both metrics; then one stream suffices in the app"
+ },
+ "probe": {
+  "horizon_hours": 12.0,
+  "measured_rate": 50.86,
+  "measured_wall_seconds": 104.8,
+  "projected_hours": 3.6,
+  "rule": "the checks-w1 store's rate on 20 qdat items, projected over every job; the batch stops past 12 h (architect r2, AC 6)",
+  "stop": false
+ },
+ "qdat": {
+  "arms": [
+   "base",
+   "r2_candidate_ema",
+   "c95",
+   "zipformer-checks-w1",
+   "zipformer-checks"
+  ],
+  "clusters": 161,
+  "comparisons": {
+   "c95−base": {
+    "interval": {
+     "lower": 21.625172193392462,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 36.659301196943524
+    },
+    "point": 28.732666712756085
+   },
+   "r2_candidate_ema−base": {
+    "interval": {
+     "lower": 3.97905567162099,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 11.852570503194732
+    },
+    "point": 7.68443651744188
+   },
+   "zipformer-checks-w1−base": {
+    "interval": {
+     "lower": -15.431216796549858,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": -2.721011349742313
+    },
+    "point": -9.094343475597302
+   },
+   "zipformer-checks-w1−r2_candidate_ema": {
+    "interval": {
+     "lower": -23.49518367632845,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": -10.149409919071939
+    },
+    "point": -16.778779993039183
+   },
+   "zipformer-checks−zipformer-checks-w1": {
+    "interval": {
+     "lower": 1.9597825895284038,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 6.126603734533509
+    },
+    "point": 3.952014349341986
+   }
+  },
+  "harness": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "items": 1505,
+  "models": {
+   "base": {
+    "den": 11620.0,
+    "interval": {
+     "lower": 22.42619260972808,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 37.35028749810749
+    },
+    "num": 343.0,
+    "point": 29.518072289156624
+   },
+   "c95": {
+    "den": 11502.0,
+    "interval": {
+     "lower": 47.07819653469471,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 70.95251967288529
+    },
+    "num": 670.0,
+    "point": 58.250739001912706
+   },
+   "r2_candidate_ema": {
+    "den": 11639.0,
+    "interval": {
+     "lower": 29.061896271589692,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 46.26281488969069
+    },
+    "num": 433.0,
+    "point": 37.20250880659851
+   },
+   "zipformer-checks": {
+    "den": 11774.0,
+    "interval": {
+     "lower": 18.48834984092244,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 30.961680588655064
+    },
+    "num": 287.0,
+    "point": 24.37574316290131
+   },
+   "zipformer-checks-w1": {
+    "den": 11800.0,
+    "interval": {
+     "lower": 15.011122529104151,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 26.4454787462108
+    },
+    "num": 241.0,
+    "point": 20.423728813559322
+   }
+  },
+  "observations": 12040,
+  "scale": 1000.0,
+  "words": 12040
+ },
+ "report_only": {
+  "qdat_per_class": {
+   "base": {
+    "consonant": {
+     "clusters": 161,
+     "error": 9.38,
+     "interval": {
+      "lower": 8.65,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 10.16
+     },
+     "slots": 30100
+    },
+    "focus": {
+     "clusters": 161,
+     "error": 12.92,
+     "interval": {
+      "lower": 12.12,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 13.79
+     },
+     "slots": 16555
+    },
+    "haraka": {
+     "clusters": 161,
+     "error": 6.61,
+     "interval": {
+      "lower": 5.71,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 7.58
+     },
+     "slots": 25585
+    },
+    "phoneme": {
+     "clusters": 161,
+     "error": 25.58,
+     "interval": {
+      "lower": 24.59,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 26.65
+     },
+     "slots": 99330
+    },
+    "shaddah": {
+     "clusters": 161,
+     "error": 21.43,
+     "interval": {
+      "lower": 18.48,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 24.64
+     },
+     "slots": 3010
+    }
+   },
+   "c95": {
+    "consonant": {
+     "clusters": 161,
+     "error": 11.54,
+     "interval": {
+      "lower": 10.53,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 12.63
+     },
+     "slots": 30100
+    },
+    "focus": {
+     "clusters": 161,
+     "error": 14.03,
+     "interval": {
+      "lower": 13.04,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 15.12
+     },
+     "slots": 16555
+    },
+    "haraka": {
+     "clusters": 161,
+     "error": 6.14,
+     "interval": {
+      "lower": 5.21,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 7.14
+     },
+     "slots": 25585
+    },
+    "phoneme": {
+     "clusters": 161,
+     "error": 26.43,
+     "interval": {
+      "lower": 25.31,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 27.61
+     },
+     "slots": 99330
+    },
+    "shaddah": {
+     "clusters": 161,
+     "error": 22.42,
+     "interval": {
+      "lower": 19.01,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 26.07
+     },
+     "slots": 3010
+    }
+   },
+   "r2_candidate_ema": {
+    "consonant": {
+     "clusters": 161,
+     "error": 9.26,
+     "interval": {
+      "lower": 8.52,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 10.01
+     },
+     "slots": 30100
+    },
+    "focus": {
+     "clusters": 161,
+     "error": 11.83,
+     "interval": {
+      "lower": 11.1,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 12.63
+     },
+     "slots": 16555
+    },
+    "haraka": {
+     "clusters": 161,
+     "error": 5.62,
+     "interval": {
+      "lower": 4.8,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 6.49
+     },
+     "slots": 25585
+    },
+    "phoneme": {
+     "clusters": 161,
+     "error": 25.31,
+     "interval": {
+      "lower": 24.36,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 26.31
+     },
+     "slots": 99330
+    },
+    "shaddah": {
+     "clusters": 161,
+     "error": 21.56,
+     "interval": {
+      "lower": 18.35,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 25.12
+     },
+     "slots": 3010
+    }
+   },
+   "zipformer": {
+    "consonant": {
+     "clusters": 161,
+     "error": 1.61,
+     "interval": {
+      "lower": 1.14,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 2.08
+     },
+     "slots": 30100
+    },
+    "focus": {
+     "clusters": 161,
+     "error": 1.77,
+     "interval": {
+      "lower": 1.24,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 2.32
+     },
+     "slots": 16555
+    },
+    "haraka": {
+     "clusters": 161,
+     "error": 1.09,
+     "interval": {
+      "lower": 0.66,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 1.58
+     },
+     "slots": 25585
+    },
+    "phoneme": {
+     "clusters": 161,
+     "error": 13.5,
+     "interval": {
+      "lower": 12.76,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 14.32
+     },
+     "slots": 99330
+    },
+    "shaddah": {
+     "clusters": 161,
+     "error": 3.85,
+     "interval": {
+      "lower": 1.86,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 6.23
+     },
+     "slots": 3010
+    }
+   }
+  },
+  "rule": "whole-item decodes only, no app check sequence and no ratchet: the reading of each model's ability without Muraja's engine in the loop",
+  "ship_a_whole_item": {
+   "base": {
+    "correct": {
+     "den": 331,
+     "flagged": 153
+    },
+    "mistakes": {
+     "den": 46,
+     "flagged": 15
+    }
+   },
+   "harness": {
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+    "harness": "tools/muraja_harness/main.swift",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "protocol_version": 3,
+    "scoring_keys": [
+     "name",
+     "mode",
+     "softPairsEnabled",
+     "shaddahSuppression",
+     "softPairsDisabled"
+    ]
+   },
+   "zipformer": {
+    "correct": {
+     "den": 331,
+     "flagged": 38
+    },
+    "mistakes": {
+     "den": 46,
+     "flagged": 14
+    }
+   }
+  }
+ },
+ "schema": 1,
+ "ship_a": {
+  "correct": 331,
+  "correct_flagged": {
+   "clusters": 331,
+   "comparisons": {},
+   "models": {
+    "base": {
+     "den": 331.0,
+     "interval": {
+      "lower": 15.105740181268882,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 23.564954682779458
+     },
+     "num": 64.0,
+     "point": 19.335347432024168
+    },
+    "r2_candidate_ema": {
+     "den": 331.0,
+     "interval": {
+      "lower": 14.803625377643503,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 23.26283987915408
+     },
+     "num": 63.0,
+     "point": 19.033232628398792
+    },
+    "zipformer-checks": {
+     "den": 331.0,
+     "interval": {
+      "lower": 8.761329305135952,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 15.709969788519636
+     },
+     "num": 40.0,
+     "point": 12.084592145015106
+    },
+    "zipformer-checks-w1": {
+     "den": 331.0,
+     "interval": {
+      "lower": 7.854984894259818,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 14.803625377643503
+     },
+     "num": 37.0,
+     "point": 11.178247734138973
+    }
+   },
+   "observations": 331,
+   "scale": 100.0
+  },
+  "harness": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "mistakes": 46,
+  "mistakes_flagged": {
+   "clusters": 46,
+   "comparisons": {
+    "base−r2_candidate_ema": {
+     "interval": {
+      "lower": -6.521739130434784,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.0
+     },
+     "point": -2.1739130434782594
+    },
+    "zipformer-checks-w1−r2_candidate_ema": {
+     "interval": {
+      "lower": -13.043478260869568,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 4.347826086956519
+     },
+     "point": -4.347826086956519
+    },
+    "zipformer-checks−r2_candidate_ema": {
+     "interval": {
+      "lower": -15.217391304347828,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 6.521739130434784
+     },
+     "point": -4.347826086956519
+    },
+    "zipformer-checks−zipformer-checks-w1": {
+     "interval": {
+      "lower": -6.521739130434784,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 6.521739130434784
+     },
+     "point": 0.0
+    }
+   },
+   "models": {
+    "base": {
+     "den": 46.0,
+     "interval": {
+      "lower": 19.565217391304348,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 45.65217391304348
+     },
+     "num": 15.0,
+     "point": 32.608695652173914
+    },
+    "r2_candidate_ema": {
+     "den": 46.0,
+     "interval": {
+      "lower": 21.73913043478261,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 50.0
+     },
+     "num": 16.0,
+     "point": 34.78260869565217
+    },
+    "zipformer-checks": {
+     "den": 46.0,
+     "interval": {
+      "lower": 17.391304347826086,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 43.47826086956522
+     },
+     "num": 14.0,
+     "point": 30.434782608695656
+    },
+    "zipformer-checks-w1": {
+     "den": 46.0,
+     "interval": {
+      "lower": 17.391304347826086,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 43.47826086956522
+     },
+     "num": 14.0,
+     "point": 30.434782608695656
+    }
+   },
+   "observations": 46,
+   "scale": 100.0
+  },
+  "sites": 377,
+  "whole_item": {
+   "base": {
+    "correct": {
+     "den": 331,
+     "flagged": 153
+    },
+    "mistakes": {
+     "den": 46,
+     "flagged": 15
+    }
+   },
+   "harness": {
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+    "harness": "tools/muraja_harness/main.swift",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "protocol_version": 3,
+    "scoring_keys": [
+     "name",
+     "mode",
+     "softPairsEnabled",
+     "shaddahSuppression",
+     "softPairsDisabled"
+    ]
+   },
+   "zipformer": {
+    "correct": {
+     "den": 331,
+     "flagged": 38
+    },
+    "mistakes": {
+     "den": 46,
+     "flagged": 14
+    }
+   }
+  }
+ },
+ "verdict": {
+  "catch_passed": false,
+  "catch_side": {
+   "edit_decoys_unchanged": {
+    "bar": 95.0,
+    "candidate": 60.0,
+    "passed": false,
+    "zipformer": 94.66666666666667
+   },
+   "edits_heard": {
+    "bar": 26.33,
+    "candidate": 31.333333333333336,
+    "passed": false,
+    "zipformer": 17.333333333333336
+   },
+   "ship_a_mistakes_flagged": {
+    "bar": 29.78,
+    "candidate": 34.78260869565217,
+    "note": "on the candidate's 363 committed items (46 of 75 mistake sites)",
+    "passed": true,
+    "zipformer": 30.434782608695656
+   }
+  },
+  "correct_passed": true,
+  "correct_side": {
+   "qdat_false_flags": {
+    "candidate": 37.20250880659851,
+    "closed": true,
+    "gap": 7.68,
+    "target": 33.36,
+    "teacher": 29.518072289156624,
+    "zipformer": 20.423728813559322
+   },
+   "tlog_holdout_consonant": {
+    "candidate": 10.67,
+    "closed": true,
+    "gap": -0.48,
+    "target": 10.67,
+    "teacher": 11.15,
+    "zipformer": 2.4
+   },
+   "tlog_holdout_haraka": {
+    "candidate": 11.63,
+    "closed": true,
+    "gap": -1.18,
+    "target": 11.63,
+    "teacher": 12.81,
+    "zipformer": 1.97
+   }
+  },
+  "rule": "GO = the correct side closes half the gap on qdat and tlog_holdout and the catch side is within the candidate's minus 5 points (decoys >= 95%); PRIOR = correct passes, catch fails; STOP = correct fails",
+  "verdict": "PRIOR"
+ }
+}

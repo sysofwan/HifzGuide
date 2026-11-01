@@ -26,6 +26,7 @@ unit-free character-level PER beside it, which the report carries for Q4.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping, Sequence
 
 #: How much worse than the card a run may be, in PER points, before the screen stops.
@@ -36,12 +37,27 @@ CARD_PER = {"studio": 1.43, "phone": 3.65, "unseen": 9.10}
 ROUNDTRIP_FLOOR = 0.99
 #: A scale must win a source by more than this many PER points to count for that source.
 SCALE_GAP_POINTS = 2.0
+#: How far a threshold comparison may be off from float rounding alone. A PER is a ratio of
+#: integers, so an exact boundary can land a few ULPs either side; this is far below any
+#: reported precision (0.001 point) and far above that rounding.
+BOUNDARY_TOLERANCE = 1e-9
 #: The card's inventory key that is not a unit.
 BLANK_UNIT = "<blank>"
 
 
 class GateStop(RuntimeError):
     """The gate refused to go on: its inputs cannot support the claim it would make."""
+
+
+def _beyond(gap: float, limit: float) -> bool:
+    """Whether ``gap`` clears ``limit`` by more than float rounding can explain.
+
+    The pre-registered boundaries are inclusive: exactly ``limit`` is within it. Binary
+    subtraction can put an exact boundary a few ULPs past it (``100 * 83 / 2000 - 3.65`` is
+    ``0.5000000000000004``), so a gap that close to the limit is the limit.
+    """
+    return gap > limit and not math.isclose(
+        gap, limit, rel_tol=0.0, abs_tol=BOUNDARY_TOLERANCE)
 
 
 def encode_units(text: str, units: Iterable[str]) -> list[str]:
@@ -180,7 +196,7 @@ def require_card_reproduction(per: Mapping[str, Mapping], card: Mapping[str, flo
         if measured is None:
             raise GateStop(f"the run scored no reference units on {source}")
         gap = abs(measured - expected)
-        if gap > limit:
+        if _beyond(gap, limit):
             raise GateStop(
                 f"{source}: the run's PER {measured:.2f} is {gap:.2f} points from the card's "
                 f"{expected} (limit ±{limit}); this is not the card's model on this audio"
@@ -210,9 +226,9 @@ def pin_scale(per: Mapping[float, Mapping[str, float | None]]) -> float:
         if low_per is None or high_per is None:
             raise GateStop(f"{source} has no PER for one of the scales")
         gap = high_per - low_per
-        if gap > SCALE_GAP_POINTS:
+        if _beyond(gap, SCALE_GAP_POINTS):
             winners.add(low)
-        elif gap < -SCALE_GAP_POINTS:
+        elif _beyond(-gap, SCALE_GAP_POINTS):
             winners.add(high)
         else:
             raise GateStop(

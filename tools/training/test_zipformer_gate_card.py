@@ -6,8 +6,11 @@ import pytest
 
 from training.zipformer_gate import (
     CARD_PER,
+    GATE_LIMIT_POINTS,
+    SCALE_GAP_POINTS,
     GateStop,
     character_per,
+    pin_scale,
     require_card_reproduction,
     source_per,
 )
@@ -36,6 +39,43 @@ def test_over_the_limit_on_any_source_stops(source, value):
     per[source]["per"] = value
     with pytest.raises(GateStop):
         require_card_reproduction(per)
+
+
+def test_a_half_point_from_the_per_ratio_is_within_it():
+    # source_per returns 100 * 83 / 2000 = 4.15; binary subtraction gives 0.5000000000000004.
+    measured = 100 * 83 / 2000
+    assert abs(measured - CARD_PER["phone"]) > GATE_LIMIT_POINTS
+    per = _measured(studio=1.43, unseen=9.10)
+    per["phone"] = {"per": measured, "clips": 1, "misses": 0}
+    require_card_reproduction(per)
+
+
+def test_over_the_limit_from_the_per_ratio_stops():
+    per = _measured(studio=1.43, unseen=9.10)
+    per["phone"] = {"per": 100 * 84 / 2000, "clips": 1, "misses": 0}
+    with pytest.raises(GateStop):
+        require_card_reproduction(per)
+
+
+def _rates(edits: dict[str, int], units: int = 2000) -> dict[str, float]:
+    """PERs as :func:`source_per` computes them, from each source's edit count."""
+    return {source: 100 * count / units for source, count in edits.items()}
+
+
+#: The review's scale-rule example: a two-point phone gap with scale 1 better everywhere.
+_TWO_POINT_LOW = _rates({"studio": 28, "phone": 73, "unseen": 182})
+_TWO_POINT_HIGH = _rates({"studio": 100, "phone": 113, "unseen": 400})
+
+
+def test_an_exact_two_point_scale_gap_from_the_per_ratio_stops_the_rule():
+    assert _TWO_POINT_HIGH["phone"] - _TWO_POINT_LOW["phone"] > SCALE_GAP_POINTS
+    with pytest.raises(GateStop):
+        pin_scale({1.0: _TWO_POINT_LOW, 32_768.0: _TWO_POINT_HIGH})
+
+
+def test_just_over_two_points_from_the_per_ratio_is_decisive():
+    high = _rates({"studio": 100, "phone": 114, "unseen": 400})
+    assert pin_scale({1.0: _TWO_POINT_LOW, 32_768.0: high}) == 1.0
 
 
 def test_a_card_source_the_run_did_not_score_stops():

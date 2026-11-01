@@ -262,6 +262,14 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
         candidate = arm_model(CANDIDATE, chosen[CANDIDATE], spec)
         files += [G6_SITES_PATH, *catch_required((candidate, spec.baseline))]
     else:
+        from training.aug_readout_spec import C178
+
         files += [spec.root / "freeze.json",
-                  *(sources.tranches_dir / f"{role}.jsonl" for role in CONFIRM_TRANCHES)]
+                  *(sources.tranches_dir / f"{role}.jsonl" for role in CONFIRM_TRANCHES),
+                  # The pre-registration's reproduction check (not a bar) re-grades C95 on
+                  # #95's tarteel confirm and qdat, and #178 on tarteel confirm. Declared here
+                  # so a sitting records the files the check opens.
+                  sources.decode_path(TARTEEL_CONFIRM, spec.baseline),
+                  sources.decode_path(QDAT_SET, spec.baseline),
+                  sources.decode_path(TARTEEL_CONFIRM, C178)]
     return files

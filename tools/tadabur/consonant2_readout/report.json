@@ -2248,6 +2248,42 @@
    "scale": 100.0
   }
  },
+ "reproduction": {
+  "counts": {
+   "c178_tarteel_v1_confirm": {
+    "flagged": 1837,
+    "graded": 41652
+   },
+   "c95": {
+    "qdat": {
+     "flagged": 670,
+     "graded": 11502
+    },
+    "tarteel_v1_confirm": {
+     "flagged": 1971,
+     "graded": 41572
+    }
+   }
+  },
+  "expected": {
+   "c178_tarteel_v1_confirm": {
+    "flagged": 1837,
+    "graded": 41652
+   },
+   "c95": {
+    "qdat": {
+     "flagged": 670,
+     "graded": 11502
+    },
+    "tarteel_v1_confirm": {
+     "flagged": 1971,
+     "graded": 41572
+    }
+   }
+  },
+  "note": "not a bar; re-graded after the one confirm read, from the committed decodes",
+  "passed": true
+ },
  "sensitivity": {
   "span_trimmed": {
    "all_cause": {

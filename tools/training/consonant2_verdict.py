@@ -855,6 +855,9 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
               f"Verdict: {verdict['verdict']} (pre-claim {verdict['preclaim']})", "",
               "### Bars", ""]
     lines += _condition_lines(verdict["conditions"])
+    if report.get("reproduction"):
+        lines += ["", "### Reproduction check (not a bar)", ""]
+        lines += _reproduction_lines(report["reproduction"])
     if report.get("unreadable"):
         lines += ["", "Nothing was read: " + report["unreadable"]["reason"],
                   *[f"- missing input: {name}" for name in report["unreadable"]["missing_inputs"]]]
@@ -911,6 +914,22 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
     lines += ["", f"Reported strata: {report['coverage']['reported_strata']['status']} — "
               f"{report['coverage']['reported_strata']['reason']}"]
     return "\n".join(lines) + "\n"
+
+
+def _reproduction_lines(record: Mapping) -> list[str]:
+    """The pre-registration's reproduction counts: flagged / graded, re-graded from the
+    committed decodes. Not a bar, so it is printed beside the bars and never folded in."""
+    out = []
+    for group, counts in record.get("counts", {}).items():
+        if {"flagged", "graded"} <= set(counts):
+            out.append(f"- {group}: {counts['flagged']} / {counts['graded']}")
+        else:
+            out += [f"- {group} {name}: {value['flagged']} / {value['graded']}"
+                    for name, value in counts.items()]
+    out.append(f"Passed: {'yes' if record.get('passed') else 'no'}")
+    if record.get("note"):
+        out.append(str(record["note"]))
+    return out
 
 
 def _excluded_lines(record: Mapping) -> list[str]:

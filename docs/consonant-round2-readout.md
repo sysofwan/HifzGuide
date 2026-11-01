@@ -76,6 +76,14 @@ Verdict: fail (pre-claim pass)
 - g5.و→∅: pass — no substitution's paired 99.5% lower bound > 0 (bound -1.738)
 - g5.ي→∅: pass — no substitution's paired 99.5% lower bound > 0 (bound -1.812)
 
+### Reproduction check (not a bar)
+
+- c178_tarteel_v1_confirm: 1837 / 41652
+- c95 qdat: 670 / 11502
+- c95 tarteel_v1_confirm: 1971 / 41572
+Passed: yes
+not a bar; re-graded after the one confirm read, from the committed decodes
+
 ### The pooled gating tables
 
 **pooled confirm.1 + confirm.2** (per 1,000 graded words; n = 57935)

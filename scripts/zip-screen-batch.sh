@@ -74,6 +74,7 @@ DECODES='$DECODES'; REGEN='$REGEN'; WORK='$WORK'; CLIPS='$CLIPS'
 SHERPA='$SHERPA'; SHERPA_PIN='$SHERPA_PIN'; GPU_LOCK='$GPU_LOCK'
 MODELS='base c95 r2_candidate_ema'
 export OMP_NUM_THREADS=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 step() {  # name dir command...
   local name=\$1 dir=\$2; shift 2
@@ -92,19 +93,15 @@ sherpa() {  # a throwaway venv: pinned, never a dependency of tools/
   cat \"\$ROOT/sherpa.json\"
 }
 
-decode_group() {  # set [args...]: one process per model, so three cards' worth of work overlaps
+decode_group() {  # set [args...]: one model at a time (three teacher processes OOM the card)
   local set=\$1; shift
-  local -a names=() pids=()
-  local m rc code=0 i
+  local m rc code=0
   for m in \$MODELS; do
     ( cd \"\$REPO/tools\" && python -u -m training.zip_screen_decode --set \"\$set\" --models \"\$m\" \
-        --out-dir \"\$DECODES\" \"\$@\" ) >> \"\$LOGS/decode-\$set-\$m.log\" 2>&1 &
-    names+=(\"\$m\"); pids+=(\"\$!\")
-  done
-  for i in \"\${!pids[@]}\"; do
-    wait \"\${pids[\$i]}\"; rc=\$?
-    echo \"\$rc\" > \"\$LOGS/decode-\$set-\${names[\$i]}.exit\"
-    echo \"decode \$set \${names[\$i]} exited \$rc\"
+        --out-dir \"\$DECODES\" \"\$@\" ) >> \"\$LOGS/decode-\$set-\$m.log\" 2>&1
+    rc=\$?
+    echo \"\$rc\" > \"\$LOGS/decode-\$set-\$m.exit\"
+    echo \"decode \$set \$m exited \$rc\"
     [ \"\$rc\" -eq 0 ] || code=1
   done
   return \$code

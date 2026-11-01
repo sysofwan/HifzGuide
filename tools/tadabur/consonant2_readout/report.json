@@ -54654,7 +54654,7 @@
   },
   "conditions": [
    {
-    "bar": "Tarteel v1 confirm half, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
+    "bar": "the pooled tlog confirm.1+2 gating set, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
     "bound": -47.40400210041264,
     "comparison": "candidate−c95",
     "end": "upper",
@@ -54675,7 +54675,7 @@
     "verdict": "pass"
    },
    {
-    "bar": "consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0",
+    "bar": "the pooled tlog confirm.1+2 gating set, consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0",
     "bound": -52.16632619824591,
     "comparison": "candidate−c95",
     "end": "upper",
@@ -54711,7 +54711,7 @@
     "verdict": "pass"
    },
    {
-    "bar": "Tarteel v1 confirm, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
+    "bar": "the pooled tlog confirm.1+2 gating set, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
     "bound": 1.527447887230489,
     "comparison": "candidate−c95",
     "end": "upper",

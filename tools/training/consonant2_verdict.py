@@ -125,10 +125,16 @@ AUDIT_BAR = ("the catch-loss audit: at most 20% of the decisive removed verdicts
              "mistakes, and at least 80 decisive removed verdicts are heard")
 TLOG_BAR_TEXT = {
     **CONSONANT_BAR_TEXT,
+    "bar1.all_cause": "the pooled tlog confirm.1+2 gating set, all-cause false flags per "
+                      "1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
+    "bar3.consonant_cause": "the pooled tlog confirm.1+2 gating set, consonant-caused false "
+                            "flags per 1,000: candidate − C95 paired 95% upper bound < 0",
     "bar4a.tlog_confirm": "word agreement with the teacher on the pooled tlog confirm "
                           "tranches: paired 95% lower bound > 0",
     "bar4b.tlog_confirm": "the same on the teacher-departure words of the pooled tlog confirm "
                           "tranches: paired 95% lower bound ≥ −0.5 pt",
+    "g4.tashkeel_cause": "the pooled tlog confirm.1+2 gating set, tashkeel-caused false flags "
+                         "per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
 }
 
 

@@ -55,12 +55,12 @@ Verdict: fail (pre-claim pass)
 
 ### Bars
 
-- bar1.all_cause: pass — Tarteel v1 confirm half, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0 (point -54.467, bound -47.404, threshold 0.000)
+- bar1.all_cause: pass — the pooled tlog confirm.1+2 gating set, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0 (point -54.467, bound -47.404, threshold 0.000)
 - bar2.reduction: pass — the same difference as a point reduction of at least 4.7 per 1,000 (reduction 54.467, required 4.700)
-- bar3.consonant_cause: pass — consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0 (point -57.880, bound -52.166, threshold 0.000)
+- bar3.consonant_cause: pass — the pooled tlog confirm.1+2 gating set, consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0 (point -57.880, bound -52.166, threshold 0.000)
 - bar4a.tlog_confirm: pass — word agreement with the teacher on the pooled tlog confirm tranches: paired 95% lower bound > 0 (point 11.405, bound 10.398, threshold 0.000)
 - bar4b.tlog_confirm: pass — the same on the teacher-departure words of the pooled tlog confirm tranches: paired 95% lower bound ≥ −0.5 pt (point 10.887, bound 9.815, threshold -0.500)
-- g4.tashkeel_cause: fail — Tarteel v1 confirm, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0 (point 0.187, bound 1.527, threshold 1.000)
+- g4.tashkeel_cause: fail — the pooled tlog confirm.1+2 gating set, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0 (point 0.187, bound 1.527, threshold 1.000)
 - g5.ء→∅: pass — no substitution's paired 99.5% lower bound > 0 (bound -5.537)
 - g5.د→ت: pass — no substitution's paired 99.5% lower bound > 0 (bound -2.318)
 - g5.ر→ل: pass — no substitution's paired 99.5% lower bound > 0 (bound -3.115)

@@ -67,8 +67,12 @@ import shutil
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from training.zipformer_gate import card_table, character_per, edit_counts, reference_units
+
+if TYPE_CHECKING:
+    from training.zipformer_decode import ZipformerFiles
 
 #: The committed gate record, beside the identity and the card gate it replaces.
 PARITY_DIR = Path(__file__).resolve().parent.parent / "tadabur" / "zipformer_screen"
@@ -193,14 +197,21 @@ def cut_decision(start: int, end: int, boundary: int) -> bool:
     return start + end >= 2 * boundary
 
 
-def cut_certainty(start: int, next_start: int | None, boundary: int) -> str:
+def cut_certainty(start: int, next_start: int | None, boundary: int,
+                  last_step: int | None = None) -> str:
     """What sherpa's start frames fix about that decision: ``kept``, ``dropped`` or ``ambiguous``.
 
     sherpa exposes a token's first frame only, so its run ends somewhere in
-    ``[start, next_start - 1]`` (a single frame for the last token). A decision both ends agree
-    on is determined; anything else is ambiguous and reported rather than guessed.
+    ``[start, next_start - 1]``. The last token has no next start: its run extends to the crop's
+    own last step (``last_step``), which is what ``_probe`` records; without it the run is
+    assumed to be one frame, which hides a genuine disagreement at the crop's end. A decision
+    both ends agree on is determined; anything else is ambiguous and reported rather than
+    guessed.
     """
-    end_high = start if next_start is None else max(start, next_start - 1)
+    if next_start is not None:
+        end_high = max(start, next_start - 1)
+    else:
+        end_high = start if last_step is None else max(start, last_step)
     low = cut_decision(start, start, boundary)
     high = cut_decision(start, end_high, boundary)
     if low and high:
@@ -214,9 +225,9 @@ def probe_check(entry: Mapping) -> dict:
     """One sampled check's parity: the same units, and the same side of every cut boundary.
 
     ``entry`` carries our emissions (``start``/``end`` steps, exact) beside sherpa's
-    (``start`` only), the crop-relative ``boundaries`` of the check, and the check's name. A
-    determined sherpa decision that differs from ours is a mismatch; an ambiguous one is
-    counted, not excused.
+    (``start`` only), the crop-relative ``boundaries`` of the check, its ``last_step`` (where
+    the terminal run ends), and the check's name. A determined sherpa decision that differs
+    from ours is a mismatch; an ambiguous one is counted, not excused.
     """
     ours, sherpa = list(entry["ours"]), list(entry["sherpa"])
     tokens_equal = [emission["text"] for emission in ours] == [
@@ -229,7 +240,8 @@ def probe_check(entry: Mapping) -> dict:
             for index, (mine, theirs) in enumerate(zip(ours, sherpa)):
                 next_start = (sherpa[index + 1]["start"]
                               if index + 1 < len(sherpa) else None)
-                certainty = cut_certainty(theirs["start"], next_start, boundary)
+                certainty = cut_certainty(theirs["start"], next_start, boundary,
+                                          entry.get("last_step"))
                 kept = cut_decision(mine["start"], mine["end"], boundary)
                 if certainty == "ambiguous":
                     ambiguous += 1
@@ -248,22 +260,41 @@ def probe_check(entry: Mapping) -> dict:
     }
 
 
-def require_parity(record: Mapping) -> None:
-    """Stop unless every source, the phone bound and every probe check passed."""
+def require_parity(record: Mapping, expected: Mapping[str, int]) -> None:
+    """Stop unless every planned source and count, the phone bound and every probe passed.
+
+    ``expected`` is the plan's clip count per source: a record that decoded fewer (a ``--limit``
+    smoke run, a crash-resumed phase) fails even where every clip it did decode is identical,
+    so ``passed`` is never a function of a subset.
+    """
     failures: list[str] = []
-    for source, entry in sorted(record["sources"].items()):
-        if entry["passes"]:
+    for source, count in sorted(expected.items()):
+        entry = record["sources"].get(source)
+        clips = 0 if entry is None else entry["clips"]
+        if clips != count:
+            failures.append(f"{source}: {clips} of the plan's {count} clips were decoded")
             continue
-        if not entry["clips"]:
-            failures.append(f"{source}: no clip was decoded")
+        if entry["passes"]:
             continue
         failures.append(
             f"{source}: {entry['identical']}/{entry['clips']} identical "
             f"({entry['identical_percent']:.2f}%, need {IDENTICAL_PERCENT}%), "
             f"{entry['unit_edits']}/{entry['units_ours']} unit edits "
             f"({entry['edits_per_mille']:.3f} per mille, limit {EDITS_PER_MILLE})")
+    rates = record["audio"]["sample_rates"]
+    off_rate = {rate: count for rate, count in rates.items() if int(rate) != SHERPA_SAMPLE_RATE}
+    if off_rate:
+        failures.append(
+            f"audio: {off_rate} of the clips are not {SHERPA_SAMPLE_RATE} Hz; sherpa-onnx's "
+            "wheel ships no reader that could test a resampler difference")
     phone = record["phone_table_hits"]
-    if not phone["passes"]:
+    if phone.get("missing"):
+        failures.append(
+            f"phone table hits: {len(phone['missing'])} of the plan's {phone['clips']} cohort "
+            f"clips were not decoded by both runtimes, e.g. {phone['missing'][:3]}")
+    elif not phone["clips"]:
+        failures.append("phone table hits: the plan's phone clips have no card-table reference")
+    elif not phone["passes"]:
         failures.append(
             f"phone table hits: {phone['character_distance']} characters of "
             f"{phone['reference_characters']} ({phone['per_mille']:.3f} per mille, "
@@ -370,11 +401,12 @@ def _probe(decoder, samples, name: str, span) -> dict:
     import numpy as np
 
     from training.decoding import PREVIEW, STOP
-    from training.zipformer_decode import HOP_STEPS, STEP_SAMPLES, scan_units, warmup_start
+    from training.zipformer_decode import (HOP_STEPS, STEP_SAMPLES, featurize, scan_units,
+                                           warmup_start)
 
     begin = warmup_start(span)
-    emissions = scan_units(np.concatenate(decoder.stream_calls(samples[begin:span.end])),
-                           decoder.tokens)
+    crop = samples[begin:span.end]
+    emissions = scan_units(np.concatenate(decoder.stream_calls(crop)), decoder.tokens)
     offset = begin // STEP_SAMPLES
     start = span.start // STEP_SAMPLES - offset
     boundaries = ([start] if span.kind in (PREVIEW, STOP)
@@ -384,18 +416,24 @@ def _probe(decoder, samples, name: str, span) -> dict:
         "kind": span.kind,
         "span": [begin, span.end],
         "boundaries": boundaries,
+        #: The crop's last step: where the terminal token's run ends (sherpa exposes only its
+        #: start), so the last cut decision is checked on its true extent.
+        "last_step": len(featurize(crop, decoder.fbank, scale=decoder.scale)) - 1,
         "ours": [{"text": emission.text, "start": emission.start_step,
                   "end": emission.end_step} for emission in emissions],
     }
 
 
 def _ours_clip(item: tuple) -> dict:
-    """One clip's our-side record: units, frame counts, the padded tail, and any probes."""
+    """One clip's our-side record: units, frame counts, the padded tail, and any probes.
+
+    The clip's native rate is recorded, not enforced here: ``ours`` refuses a non-16 kHz plan
+    before the pool, and ``require_parity`` fails the record if one still reaches a worker.
+    """
     import numpy as np
     import soundfile
 
     from tadabur.audio import decode_to_mono_16k_with_rate_and_decoder, read_audio_bytes
-    from training.distill_data import SAMPLE_RATE
     from training.zipformer_decode import featurize, scan_units
     from training.zipformer_run import worker_decoder
 
@@ -403,10 +441,6 @@ def _ours_clip(item: tuple) -> dict:
     decoder = worker_decoder()
     raw = read_audio_bytes(Path(audio))
     samples, rate, reader = decode_to_mono_16k_with_rate_and_decoder(raw)
-    if rate != SAMPLE_RATE:
-        raise ValueError(
-            f"{key}: {rate} Hz. Only 16 kHz clips can be held to this gate: sherpa-onnx's "
-            "wheel ships no reader that could test a resampler difference (principal r2 §1)")
     calls = decoder.stream_calls(samples)
     features = featurize(samples, decoder.fbank, scale=decoder.scale)
     emissions = scan_units(np.concatenate(calls), decoder.tokens)
@@ -456,17 +490,28 @@ def _duration(path: Path) -> int:
     return int(round(info.frames * SAMPLE_RATE / info.samplerate))
 
 
+def _sample_rate(path: Path) -> int:
+    """A clip's native sample rate, from its header (no decode)."""
+    import soundfile
+
+    return soundfile.info(str(path)).samplerate
+
+
 def _ours_protocol(scale: float) -> dict:
     """The constants our side decoded with, read from the decoder that owns them."""
     from training.distill_data import SAMPLE_RATE
     from training.zipformer_decode import (BLANK_ID, CHUNK_FRAMES, CHUNK_SIZE, FBANK_OPTIONS,
-                                           IDENTITY_PATH, INPUT_FRAMES, STEP_SAMPLES,
-                                           TAIL_SAMPLES)
+                                           IDENTITY_PATH, INPUT_FRAMES, ONNX_FILE,
+                                           STEP_SAMPLES, TAIL_SAMPLES)
 
+    identity = _read_json(IDENTITY_PATH)["identity"]
     return {
         "ours": {
             "identity": str(IDENTITY_PATH.relative_to(PARITY_DIR.parents[2])),
             "identity_sha256": _sha256_file(IDENTITY_PATH),
+            #: The weights this side actually decoded: the identity's pinned file, so the
+            #: comparison cannot run against a different model than sherpa's.
+            "model_sha256": identity["files"][ONNX_FILE],
             "sample_scale": scale,
             "sample_rate": SAMPLE_RATE,
             "step_samples": STEP_SAMPLES,
@@ -512,8 +557,14 @@ def ours(work_dir: Path, out_dir: Path, workers: int, limit: int | None = None) 
     (out_dir / "fbank").mkdir(parents=True, exist_ok=True)
     items = [(key, CARD_SOURCES[rows[key]["source"]], str(base / rows[key]["audio"]),
               str(out_dir / "fbank" / _fbank_name(key)), key in selected) for key in keys]
+    rates = Counter(_sample_rate(Path(audio)) for _, _, audio, _, _ in items)
     print(f"parity ours: {len(items)} clips, {len(selected)} canaries, scale {scale}, "
-          f"{workers} workers", flush=True)
+          f"{workers} workers, sample rates {dict(rates)}", flush=True)
+    if set(rates) != {SHERPA_SAMPLE_RATE}:
+        raise SystemExit(
+            f"parity ours: the plan's clips are {dict(rates)}; only {SHERPA_SAMPLE_RATE} Hz "
+            "clips can be held to this gate, because sherpa-onnx's wheel ships no reader that "
+            "could test a resampler difference (principal r2 §1)")
     with open(out_dir / "ours.jsonl", "w", encoding="utf-8") as handle, ProcessPoolExecutor(
             max_workers=workers, initializer=start_worker,
             initargs=(files, scale)) as pool:
@@ -740,11 +791,13 @@ def sherpa(ours_dir: Path, model: Path, tokens: Path, workers: int) -> None:
 # --- phase 3: the verdict --------------------------------------------------------------------
 
 
-def _require_same_front_end(ours_protocol: Mapping, sherpa_protocol: Mapping) -> None:
-    """Stop unless both phases were fed the same waveform, tail and front end.
+def _front_end_mismatches(ours_protocol: Mapping, sherpa_protocol: Mapping) -> list[str]:
+    """Why the two phases were not fed the same waveform, tail, front end and weights.
 
     The two phases compute their features in different libraries; if their inputs or options
-    differ, the comparison is between front ends, not between runtimes.
+    differ, the comparison is between front ends, not between runtimes. The decoded ONNX's
+    SHA-256 is compared too: a sherpa phase pointed at another checkpoint (the card gate's v3,
+    fetched into the same work directory) would otherwise be read as v3.2 parity.
     """
     mine = ours_protocol["ours"]
     theirs = sherpa_protocol
@@ -769,41 +822,58 @@ def _require_same_front_end(ours_protocol: Mapping, sherpa_protocol: Mapping) ->
     check("fbank snip_edges", mine["fbank"]["snip_edges"], config["snip_edges"])
     check("fbank high_freq", mine["fbank"]["high_freq"], config["high_freq"])
     check("tokens", mine["tokens_sha256"], theirs["tokens"]["sha256"])
-    if mismatches:
-        raise ParityStop("the phases did not share a front end: " + "; ".join(mismatches))
+    check("model", mine.get("model_sha256"), theirs["model"]["sha256"])
+    return mismatches
 
 
-def _phone_table_hits(rows: Sequence[Mapping], sherpa_rows: Mapping[str, Mapping],
-                      work_dir: Path) -> dict:
-    """The phone clips the card's table scores, and the two runtimes' distance over them."""
-    from training.zipformer_run import (card_inventory, files_from_record, load_fetch,
+def _gate_plan(work_dir: Path) -> tuple[dict[str, str], dict[str, dict], ZipformerFiles]:
+    """The clips the gate must decode (id → source), the manifest rows and the fetched files."""
+    from training.zipformer_run import (CARD_SOURCES, decode_plan, files_from_record, load_fetch,
                                         manifest_rows)
 
     files = files_from_record(work_dir, load_fetch(work_dir))
+    manifest = {row["id"]: row for row in manifest_rows(files.manifest)}
+    plan = decode_plan(files.manifest)
+    return {key: CARD_SOURCES[manifest[key]["source"]] for key in plan["decode"]}, manifest, files
+
+
+def _phone_table_hits(plan: Mapping[str, str], manifest: Mapping[str, Mapping], files,
+                      rows: Sequence[Mapping],
+                      sherpa_rows: Mapping[str, Mapping]) -> dict:
+    """The phone clips the card's table scores, and the two runtimes' distance over them.
+
+    The cohort is the plan's own phone clips with a card-table reference, so its size is fixed
+    before any decode and cannot shrink to a one-clip bound. ``missing`` names a cohort clip one
+    runtime never decoded; ``require_parity`` fails on it.
+    """
     table = card_table(json.loads(files.text2phoneme.read_text(encoding="utf-8")))
     units = card_inventory()
-    manifest = {row["id"]: row for row in manifest_rows(files.manifest)}
-    hits: list[str] = []
+    hits: list[tuple[str, list[str]]] = []
+    for key, source in plan.items():
+        if source != "phone":
+            continue
+        gold = reference_units(table, manifest[key]["reference_text"], units)
+        if gold is not None:
+            hits.append((key, gold))
+    by_key = {row["key"]: row for row in rows}
+    missing = [key for key, _ in hits if key not in by_key or key not in sherpa_rows]
+    present = [(key, gold) for key, gold in hits if key not in missing]
     distance = reference_characters = 0
     ours_rows, sherpa_per_rows = [], []
-    for row in rows:
-        if row["source"] != "phone":
-            continue
-        gold = reference_units(table, manifest[row["key"]]["reference_text"], units)
-        if gold is None:
-            continue
-        hits.append(row["key"])
+    for key, gold in present:
         reference = "".join(gold)
-        theirs = "".join(sherpa_rows[row["key"]]["tokens"])
-        distance += edit_counts("".join(row["ours"]), theirs)[0]
+        theirs = "".join(sherpa_rows[key]["tokens"])
+        distance += edit_counts("".join(by_key[key]["ours"]), theirs)[0]
         reference_characters += len(reference)
-        ours_rows.append({"source": "phone", "gold": gold, "pred": row["ours"]})
+        ours_rows.append({"source": "phone", "gold": gold, "pred": by_key[key]["ours"]})
         sherpa_per_rows.append({"source": "phone", "gold": gold,
-                                "pred": sherpa_rows[row["key"]]["tokens"]})
-    if not hits:
-        raise ParityStop("no phone clip has a card-table reference: the bound has no cohort")
+                                "pred": sherpa_rows[key]["tokens"]})
+    if not present:
+        return {"clips": len(hits), "missing": missing, "passes": False,
+                "error": "the plan's phone clips have no card-table reference"}
     return {
         "clips": len(hits),
+        "missing": missing,
         **phone_rule(distance, reference_characters),
         "ours": character_per(ours_rows)["phone"],
         "sherpa": character_per(sherpa_per_rows)["phone"],
@@ -811,61 +881,81 @@ def _phone_table_hits(rows: Sequence[Mapping], sherpa_rows: Mapping[str, Mapping
 
 
 def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
-    """Apply the pre-declared rule to both phases' records and write the gate's evidence."""
+    """Apply the pre-declared rule to both phases' records and write the gate's evidence.
+
+    Every structural failure — a phase short of the plan, an unpaired clip, different call
+    counts, a different waveform, front end or weights, a probe one runtime never decoded —
+    writes ``passed: false`` with its reason before raising, so a stopped run can never leave
+    an earlier PASS in the record the readout renders.
+    """
     from tadabur.tlog_index import write_json
 
     ours_dir = Path(ours_dir)
     rows = _read_jsonl(ours_dir / "ours.jsonl")
     sherpa_rows = {row["key"]: row for row in _read_jsonl(ours_dir / "sherpa.jsonl")}
-    _require_same_front_end(_read_json(ours_dir / "ours-protocol.json"),
-                            _read_json(ours_dir / "sherpa-protocol.json"))
-    unpaired = sorted({row["key"] for row in rows} ^ set(sherpa_rows))
+    ours_protocol = _read_json(ours_dir / "ours-protocol.json")
+    sherpa_protocol = _read_json(ours_dir / "sherpa-protocol.json")
+    plan, manifest, files = _gate_plan(work_dir)
+    planned = Counter(plan.values())
+
+    problems = ["front end: " + mismatch
+                for mismatch in _front_end_mismatches(ours_protocol, sherpa_protocol)]
+    decoded = {row["key"] for row in rows}
+    if decoded != set(plan):
+        missing = sorted(set(plan) - decoded)
+        extra = sorted(decoded - set(plan))
+        problems.append(
+            f"{len(decoded)} of the plan's {len(plan)} clips were decoded"
+            + (f"; {len(missing)} missing, e.g. {missing[:3]}" if missing else "")
+            + (f"; {len(extra)} are not in the plan, e.g. {extra[:3]}" if extra else ""))
+    unpaired = sorted(decoded ^ set(sherpa_rows))
     if unpaired:
-        raise ParityStop(
+        problems.append(
             f"{len(unpaired)} clips were decoded by one runtime only, e.g. {unpaired[:3]}")
 
+    paired = [row for row in rows if row["key"] in sherpa_rows]
     rule_rows = [{"key": row["key"], "source": row["source"], "ours": row["ours"],
-                  "sherpa": sherpa_rows[row["key"]]["tokens"]} for row in rows]
-    sources = source_rule(rule_rows, sorted({row["source"] for row in rule_rows}))
+                  "sherpa": sherpa_rows[row["key"]]["tokens"]} for row in paired]
+    sources = source_rule(rule_rows, sorted(planned))
     pooled = {field: sum(entry[field] for entry in sources.values())
               for field in ("clips", "identical", "unit_edits", "units_ours", "units_sherpa")}
     pooled["reported_only"] = "the pass rule is per source (principal r2 §2)"
 
-    call_mismatches = [row["key"] for row in rows
+    call_mismatches = [row["key"] for row in paired
                        if row["calls"] != sherpa_rows[row["key"]]["calls"]]
     if call_mismatches:
-        raise ParityStop(
+        problems.append(
             f"{len(call_mismatches)} clips: the two runtimes made different numbers of calls, "
             f"e.g. {call_mismatches[:3]}")
-    waveform_mismatches = [row["key"] for row in rows
+    waveform_mismatches = [row["key"] for row in paired
                            if sherpa_rows[row["key"]]["waveform_sha256"]
                            != row["waveform_sha256"]]
     if waveform_mismatches:
-        raise ParityStop(
+        problems.append(
             f"{len(waveform_mismatches)} clips read differently by the two loaders, "
             f"e.g. {waveform_mismatches[:3]}")
 
     checks: list[dict] = []
-    for row in rows:
+    for row in paired:
         if not row.get("probes"):
             continue
         theirs = {tuple(probe["span"]): probe
                   for probe in sherpa_rows[row["key"]]["probes"]}
         for probe in row["probes"]:
             if tuple(probe["span"]) not in theirs:
-                raise ParityStop(
-                    f"{row['key']}: sherpa did not decode the {probe['check']} probe")
+                problems.append(f"{row['key']}: sherpa did not decode the {probe['check']} probe")
+                continue
             checks.append(probe_check({**probe, "key": row["key"], "source": row["source"],
                                        "sherpa": theirs[tuple(probe["span"])]["sherpa"]}))
     probe = {
-        "canaries": sorted({row["key"] for row in rows if row.get("probes")}),
+        "canaries": sorted({row["key"] for row in paired if row.get("probes")}),
         "checks": checks,
         "ambiguous_decisions": sum(check["ambiguous"] for check in checks),
         "passes": bool(checks) and all(check["passes"] for check in checks),
     }
 
     fbank: dict[str, dict] = {}
-    for row in rows:
+    for row in paired:
         entry = fbank.setdefault(row["source"], {"clips": 0, "max_abs": 0.0,
                                                  "shape_mismatches": 0})
         entry["clips"] += 1
@@ -884,15 +974,22 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
             "unit_edits_per_mille": EDITS_PER_MILLE,
             "phone_character_per_mille": CHARACTER_PER_MILLE,
             "per_source": True,
+            "every_planned_clip": "the record covers the committed plan's clips, at the plan's "
+                                  "own per-source counts; a partial run never passes",
             "padded_final_chunk": "no call may be padded: both runtimes stop before an "
                                   "incomplete chunk and their call counts must agree on every "
                                   "clip (rule 4, repaired in the diagnosis round)",
             "probe_checks": list(PROBE_CHECKS),
             "frame_allowance": "a start frame may shift only where no sampled cut changes "
                                "(astra r1 §3)",
+            "same_weights": "ours and sherpa must decode the same ONNX: the identity's pinned "
+                            "sha256 is compared with sherpa's model record",
         },
-        "ours": _read_json(ours_dir / "ours-protocol.json")["ours"],
-        "sherpa": _read_json(ours_dir / "sherpa-protocol.json"),
+        "plan": {"clips": len(plan), "decoded": len(decoded),
+                 "sources": dict(sorted(planned.items())),
+                 "partial": decoded != set(plan)},
+        "ours": ours_protocol["ours"],
+        "sherpa": sherpa_protocol,
         "audio": {
             "clips": len(rows),
             "sample_rates": dict(Counter(row["sample_rate"] for row in rows)),
@@ -906,12 +1003,13 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
         "pooled": pooled,
         "calls": {
             "agree": not call_mismatches,
+            "mismatched": call_mismatches[:20],
             "note": "both runtimes stop before an incomplete chunk (the diagnosis round), so no "
-                    "call is padded and no padded-call emission can exist; the counts agreeing "
-                    "on every clip is what upholds rule 4",
+                    "call is padded; a differing count on any clip is a structural failure, and "
+                    "the record names the clips",
         },
         "fbank": fbank,
-        "phone_table_hits": _phone_table_hits(rows, sherpa_rows, work_dir),
+        "phone_table_hits": _phone_table_hits(plan, manifest, files, rows, sherpa_rows),
         "probe": probe,
         "explanatory": {
             "v1_0_reference_check": "not run here and not gated: the card-explanation check is "
@@ -933,12 +1031,15 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
         "calls": row["calls"],
         "sherpa_calls": sherpa_rows[row["key"]]["calls"],
         "fbank_max_abs": sherpa_rows[row["key"]]["fbank_max_abs"],
-    } for row in rows))
+    } for row in paired))
     try:
-        require_parity(record)
+        require_parity(record, planned)
     except ParityStop as stop:
-        write_json({**record, "passed": False, "stop": str(stop)}, out)
-        raise
+        problems.append(str(stop))
+    if problems:
+        reason = "; ".join(problems)
+        write_json({**record, "passed": False, "stop": reason}, out)
+        raise ParityStop(reason)
     write_json({**record, "passed": True}, out)
     return record
 

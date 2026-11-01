@@ -34,7 +34,9 @@ from training import decoding as dc
 from training.external_decode import Recording, decode_recordings
 from training.zipformer_decode import (
     BLANK_ID,
+    CHUNK_FRAMES,
     FBANK_OPTIONS,
+    INPUT_FRAMES,
     TAIL_SAMPLES,
     ZIPFORMER_DIR,
     ZIPFORMER_STORES,
@@ -49,6 +51,7 @@ from training.zipformer_decode import (
     whole_item_text,
     zipformer_fingerprint,
 )
+from training.zipformer_parity import chunk_calls
 
 TOOLS = Path(__file__).parent.parent
 STEP_SAMPLES = 640  # one 40 ms output step at 16 kHz
@@ -323,6 +326,17 @@ def test_the_cache_is_carried_across_calls_so_no_window_restarts_from_zero():
     assert [shape for shape, _ in session.seen] == [(1, 61, 80)] * calls
     assert [state for _, state in session.seen] == list(range(calls))  # zero once, then carried
     assert len(fbank.calls) == 1  # one fbank over the item plus its tail, not one per call
+
+
+def test_the_stream_makes_exactly_the_readiness_rule_s_calls():
+    # the decoder's own loop against the parity gate's arithmetic: an extra zero-padded call
+    # would break this equality, which the production path must never allow
+    fbank = _RecordingFbank()
+    decoder = _decoder(_FakeSession(), fbank)
+    calls = decoder.stream_calls(_samples(3.0))
+    (wave, _), = fbank.calls
+    assert len(calls) == chunk_calls(round(len(wave) / 160), input_frames=INPUT_FRAMES,
+                                     chunk_frames=CHUNK_FRAMES)
 
 
 def test_the_calls_log_probs_form_one_40_ms_timeline():

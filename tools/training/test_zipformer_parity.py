@@ -44,12 +44,13 @@ def _record(*, sources=None, phone=None, checks=None) -> dict:
                              "identical_percent": 100.0, "unit_edits": 0, "units_ours": 2,
                              "edits_per_mille": 0.0}}
     if phone is None:
-        phone = {"passes": True, "character_distance": 0, "reference_characters": 10,
-                 "per_mille": 0.0}
+        phone = {"passes": True, "clips": 1, "missing": [], "character_distance": 0,
+                 "reference_characters": 10, "per_mille": 0.0}
     if checks is None:
         checks = [{"passes": True, "key": "a", "check": "first-window", "tokens_equal": True,
                    "mismatches": []}]
-    return {"sources": sources, "phone_table_hits": phone, "probe": {"checks": checks}}
+    return {"sources": sources, "phone_table_hits": phone,
+            "audio": {"sample_rates": {16000: 1}}, "probe": {"checks": checks}}
 
 
 # --- the thresholds are the pre-registered ones ---------------------------------------------
@@ -136,8 +137,32 @@ def test_sherpa_certainty_uses_both_ends_of_the_run_it_cannot_see():
     assert cut_certainty(4, None, 4) == "kept"
 
 
-def _probe(ours, sherpa, boundaries, check="first-window") -> dict:
-    return {"check": check, "boundaries": boundaries, "ours": ours, "sherpa": sherpa}
+def test_the_terminal_run_ends_at_the_crop_not_at_its_start():
+    # the last token's run is [40, 64] (the crop's last step): its midpoint is 52
+    assert cut_certainty(40, None, 40, last_step=64) == "kept"
+    assert cut_certainty(40, None, 50, last_step=64) == "ambiguous"
+    assert cut_certainty(40, None, 52, last_step=64) == "ambiguous"
+    assert cut_certainty(40, None, 53, last_step=64) == "dropped"
+    # assuming a one-frame run (no last_step) turns the same run's 50 into a determined drop,
+    # which is the latent false STOP; and it can never rise to ambiguous where a real
+    # disagreement sits, which is the latent false PASS
+    assert cut_certainty(40, None, 50) == "dropped"
+
+
+def _probe(ours, sherpa, boundaries, check="first-window", last_step=None) -> dict:
+    return {"check": check, "boundaries": boundaries, "ours": ours, "sherpa": sherpa,
+            "last_step": last_step}
+
+
+def test_a_terminal_cut_is_checked_on_the_crop_s_end():
+    ours = [{"text": "ب", "start": 40, "end": 64}]
+    sherpa = [{"text": "ب", "start": 40}]
+    checked = probe_check(_probe(ours, sherpa, [50], last_step=64))
+    assert checked["passes"] and checked["ambiguous"] == 1
+    # the same agreeing run, read as a one-frame token, is a mismatch at that boundary
+    unread = probe_check(_probe(ours, sherpa, [50]))
+    assert unread["passes"] is False
+    assert unread["mismatches"][0]["sherpa"] == "dropped"
 
 
 def test_a_probe_check_passes_when_the_units_and_cut_decisions_agree():
@@ -189,7 +214,36 @@ def test_the_readiness_rule_never_runs_a_call_it_would_have_to_pad():
 
 
 def test_a_clean_record_passes():
-    require_parity(_record())
+    require_parity(_record(), {"phone": 1})
+
+
+def test_a_run_short_of_the_plan_cannot_pass():
+    # one source, three clips, every one identical: the rule's 196/105/189 never held
+    short = {"studio": {"passes": True, "clips": 3, "identical": 3,
+                        "identical_percent": 100.0, "unit_edits": 0, "units_ours": 6,
+                        "edits_per_mille": 0.0}}
+    with pytest.raises(ParityStop, match="studio: 3 of the plan's 196 clips"):
+        require_parity(_record(sources=short),
+                       {"studio": 196, "phone": 105, "unseen": 189})
+
+
+def test_a_source_the_plan_names_but_the_record_omits_cannot_pass():
+    with pytest.raises(ParityStop, match="unseen: 0 of the plan's 189 clips"):
+        require_parity(_record(), {"phone": 1, "unseen": 189})
+
+
+def test_a_non_16_khz_clip_cannot_pass():
+    record = _record()
+    record["audio"]["sample_rates"] = {22050: 1}
+    with pytest.raises(ParityStop, match="not 16000 Hz"):
+        require_parity(record, {"phone": 1})
+
+
+def test_a_phone_cohort_clip_one_runtime_skipped_cannot_pass():
+    record = _record()
+    record["phone_table_hits"]["missing"] = ["p1"]
+    with pytest.raises(ParityStop, match="not decoded by both runtimes"):
+        require_parity(record, {"phone": 1})
 
 
 def test_every_failing_rule_is_named_in_one_stop():
@@ -198,10 +252,10 @@ def test_every_failing_rule_is_named_in_one_stop():
     with pytest.raises(ParityStop) as raised:
         require_parity(_record(
             sources={"studio": failing},
-            phone={"passes": False, "character_distance": 9, "reference_characters": 100,
-                   "per_mille": 90.0},
+            phone={"passes": False, "clips": 105, "missing": [], "character_distance": 9,
+                   "reference_characters": 100, "per_mille": 90.0},
             checks=[{"passes": False, "key": "a", "check": "stop", "tokens_equal": False,
-                     "mismatches": []}]))
+                     "mismatches": []}]), {"studio": 200})
     message = str(raised.value)
     assert "studio" in message
     assert "phone table hits" in message
@@ -210,4 +264,4 @@ def test_every_failing_rule_is_named_in_one_stop():
 
 def test_a_probe_with_no_checks_cannot_pass():
     with pytest.raises(ParityStop):
-        require_parity(_record(checks=[]))
+        require_parity(_record(checks=[]), {"phone": 1})

@@ -247,7 +247,9 @@ def test_each_inference_covers_one_second_before_the_check_then_the_flush():
 def test_the_decoder_resets_between_items_as_well():
     decoder, session, _ = _decoder()
     decoder.checks_w1(AUDIO)
-    decoder.checks_w1(AUDIO)
+    other = AUDIO.copy()
+    other[:16_000] = 0.0  # a different item: same length, different audio
+    decoder.checks_w1(other)
     assert all(run[0] == 0 for run in session.inferences())
     assert len(session.inferences()) == 2 * len(_spans())
 

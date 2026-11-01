@@ -1,8 +1,10 @@
 """Tests for the zipformer decoder's arm sharing and line reading (#245, self-check r1).
 
-``spans`` and ``checks`` on one item must share one stream (two streams would double every
-item's front end and ONNX cost across every screen set), and :func:`whole_item_text` must name
-a missing arm rather than raise ``KeyError``. Torch-free, no ONNX file.
+``spans`` and ``checks`` on one item must share one stream, and the two w1 arms must share
+each span's fresh inference (duplicating either would double that arm set's front end and ONNX
+cost across every screen set). A reused buffer whose contents changed is decoded again, never
+served the previous item's text, and :func:`whole_item_text` names a missing arm rather than
+raise ``KeyError``. Torch-free, no ONNX file.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from training import decoding
 from training.zipformer_decode import BLANK_ID, ZipformerDecoder, whole_item_text
 
 
@@ -20,6 +23,12 @@ class _Session:
 
     def __init__(self) -> None:
         self.calls = 0
+        self.caches: list[int] = []
+
+    @property
+    def inferences(self) -> int:
+        """How many streams ran: each starts from a zero cache."""
+        return sum(cache == 0 for cache in self.caches)
 
     def get_inputs(self):
         return [SimpleNamespace(name="x", shape=[1, 61, 80], type="tensor(float)"),
@@ -27,6 +36,7 @@ class _Session:
 
     def run(self, output_names, feed):
         self.calls += 1
+        self.caches.append(int(feed["cached_len_0"].flat[0]))
         log_probs = np.full((1, 12, 251), -10.0, dtype=np.float32)
         log_probs[0, :, BLANK_ID] = 0.0
         log_probs[0, 0, 3] = 1.0
@@ -61,6 +71,27 @@ def test_a_different_item_is_streamed_again():
     decoder.spans(samples)
     calls = session.calls
     decoder.spans(samples.copy())
+    assert session.calls > calls
+
+
+def test_the_two_w1_arms_decode_each_span_once():
+    decoder, session = _decoder()
+    samples = np.zeros(96_000, dtype=np.float32)
+    decoder.checks_w1(samples)
+    decoder.checks_w1_windows(samples)
+    spans = decoding.check_schedule(len(samples))
+    assert len(spans) == 24
+    # every span once, plus the one continuous stream windows-only slices
+    assert session.inferences == len(spans) + 1
+
+
+def test_a_reused_buffer_is_decoded_again_not_served_stale_text():
+    decoder, session = _decoder()
+    buffer = np.zeros(16_000, dtype=np.float32)
+    decoder.spans(buffer)
+    calls = session.calls
+    buffer[:] = 1.0
+    decoder.spans(buffer)
     assert session.calls > calls
 
 

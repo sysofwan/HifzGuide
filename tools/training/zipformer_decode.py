@@ -20,9 +20,10 @@ protocol are the card's, so this module owns all three and shares none of them w
   ``[max(0, start - W), end)`` with ``W = 1 s`` (:data:`WARMUP_SAMPLES`, the transcriber's hop)
   from a zero cache, and drops only the warm-up emissions (midpoint before the check's start):
   everything else is kept, the 1.05 s flush included, so a delayed last word is not truncated.
-  ``checks-w1-windows`` runs the fresh inferences for the windows only and takes previews and
-  the stop from the one continuous stream (report-only). Both are zipformer-only arms: ours
-  never decodes them.
+  ``checks-w1-windows`` runs the fresh inferences for the windows only (reusing ``checks-w1``'s
+  window results when both arms are decoded on one item) and takes previews and the stop from
+  the one continuous stream (report-only). Both are zipformer-only arms: ours never decodes
+  them.
 * **The keep rules differ on purpose.** A single-stream check takes emissions with midpoint in
   its window (a straddling run reaches the later check, which is the same stream); a
   fresh-inference check takes everything from its start, because the delayed units after its end
@@ -105,13 +106,22 @@ FBANK_OPTIONS = {
 CHECKS_W1 = "checks-w1"
 CHECKS_W1_WINDOWS = "checks-w1-windows"
 
+
+def _w1_mode(windows: bool) -> str:
+    """The mode of a warm-started per-check arm, naming its two constants in milliseconds."""
+    warm_up_ms = WARMUP_SAMPLES * 1000 // SAMPLE_RATE
+    flush_ms = TAIL_SAMPLES * 1000 // SAMPLE_RATE
+    return (f"zipformer-checks-v1-w{warm_up_ms}ms-flush{flush_ms}ms"
+            + ("-windows" if windows else ""))
+
+
 #: The decode mode of each arm, and its fingerprint policy. All four differ from every mode and
 #: policy our own decodes carry, so the two kinds can never be compared by accident.
 ZIPFORMER_PROTOCOLS = {
     "spans": "zipformer-spans-v1",
     "checks": "zipformer-checks-v1",
-    CHECKS_W1: "zipformer-checks-v1-w1000ms-flush1050ms",
-    CHECKS_W1_WINDOWS: "zipformer-checks-v1-w1000ms-flush1050ms-windows",
+    CHECKS_W1: _w1_mode(windows=False),
+    CHECKS_W1_WINDOWS: _w1_mode(windows=True),
 }
 ZIPFORMER_POLICY = "kaldi-fbank-v1"
 
@@ -243,6 +253,11 @@ class ZipformerDecoder:
     ``session`` is an ``onnxruntime.InferenceSession`` of the card's cache-aware streaming
     export (``x`` plus its cache inputs; ``log_probs`` first, then each cache's next value in
     input order). ``tokens`` is :func:`read_tokens`' table. ``scale`` is :func:`featurize`'s.
+
+    The decoder keeps **one item's** work: the continuous stream and each fresh check, so the
+    arms called on one item share them. That work belongs to the exact array passed and to its
+    contents (compared against a copy), so a different array, or a reused buffer rewritten in
+    place, starts over rather than serving the previous item's text.
     """
 
     def __init__(self, session, tokens: Mapping[int, str], fbank, *, scale: float) -> None:
@@ -254,17 +269,34 @@ class ZipformerDecoder:
         if not any(spec.name == "x" for spec in inputs):
             raise ValueError("the ONNX session has no 'x' feature input")
         self._state_specs = [_state_spec(spec) for spec in inputs if spec.name != "x"]
-        # One item's emissions, held so ``spans`` and ``checks`` on the same item share one
-        # stream. The array is held too, so its identity cannot be recycled under a stale hit.
-        self._last_item: tuple[np.ndarray, list[Emission]] | None = None
+        self._item_source: np.ndarray | None = None
+        self._item_audio: np.ndarray | None = None
+        self._item_emissions: list[Emission] | None = None
+        self._item_checks: dict[tuple[int, int], dict | None] = {}
+
+    def _start_item(self, samples: np.ndarray) -> None:
+        """Point the one-item caches at ``samples``, clearing them for any other item.
+
+        The caches belong to the exact array object passed. A different array is a different
+        item (even when its samples happen to equal the last one's), and the same array with
+        its contents changed is a different item too: its audio is compared against a copy, so
+        a reused buffer is decoded again rather than served the previous item's text. The copy
+        costs one item's audio per item, against that item's fbank and ONNX passes.
+        """
+        if (self._item_source is samples and self._item_audio is not None
+                and np.array_equal(self._item_audio, samples)):
+            return
+        self._item_source = samples
+        self._item_audio = np.array(samples, dtype=np.float32, copy=True)
+        self._item_emissions = None
+        self._item_checks = {}
 
     def _emissions(self, samples: np.ndarray) -> list[Emission]:
         """The item's emissions, from one stream shared by every arm that slices it."""
-        if self._last_item is not None and self._last_item[0] is samples:
-            return self._last_item[1]
-        emissions = self._stream(samples, 0)
-        self._last_item = (samples, emissions)
-        return emissions
+        self._start_item(samples)
+        if self._item_emissions is None:
+            self._item_emissions = self._stream(samples, 0)
+        return self._item_emissions
 
     def stream(self, samples: np.ndarray) -> list[Emission]:
         """The item's units over one continuous stream: one fbank, one cache, one timeline."""
@@ -311,20 +343,40 @@ class ZipformerDecoder:
         """The checks cut from the item's one stream (the ``checks`` arm; :func:`stream_checks`)."""
         return stream_checks(self._emissions(samples), len(samples))
 
-    def _fresh_check(self, samples: np.ndarray, span: decoding.CheckSpan) -> dict | None:
-        """One check decoded again from a zero cache, with its one hop of warm-up."""
+    def _decode_fresh_check(self, samples: np.ndarray,
+                            span: decoding.CheckSpan) -> dict | None:
+        """One check decoded again from a zero cache, with its one hop of warm-up.
+
+        Records the result for the current item, so ``checks_w1_windows`` can reuse this span.
+        """
         begin = warmup_start(span)
         emissions = self._stream(samples[begin:span.end], begin // STEP_SAMPLES)
-        return w1_check(span, emissions)
+        check = w1_check(span, emissions)
+        self._item_checks[(span.start, span.end)] = check
+        return check
+
+    def _fresh_check(self, samples: np.ndarray, span: decoding.CheckSpan) -> dict | None:
+        """``checks_w1``'s stored result for ``span``, or a fresh one if this item lacks it.
+
+        The caller has already started the item; a different item clears the record.
+        """
+        key = (span.start, span.end)
+        if key not in self._item_checks:
+            self._decode_fresh_check(samples, span)
+        return self._item_checks[key]
 
     def checks_w1(self, samples: np.ndarray) -> list[dict]:
         """The checks, each from its own fresh warm-started inference (the ``checks-w1`` arm)."""
-        checks = (self._fresh_check(samples, span)
+        self._start_item(samples)
+        checks = (self._decode_fresh_check(samples, span)
                   for span in decoding.check_schedule(len(samples)))
         return [check for check in checks if check is not None]
 
     def checks_w1_windows(self, samples: np.ndarray) -> list[dict]:
-        """B': windows fresh, previews and the stop from one stream (``checks-w1-windows``)."""
+        """B': windows fresh, previews and the stop from one stream (``checks-w1-windows``).
+
+        The windows reuse the fresh checks ``checks_w1`` already made for this item.
+        """
         emissions = self._emissions(samples)
         checks: list[dict] = []
         for span in decoding.check_schedule(len(samples)):

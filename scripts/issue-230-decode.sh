@@ -362,9 +362,10 @@ record_run_result() {  # <status>
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
       "$(date -u +%FT%TZ)" "$BUDGET")
   elif [ "$status" -eq 137 ]; then
-    # SIGKILL is not the timeout: GNU timeout's expiry is 124. A 137 here is a killed
-    # worker (the box's OOM killer, most likely), so name that rather than the budget.
-    done=$(printf '%s killed (status 137, SIGKILL), not the budget; check host RAM/OOM; \
+    # 137 is ambiguous: ``timeout --kill-after`` escalates to SIGKILL (GNU timeout's
+    # documented escalation status), and an external kill or the OOM killer looks the same
+    # here. Record both possibilities rather than guessing one.
+    done=$(printf '%s killed (status 137, SIGKILL): timeout escalation or external kill/OOM; \
 per-item output kept' "$(date -u +%FT%TZ)")
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")

@@ -288,15 +288,31 @@ def test_a_budget_expiry_is_recorded_as_the_budget(tmp_path):
     assert "budget-exceeded" in (logs / "run.done").read_text(encoding="utf-8")
 
 
-def test_a_sigkill_is_recorded_as_a_kill_not_the_budget(tmp_path):
-    """137 reaches the record when a worker (or the timeout's kill-after) is SIGKILLed: on
-    this box that is host-RAM pressure, and saying "budget" would be the wrong diagnosis."""
+def test_a_timeout_escalation_is_recorded_as_an_ambiguous_sigkill(tmp_path):
+    """``timeout --kill-after`` escalates a budget expiry to SIGKILL, whose status is 137;
+    the record must not call that "not the budget" — it cannot tell escalation from an
+    external kill."""
     done = _run_on_the_box(tmp_path, CHOICE_JSON, timeout_body="exit 137")
     logs = tmp_path / "issue" / "logs"
     assert done.returncode == 137
     assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "137"
     recorded = (logs / "run.done").read_text(encoding="utf-8")
-    assert "SIGKILL" in recorded and "budget-exceeded" not in recorded
+    assert "timeout escalation or external kill/OOM" in recorded
+    assert "budget-exceeded" not in recorded and "not the budget" not in recorded
+
+
+def test_an_externally_killed_worker_is_recorded_with_the_same_ambiguity(tmp_path):
+    """A worker killed from outside reaches ``record_run_result 137`` directly, with no
+    timeout on the stack: the same honest message, never a guess at the cause."""
+    root = tmp_path / "issue"
+    (root / "logs").mkdir(parents=True)
+    done = subprocess.run(["bash", "-c", f'source "{SCRIPT}"; record_run_result 137'],
+                          env={**os.environ, "ISSUE_ROOT": str(root)},
+                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
+    assert done.returncode == 137
+    assert (root / "logs" / "run.exit").read_text(encoding="utf-8").strip() == "137"
+    recorded = (root / "logs" / "run.done").read_text(encoding="utf-8")
+    assert "timeout escalation or external kill/OOM" in recorded
 
 
 def test_a_terminated_run_records_its_signal_instead_of_a_pass(tmp_path):

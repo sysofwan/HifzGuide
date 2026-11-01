@@ -68,6 +68,7 @@ from training.zipformer_gate import (
     reference_units,
     require_card_reproduction,
     require_roundtrip,
+    roundtrip_identical,
     roundtrip_share,
     source_per,
 )
@@ -508,6 +509,7 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
              for row in decoded_rows]
     decoded: dict[float, dict[str, list[str]]] = {}
     scales: dict[str, dict] = {}
+    pinned: float | None = None
     base = {
         "schema_version": 1,
         "issue": 245,
@@ -541,10 +543,14 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
                     for source, entry in scales[str(scale)]["unit_per"].items()}
             for scale in SCALES
         })
+        scales[str(pinned)]["roundtrip"]["failed_clips"] = sorted(
+            clip for clip, units in decoded[pinned].items()
+            if not roundtrip_identical(units, inventory))
         require_roundtrip(decoded[pinned].values(), inventory)
         require_card_reproduction(scales[str(pinned)]["unit_per"])
     except GateStop as stop:
-        write_json({**base, "scales": scales, "passed": False, "stop": str(stop)}, GATE_PATH)
+        write_json({**base, "scales": scales, "pinned_scale": pinned, "passed": False,
+                    "stop": str(stop)}, GATE_PATH)
         raise
 
     load_zipformer(files, scale=pinned, identity_path=IDENTITY_PATH)

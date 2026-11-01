@@ -584,8 +584,41 @@ def test_look_and_unknown_roles_are_not_claimable(tranches, repo, role):
         tranches.require_claim_order(role, repo)
 
 
-def test_no_claim_file_is_committed_for_any_tranche():
-    assert sorted(path.name for path in (TLOG_DIR / "tranches").glob("*.claim.json")) == []
+def _claim_commit(path: Path) -> str:
+    return subprocess.run(["git", "-C", str(path.parent), "log", "-1", "--format=%H", "--",
+                           path.name], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def test_this_round_claims_exactly_confirm_1_then_confirm_2(tranches):
+    """The repository now carries this round's two claims (confirm.1+2), each a valid committed
+    record in its own commit and in order; confirm.3 and confirm.4 stay unclaimed."""
+    directory = TLOG_DIR / "tranches"
+    assert sorted(path.name for path in directory.glob("*.claim.json")) == [
+        "confirm.1.claim.json", "confirm.2.claim.json"]
+
+    records = {}
+    for role in ("confirm.1", "confirm.2"):
+        stored = json.loads((directory / f"{role}.claim.json").read_text(encoding="utf-8"))
+        assert set(stored) == set(tranches.CLAIM_FIELDS)
+        assert stored["role"] == role
+        assert isinstance(stored["issue"], int) and stored["issue"] > 0
+        assert re.fullmatch(r"[0-9a-f]{40}", stored["commit"])
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", stored["date"])
+        records[role] = tranches.claim_record(role)  # present, committed, unchanged
+        assert records[role]["manifest_sha256"]
+    assert records["confirm.1"]["commit"] == records["confirm.2"]["commit"]
+
+    first = _claim_commit(directory / "confirm.1.claim.json")
+    second = _claim_commit(directory / "confirm.2.claim.json")
+    assert first and second and first != second
+    assert subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                           first, second]).returncode == 0
+    tranches.require_claim_order("confirm.2", directory)
+
+    for role in ("confirm.3", "confirm.4"):
+        assert not (directory / f"{role}.claim.json").exists()
+        with pytest.raises(ValueError, match=role):
+            tranches.require_claim(role, directory)
 
 
 # --- the committed confirm trees (r24 item 5; issue item 1) -------------------------------------

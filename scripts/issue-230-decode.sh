@@ -357,10 +357,16 @@ decode_phase() {
 record_run_result() {  # <status>
   # ``check`` keys off done and then reads exit: write exit first.
   local status=$1 code=$1 done
-  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+  if [ "$status" -eq 124 ]; then
     code=2
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
       "$(date -u +%FT%TZ)" "$BUDGET")
+  elif [ "$status" -eq 137 ]; then
+    # 137 is ambiguous: ``timeout --kill-after`` escalates to SIGKILL (GNU timeout's
+    # documented escalation status), and an external kill or the OOM killer looks the same
+    # here. Record both possibilities rather than guessing one.
+    done=$(printf '%s killed (status 137, SIGKILL): timeout escalation or external kill/OOM; \
+per-item output kept' "$(date -u +%FT%TZ)")
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi

@@ -96,6 +96,7 @@ from training.tlog_eval import (
     ID_FLOOR_OK,
     POOLED_CONFIRM,
     confirm_views,
+    excluded_record,
 )
 
 #: What every verdict and doc states of the split (the pre-registration's own sentence).
@@ -125,10 +126,16 @@ AUDIT_BAR = ("the catch-loss audit: at most 20% of the decisive removed verdicts
              "mistakes, and at least 80 decisive removed verdicts are heard")
 TLOG_BAR_TEXT = {
     **CONSONANT_BAR_TEXT,
+    "bar1.all_cause": "the pooled tlog confirm.1+2 gating set, all-cause false flags per "
+                      "1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
+    "bar3.consonant_cause": "the pooled tlog confirm.1+2 gating set, consonant-caused false "
+                            "flags per 1,000: candidate − C95 paired 95% upper bound < 0",
     "bar4a.tlog_confirm": "word agreement with the teacher on the pooled tlog confirm "
                           "tranches: paired 95% lower bound > 0",
     "bar4b.tlog_confirm": "the same on the teacher-departure words of the pooled tlog confirm "
                           "tranches: paired 95% lower bound ≥ −0.5 pt",
+    "g4.tashkeel_cause": "the pooled tlog confirm.1+2 gating set, tashkeel-caused false flags "
+                         "per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
 }
 
 
@@ -570,12 +577,27 @@ def _partial_span(data) -> dict:
 
 
 def _tranche_coverage(data, present: Sequence[str], comparisons, workers: int) -> dict:
-    """One tranche's declared and graded population, its partial-span share and the rate at
-    which each model commits nothing on a consonant carrier (an empty slot)."""
+    """One tranche's declared and graded population, its partial-span share, the clips the item
+    builder left out (with their filename ayat and why) and the rate at which each model commits
+    nothing on a consonant carrier (an empty slot). Naming the excluded clips keeps a graded
+    population smaller than its manifest from dropping rows silently."""
     return {**_partial_span(data), "excluded": len(data.excluded),
+            "excluded_clips": {**excluded_record(data.excluded),
+                               "labels": dict(sorted(data.excluded.items()))},
             "empty_slots": compare(
                 abstention_terms(data.items, ar.checks_text(data, present), present, workers),
                 POINTS, comparisons)}
+
+
+def _graded_population(items: Sequence, tranches: Mapping) -> dict:
+    """What the pooled gating read actually graded: its clips and surah clusters, and the
+    union of the two tranches' excluded clips, so the difference from the frozen 5,762-row
+    manifest is named rather than implied."""
+    excluded = {**tranches["confirm.1"].excluded, **tranches["confirm.2"].excluded}
+    return {"clips": len(items), "surahs": len({item.surah for item in items}),
+            "excluded": len(excluded),
+            "excluded_clips": {**excluded_record(excluded),
+                               "labels": dict(sorted(excluded.items()))}}
 
 
 def dose_response(tadabur, present: Sequence[str], baseline: str) -> dict:
@@ -687,9 +709,10 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
                              ((CANDIDATE, CONTROL),)),
             "caveat": CONTROL_CAVEAT},
         "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
-        "coverage": {"tranches": {
-            role: _tranche_coverage(data, present, comparisons, workers)
-            for role, data in tranches.items()},
+        "coverage": {
+            "tranches": {role: _tranche_coverage(data, present, comparisons, workers)
+                         for role, data in tranches.items()},
+            "graded": _graded_population(items, tranches),
             "reported_strata": dict(NOT_DECODED)},
         "sizes": {"pooled": len(items),
                   **{role: len(data.items) for role, data in tranches.items()}},
@@ -832,6 +855,9 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
               f"Verdict: {verdict['verdict']} (pre-claim {verdict['preclaim']})", "",
               "### Bars", ""]
     lines += _condition_lines(verdict["conditions"])
+    if report.get("reproduction"):
+        lines += ["", "### Reproduction check (not a bar)", ""]
+        lines += _reproduction_lines(report["reproduction"])
     if report.get("unreadable"):
         lines += ["", "Nothing was read: " + report["unreadable"]["reason"],
                   *[f"- missing input: {name}" for name in report["unreadable"]["missing_inputs"]]]
@@ -848,8 +874,14 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
     for role, coverage in report["coverage"]["tranches"].items():
         lines.append(f"- {role}: {coverage['clips']} clips, {coverage['partial_span']} "
                      f"partial spans, {coverage['excluded']} excluded")
+        lines += _excluded_lines(coverage["excluded_clips"])
         lines += _single_lines("empty slots per 100 consonant carriers",
                                coverage["empty_slots"], baseline)
+    graded = report["coverage"]["graded"]
+    lines += ["", f"Graded population: {graded['clips']} clips over {graded['surahs']} surah "
+                  f"clusters; {graded['excluded']} frozen gating clips left out "
+                  f"({graded['excluded_clips']['reason']})."]
+    lines += _excluded_lines(graded["excluded_clips"])
     lines += ["", "### Tarteel v1 confirm (the full round-1 reading)", ""]
     tarteel = report["tarteel_confirm"]
     lines += _tables_lines("Tarteel v1 confirm", tarteel["tables"], baseline)
@@ -882,6 +914,30 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
     lines += ["", f"Reported strata: {report['coverage']['reported_strata']['status']} — "
               f"{report['coverage']['reported_strata']['reason']}"]
     return "\n".join(lines) + "\n"
+
+
+def _reproduction_lines(record: Mapping) -> list[str]:
+    """The pre-registration's reproduction counts: flagged / graded, re-graded from the
+    committed decodes. Not a bar, so it is printed beside the bars and never folded in."""
+    out = []
+    for group, counts in record.get("counts", {}).items():
+        if {"flagged", "graded"} <= set(counts):
+            out.append(f"- {group}: {counts['flagged']} / {counts['graded']}")
+        else:
+            out += [f"- {group} {name}: {value['flagged']} / {value['graded']}"
+                    for name, value in counts.items()]
+    out.append(f"Passed: {'yes' if record.get('passed') else 'no'}")
+    if record.get("note"):
+        out.append(str(record["note"]))
+    return out
+
+
+def _excluded_lines(record: Mapping) -> list[str]:
+    """The clips an item builder left out: each key with its filename ayah and the reason, so a
+    readout never hides a missing surah behind a count."""
+    labels = record.get("labels", {})
+    return [f"  - excluded: {key} ({labels.get(key) or 'no ayah'})"
+            for key in record.get("keys", [])]
 
 
 def _number(value) -> str:

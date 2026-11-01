@@ -1,0 +1,190 @@
+{
+ "claims": {
+  "confirm.1": {
+   "claim_sha256": "c110fa83a1b96c0a78cbd2100a1f5f4ba7032815d304debe33269fed33a9eb88",
+   "commit": "422fdbec2521f202e5c94798ef732e2a36bec40e",
+   "date": "2026-10-31",
+   "manifest_sha256": "b46b96209546a3d67952797a2e6628fe7280ad13bf25ccc68d763a7a743ac7a4"
+  },
+  "confirm.2": {
+   "claim_sha256": "1f70045452aded665adc48090c2b3b45b0b516104a669b155be62079402e437f",
+   "commit": "422fdbec2521f202e5c94798ef732e2a36bec40e",
+   "date": "2026-10-31",
+   "manifest_sha256": "c7521a584da7321c4bf13e5cc99b4dae5ae476d7c484465b7b7af0a918d44493"
+  }
+ },
+ "code_sha": "99374138b7e8ccde47c7d5281fe4e2fa0f4ba5d5",
+ "identities": {
+  "tlog.confirm/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "tlog.confirm/c95": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+    "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "model": "c95"
+  },
+  "tlog.confirm/r2_candidate_ema": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+    "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "model": "r2_candidate_ema"
+  },
+  "tlog.confirm/r2_control_ema": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473",
+    "model_ref": "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "model": "r2_control_ema"
+  }
+ },
+ "models": [
+  "base",
+  "c95",
+  "r2_candidate_ema",
+  "r2_control_ema"
+ ],
+ "pull_request": null,
+ "pull_request_ref": null,
+ "rows": {
+  "base": 5762,
+  "c95": 5762,
+  "r2_candidate_ema": 5762,
+  "r2_control_ema": 5762
+ },
+ "tranches": [
+  "confirm.1",
+  "confirm.2"
+ ]
+}

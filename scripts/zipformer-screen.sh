@@ -12,14 +12,16 @@
 #   scripts/zipformer-screen.sh parity         # the reference-runtime gate: v3.2 fp32 through
 #                                              # sherpa-onnx (throwaway venv) vs our decoder, on
 #                                              # the same 577 clips; writes parity.json
+#   scripts/zipformer-screen.sh screen         # the timing probe (stop past 12 h), then every
+#                                              # comparison set; decodes land in $ROOT/screen
 #   scripts/zipformer-screen.sh check <step>   # pid, status and log tail of a running/ended step
 #   scripts/zipformer-screen.sh fetchout <step> DIR   # pull the committed JSON outputs back
 #
 # Each step stages the current branch as a clean bundle clone on the box (so the cited code
 # SHA is the one that ran), then runs detached under setsid with stdin closed: one log, one pid
-# and one exit-code file under $ROOT/logs. The three steps are CPU-only — zipformer runs on
-# ONNX Runtime's CPU provider — so none takes the GPU lock. The gated Hub token lives only on
-# the box; the benchmark audio and the ONNX files stay in $ROOT/data and are never committed.
+# and one exit-code file under $ROOT/logs. Every step is CPU-only — zipformer runs on ONNX
+# Runtime's CPU provider — so none takes the GPU lock. The gated Hub token lives only on the
+# box; the benchmark audio and the ONNX files stay in $ROOT/data and are never committed.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
@@ -42,6 +44,13 @@ PARITY_TOKENS=${PARITY_TOKENS:-$WORK/model/tokens.txt}
 #: check); v3.2 is the comparison arm (its baseline, and the identity every decode rests on).
 MODEL=${MODEL:-v3}
 OUT=tools/tadabur/zipformer_screen
+#: The screen step's inputs: each set's own source, as the earlier batches staged them (the
+#: edit audio is the 300 item render whose SHA-256 matches edits.jsonl), and its scratch.
+SCREEN=${SCREEN_DIR:-$ROOT/screen}
+EDITS_DIR=${EDITS_DIR:-/root/scratch/issue-117/stage/edits/audio}
+SHIP_A_DIR=${SHIP_A_DIR:-/root/scratch/issue-88/stage/clips}
+QDAT_CACHE=${QDAT_CACHE:-$SCREEN/qdat_cache}
+QUD_CACHE=${QUD_CACHE:-$SCREEN/qud_cache}
 #: The committed files a step's `fetchout` pulls back.
 FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.json parity.json
                  parity_decodes.jsonl.gz)
@@ -49,9 +58,9 @@ FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.jso
 step=${1:-}
 action=${2:-}
 case "$step" in
-  fetch|disjointness|gate|parity) ;;
+  fetch|disjointness|gate|parity|screen) ;;
   *)
-    echo "usage: $0 {fetch|disjointness|gate|parity} [launch|check|fetchout DIR]" >&2
+    echo "usage: $0 {fetch|disjointness|gate|parity|screen} [launch|check|fetchout DIR]" >&2
     exit 2
     ;;
 esac
@@ -94,6 +103,18 @@ parity_phases() {
 }
 parity_phases
 PARITY
+      ;;
+    screen) cat <<SCREEN
+python -u -m training.zipformer_screen_decode --batch \\
+    --probe-record '$SCREEN/probe.json' \\
+    --out-dir '$SCREEN/decodes' \\
+    --work-dir '$WORK' \\
+    --edits-dir '$EDITS_DIR' \\
+    --qdat-cache '$QDAT_CACHE' \\
+    --ship-a-dir '$SHIP_A_DIR' \\
+    --qud-cache '$QUD_CACHE' \\
+    --workers '$WORKERS'
+SCREEN
       ;;
   esac
 }
@@ -138,6 +159,12 @@ check() {
 fetchout() {
   local destination=${1:?fetchout needs a destination directory}
   mkdir -p "$destination"
+  if [ "$step" = screen ]; then
+    # the decodes and their identities were written on the box, not in the clone
+    rsync -a --exclude qdat_cache --exclude qud_cache "$HOST:$SCREEN/" "$destination/"
+    echo "fetched the screen step's probe, decodes and identities into $destination"
+    return
+  fi
   for name in "${FETCH_OUT_FILES[@]}"; do
     if remote "test -f '$REPO/$OUT/$name'"; then
       rsync -a "$HOST:$REPO/$OUT/$name" "$destination/"

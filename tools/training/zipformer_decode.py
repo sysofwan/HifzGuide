@@ -663,11 +663,41 @@ def load_zipformer(files: ZipformerFiles, *, scale: float,
 
 
 #: What one check's inference decodes, in samples: ours its span, zipformer's warm-started
-#: arm its warm-up and span plus the card's flushing tail.
+#: arm its warm-up and span plus the card's flushing tail; its windows-only arm keeps that
+#: work for the windows and cuts previews and the stop from its one stream.
 DECODED_SAMPLES = {
     "ours": lambda span: span.end - span.start,
     CHECKS_W1: lambda span: span.end - warmup_start(span) + TAIL_SAMPLES,
+    CHECKS_W1_WINDOWS: lambda span: (span.end - warmup_start(span) + TAIL_SAMPLES
+                                     if span.kind == decoding.WINDOW else 0),
 }
+
+
+def arms_decoded_samples(arms: Iterable[str], num_samples: int) -> int:
+    """The audio one item's decode hands the model over ``arms`` decoded together.
+
+    ``spans`` and ``checks`` are one stream. ``checks-w1`` decodes every check of the schedule
+    from its own zero cache. ``checks-w1-windows`` adds one stream, and its windows' fresh
+    inferences only when ``checks-w1`` did not already make them (the two arms share one
+    decoder per item, so a run of both decodes each window once). This is the compute table's
+    arithmetic and the timing probe's projection, from the same rule.
+    """
+    arms = set(arms)
+    unknown = arms - set(ZIPFORMER_PROTOCOLS)
+    if unknown:
+        raise ValueError(
+            f"not zipformer arms: {sorted(unknown)}; its arms are {sorted(ZIPFORMER_PROTOCOLS)}")
+    if num_samples <= 0:
+        raise ValueError(f"an item has positive audio, got {num_samples} samples")
+    schedule = decoding.check_schedule(num_samples)
+    total = num_samples if arms & {"spans", "checks"} else 0
+    if CHECKS_W1 in arms:
+        total += sum(DECODED_SAMPLES[CHECKS_W1](span) for span in schedule)
+    if CHECKS_W1_WINDOWS in arms:
+        total += num_samples  # its one stream
+        if CHECKS_W1 not in arms:
+            total += sum(DECODED_SAMPLES[CHECKS_W1_WINDOWS](span) for span in schedule)
+    return total
 
 
 def decoded_audio_ratio(arm: str, num_samples: int) -> float:

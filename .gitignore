@@ -206,3 +206,7 @@ tools/tadabur/aug_readout/restricted/
 # with its group key, frozen label facts and stratum. The sealed tranches' rows are committed by
 # design — gating membership cannot be recomputed without them — but nobody inspects them.
 !tools/tadabur/tlog/tranches/*.jsonl
+# The #245 zipformer screen's decodes: one line per item per arm, NPL-1.2 share-alike, beside
+# the model's LICENSE. Committed so the readout is re-derivable without the box.
+!tools/tadabur/zipformer_screen/decodes/*.jsonl
+!tools/tadabur/zipformer_screen/decodes/*.timing.jsonl

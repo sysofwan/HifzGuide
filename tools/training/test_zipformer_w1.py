@@ -47,6 +47,7 @@ from training.zipformer_decode import (
     ZIPFORMER_W1_STORES,
     Emission,
     ZipformerDecoder,
+    arms_decoded_samples,
     decoded_audio_ratio,
     metric_arm,
     scoring_arm,
@@ -363,3 +364,30 @@ def test_decoded_audio_seconds_per_audio_second_ours_and_checks_w1():
 def test_an_arm_with_no_decoded_audio_figure_is_refused():
     with pytest.raises(ValueError):
         decoded_audio_ratio("stream_b0", 960_000)
+
+
+def test_one_item_runs_one_stream_whichever_single_stream_arm_is_asked_for():
+    assert arms_decoded_samples(("spans", "checks"), 960_000) == 960_000
+    assert arms_decoded_samples(("checks",), 960_000) == 960_000
+
+
+def test_checks_w1_re_decodes_every_check_from_its_own_zero_cache():
+    # a 60 s item's schedule, every check decoded from its own zero cache: 37.44 s per second
+    assert arms_decoded_samples((CHECKS_W1,), 960_000) == 35_942_400
+
+
+def test_the_windows_only_arm_adds_one_stream_and_reuses_checks_w1_s_windows():
+    both = arms_decoded_samples((CHECKS_W1, CHECKS_W1_WINDOWS), 960_000)
+    alone = arms_decoded_samples((CHECKS_W1,), 960_000)
+    windows_alone = arms_decoded_samples((CHECKS_W1_WINDOWS,), 960_000)
+    fresh_windows = decoded_audio_ratio(CHECKS_W1_WINDOWS, 960_000) * 960_000
+    assert both == alone + 960_000  # B' only adds the one stream to checks-w1
+    assert windows_alone == pytest.approx(960_000 + fresh_windows)
+    assert windows_alone < alone  # its previews and stop are cut from the stream
+
+
+def test_the_batch_arithmetic_refuses_an_arm_it_cannot_count_and_an_empty_item():
+    with pytest.raises(ValueError):
+        arms_decoded_samples(("stream_b0",), 960_000)
+    with pytest.raises(ValueError):
+        arms_decoded_samples((CHECKS_W1,), 0)

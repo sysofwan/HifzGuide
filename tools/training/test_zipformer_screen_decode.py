@@ -49,6 +49,21 @@ def test_a_probe_that_measured_no_decode_projects_nothing():
         screen.project({"decoded_audio_seconds": 1.0, "wall_seconds": 0.0}, {"a": 1})
 
 
+def test_decoded_audio_is_reported_in_seconds_never_in_samples():
+    # 16 kHz: one 60 s item is 960,000 samples, and its one stream is 60 s of decode
+    assert screen.decode_seconds("qdat", "decode", [960_000]) == 60.0
+    # the verdict store's two arms re-decode 38.44x that item's audio, in seconds not samples
+    assert screen.decode_seconds("qdat", "w1", [960_000]) == pytest.approx(36_902_400 / 16_000)
+
+
+def test_the_probe_s_rate_is_audio_seconds_per_wall_second():
+    # 600 s of audio decoded in 60 s is 10x realtime, so a 6,000 s job projects 600 s
+    record = screen.project({"decoded_audio_seconds": 600.0, "wall_seconds": 60.0},
+                            {"a": 6000.0})
+    assert record["decoded_audio_per_second"] == pytest.approx(10.0)
+    assert record["jobs"]["a"] == {"decoded_audio_seconds": 6000.0, "projected_seconds": 600.0}
+
+
 # --- the batch: the probe gate, then every job -------------------------------------------
 
 

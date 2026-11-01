@@ -205,10 +205,11 @@ def arms_of(set_name: str, store: str) -> list[str]:
     return sorted({arm for held in STORE_MAPS[store].values() for arm in held.protocols})
 
 
-def decode_seconds(set_name: str, store: str, lengths: Sequence[int]) -> int:
-    """The audio the job's arms hand the model, over items of ``lengths`` samples."""
+def decode_seconds(set_name: str, store: str, lengths: Sequence[int]) -> float:
+    """The seconds of audio the job's arms hand the model, over items of ``lengths`` samples."""
     arms = arms_of(set_name, store)
-    return sum(arms_decoded_samples(arms, length) for length in lengths)
+    return (sum(arms_decoded_samples(arms, length) for length in lengths)
+            / TARGET_SAMPLE_RATE)
 
 
 def _decoded_lengths(path: Path, keep: set[str] | None = None) -> list[int]:
@@ -247,17 +248,18 @@ def item_lengths(set_name: str) -> list[int]:
             for length in _decoded_lengths(decodes_file(slug, "base"), keep)]
 
 
-def project(timing: Mapping, decoded_by_job: Mapping[str, int],
+def project(timing: Mapping, decoded_by_job: Mapping[str, float],
             *, horizon_hours: float = HORIZON_HOURS) -> dict:
     """The batch's projection from one measured job's throughput.
 
-    ``timing`` is the probe's run record (decoded audio and wall seconds); each job's projected
-    wall is its decoded audio divided by the measured throughput, at the same worker count.
+    ``timing`` is the probe's run record (decoded audio seconds and wall seconds); each job's
+    decoded audio is in seconds too, and its projected wall is that divided by the measured
+    throughput, at the same worker count.
     """
     if timing["wall_seconds"] <= 0 or timing["decoded_audio_seconds"] <= 0:
         raise ValueError("the probe measured no decode: no projection from an empty run")
     rate = timing["decoded_audio_seconds"] / timing["wall_seconds"]
-    jobs = {name: {"decoded_audio_seconds": int(seconds),
+    jobs = {name: {"decoded_audio_seconds": round(seconds, 1),
                    "projected_seconds": round(seconds / rate, 1)}
             for name, seconds in decoded_by_job.items()}
     total = round(sum(job["projected_seconds"] for job in jobs.values()), 1)
@@ -356,7 +358,6 @@ def decode(source: Iterable[Recording], *, set_name: str, store: str, out_dir: P
     path = decodes_path(out_dir, set_name, store)
     done = resume_keys(path)
     stores = STORE_MAPS[store]
-    arms = arms_of(set_name, store)
     items = 0
     audio_seconds = decoded_seconds = 0.0
     started = time.time()
@@ -378,7 +379,7 @@ def decode(source: Iterable[Recording], *, set_name: str, store: str, out_dir: P
             for record, span in itertools.islice(source, limit):
                 items += 1
                 audio_seconds += len(span) / TARGET_SAMPLE_RATE
-                decoded_seconds += arms_decoded_samples(arms, len(span))
+                decoded_seconds += decode_seconds(set_name, store, [len(span)])
                 inflight.add(pool.submit(_decode_item, record, span))
                 while len(inflight) > 2 * workers:
                     collect(inflight)

@@ -1418,7 +1418,7 @@
     }
    ],
    "id": "tlog_holdout/72_19_8815815788",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1431,7 +1431,7 @@
     }
    ],
    "id": "tlog_holdout/6_57_2910357506",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1444,7 +1444,7 @@
     }
    ],
    "id": "tlog_holdout/68_2_7490565782",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1501,7 +1501,7 @@
     }
    ],
    "id": "tlog_holdout/11_96_4040595776",
-   "outcome": "verdict",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -1514,7 +1514,7 @@
     }
    ],
    "id": "tlog_holdout/6_88_9784429523",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1527,7 +1527,7 @@
     }
    ],
    "id": "tlog_holdout/73_9_5842273389",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1553,7 +1553,7 @@
     }
    ],
    "id": "tlog_holdout/78_9_9417366266",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1566,7 +1566,7 @@
     }
    ],
    "id": "tlog_holdout/88_22_3832572320",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1631,7 +1631,7 @@
     }
    ],
    "id": "tlog_holdout/22_29_2407560716",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1644,7 +1644,7 @@
     }
    ],
    "id": "tlog_holdout/84_6_2457562614",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1670,7 +1670,7 @@
     }
    ],
    "id": "tlog_holdout/80_23_8223216780",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1683,7 +1683,7 @@
     }
    ],
    "id": "tlog_holdout/14_7_6229009972",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1696,7 +1696,7 @@
     }
    ],
    "id": "tlog_holdout/106_3_9963478690",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1709,7 +1709,7 @@
     }
    ],
    "id": "tlog_holdout/72_7_7938272635",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1722,7 +1722,7 @@
     }
    ],
    "id": "tlog_holdout/53_1_9118299378",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1735,7 +1735,7 @@
     }
    ],
    "id": "tlog_holdout/74_9_2451608123",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1761,7 +1761,7 @@
     }
    ],
    "id": "tlog_holdout/78_3_7255485738",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1787,7 +1787,7 @@
     }
    ],
    "id": "tlog_holdout/75_18_9322535529",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1813,7 +1813,7 @@
     }
    ],
    "id": "tlog_holdout/21_79_1200398825",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1826,7 +1826,7 @@
     }
    ],
    "id": "tlog_holdout/25_67_3129548647",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1839,7 +1839,7 @@
     }
    ],
    "id": "tlog_holdout/36_29_262175295",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1852,7 +1852,7 @@
     }
    ],
    "id": "tlog_holdout/80_30_4420202777",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1878,7 +1878,7 @@
     }
    ],
    "id": "tlog_holdout/87_10_2995714032",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1891,7 +1891,7 @@
     }
    ],
    "id": "tlog_holdout/74_2_1196862184",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1904,7 +1904,7 @@
     }
    ],
    "id": "tlog_holdout/78_7_6661050335",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1930,7 +1930,7 @@
     }
    ],
    "id": "tlog_holdout/78_1_4793377960",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1943,7 +1943,7 @@
     }
    ],
    "id": "tlog_holdout/7_35_8537178616",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1956,7 +1956,7 @@
     }
    ],
    "id": "tlog_holdout/43_66_1023361474",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1969,7 +1969,7 @@
     }
    ],
    "id": "tlog_holdout/81_9_5541459713",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1982,7 +1982,7 @@
     }
    ],
    "id": "tlog_holdout/91_11_4885026349",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -1995,7 +1995,7 @@
     }
    ],
    "id": "tlog_holdout/75_33_5270016647",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2034,7 +2034,7 @@
     }
    ],
    "id": "tlog_holdout/20_9_4237911617",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2047,7 +2047,7 @@
     }
    ],
    "id": "tlog_holdout/68_17_3737432762",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2060,7 +2060,7 @@
     }
    ],
    "id": "tlog_holdout/18_3_4000801852",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2073,7 +2073,7 @@
     }
    ],
    "id": "tlog_holdout/78_3_2930787496",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2086,7 +2086,7 @@
     }
    ],
    "id": "tlog_holdout/89_20_6732480719",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2099,7 +2099,7 @@
     }
    ],
    "id": "tlog_holdout/55_20_7116830343",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2125,7 +2125,7 @@
     }
    ],
    "id": "tlog_holdout/50_8_3758471264",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2164,7 +2164,7 @@
     }
    ],
    "id": "tlog_holdout/2_3_5057024450",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2190,7 +2190,7 @@
     }
    ],
    "id": "tlog_holdout/78_1_3058402348",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2229,7 +2229,7 @@
     }
    ],
    "id": "tlog_holdout/78_1_4033398397",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2242,7 +2242,7 @@
     }
    ],
    "id": "tlog_holdout/56_62_null_FEpkBhC",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2255,7 +2255,7 @@
     }
    ],
    "id": "tlog_holdout/90_5_1034381073",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2268,7 +2268,7 @@
     }
    ],
    "id": "tlog_holdout/18_100_3045911613",
-   "outcome": "trained",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -2281,7 +2281,7 @@
     }
    ],
    "id": "tlog_holdout/36_39_8040619749",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2294,7 +2294,7 @@
     }
    ],
    "id": "tlog_holdout/93_9_6476398867",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2320,7 +2320,7 @@
     }
    ],
    "id": "tlog_holdout/78_3_3790381978",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2333,7 +2333,7 @@
     }
    ],
    "id": "tlog_holdout/23_53_3827319681",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2346,7 +2346,7 @@
     }
    ],
    "id": "tlog_holdout/79_42_1165035078",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2359,7 +2359,7 @@
     }
    ],
    "id": "tlog_holdout/6_148_3624514734",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2372,7 +2372,7 @@
     }
    ],
    "id": "tlog_holdout/78_24_8829404473",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2398,7 +2398,7 @@
     }
    ],
    "id": "tlog_holdout/19_86_8716309306",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2411,7 +2411,7 @@
     }
    ],
    "id": "tlog_holdout/33_29_2665561361",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2424,7 +2424,7 @@
     }
    ],
    "id": "tlog_holdout/70_17_344663896",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2463,7 +2463,7 @@
     }
    ],
    "id": "tlog_holdout/51_39_null",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2476,7 +2476,7 @@
     }
    ],
    "id": "tlog_holdout/111_1_8918731304",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2489,7 +2489,7 @@
     }
    ],
    "id": "tlog_holdout/37_176_undefined_Bc1Te4g",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2502,7 +2502,7 @@
     }
    ],
    "id": "tlog_holdout/18_91_2466212003",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2567,7 +2567,7 @@
     }
    ],
    "id": "tlog_holdout/91_1_6070327167",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2580,7 +2580,7 @@
     }
    ],
    "id": "tlog_holdout/55_20_8435432190",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2593,7 +2593,7 @@
     }
    ],
    "id": "tlog_holdout/112_1_8791936746",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2619,7 +2619,7 @@
     }
    ],
    "id": "tlog_holdout/112_3_7628916553",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2632,7 +2632,7 @@
     }
    ],
    "id": "tlog_holdout/15_36_undefined",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2658,7 +2658,7 @@
     }
    ],
    "id": "tlog_holdout/35_18_2446897792",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2671,7 +2671,7 @@
     }
    ],
    "id": "tlog_holdout/19_49_5883838555",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2684,7 +2684,7 @@
     }
    ],
    "id": "tlog_holdout/2_186_3739924043",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2736,7 +2736,7 @@
     }
    ],
    "id": "tlog_holdout/79_46_2939841730",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2749,7 +2749,7 @@
     }
    ],
    "id": "tlog_holdout/43_67_3612049400",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2762,7 +2762,7 @@
     }
    ],
    "id": "tlog_holdout/112_3_9604333428",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2775,7 +2775,7 @@
     }
    ],
    "id": "tlog_holdout/18_5_7646032494",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2840,7 +2840,7 @@
     }
    ],
    "id": "tlog_holdout/36_53_1007837625",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2853,7 +2853,7 @@
     }
    ],
    "id": "tlog_holdout/80_1_5901585357",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2879,7 +2879,7 @@
     }
    ],
    "id": "tlog_holdout/2_77_7506160865",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2892,7 +2892,7 @@
     }
    ],
    "id": "tlog_holdout/23_36_577670699",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2905,7 +2905,7 @@
     }
    ],
    "id": "tlog_holdout/70_29_3740714225",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2918,7 +2918,7 @@
     }
    ],
    "id": "tlog_holdout/68_7_2861789347",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2949,7 +2949,7 @@
     }
    ],
    "id": "tlog_holdout/88_23_5165628193",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -2975,7 +2975,7 @@
     }
    ],
    "id": "tlog_holdout/1_5_4986388899",
-   "outcome": "trained",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -2988,7 +2988,7 @@
     }
    ],
    "id": "tlog_holdout/106_4_6330156112",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3001,7 +3001,7 @@
     }
    ],
    "id": "tlog_holdout/111_5_2330781610",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3027,7 +3027,7 @@
     }
    ],
    "id": "tlog_holdout/80_5_4026372520",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3040,7 +3040,7 @@
     }
    ],
    "id": "tlog_holdout/77_45_6585124791",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3053,7 +3053,7 @@
     }
    ],
    "id": "tlog_holdout/67_7_6709646011",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3066,7 +3066,7 @@
     }
    ],
    "id": "tlog_holdout/36_73_1060482891",
-   "outcome": "verdict",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -3079,7 +3079,7 @@
     }
    ],
    "id": "tlog_holdout/68_32_5933258134",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3092,7 +3092,7 @@
     }
    ],
    "id": "tlog_holdout/48_1_7299245651",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3105,7 +3105,7 @@
     }
    ],
    "id": "tlog_holdout/7_12_3907683570_IGxYZ8Z",
-   "outcome": "verdict",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -3118,7 +3118,7 @@
     }
    ],
    "id": "tlog_holdout/72_4_3944002995",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3131,7 +3131,7 @@
     }
    ],
    "id": "tlog_holdout/112_4_4707007916",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3144,7 +3144,7 @@
     }
    ],
    "id": "tlog_holdout/68_52_2402036650",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3170,7 +3170,7 @@
     }
    ],
    "id": "tlog_holdout/18_81_8586756778",
-   "outcome": "trained",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -3183,7 +3183,7 @@
     }
    ],
    "id": "tlog_holdout/78_7_3902851699",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3196,7 +3196,7 @@
     }
    ],
    "id": "tlog_holdout/50_45_3522354424",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3209,7 +3209,7 @@
     }
    ],
    "id": "tlog_holdout/6_69_8388767514",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3222,7 +3222,7 @@
     }
    ],
    "id": "tlog_holdout/1_5_9399476629",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3253,7 +3253,7 @@
     }
    ],
    "id": "tlog_holdout/31_13_1408081431",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3266,7 +3266,7 @@
     }
    ],
    "id": "tlog_holdout/78_24_8850613694",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3305,7 +3305,7 @@
     }
    ],
    "id": "tlog_holdout/67_9_7531972827",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3349,7 +3349,7 @@
     }
    ],
    "id": "tlog_holdout/28_58_1800238325_iJveiZ1",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3375,7 +3375,7 @@
     }
    ],
    "id": "tlog_holdout/19_11_4139655026",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3393,7 +3393,7 @@
     }
    ],
    "id": "tlog_holdout/17_29_1452321262",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3419,7 +3419,7 @@
     }
    ],
    "id": "tlog_holdout/75_31_7747632249",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3432,7 +3432,7 @@
     }
    ],
    "id": "tlog_holdout/53_38_null_eDqbeEM",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3445,7 +3445,7 @@
     }
    ],
    "id": "tlog_holdout/37_62_644386447",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3458,7 +3458,7 @@
     }
    ],
    "id": "tlog_holdout/18_25_8673532835",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3497,7 +3497,7 @@
     }
    ],
    "id": "tlog_holdout/78_9_1184618551",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3510,7 +3510,7 @@
     }
    ],
    "id": "tlog_holdout/17_105_2921214775",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3536,7 +3536,7 @@
     }
    ],
    "id": "tlog_holdout/67_6_9183881301",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3549,7 +3549,7 @@
     }
    ],
    "id": "tlog_holdout/12_4_2600063677",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3562,7 +3562,7 @@
     }
    ],
    "id": "tlog_holdout/9_95_1050577928",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3588,7 +3588,7 @@
     }
    ],
    "id": "tlog_holdout/94_2_3378327879",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3614,7 +3614,7 @@
     }
    ],
    "id": "tlog_holdout/56_4_1656050836",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3640,7 +3640,7 @@
     }
    ],
    "id": "tlog_holdout/78_8_3428656777",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3653,7 +3653,7 @@
     }
    ],
    "id": "tlog_holdout/38_73_1028803212",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3666,7 +3666,7 @@
     }
    ],
    "id": "tlog_holdout/48_9_2871003400",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3679,7 +3679,7 @@
     }
    ],
    "id": "tlog_holdout/37_109_1939247855",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3697,7 +3697,7 @@
     }
    ],
    "id": "tlog_holdout/15_73_3124512912",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3710,7 +3710,7 @@
     }
    ],
    "id": "tlog_holdout/20_26_8478401372",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3723,7 +3723,7 @@
     }
    ],
    "id": "tlog_holdout/67_9_5677813472",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3749,7 +3749,7 @@
     }
    ],
    "id": "tlog_holdout/37_18_879489272",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3775,7 +3775,7 @@
     }
    ],
    "id": "tlog_holdout/36_50_5591611747",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3788,7 +3788,7 @@
     }
    ],
    "id": "tlog_holdout/41_3_1096894177",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3801,7 +3801,7 @@
     }
    ],
    "id": "tlog_holdout/83_30_1851865264",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3814,7 +3814,7 @@
     }
    ],
    "id": "tlog_holdout/2_6_4159476001",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3866,7 +3866,7 @@
     }
    ],
    "id": "tlog_holdout/67_7_5991833419",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3949,7 +3949,7 @@
     }
    ],
    "id": "tlog_holdout/36_71_5025274945",
-   "outcome": "trained",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -3962,7 +3962,7 @@
     }
    ],
    "id": "tlog_holdout/27_27_3965583841",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3975,7 +3975,7 @@
     }
    ],
    "id": "tlog_holdout/53_40_1358942013",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -3988,7 +3988,7 @@
     }
    ],
    "id": "tlog_holdout/38_79_1059280208",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -4001,7 +4001,7 @@
     }
    ],
    "id": "tlog_holdout/18_100_2490739060",
-   "outcome": "trained",
+   "outcome": "verdict_same_group",
    "source": "tlog_holdout"
   },
   {
@@ -4027,7 +4027,7 @@
     }
    ],
    "id": "tlog_holdout/25_19_6342723912",
-   "outcome": "trained",
+   "outcome": "verdict",
    "source": "tlog_holdout"
   },
   {
@@ -5476,8 +5476,9 @@
    "confirm.4": 8,
    "look": 2,
    "no_hit": 400,
-   "train_consumed": 158,
-   "train_unconsumed": 23
+   "pool_unconsumed_same_group": 8,
+   "train_consumed": 30,
+   "train_unconsumed": 148
   },
   "decode": [
    "everyayah_heldout/test-00009-of-00013_332",
@@ -6058,6 +6059,16 @@
    "qul_alnufais/55_30",
    "qul_alnufais/111_5"
   ],
+  "same_group": [
+   "tlog_holdout/11_96_4040595776",
+   "tlog_holdout/18_100_3045911613",
+   "tlog_holdout/1_5_4986388899",
+   "tlog_holdout/36_73_1060482891",
+   "tlog_holdout/7_12_3907683570_IGxYZ8Z",
+   "tlog_holdout/18_81_8586756778",
+   "tlog_holdout/36_71_5025274945",
+   "tlog_holdout/18_100_2490739060"
+  ],
   "sealed": {
    "tlog_holdout/112_4_5199155500": [
     "confirm.3"
@@ -6128,164 +6139,36 @@
    ]
   },
   "trained": [
-   "tlog_holdout/72_19_8815815788",
-   "tlog_holdout/6_57_2910357506",
-   "tlog_holdout/68_2_7490565782",
    "tlog_holdout/36_22_2749424179",
    "tlog_holdout/71_13_4291140108",
-   "tlog_holdout/6_88_9784429523",
-   "tlog_holdout/73_9_5842273389",
    "tlog_holdout/96_13_undefined_RMWyJui",
-   "tlog_holdout/78_9_9417366266",
-   "tlog_holdout/88_22_3832572320",
-   "tlog_holdout/22_29_2407560716",
-   "tlog_holdout/84_6_2457562614",
    "tlog_holdout/26_34_2279724361",
-   "tlog_holdout/80_23_8223216780",
-   "tlog_holdout/14_7_6229009972",
-   "tlog_holdout/106_3_9963478690",
-   "tlog_holdout/72_7_7938272635",
-   "tlog_holdout/53_1_9118299378",
-   "tlog_holdout/74_9_2451608123",
-   "tlog_holdout/78_3_7255485738",
    "tlog_holdout/71_23_2048851382",
-   "tlog_holdout/75_18_9322535529",
    "tlog_holdout/100_8_3690913613",
-   "tlog_holdout/21_79_1200398825",
-   "tlog_holdout/25_67_3129548647",
-   "tlog_holdout/36_29_262175295",
-   "tlog_holdout/80_30_4420202777",
    "tlog_holdout/71_14_902856862",
-   "tlog_holdout/87_10_2995714032",
-   "tlog_holdout/74_2_1196862184",
-   "tlog_holdout/78_7_6661050335",
-   "tlog_holdout/78_1_4793377960",
-   "tlog_holdout/7_35_8537178616",
-   "tlog_holdout/43_66_1023361474",
-   "tlog_holdout/81_9_5541459713",
-   "tlog_holdout/91_11_4885026349",
-   "tlog_holdout/75_33_5270016647",
    "tlog_holdout/88_15_3571355497",
    "tlog_holdout/26_223_5071198219",
-   "tlog_holdout/20_9_4237911617",
-   "tlog_holdout/68_17_3737432762",
-   "tlog_holdout/18_3_4000801852",
-   "tlog_holdout/78_3_2930787496",
-   "tlog_holdout/89_20_6732480719",
-   "tlog_holdout/55_20_7116830343",
-   "tlog_holdout/50_8_3758471264",
    "tlog_holdout/81_3_4410208794",
-   "tlog_holdout/2_3_5057024450",
-   "tlog_holdout/78_1_3058402348",
-   "tlog_holdout/78_1_4033398397",
-   "tlog_holdout/56_62_null_FEpkBhC",
-   "tlog_holdout/90_5_1034381073",
-   "tlog_holdout/18_100_3045911613",
-   "tlog_holdout/36_39_8040619749",
-   "tlog_holdout/93_9_6476398867",
    "tlog_holdout/18_7_6274030101",
-   "tlog_holdout/78_3_3790381978",
-   "tlog_holdout/23_53_3827319681",
-   "tlog_holdout/79_42_1165035078",
-   "tlog_holdout/6_148_3624514734",
-   "tlog_holdout/78_24_8829404473",
-   "tlog_holdout/19_86_8716309306",
-   "tlog_holdout/33_29_2665561361",
-   "tlog_holdout/70_17_344663896",
-   "tlog_holdout/51_39_null",
-   "tlog_holdout/111_1_8918731304",
-   "tlog_holdout/37_176_undefined_Bc1Te4g",
-   "tlog_holdout/18_91_2466212003",
    "tlog_holdout/2_7_6114862922",
    "tlog_holdout/26_13_4435973444",
-   "tlog_holdout/91_1_6070327167",
-   "tlog_holdout/55_20_8435432190",
-   "tlog_holdout/112_1_8791936746",
-   "tlog_holdout/112_3_7628916553",
-   "tlog_holdout/15_36_undefined",
-   "tlog_holdout/35_18_2446897792",
-   "tlog_holdout/19_49_5883838555",
-   "tlog_holdout/2_186_3739924043",
    "tlog_holdout/96_13_3933837714",
    "tlog_holdout/99_2_7140578338",
-   "tlog_holdout/79_46_2939841730",
-   "tlog_holdout/43_67_3612049400",
-   "tlog_holdout/112_3_9604333428",
-   "tlog_holdout/18_5_7646032494",
    "tlog_holdout/93_5_5164501306",
    "tlog_holdout/19_71_2210314660",
-   "tlog_holdout/36_53_1007837625",
-   "tlog_holdout/80_1_5901585357",
    "tlog_holdout/102_8_5916463777",
-   "tlog_holdout/2_77_7506160865",
-   "tlog_holdout/23_36_577670699",
-   "tlog_holdout/70_29_3740714225",
-   "tlog_holdout/68_7_2861789347",
    "tlog_holdout/11_90_2170378964",
-   "tlog_holdout/88_23_5165628193",
    "tlog_holdout/71_1_undefined",
-   "tlog_holdout/1_5_4986388899",
-   "tlog_holdout/106_4_6330156112",
-   "tlog_holdout/111_5_2330781610",
-   "tlog_holdout/80_5_4026372520",
-   "tlog_holdout/77_45_6585124791",
-   "tlog_holdout/67_7_6709646011",
-   "tlog_holdout/68_32_5933258134",
-   "tlog_holdout/48_1_7299245651",
-   "tlog_holdout/72_4_3944002995",
-   "tlog_holdout/112_4_4707007916",
-   "tlog_holdout/68_52_2402036650",
    "tlog_holdout/81_3_4106618044",
-   "tlog_holdout/18_81_8586756778",
-   "tlog_holdout/78_7_3902851699",
-   "tlog_holdout/50_45_3522354424",
-   "tlog_holdout/6_69_8388767514",
-   "tlog_holdout/1_5_9399476629",
-   "tlog_holdout/31_13_1408081431",
-   "tlog_holdout/78_24_8850613694",
    "tlog_holdout/37_25_6209858434",
-   "tlog_holdout/67_9_7531972827",
-   "tlog_holdout/28_58_1800238325_iJveiZ1",
-   "tlog_holdout/19_11_4139655026",
-   "tlog_holdout/17_29_1452321262",
-   "tlog_holdout/75_31_7747632249",
-   "tlog_holdout/53_38_null_eDqbeEM",
-   "tlog_holdout/37_62_644386447",
-   "tlog_holdout/18_25_8673532835",
    "tlog_holdout/86_10_7720490959",
-   "tlog_holdout/78_9_1184618551",
-   "tlog_holdout/17_105_2921214775",
-   "tlog_holdout/67_6_9183881301",
-   "tlog_holdout/12_4_2600063677",
-   "tlog_holdout/9_95_1050577928",
    "tlog_holdout/53_4_undefined",
-   "tlog_holdout/94_2_3378327879",
-   "tlog_holdout/56_4_1656050836",
-   "tlog_holdout/78_8_3428656777",
-   "tlog_holdout/38_73_1028803212",
-   "tlog_holdout/48_9_2871003400",
-   "tlog_holdout/37_109_1939247855",
-   "tlog_holdout/15_73_3124512912",
-   "tlog_holdout/20_26_8478401372",
-   "tlog_holdout/67_9_5677813472",
    "tlog_holdout/17_5_2932515370",
-   "tlog_holdout/37_18_879489272",
    "tlog_holdout/93_6_2103706604",
-   "tlog_holdout/36_50_5591611747",
-   "tlog_holdout/41_3_1096894177",
-   "tlog_holdout/83_30_1851865264",
-   "tlog_holdout/2_6_4159476001",
-   "tlog_holdout/67_7_5991833419",
    "tlog_holdout/21_27_3436238493",
    "tlog_holdout/81_17_6836648456",
    "tlog_holdout/67_10_3481372899",
-   "tlog_holdout/79_33_undefined_ldvYA2Z",
-   "tlog_holdout/36_71_5025274945",
-   "tlog_holdout/27_27_3965583841",
-   "tlog_holdout/53_40_1358942013",
-   "tlog_holdout/38_79_1059280208",
-   "tlog_holdout/18_100_2490739060",
-   "tlog_holdout/25_19_6342723912"
+   "tlog_holdout/79_33_undefined_ldvYA2Z"
   ],
   "verdict": [
    "everyayah_heldout/test-00009-of-00013_332",
@@ -6488,25 +6371,153 @@
    "everyayah_heldout/test-00010-of-00013_562",
    "everyayah_heldout/test-00003-of-00013_802",
    "everyayah_heldout/test-00009-of-00013_189",
+   "tlog_holdout/72_19_8815815788",
+   "tlog_holdout/6_57_2910357506",
+   "tlog_holdout/68_2_7490565782",
    "tlog_holdout/11_96_4040595776",
+   "tlog_holdout/6_88_9784429523",
+   "tlog_holdout/73_9_5842273389",
+   "tlog_holdout/78_9_9417366266",
+   "tlog_holdout/88_22_3832572320",
+   "tlog_holdout/22_29_2407560716",
+   "tlog_holdout/84_6_2457562614",
+   "tlog_holdout/80_23_8223216780",
+   "tlog_holdout/14_7_6229009972",
+   "tlog_holdout/106_3_9963478690",
+   "tlog_holdout/72_7_7938272635",
+   "tlog_holdout/53_1_9118299378",
+   "tlog_holdout/74_9_2451608123",
    "tlog_holdout/18_10_1711258217",
+   "tlog_holdout/78_3_7255485738",
+   "tlog_holdout/75_18_9322535529",
+   "tlog_holdout/21_79_1200398825",
+   "tlog_holdout/25_67_3129548647",
+   "tlog_holdout/36_29_262175295",
+   "tlog_holdout/80_30_4420202777",
+   "tlog_holdout/87_10_2995714032",
+   "tlog_holdout/74_2_1196862184",
+   "tlog_holdout/78_7_6661050335",
    "tlog_holdout/20_87_2541165124",
+   "tlog_holdout/78_1_4793377960",
+   "tlog_holdout/7_35_8537178616",
+   "tlog_holdout/43_66_1023361474",
+   "tlog_holdout/81_9_5541459713",
+   "tlog_holdout/91_11_4885026349",
+   "tlog_holdout/75_33_5270016647",
+   "tlog_holdout/20_9_4237911617",
+   "tlog_holdout/68_17_3737432762",
+   "tlog_holdout/18_3_4000801852",
+   "tlog_holdout/78_3_2930787496",
+   "tlog_holdout/89_20_6732480719",
+   "tlog_holdout/55_20_7116830343",
+   "tlog_holdout/50_8_3758471264",
+   "tlog_holdout/2_3_5057024450",
    "tlog_holdout/80_22_5254111871",
+   "tlog_holdout/78_1_3058402348",
+   "tlog_holdout/78_1_4033398397",
+   "tlog_holdout/56_62_null_FEpkBhC",
+   "tlog_holdout/90_5_1034381073",
+   "tlog_holdout/18_100_3045911613",
+   "tlog_holdout/36_39_8040619749",
+   "tlog_holdout/93_9_6476398867",
+   "tlog_holdout/78_3_3790381978",
+   "tlog_holdout/23_53_3827319681",
+   "tlog_holdout/79_42_1165035078",
+   "tlog_holdout/6_148_3624514734",
+   "tlog_holdout/78_24_8829404473",
+   "tlog_holdout/19_86_8716309306",
+   "tlog_holdout/33_29_2665561361",
+   "tlog_holdout/70_17_344663896",
    "tlog_holdout/26_100_1882361941",
    "tlog_holdout/19_9_3880946064",
+   "tlog_holdout/51_39_null",
+   "tlog_holdout/111_1_8918731304",
+   "tlog_holdout/37_176_undefined_Bc1Te4g",
+   "tlog_holdout/18_91_2466212003",
+   "tlog_holdout/91_1_6070327167",
+   "tlog_holdout/55_20_8435432190",
+   "tlog_holdout/112_1_8791936746",
+   "tlog_holdout/112_3_7628916553",
+   "tlog_holdout/15_36_undefined",
+   "tlog_holdout/35_18_2446897792",
+   "tlog_holdout/19_49_5883838555",
+   "tlog_holdout/2_186_3739924043",
    "tlog_holdout/19_36_2923084519",
+   "tlog_holdout/79_46_2939841730",
+   "tlog_holdout/43_67_3612049400",
+   "tlog_holdout/112_3_9604333428",
+   "tlog_holdout/18_5_7646032494",
+   "tlog_holdout/36_53_1007837625",
+   "tlog_holdout/80_1_5901585357",
+   "tlog_holdout/2_77_7506160865",
+   "tlog_holdout/23_36_577670699",
+   "tlog_holdout/70_29_3740714225",
+   "tlog_holdout/68_7_2861789347",
+   "tlog_holdout/88_23_5165628193",
+   "tlog_holdout/1_5_4986388899",
+   "tlog_holdout/106_4_6330156112",
+   "tlog_holdout/111_5_2330781610",
    "tlog_holdout/23_76_3943432970",
+   "tlog_holdout/80_5_4026372520",
+   "tlog_holdout/77_45_6585124791",
+   "tlog_holdout/67_7_6709646011",
    "tlog_holdout/36_73_1060482891",
+   "tlog_holdout/68_32_5933258134",
+   "tlog_holdout/48_1_7299245651",
    "tlog_holdout/7_12_3907683570_IGxYZ8Z",
+   "tlog_holdout/72_4_3944002995",
+   "tlog_holdout/112_4_4707007916",
+   "tlog_holdout/68_52_2402036650",
+   "tlog_holdout/18_81_8586756778",
+   "tlog_holdout/78_7_3902851699",
+   "tlog_holdout/50_45_3522354424",
+   "tlog_holdout/6_69_8388767514",
+   "tlog_holdout/1_5_9399476629",
+   "tlog_holdout/31_13_1408081431",
+   "tlog_holdout/78_24_8850613694",
    "tlog_holdout/72_15_3118669218",
+   "tlog_holdout/67_9_7531972827",
    "tlog_holdout/34_21_699755360_kjZ4hCR",
+   "tlog_holdout/28_58_1800238325_iJveiZ1",
    "tlog_holdout/36_4_3803307033",
+   "tlog_holdout/19_11_4139655026",
+   "tlog_holdout/17_29_1452321262",
    "tlog_holdout/5_74_1431170852",
+   "tlog_holdout/75_31_7747632249",
+   "tlog_holdout/53_38_null_eDqbeEM",
+   "tlog_holdout/37_62_644386447",
+   "tlog_holdout/18_25_8673532835",
    "tlog_holdout/25_13_580280593",
+   "tlog_holdout/78_9_1184618551",
+   "tlog_holdout/17_105_2921214775",
+   "tlog_holdout/67_6_9183881301",
+   "tlog_holdout/12_4_2600063677",
+   "tlog_holdout/9_95_1050577928",
+   "tlog_holdout/94_2_3378327879",
    "tlog_holdout/13_40_513863639",
+   "tlog_holdout/56_4_1656050836",
    "tlog_holdout/53_60_1668854755",
+   "tlog_holdout/78_8_3428656777",
+   "tlog_holdout/38_73_1028803212",
+   "tlog_holdout/48_9_2871003400",
+   "tlog_holdout/37_109_1939247855",
+   "tlog_holdout/15_73_3124512912",
+   "tlog_holdout/20_26_8478401372",
+   "tlog_holdout/67_9_5677813472",
+   "tlog_holdout/37_18_879489272",
+   "tlog_holdout/36_50_5591611747",
+   "tlog_holdout/41_3_1096894177",
+   "tlog_holdout/83_30_1851865264",
+   "tlog_holdout/2_6_4159476001",
    "tlog_holdout/39_31_2472064486",
+   "tlog_holdout/67_7_5991833419",
+   "tlog_holdout/36_71_5025274945",
+   "tlog_holdout/27_27_3965583841",
+   "tlog_holdout/53_40_1358942013",
+   "tlog_holdout/38_79_1059280208",
+   "tlog_holdout/18_100_2490739060",
    "tlog_holdout/2_281_4092134629_10q8iFa",
+   "tlog_holdout/25_19_6342723912",
    "qul_alnufais/26_189",
    "qul_alnufais/80_13",
    "qul_alnufais/34_15",
@@ -6715,6 +6726,14 @@
   "reason": "professional reciters against app audio: #156's precedent, and the Tadabur shards are not fingerprinted in this store"
  },
  "tlog": {
+  "consumed": {
+   "log": "tools/tadabur/consonant2_readout/tlog_consumed.jsonl.gz",
+   "note": "the rows the round-2 candidate read, not tlog.training's pool: a pool row the run never read is not exposure (architect r3, D3)",
+   "rows": 73990,
+   "rows_sha256": "3aee9273aaa9f533bc20cc1d604005c4e4c505f1e2741243c85719958f5ec970",
+   "sha256": "5e95c3c06f498768323781fc04b4394093233c2a7717ae193f80feda87929238",
+   "shards": 130
+  },
   "indexed_rows": 713183,
   "rows": 719853,
   "store_dir": "/root/scratch/tlog/fp",

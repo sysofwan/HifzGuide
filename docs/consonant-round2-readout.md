@@ -13,7 +13,10 @@ and the paired 95% upper bound is **+1.53 per 1,000**, above the frozen ceiling 
 The rule is "any gate fails → fail"; no number here can be traded against another.
 
 Headline bars on the pooled confirm.1+confirm.2 gating set (5,742 gating clips, 57,935 graded
-words):
+words). The two frozen tranches hold 5,762 gating clips: **20 are ungradable** because the
+phonetizer cannot build their ayah references, including **all 14 surah-106 rows**, so surah
+106 drops out and the clustered bootstrap runs on **113 surah clusters**, not 114. The 20
+clips are named with their ayat in the coverage section below.
 
 - all-cause false flags, candidate − C95: **−54.5 per 1,000** (95% [−63.6, −47.4]) — pass;
 - consonant-caused, candidate − C95: **−57.9 per 1,000** (95% [−65.0, −52.2]) — pass;
@@ -117,6 +120,14 @@ Verdict: fail (pre-claim pass)
 ### Coverage and empty slots, per tranche
 
 - confirm.1: 2835 clips, 1519 partial spans, 8 excluded
+  - excluded: 106_1_1867724027.flac#0 (106:1)
+  - excluded: 106_1_5166055538.flac#0 (106:1)
+  - excluded: 106_1_8149234267.flac#0 (106:1)
+  - excluded: 106_2_4899974765.flac#0 (106:2)
+  - excluded: 106_2_6019593613.flac#0 (106:2)
+  - excluded: 106_3_2657851723.flac#0 (106:3)
+  - excluded: 106_4_4070109245.flac#0 (106:4)
+  - excluded: 55_17_2482154935.flac#0 (55:17)
 **empty slots per 100 consonant carriers** (per 1,000 or points; n = 2835)
 
 | model | point |
@@ -127,6 +138,18 @@ Verdict: fail (pre-claim pass)
 | control | 18.600 |
 | candidate−c95 | -2.394 [-2.877, -1.805] |
 - confirm.2: 2907 clips, 1548 partial spans, 12 excluded
+  - excluded: 106_1_1120059094.flac#0 (106:1)
+  - excluded: 106_1_6712074310.flac#0 (106:1)
+  - excluded: 106_2_5959601854.flac#0 (106:2)
+  - excluded: 106_2_7809676148.flac#0 (106:2)
+  - excluded: 106_3_5456853368.flac#0 (106:3)
+  - excluded: 106_4_1708901254.flac#0 (106:4)
+  - excluded: 106_4_3409575285.flac#0 (106:4)
+  - excluded: 90_10_1410612816.flac#0 (90:10)
+  - excluded: 90_10_2556015565.flac#0 (90:10)
+  - excluded: 90_10_4520336054.flac#0 (90:10)
+  - excluded: 90_8_3852198404.flac#0 (90:8)
+  - excluded: 90_8_9835558478.flac#0 (90:8)
 **empty slots per 100 consonant carriers** (per 1,000 or points; n = 2907)
 
 | model | point |
@@ -136,6 +159,27 @@ Verdict: fail (pre-claim pass)
 | base | 17.872 |
 | control | 19.041 |
 | candidate−c95 | -2.020 [-2.417, -1.655] |
+Graded population: 5742 clips over 113 surah clusters; 20 frozen gating clips left out (no item: the row names no ayah, or the phonetizer cannot handle the ayah the row names).
+  - excluded: 106_1_1120059094.flac#0 (106:1)
+  - excluded: 106_1_1867724027.flac#0 (106:1)
+  - excluded: 106_1_5166055538.flac#0 (106:1)
+  - excluded: 106_1_6712074310.flac#0 (106:1)
+  - excluded: 106_1_8149234267.flac#0 (106:1)
+  - excluded: 106_2_4899974765.flac#0 (106:2)
+  - excluded: 106_2_5959601854.flac#0 (106:2)
+  - excluded: 106_2_6019593613.flac#0 (106:2)
+  - excluded: 106_2_7809676148.flac#0 (106:2)
+  - excluded: 106_3_2657851723.flac#0 (106:3)
+  - excluded: 106_3_5456853368.flac#0 (106:3)
+  - excluded: 106_4_1708901254.flac#0 (106:4)
+  - excluded: 106_4_3409575285.flac#0 (106:4)
+  - excluded: 106_4_4070109245.flac#0 (106:4)
+  - excluded: 55_17_2482154935.flac#0 (55:17)
+  - excluded: 90_10_1410612816.flac#0 (90:10)
+  - excluded: 90_10_2556015565.flac#0 (90:10)
+  - excluded: 90_10_4520336054.flac#0 (90:10)
+  - excluded: 90_8_3852198404.flac#0 (90:8)
+  - excluded: 90_8_9835558478.flac#0 (90:8)
 
 ### Tarteel v1 confirm (the full round-1 reading)
 

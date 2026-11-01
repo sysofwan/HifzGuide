@@ -482,11 +482,13 @@ def _read_plan(files: ZipformerFiles) -> dict:
 def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
     """Reproduce the card's PER, pin the front-end scale, and write the identity.
 
-    Every clip the plan allows is decoded at both scales. The unit PER is the card's own
-    (pooled edits over pooled reference units per source; a clip whose reference the card's
-    table lacks is a counted miss); the character PER is recorded beside it so a tokenizer
-    mismatch can be told apart from a broken decoder. A failure writes the evidence and is a
-    stop: :class:`training.zipformer_gate.GateStop`.
+    Every clip the plan allows is decoded at both scales. The scale is pinned first, then the
+    round trip is checked before any PER is trusted (the golden units are the stand-in
+    tokenizer's, so a PER against a different segmentation means nothing), then the card's
+    unit PER is reproduced: pooled edits over pooled reference units per source, a clip whose
+    reference the card's table lacks counted as a miss. The character PER is recorded beside
+    it so a tokenizer mismatch can be told apart from a broken decoder. A failure writes the
+    evidence and is a stop: :class:`training.zipformer_gate.GateStop`.
     """
     files = files_from_record(work_dir, load_fetch(work_dir))
     rows = manifest_rows(files.manifest)
@@ -539,8 +541,8 @@ def gate(work_dir: Path, *, workers: int = DEFAULT_WORKERS) -> dict:
                     for source, entry in scales[str(scale)]["unit_per"].items()}
             for scale in SCALES
         })
-        require_card_reproduction(scales[str(pinned)]["unit_per"])
         require_roundtrip(decoded[pinned].values(), inventory)
+        require_card_reproduction(scales[str(pinned)]["unit_per"])
     except GateStop as stop:
         write_json({**base, "scales": scales, "passed": False, "stop": str(stop)}, GATE_PATH)
         raise

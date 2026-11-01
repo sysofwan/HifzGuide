@@ -13,6 +13,10 @@
    "16000": 577
   }
  },
+ "calls": {
+  "agree": true,
+  "note": "both runtimes stop before an incomplete chunk (the diagnosis round), so no call is padded and no padded-call emission can exist; the counts agreeing on every clip is what upholds rule 4"
+ },
  "explanatory": {
   "v1_0_reference_check": "not run here and not gated: the card-explanation check is explanatory only (parity-gate.md rule 8) and is recorded by the readout"
  },
@@ -49,7 +53,7 @@
    "window_type": "povey"
   },
   "identity": "tools/tadabur/zipformer_screen/identity.json",
-  "identity_sha256": "13bf110bcda68059655887644a81e28270d2e2340ec7bcc7b4d76a0bcef8dd85",
+  "identity_sha256": "674ccb6ea43aa01c2b8b299dbcfdbabfc42e18b64b771234a5b24b13aee91842",
   "input_frames": 61,
   "sample_rate": 16000,
   "sample_scale": 1.0,
@@ -57,22 +61,17 @@
   "tail_samples": 16800,
   "tokens_sha256": "252c10687e442aa9291973065fae19fa39bcd681c4f5612ec496a647e20b43a1"
  },
- "padded_calls": {
-  "call_counts_agree": true,
-  "clips": 6,
-  "tokens": 9
- },
- "passed": false,
+ "passed": true,
  "phone_table_hits": {
-  "character_distance": 9,
+  "character_distance": 0,
   "clips": 105,
   "ours": {
    "clips": 105,
    "misses": 0,
-   "per": 3.961180431768667
+   "per": 4.139433551198257
   },
-  "passes": false,
-  "per_mille": 1.7825311942959001,
+  "passes": true,
+  "per_mille": 0.0,
   "reference_characters": 5049,
   "sherpa": {
    "clips": 105,
@@ -82,15 +81,14 @@
  },
  "pooled": {
   "clips": 577,
-  "identical": 571,
-  "padded_clips": 6,
+  "identical": 577,
   "reported_only": "the pass rule is per source (principal r2 §2)",
-  "unit_edits": 9,
-  "units_ours": 25290,
+  "unit_edits": 0,
+  "units_ours": 25281,
   "units_sherpa": 25281
  },
  "probe": {
-  "ambiguous_decisions": 10,
+  "ambiguous_decisions": 11,
   "canaries": [
    "everyayah_heldout/test-00003-of-00013_919",
    "everyayah_heldout/test-00008-of-00013_1683",
@@ -2272,7 +2270,7 @@
     "tokens_equal": true
    },
    {
-    "ambiguous": 0,
+    "ambiguous": 1,
     "boundaries": [
      25,
      50
@@ -2451,14 +2449,9 @@
       "end": 154,
       "start": 154,
       "text": "رُ"
-     },
-     {
-      "end": 174,
-      "start": 174,
-      "text": "ۥۥۥۥ"
      }
     ],
-    "passes": false,
+    "passes": true,
     "sherpa": [
      {
       "start": 3,
@@ -2602,8 +2595,8 @@
      288000,
      384000
     ],
-    "starts_equal": false,
-    "tokens_equal": false
+    "starts_equal": true,
+    "tokens_equal": true
    },
    {
     "ambiguous": 0,
@@ -4498,12 +4491,12 @@
     "tokens_equal": true
    }
   ],
-  "passes": false
+  "passes": true
  },
  "rule": {
   "frame_allowance": "a start frame may shift only where no sampled cut changes (astra r1 §3)",
   "identical_percent": 99,
-  "padded_final_chunk": "a non-blank token the padded call emits makes the clip differing (rule 4)",
+  "padded_final_chunk": "no call may be padded: both runtimes stop before an incomplete chunk and their call counts must agree on every clip (rule 4, repaired in the diagnosis round)",
   "per_source": true,
   "phone_character_per_mille": 1,
   "probe_checks": [
@@ -4619,21 +4612,13 @@
  "sources": {
   "phone": {
    "clips": 177,
-   "differing": [
-    "tlog_holdout/71_23_2048851382",
-    "tlog_holdout/78_3_2930787496",
-    "tlog_holdout/56_62_null_FEpkBhC",
-    "tlog_holdout/102_8_5916463777",
-    "tlog_holdout/37_25_6209858434",
-    "tlog_holdout/67_6_9183881301"
-   ],
-   "edits_per_mille": 1.6822429906542056,
-   "identical": 171,
-   "identical_percent": 96.61016949152543,
-   "padded_clips": 6,
-   "passes": false,
-   "unit_edits": 9,
-   "units_ours": 5350,
+   "differing": [],
+   "edits_per_mille": 0.0,
+   "identical": 177,
+   "identical_percent": 100.0,
+   "passes": true,
+   "unit_edits": 0,
+   "units_ours": 5341,
    "units_sherpa": 5341
   },
   "studio": {
@@ -4642,7 +4627,6 @@
    "edits_per_mille": 0.0,
    "identical": 200,
    "identical_percent": 100.0,
-   "padded_clips": 0,
    "passes": true,
    "unit_edits": 0,
    "units_ours": 10041,
@@ -4654,12 +4638,10 @@
    "edits_per_mille": 0.0,
    "identical": 200,
    "identical_percent": 100.0,
-   "padded_clips": 0,
    "passes": true,
    "unit_edits": 0,
    "units_ours": 9899,
    "units_sherpa": 9899
   }
- },
- "stop": "phone: 171/177 identical (96.61%, need 99%), 9/5350 unit edits (1.682 per mille, limit 1); phone table hits: 9 characters of 5049 (1.783 per mille, limit 1); probe tlog_holdout/6_148_3624514734 later-window: the runtimes emitted different units"
+ }
 }

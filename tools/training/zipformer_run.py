@@ -62,6 +62,7 @@ from training.zipformer_decode import (
     ONNX_FILE,
     TEXT2PHONEME_FILE,
     ZIPFORMER_DIR,
+    ZipformerDecoder,
     ZipformerFiles,
     load_zipformer,
 )
@@ -517,7 +518,7 @@ def disjointness(work_dir: Path, *, store_dir: Path = DEFAULT_STORE_DIR) -> dict
 # --- the card gate ---------------------------------------------------------------------------
 
 
-def _card_inventory() -> list[str]:
+def card_inventory() -> list[str]:
     """The card's non-blank units, checked equal to the symbol table's emitted strings."""
     from training.zipformer_decode import read_tokens
 
@@ -535,12 +536,17 @@ def _card_inventory() -> list[str]:
 _WORKER: dict[str, object] = {}
 
 
-def _start_gate_worker(files: ZipformerFiles, scale: float) -> None:
-    """One worker's session and decoder; the gate parallelises whole clips across processes."""
+def start_worker(files: ZipformerFiles, scale: float) -> None:
+    """One worker's session and decoder: every clip-parallel step starts its processes here."""
     import torch
 
     torch.set_num_threads(1)
     _WORKER["decoder"] = load_zipformer(files, scale=scale)
+
+
+def worker_decoder() -> ZipformerDecoder:
+    """The decoder :func:`start_worker` loaded in this process."""
+    return _WORKER["decoder"]
 
 
 def _decode_clip(item: tuple[str, str]) -> tuple[str, list[str]]:
@@ -557,7 +563,7 @@ def _decode_items(files: ZipformerFiles, scale: float, items: Sequence[tuple[str
                   workers: int, label: str) -> dict[str, list[str]]:
     """Every item's units at ``scale``, decoded in parallel processes."""
     decoded: dict[str, list[str]] = {}
-    with ProcessPoolExecutor(max_workers=workers, initializer=_start_gate_worker,
+    with ProcessPoolExecutor(max_workers=workers, initializer=start_worker,
                              initargs=(files, scale)) as pool:
         for done, (clip_id, units) in enumerate(pool.map(_decode_clip, items, chunksize=2), 1):
             decoded[clip_id] = units
@@ -621,7 +627,7 @@ def gate(work_dir: Path, *, model: str = DEFAULT_GATE_MODEL,
 
     raw = json.loads(files.text2phoneme.read_text(encoding="utf-8"))
     table = card_table(raw)
-    inventory = _card_inventory()
+    inventory = card_inventory()
 
     items = [(row["id"], str((files.manifest.parent / row["audio"]).resolve()))
              for row in decoded_rows]

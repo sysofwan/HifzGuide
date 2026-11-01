@@ -9,6 +9,9 @@
 #   scripts/zipformer-screen.sh disjointness   # 600 benchmark clips vs every tlog row
 #   scripts/zipformer-screen.sh gate           # the card gate: MODEL=v3 (the card's model,
 #                                              # judged) or v3.2 (the arm, a baseline + identity)
+#   scripts/zipformer-screen.sh parity         # the reference-runtime gate: v3.2 fp32 through
+#                                              # sherpa-onnx (throwaway venv) vs our decoder, on
+#                                              # the same 577 clips; writes parity.json
 #   scripts/zipformer-screen.sh check <step>   # pid, status and log tail of a running/ended step
 #   scripts/zipformer-screen.sh fetchout <step> DIR   # pull the committed JSON outputs back
 #
@@ -29,19 +32,26 @@ LOGS=$ROOT/logs
 WORK=$ROOT/data
 STORE=${STORE_DIR:-/root/scratch/tlog/fp}
 WORKERS=${WORKERS:-12}
+#: sherpa-onnx's throwaway venv (never a repo dependency); the parity step's second interpreter.
+SHERPA=${SHERPA:-/root/scratch/sherpa-venv/bin/python}
+#: The parity step's scratch: both phases' records and our side's feature dumps.
+PARITY=${PARITY_DIR:-$ROOT/parity}
+PARITY_MODEL=${PARITY_MODEL:-$WORK/model/zipformer_p_arabic_v3.2.onnx}
+PARITY_TOKENS=${PARITY_TOKENS:-$WORK/model/tokens.txt}
 #: Which card export the gate decodes: v3 is the model the card's table describes (the decoder
 #: check); v3.2 is the comparison arm (its baseline, and the identity every decode rests on).
 MODEL=${MODEL:-v3}
 OUT=tools/tadabur/zipformer_screen
 #: The committed files a step's `fetchout` pulls back.
-FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.json)
+FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.json parity.json
+                 parity_decodes.jsonl.gz)
 
 step=${1:-}
 action=${2:-}
 case "$step" in
-  fetch|disjointness|gate) ;;
+  fetch|disjointness|gate|parity) ;;
   *)
-    echo "usage: $0 {fetch|disjointness|gate} [launch|check|fetchout DIR]" >&2
+    echo "usage: $0 {fetch|disjointness|gate|parity} [launch|check|fetchout DIR]" >&2
     exit 2
     ;;
 esac
@@ -73,6 +83,18 @@ command_for() {
     disjointness)
       echo "python -u -m training.zipformer_run disjointness --work-dir '$WORK' --store-dir '$STORE'" ;;
     gate) echo "python -u -m training.zipformer_run gate --model '$MODEL' --work-dir '$WORK' --workers '$WORKERS'" ;;
+    parity) cat <<PARITY
+parity_phases() {
+  python -u -m training.zipformer_parity ours --work-dir '$WORK' --out-dir '$PARITY' \
+      --workers '$WORKERS' || return \$?
+  '$SHERPA' -u -m training.zipformer_parity sherpa --ours-dir '$PARITY' \
+      --model '$PARITY_MODEL' --tokens '$PARITY_TOKENS' --workers '$WORKERS' || return \$?
+  python -u -m training.zipformer_parity verdict --ours-dir '$PARITY' --work-dir '$WORK' \
+      --out '$REPO/$OUT/parity.json' --decodes '$REPO/$OUT/parity_decodes.jsonl.gz'
+}
+parity_phases
+PARITY
+      ;;
   esac
 }
 

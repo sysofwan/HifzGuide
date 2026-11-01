@@ -322,17 +322,21 @@ class ZipformerDecoder:
         """The item's units over one continuous stream: one fbank, one cache, one timeline."""
         return self._emissions(samples)
 
-    def _stream(self, samples: np.ndarray, offset_steps: int) -> list[Emission]:
-        """One stream over ``samples``, its steps reported ``offset_steps`` later.
+    def stream_calls(self, samples: np.ndarray) -> list[np.ndarray]:
+        """Every call's argmax frame ids over one stream, in call order, from a zero cache.
 
-        A fresh zero cache, never carried in from another call or item.
+        The parity gate (:mod:`training.zipformer_parity`) reads this to see what the decoder's
+        zero-padded final chunk emits: sherpa-onnx stops before a call it would have to pad, so
+        a non-blank id in a call past that point is a difference between the runtimes' streams.
+        :meth:`_stream` scans the same calls, so the diagnostic and the production decode can
+        never disagree about them.
         """
         features = featurize(samples, self.fbank, scale=self.scale)
         if not len(features):
             raise ValueError("the front end produced no frames")
         state = {name: np.zeros(shape, dtype=dtype)
                  for name, shape, dtype in self._state_specs}
-        frames: list[np.ndarray] = []
+        calls: list[np.ndarray] = []
         cursor = 0
         while cursor < len(features):
             chunk = np.zeros((INPUT_FRAMES, features.shape[1]), dtype=np.float32)
@@ -344,11 +348,18 @@ class ZipformerDecoder:
                     f"the ONNX session returned {len(outputs)} outputs for "
                     f"{len(self._state_specs)} cache inputs and log_probs"
                 )
-            frames.append(np.argmax(np.asarray(outputs[0])[0], axis=-1))
+            calls.append(np.argmax(np.asarray(outputs[0])[0], axis=-1))
             state = {name: np.asarray(value)
                      for (name, _, _), value in zip(self._state_specs, outputs[1:])}
             cursor += CHUNK_FRAMES
-        emissions = scan_units(np.concatenate(frames), self.tokens)
+        return calls
+
+    def _stream(self, samples: np.ndarray, offset_steps: int) -> list[Emission]:
+        """One stream over ``samples``, its steps reported ``offset_steps`` later.
+
+        A fresh zero cache, never carried in from another call or item.
+        """
+        emissions = scan_units(np.concatenate(self.stream_calls(samples)), self.tokens)
         if not offset_steps:
             return emissions
         return [Emission(emission.text, emission.start_step + offset_steps,

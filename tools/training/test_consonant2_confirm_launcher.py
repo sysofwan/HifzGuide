@@ -279,6 +279,26 @@ def test_a_failed_decode_phase_is_recorded_for_check(tmp_path):
     assert "exit 7" in (logs / "run.done").read_text(encoding="utf-8")
 
 
+def test_a_budget_expiry_is_recorded_as_the_budget(tmp_path):
+    """GNU timeout's own status is 124: that, and only that, is the budget stop."""
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, timeout_body="exit 124")
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode == 2
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "2"
+    assert "budget-exceeded" in (logs / "run.done").read_text(encoding="utf-8")
+
+
+def test_a_sigkill_is_recorded_as_a_kill_not_the_budget(tmp_path):
+    """137 reaches the record when a worker (or the timeout's kill-after) is SIGKILLed: on
+    this box that is host-RAM pressure, and saying "budget" would be the wrong diagnosis."""
+    done = _run_on_the_box(tmp_path, CHOICE_JSON, timeout_body="exit 137")
+    logs = tmp_path / "issue" / "logs"
+    assert done.returncode == 137
+    assert (logs / "run.exit").read_text(encoding="utf-8").strip() == "137"
+    recorded = (logs / "run.done").read_text(encoding="utf-8")
+    assert "SIGKILL" in recorded and "budget-exceeded" not in recorded
+
+
 def test_a_terminated_run_records_its_signal_instead_of_a_pass(tmp_path):
     started = tmp_path / "phase-started"
     env = _box_run_env(tmp_path, CHOICE_JSON,

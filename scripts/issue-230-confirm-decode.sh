@@ -42,8 +42,9 @@ RESUME_PARALLEL=${RESUME_PARALLEL:-2}
 BUDGET=${BUDGET:-28800}
 #: The two claimable tranches, in claim order. The decoder refuses any other role.
 ROLES=(confirm.1 confirm.2)
-#: The frozen producer set: the teacher, the baseline and the committed choice's two arms.
-FIXED_MODELS=(base c95)
+#: The frozen producer set's fixed prefix: the teacher and the baseline. The committed choice
+#: adds its candidate and control; both readers below take the prefix from here.
+PREFIX_MODELS=base,c95
 CHOICE=$ROUND_DIR/choice.json
 DECODES=$ROUND_DIR/decodes
 PARTS=$ROOT/parts
@@ -64,8 +65,8 @@ chosen_models() {
   git show "HEAD:$CHOICE" | python -c '
 import json, sys
 models = json.load(sys.stdin)["models"]
-print(",".join(["base", "c95", models["candidate"], models["control"]]))
-'
+print(",".join([*sys.argv[1].split(","), models["candidate"], models["control"]]))
+' "$PREFIX_MODELS"
 }
 
 require_not_decoded() {  # <models>
@@ -271,10 +272,15 @@ decode_phase() {
 record_run_result() {  # <status>
   # ``check`` keys off done and then reads exit: write exit first.
   local status=$1 code=$1 done
-  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+  if [ "$status" -eq 124 ]; then
     code=2
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
       "$(date -u +%FT%TZ)" "$BUDGET")
+  elif [ "$status" -eq 137 ]; then
+    # SIGKILL is not the timeout: GNU timeout's expiry is 124. A 137 here is a killed
+    # worker (the box's OOM killer, most likely), so name that rather than the budget.
+    done=$(printf '%s killed (status 137, SIGKILL), not the budget; check host RAM/OOM; \
+per-item output kept' "$(date -u +%FT%TZ)")
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi
@@ -302,7 +308,7 @@ run() {  # [--resume]
   if [ -n "$resume" ]; then touch "$ROOT/logs/events"; else : > "$ROOT/logs/events"; fi
   activate
   MODELS=$(cd "$ROOT/repo/$ROUND_DIR" && python -c \
-    'import json; m = json.load(open("choice.json"))["models"]; print(",".join(["base", "c95", m["candidate"], m["control"]]))')
+    'import json, sys; m = json.load(open("choice.json"))["models"]; print(",".join([*sys.argv[1].split(","), m["candidate"], m["control"]]))' "$PREFIX_MODELS")
   export MODELS
   local status=0
   timeout --signal=TERM --kill-after=60 "$BUDGET" bash "$0" decode-phase || status=$?

@@ -357,10 +357,15 @@ decode_phase() {
 record_run_result() {  # <status>
   # ``check`` keys off done and then reads exit: write exit first.
   local status=$1 code=$1 done
-  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+  if [ "$status" -eq 124 ]; then
     code=2
     done=$(printf '%s budget-exceeded budget=%ss; per-item output kept' \
       "$(date -u +%FT%TZ)" "$BUDGET")
+  elif [ "$status" -eq 137 ]; then
+    # SIGKILL is not the timeout: GNU timeout's expiry is 124. A 137 here is a killed
+    # worker (the box's OOM killer, most likely), so name that rather than the budget.
+    done=$(printf '%s killed (status 137, SIGKILL), not the budget; check host RAM/OOM; \
+per-item output kept' "$(date -u +%FT%TZ)")
   else
     done=$(printf '%s exit %s' "$(date -u +%FT%TZ)" "$status")
   fi

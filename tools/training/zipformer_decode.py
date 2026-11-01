@@ -9,23 +9,39 @@ protocol are the card's, so this module owns all three and shares none of them w
   42-249 are merged units such as ``اا``. :func:`training.decoding.tokens_to_phonemes` and
   :func:`~training.decoding.scan_ctc` therefore never see a zipformer id; :func:`scan_units`
   collapses runs against ``tokens.txt`` and yields each unit's string and frame span.
-* **One continuous stream per item.** The kaldi fbank is computed once over the item plus
-  1.05 s of silence (the card's flush), the encoder's cache state is carried from call to call,
-  and every call's 12 log-prob frames form one 40 ms timeline. A window never restarts the
-  model from zero: :func:`stream_checks` slices that one timeline with the transcriber's own
-  schedule (:func:`training.decoding.check_schedule`).
+* **One continuous stream per item** (``spans`` and ``checks``). The kaldi fbank is computed
+  once over the item plus 1.05 s of silence (the card's flush), the encoder's cache state is
+  carried from call to call, and every call's 12 log-prob frames form one 40 ms timeline.
+  :func:`stream_checks` slices that one timeline with the transcriber's own schedule
+  (:func:`training.decoding.check_schedule`); a window never restarts the model from zero.
+* **One fresh inference per check** (``checks-w1``, architect r2 + principal r1). Muraja runs
+  an inference per check and gets several looks at a word; the single stream gives zipformer
+  one. ``checks-w1`` therefore decodes every check of the schedule again, over
+  ``[max(0, start - W), end)`` with ``W = 1 s`` (:data:`WARMUP_SAMPLES`, the transcriber's hop)
+  from a zero cache, and drops only the warm-up emissions (midpoint before the check's start):
+  everything else is kept, the 1.05 s flush included, so a delayed last word is not truncated.
+  ``checks-w1-windows`` runs the fresh inferences for the windows only and takes previews and
+  the stop from the one continuous stream (report-only). Both are zipformer-only arms: ours
+  never decodes them.
+* **The keep rules differ on purpose.** A single-stream check takes emissions with midpoint in
+  its window (a straddling run reaches the later check, which is the same stream); a
+  fresh-inference check takes everything from its start, because the delayed units after its end
+  are what its own flush forces out.
 * **Neither of our window guards applies.** The card's model is not ours to correct, so
   ``likely_hallucination`` and ``strip_padding_artifacts`` are not applied (#245 Q6).
-* **A zipformer record carries ``spans`` and ``checks``, never ``stream_b0``** (#245 Q3): the
-  students are scored from their b = 0 stream, the zipformer from its whole stream. Its
-  fingerprints are CPU/fp32 under :data:`ZIPFORMER_POLICY`, a mode and policy no decode of ours
-  holds, so :meth:`DecodeFingerprint.check_comparable` refuses to compare the two.
+* **The arms are per metric** (:func:`metric_arm`). Zipformer's app-outcome metrics read
+  ``checks-w1``, its whole-item metrics read ``spans``; the students' read ``checks`` and
+  ``stream_b0``. No zipformer arm is named ``stream_b0``, and the two report-only arms are
+  never a zipformer verdict arm (:data:`REPORT_ONLY_ARMS`).
+* **The fbank callable is injected.** Production passes
+  ``torchaudio.compliance.kaldi.fbank`` (the card's kaldi front end), the tests a stand-in.
+  Importing this module (and ``training.decoding``) does not import torch, so the geometry and
+  the check slicing run on the Mac venv. The sample scale is required rather than defaulted: the
+  card does not say whether kaldi expects [-1, 1] or int16-scaled samples, and the gate's PER
+  pins it (``training.zipformer_gate.pin_scale``).
 
-The fbank callable is injected: production passes ``torchaudio.compliance.kaldi.fbank`` (the
-card's kaldi front end), while the tests pass a stand-in, so importing this module never
-imports torch or our feature extractor. The sample scale is a required argument rather than a
-default: the card does not say whether kaldi expects [-1, 1] or int16-scaled samples, and the
-gate's PER pins it (``training.zipformer_gate.pin_scale``).
+The two new arms live in :data:`ZIPFORMER_W1_STORES`, apart from :data:`ZIPFORMER_STORES`, since
+they are decoded only on the sets the Muraja harness grades.
 
 Usage (from ``tools/``)::
 
@@ -48,6 +64,8 @@ from pathlib import Path
 
 import numpy as np
 
+from training import decoding
+from training.decoding import DecodeFingerprint
 from training.distill_data import SAMPLE_RATE
 from training.truth_baseline import Store
 
@@ -67,6 +85,11 @@ INPUT_FRAMES = 61
 #: The card's "1.05 s of silence at the end of an utterance", 16,800 samples at 16 kHz.
 TAIL_SAMPLES = 16_800
 
+#: The warm-up a fresh per-check inference keeps before the check's start: one hop, 1 s.
+WARMUP_SAMPLES = decoding.HOP_SAMPLES
+#: The hop's width in output steps, the first second a window commits.
+HOP_STEPS = WARMUP_SAMPLES // STEP_SAMPLES
+
 #: The card's kaldi fbank: 80 bins, povey window, no dither, snip_edges false, high_freq -400.
 FBANK_OPTIONS = {
     "num_mel_bins": 80,
@@ -78,12 +101,30 @@ FBANK_OPTIONS = {
     "high_freq": -400.0,
 }
 
-#: The decode mode of each arm, and its fingerprint policy. Both differ from every mode and
+#: The arm names: zipformer's single stream and its two per-check (warm-started) variants.
+CHECKS_W1 = "checks-w1"
+CHECKS_W1_WINDOWS = "checks-w1-windows"
+
+#: The decode mode of each arm, and its fingerprint policy. All four differ from every mode and
 #: policy our own decodes carry, so the two kinds can never be compared by accident.
-ZIPFORMER_PROTOCOLS = {"spans": "zipformer-spans-v1", "checks": "zipformer-checks-v1"}
+ZIPFORMER_PROTOCOLS = {
+    "spans": "zipformer-spans-v1",
+    "checks": "zipformer-checks-v1",
+    CHECKS_W1: "zipformer-checks-v1-w1000ms-flush1050ms",
+    CHECKS_W1_WINDOWS: "zipformer-checks-v1-w1000ms-flush1050ms-windows",
+}
 ZIPFORMER_POLICY = "kaldi-fbank-v1"
 
-#: The model each committed decode file is scored from (#245 Q3).
+#: The metrics the screen reports, split by which kind of arm reads them.
+APP_METRICS = ("qdat_false_flags", "ship_a_catches")
+WHOLE_ITEM_METRICS = (
+    "qdat_per_class", "qdat_bench", "edits_heard", "ship_a_whole_item", "benchmark_per_class",
+)
+METRICS = APP_METRICS + WHOLE_ITEM_METRICS
+#: Arms that are reported only; never zipformer's verdict arm (principal r1 §3).
+REPORT_ONLY_ARMS = ("checks", CHECKS_W1_WINDOWS)
+
+#: The arm each model's whole-item text is scored from (#245 Q3).
 SCORING_ARMS = {
     "base": "stream_b0",
     "c95": "stream_b0",
@@ -197,7 +238,7 @@ def _state_spec(spec) -> tuple[str, tuple[int, ...], type]:
 
 
 class ZipformerDecoder:
-    """The card's streaming CTC decoder behind ours' arms: one continuous run per item.
+    """The card's streaming CTC decoder behind our arms: one stream, and one per check.
 
     ``session`` is an ``onnxruntime.InferenceSession`` of the card's cache-aware streaming
     export (``x`` plus its cache inputs; ``log_probs`` first, then each cache's next value in
@@ -213,9 +254,27 @@ class ZipformerDecoder:
         if not any(spec.name == "x" for spec in inputs):
             raise ValueError("the ONNX session has no 'x' feature input")
         self._state_specs = [_state_spec(spec) for spec in inputs if spec.name != "x"]
+        # One item's emissions, held so ``spans`` and ``checks`` on the same item share one
+        # stream. The array is held too, so its identity cannot be recycled under a stale hit.
+        self._last_item: tuple[np.ndarray, list[Emission]] | None = None
+
+    def _emissions(self, samples: np.ndarray) -> list[Emission]:
+        """The item's emissions, from one stream shared by every arm that slices it."""
+        if self._last_item is not None and self._last_item[0] is samples:
+            return self._last_item[1]
+        emissions = self._stream(samples, 0)
+        self._last_item = (samples, emissions)
+        return emissions
 
     def stream(self, samples: np.ndarray) -> list[Emission]:
         """The item's units over one continuous stream: one fbank, one cache, one timeline."""
+        return self._emissions(samples)
+
+    def _stream(self, samples: np.ndarray, offset_steps: int) -> list[Emission]:
+        """One stream over ``samples``, its steps reported ``offset_steps`` later.
+
+        A fresh zero cache, never carried in from another call or item.
+        """
         features = featurize(samples, self.fbank, scale=self.scale)
         if not len(features):
             raise ValueError("the front end produced no frames")
@@ -237,15 +296,43 @@ class ZipformerDecoder:
             state = {name: np.asarray(value)
                      for (name, _, _), value in zip(self._state_specs, outputs[1:])}
             cursor += CHUNK_FRAMES
-        return scan_units(np.concatenate(frames), self.tokens)
+        emissions = scan_units(np.concatenate(frames), self.tokens)
+        if not offset_steps:
+            return emissions
+        return [Emission(emission.text, emission.start_step + offset_steps,
+                         emission.end_step + offset_steps)
+                for emission in emissions]
 
     def spans(self, samples: np.ndarray) -> str:
         """The item decoded whole, as one transcript (the ``spans`` arm)."""
-        return "".join(emission.text for emission in self.stream(samples))
+        return "".join(emission.text for emission in self._emissions(samples))
 
     def checks(self, samples: np.ndarray) -> list[dict]:
-        """The item's check sequence, cut from its one stream (:func:`stream_checks`)."""
-        return stream_checks(self.stream(samples), len(samples))
+        """The checks cut from the item's one stream (the ``checks`` arm; :func:`stream_checks`)."""
+        return stream_checks(self._emissions(samples), len(samples))
+
+    def _fresh_check(self, samples: np.ndarray, span: decoding.CheckSpan) -> dict | None:
+        """One check decoded again from a zero cache, with its one hop of warm-up."""
+        begin = warmup_start(span)
+        emissions = self._stream(samples[begin:span.end], begin // STEP_SAMPLES)
+        return w1_check(span, emissions)
+
+    def checks_w1(self, samples: np.ndarray) -> list[dict]:
+        """The checks, each from its own fresh warm-started inference (the ``checks-w1`` arm)."""
+        checks = (self._fresh_check(samples, span)
+                  for span in decoding.check_schedule(len(samples)))
+        return [check for check in checks if check is not None]
+
+    def checks_w1_windows(self, samples: np.ndarray) -> list[dict]:
+        """B': windows fresh, previews and the stop from one stream (``checks-w1-windows``)."""
+        emissions = self._emissions(samples)
+        checks: list[dict] = []
+        for span in decoding.check_schedule(len(samples)):
+            check = (self._fresh_check(samples, span) if span.kind == decoding.WINDOW
+                     else _stream_check(span, emissions))
+            if check is not None:
+                checks.append(check)
+        return checks
 
 
 def _text(emissions: Iterable[Emission], low: float, high: float | None = None) -> str:
@@ -255,8 +342,31 @@ def _text(emissions: Iterable[Emission], low: float, high: float | None = None) 
     return "".join(e.text for e in emissions if low <= e.midpoint < high)
 
 
+def warmup_start(span: decoding.CheckSpan) -> int:
+    """The sample a fresh check starts at: one hop before its start, clipped at the item's 0."""
+    return max(0, span.start - WARMUP_SAMPLES)
+
+
+def _stream_check(span: decoding.CheckSpan, emissions: list[Emission]) -> dict | None:
+    """One check of the single continuous stream, in that stream's absolute frame space."""
+    low = span.start / STEP_SAMPLES
+    if span.kind == decoding.WINDOW:
+        hop_high = (span.start + decoding.HOP_SAMPLES) / STEP_SAMPLES
+        return decoding.make_check(
+            decoding.WINDOW,
+            _text(emissions, low, hop_high),
+            _text(emissions, hop_high, span.end / STEP_SAMPLES),
+        )
+    if span.kind == decoding.PREVIEW:
+        return decoding.make_check(
+            decoding.PREVIEW, "", _text(emissions, low, span.end / STEP_SAMPLES))
+    if span.kind == decoding.STOP:
+        return decoding.make_check(decoding.STOP, _text(emissions, low), "")
+    raise ValueError(f"unknown check kind {span.kind!r}")
+
+
 def stream_checks(emissions: list[Emission], num_samples: int) -> list[dict]:
-    """The app's checks, sliced from one continuous zipformer stream.
+    """The app's checks sliced from one continuous zipformer stream (the ``checks`` arm).
 
     The schedule is the transcriber's own (:func:`training.decoding.check_schedule`), and each
     check takes the emissions whose midpoint lies in its window, as
@@ -268,42 +378,57 @@ def stream_checks(emissions: list[Emission], num_samples: int) -> list[dict]:
     Offline slicing changes only *when* an emission would have arrived, not what it says: an
     emission's text depends on audio up to the end of its chunk, so a check can lag the live
     stream by at most one 0.48 s call (#245 Q5).
-
-    ``training.decoding`` imports torch transitively, so it is imported here rather than at
-    module scope: this module must import without torch (#245 Q5).
     """
-    from training import decoding
+    checks = (_stream_check(span, emissions)
+              for span in decoding.check_schedule(num_samples))
+    return [check for check in checks if check is not None]
 
-    checks: list[dict] = []
-    for span in decoding.check_schedule(num_samples):
-        low = span.start / STEP_SAMPLES
-        if span.kind == decoding.WINDOW:
-            hop_high = (span.start + decoding.HOP_SAMPLES) / STEP_SAMPLES
-            check = decoding.make_check(
-                decoding.WINDOW,
-                _text(emissions, low, hop_high),
-                _text(emissions, hop_high, span.end / STEP_SAMPLES),
-            )
-        elif span.kind == decoding.PREVIEW:
-            check = decoding.make_check(
-                decoding.PREVIEW, "", _text(emissions, low, span.end / STEP_SAMPLES))
-        elif span.kind == decoding.STOP:
-            check = decoding.make_check(decoding.STOP, _text(emissions, low), "")
-        else:
-            raise ValueError(f"unknown check kind {span.kind!r}")
-        if check is not None:
-            checks.append(check)
-    return checks
+
+def w1_check(span: decoding.CheckSpan, emissions: list[Emission]) -> dict | None:
+    """One fresh warm-started inference's check (the ``checks-w1`` keep rule).
+
+    Drop only the warm-up: an emission whose midpoint is before the check's ``start``. Keep
+    everything else the inference emitted, including what arrives after ``end`` — that is the
+    delayed last word the 1.05 s flush forces out, which ours never drops. A window's hop is
+    its first second after ``start``; a preview or the stop sends everything it kept.
+    """
+    start = span.start / STEP_SAMPLES
+    kept = [emission for emission in emissions if emission.midpoint >= start]
+    if span.kind == decoding.WINDOW:
+        split = start + HOP_STEPS
+        return decoding.make_check(
+            decoding.WINDOW, _text(kept, start, split), _text(kept, split))
+    kept_text = "".join(emission.text for emission in kept)
+    if span.kind == decoding.PREVIEW:
+        return decoding.make_check(decoding.PREVIEW, "", kept_text)
+    if span.kind == decoding.STOP:
+        return decoding.make_check(decoding.STOP, kept_text, "")
+    raise ValueError(f"unknown check kind {span.kind!r}")
 
 
 def _zipformer_arms(decoder: ZipformerDecoder, span: np.ndarray) -> dict:
-    """One item's two arms, as a zipformer record holds them (never ``stream_b0``)."""
+    """One item's single-stream arms, as a zipformer record holds them (never ``stream_b0``)."""
     return {"spans": decoder.spans(span), "checks": decoder.checks(span)}
 
 
-#: The zipformer's stores: whole-stream transcripts and check sequences, one record per item.
+def _zipformer_w1_arms(decoder: ZipformerDecoder, span: np.ndarray) -> dict:
+    """One item's two per-check arms (never ``stream_b0``)."""
+    return {CHECKS_W1: decoder.checks_w1(span),
+            CHECKS_W1_WINDOWS: decoder.checks_w1_windows(span)}
+
+
+#: The zipformer's single-stream stores, one record per item.
 ZIPFORMER_STORES = {
-    "zipformer": Store(ZIPFORMER_DIR / "decodes", ZIPFORMER_PROTOCOLS, _zipformer_arms)
+    "zipformer": Store(ZIPFORMER_DIR / "decodes",
+                       {arm: ZIPFORMER_PROTOCOLS[arm] for arm in ("spans", "checks")},
+                       _zipformer_arms),
+}
+
+#: The zipformer's per-check stores, decoded only on the sets the Muraja harness grades.
+ZIPFORMER_W1_STORES = {
+    "zipformer": Store(ZIPFORMER_DIR / "w1_decodes",
+                       {arm: ZIPFORMER_PROTOCOLS[arm] for arm in (CHECKS_W1, CHECKS_W1_WINDOWS)},
+                       _zipformer_w1_arms),
 }
 
 
@@ -317,6 +442,23 @@ def scoring_arm(model: str) -> str:
         ) from None
 
 
+def metric_arm(model: str, metric: str) -> str:
+    """The arm ``model`` is read from for ``metric``: app outcomes and whole items differ.
+
+    Zipformer's app-outcome metrics (Muraja's own engine over checks) read ``checks-w1`` — its
+    several looks — and its whole-item metrics read ``spans``. Ours read ``checks`` and
+    ``stream_b0`` as before. ``REPORT_ONLY_ARMS`` can never be returned for zipformer.
+    """
+    if model not in SCORING_ARMS:
+        raise ValueError(
+            f"{model!r} has no metric arms; known models: {sorted(SCORING_ARMS)}")
+    if metric in APP_METRICS:
+        return CHECKS_W1 if model == "zipformer" else "checks"
+    if metric in WHOLE_ITEM_METRICS:
+        return scoring_arm(model)
+    raise ValueError(f"{metric!r} is not a metric; known metrics: {sorted(METRICS)}")
+
+
 def whole_item_text(line: Mapping, model: str) -> str:
     """The scored whole-item text of ``line``, refusing a zipformer line with a ``stream_b0``."""
     arm = scoring_arm(model)
@@ -325,13 +467,13 @@ def whole_item_text(line: Mapping, model: str) -> str:
             f"{model} is scored from its whole stream; a line holding a stream_b0 decode is "
             "one of ours, not this model's"
         )
+    if arm not in line:
+        raise ValueError(f"{model}: the line has no {arm!r} decode")
     return line[arm]
 
 
-def zipformer_fingerprint(model: str, arm: str):
+def zipformer_fingerprint(model: str, arm: str) -> DecodeFingerprint:
     """``arm``'s decode fingerprint: CPU, fp32, batch 1, and a mode no decode of ours holds."""
-    from training.decoding import DecodeFingerprint
-
     try:
         mode = ZIPFORMER_PROTOCOLS[arm]
     except KeyError:
@@ -347,3 +489,24 @@ def zipformer_fingerprint(model: str, arm: str):
         autocast=False,
         policy=ZIPFORMER_POLICY,
     )
+
+
+#: What one check's inference decodes, in samples: ours its span, zipformer's warm-started
+#: arm its warm-up and span plus the card's flushing tail.
+DECODED_SAMPLES = {
+    "ours": lambda span: span.end - span.start,
+    CHECKS_W1: lambda span: span.end - warmup_start(span) + TAIL_SAMPLES,
+}
+
+
+def decoded_audio_ratio(arm: str, num_samples: int) -> float:
+    """The compute table's audio decoded per audio second, over an item of ``num_samples``."""
+    try:
+        decoded = DECODED_SAMPLES[arm]
+    except KeyError:
+        raise ValueError(
+            f"{arm!r} has no decoded-audio figure; known arms: {sorted(DECODED_SAMPLES)}"
+        ) from None
+    if num_samples <= 0:
+        raise ValueError(f"an item has positive audio, got {num_samples} samples")
+    return sum(decoded(span) for span in decoding.check_schedule(num_samples)) / num_samples

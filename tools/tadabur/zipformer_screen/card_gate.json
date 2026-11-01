@@ -8,13 +8,21 @@
   "decoded": 577,
   "manifest": 599,
   "sealed_dropped": 22,
-  "trained": 158
+  "trained": 30
  },
  "identity": "tools/tadabur/zipformer_screen/identity.json",
  "issue": 245,
  "limit_points": 0.5,
- "passed": false,
+ "model": {
+  "bytes": 262991021,
+  "name": "v3.2",
+  "path": "model/zipformer_p_arabic_v3.2.onnx",
+  "sha256": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa"
+ },
+ "note": "baseline, no pass/fail: the card's PER table is v3's (its README, 2026-08-16, before v3.1 existed), so it cannot judge this arm (amendment 2026-11-01)",
+ "passed": null,
  "pinned_scale": 1.0,
+ "role": "baseline",
  "scales": {
   "1.0": {
    "character_per": {
@@ -35,17 +43,109 @@
     }
    },
    "roundtrip": {
+    "accepted": false,
     "clips": 577,
-    "failed_clips": [
-     "everyayah_heldout/test-00003-of-00013_662",
-     "everyayah_heldout/test-00003-of-00013_978",
-     "everyayah_heldout/test-00003-of-00013_982",
-     "everyayah_heldout/test-00009-of-00013_117",
-     "everyayah_heldout/test-00009-of-00013_293",
-     "tlog_holdout/48_9_2871003400",
-     "tlog_holdout/80_22_5254111871"
+    "failures": [
+     {
+      "characters": "مممممَ",
+      "classification": "rule",
+      "clip": "everyayah_heldout/test-00003-of-00013_662",
+      "emitted": [
+       "م",
+       "ممممَ"
+      ],
+      "offset": 101,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ"
+      ]
+     },
+     {
+      "characters": "ۦۦۦۦ",
+      "classification": "quirk",
+      "clip": "everyayah_heldout/test-00009-of-00013_117",
+      "emitted": [
+       "ۦۦ",
+       "ۦۦ"
+      ],
+      "offset": 22,
+      "standin": [
+       "ۦۦۦۦ"
+      ]
+     },
+     {
+      "characters": "مممممَ",
+      "classification": "rule",
+      "clip": "everyayah_heldout/test-00003-of-00013_982",
+      "emitted": [
+       "م",
+       "ممممَ"
+      ],
+      "offset": 96,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ"
+      ]
+     },
+     {
+      "characters": "ۦۦۦۦ",
+      "classification": "quirk",
+      "clip": "everyayah_heldout/test-00009-of-00013_293",
+      "emitted": [
+       "ۦۦ",
+       "ۦۦ"
+      ],
+      "offset": 29,
+      "standin": [
+       "ۦۦۦۦ"
+      ]
+     },
+     {
+      "characters": "اااا",
+      "classification": "quirk",
+      "clip": "everyayah_heldout/test-00003-of-00013_978",
+      "emitted": [
+       "اا",
+       "اا"
+      ],
+      "offset": 68,
+      "standin": [
+       "اااا"
+      ]
+     },
+     {
+      "characters": "مممممَ",
+      "classification": "rule",
+      "clip": "tlog_holdout/80_22_5254111871",
+      "emitted": [
+       "م",
+       "ممممَ"
+      ],
+      "offset": 2,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ"
+      ]
+     },
+     {
+      "characters": "للِ",
+      "classification": "quirk",
+      "clip": "tlog_holdout/48_9_2871003400",
+      "emitted": [
+       "ل",
+       "لِ"
+      ],
+      "offset": 13,
+      "standin": [
+       "للِ"
+      ]
+     }
     ],
     "identical": 570,
+    "minimum": 0.99,
     "share": 0.9878682842287695
    },
    "unit_per": {
@@ -108,11 +208,10 @@
    }
   }
  },
- "schema_version": 1,
+ "schema_version": 2,
  "sources": {
   "everyayah_heldout": "studio",
   "qul_alnufais": "unseen",
   "tlog_holdout": "phone"
- },
- "stop": "only 570 of 577 clips (0.9879) re-tokenise to their emitted units, below 0.9900: the longest-match stand-in is not the card's tokenizer, so no PER against it can be trusted"
+ }
 }

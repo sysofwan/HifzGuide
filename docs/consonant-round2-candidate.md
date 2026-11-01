@@ -97,6 +97,10 @@ What the run actually read, from `train.log`'s own accounting lines:
   clean, 54 unclean), with no duplicate `(split, shard_file, row)` key in
   `tlog_consumed.jsonl.gz`. The pre-registration planned 73,829 rows / 240,002 windows; the run read
   161 more rows and 586 more windows (clean 49,784 vs 49,664 planned, unclean 24,206 vs 24,165).
+  The log is committed at `tools/tadabur/consonant2_readout/tlog_consumed.jsonl.gz` (217 KB,
+  SHA-256 `5e95c3c0…a87929238`), so "the rows this candidate read" is reproducible without the
+  run's scratch directory; the zipformer screen's `disjointness.json` pins that set beside
+  `tlog.training`'s 426,825-row pool.
 - **Tadabur consumed 16,456 of the 208,198 admitted rows (7.9%)** — 16 shards completed and the 17th
   in progress, or 80,535 windows at 8 windows a step.
 - The counters are the loaders' emitted totals: 10,000 steps trained 240,000 tlog and 80,000 Tadabur

@@ -1,0 +1,71 @@
+{
+ "fingerprints": {
+  "checks": {
+   "autocast": false,
+   "batch_size": 1,
+   "device_type": "cpu",
+   "mode": "zipformer-checks-v1",
+   "model": "zipformer",
+   "policy": "kaldi-fbank-v1",
+   "weights_dtype": "fp32"
+  },
+  "checks-w1": {
+   "autocast": false,
+   "batch_size": 1,
+   "device_type": "cpu",
+   "mode": "zipformer-checks-v1-w1000ms-flush1050ms",
+   "model": "zipformer",
+   "policy": "kaldi-fbank-v1",
+   "weights_dtype": "fp32"
+  },
+  "checks-w1-windows": {
+   "autocast": false,
+   "batch_size": 1,
+   "device_type": "cpu",
+   "mode": "zipformer-checks-v1-w1000ms-flush1050ms-windows",
+   "model": "zipformer",
+   "policy": "kaldi-fbank-v1",
+   "weights_dtype": "fp32"
+  },
+  "spans": {
+   "autocast": false,
+   "batch_size": 1,
+   "device_type": "cpu",
+   "mode": "zipformer-spans-v1",
+   "model": "zipformer",
+   "policy": "kaldi-fbank-v1",
+   "weights_dtype": "fp32"
+  }
+ },
+ "identity": {
+  "benchmark": {
+   "hub_revision": "d9fc635276a6a2b770293e6bffbe5b077bfc52b0",
+   "manifest_sha256": "5d54d855872fc2f110840c80683a1ca2799efcd18d244cf18662e421e6fd9c1f",
+   "model_ref": "Quran-Lab/quranic-asr-benchmark"
+  },
+  "chunk": 24,
+  "chunk_frames": 48,
+  "fbank": {
+   "dither": 0.0,
+   "frame_shift": 10.0,
+   "high_freq": -400.0,
+   "num_mel_bins": 80,
+   "sample_frequency": 16000,
+   "snip_edges": false,
+   "window_type": "povey"
+  },
+  "files": {
+   "quran_text2phoneme.json": "8d0cba9ce906fd8b968879bbf7398b02070d814866cf26596421a54f9921050b",
+   "zipformer_p_arabic_v3.2.int8.onnx": "5225f8e06930526905b8df2c05cb2c58649b68f0566b1751769f8eb51553e46a",
+   "zipformer_p_arabic_v3.2.onnx": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa"
+  },
+  "hub_revision": "39ed1f561d1c8c47c1e6025867837a1f402cc54a",
+  "input_frames": 61,
+  "left_context_frames": 256,
+  "model_ref": "Quran-Lab/zipformer_p-arabic-v3",
+  "sample_scale": 1.0,
+  "tokens_sha256": "252c10687e442aa9291973065fae19fa39bcd681c4f5612ec496a647e20b43a1",
+  "units_sha256": "6f24ec1556b3bcdea33a341ae687e8ca1eda2d9960185999d0bd70f082a68ede"
+ },
+ "model": "zipformer"
+}

@@ -1,0 +1,49 @@
+{
+ "decoded_audio_per_second": 813681.8893129771,
+ "horizon_hours": 12.0,
+ "issue": 245,
+ "jobs": {
+  "benchmark/decode": {
+   "decoded_audio_seconds": 120250971,
+   "projected_seconds": 147.8
+  },
+  "edits/decode": {
+   "decoded_audio_seconds": 93354912,
+   "projected_seconds": 114.7
+  },
+  "qdat/decode": {
+   "decoded_audio_seconds": 223030057,
+   "projected_seconds": 274.1
+  },
+  "qdat/w1": {
+   "decoded_audio_seconds": 6177228914,
+   "projected_seconds": 7591.7
+  },
+  "qud-other/decode": {
+   "decoded_audio_seconds": 1383675983,
+   "projected_seconds": 1700.5
+  },
+  "ship-a/decode": {
+   "decoded_audio_seconds": 84821488,
+   "projected_seconds": 104.2
+  },
+  "ship-a/w1": {
+   "decoded_audio_seconds": 2465734176,
+   "projected_seconds": 3030.3
+  }
+ },
+ "probe": {
+  "audio_seconds": 191.0,
+  "decoded_audio_seconds": 85273862.0,
+  "items": 20,
+  "set": "qdat",
+  "store": "w1",
+  "wall_seconds": 104.8,
+  "workers": 12
+ },
+ "projected_hours": 3.6,
+ "projected_seconds": 12963.3,
+ "rule": "stop before any screen decode if the projected decode of every set exceeds 12 h (architect r2, AC 6); the rate is the checks-w1 store at this worker count",
+ "step": "timing-probe",
+ "stop": false
+}

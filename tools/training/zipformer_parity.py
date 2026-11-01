@@ -406,6 +406,7 @@ def _probe(decoder, samples, name: str, span) -> dict:
 def _ours_clip(item: tuple) -> dict:
     """One clip's our-side record: units, frame counts, the padded tail, and any probes."""
     import numpy as np
+    import soundfile
 
     from tadabur.audio import decode_to_mono_16k_with_rate_and_decoder, read_audio_bytes
     from training.distill_data import SAMPLE_RATE
@@ -415,8 +416,8 @@ def _ours_clip(item: tuple) -> dict:
 
     key, source, audio, fbank_path, probes = item
     decoder = worker_decoder()
-    samples, rate, reader = decode_to_mono_16k_with_rate_and_decoder(
-        read_audio_bytes(Path(audio)))
+    raw = read_audio_bytes(Path(audio))
+    samples, rate, reader = decode_to_mono_16k_with_rate_and_decoder(raw)
     if rate != SAMPLE_RATE:
         raise ValueError(
             f"{key}: {rate} Hz. Only 16 kHz clips can be held to this gate: sherpa-onnx's "
@@ -430,7 +431,9 @@ def _ours_clip(item: tuple) -> dict:
         "key": key,
         "source": source,
         "audio": audio,
+        "audio_sha256": _sha256(raw),
         "sample_rate": rate,
+        "channels": soundfile.info(str(audio)).channels,
         "reader": reader,
         "num_samples": int(samples.size),
         "num_frames": int(len(features)),
@@ -653,7 +656,9 @@ def _sherpa_clip(item: tuple) -> dict:
     import numpy as np
     import soundfile
 
-    key, audio, ours_sha, fbank_path, probes = item
+    key, audio, ours_sha, ours_raw_sha, fbank_path, probes = item
+    if (found := _sha256(Path(audio).read_bytes())) != ours_raw_sha:
+        raise ValueError(f"{key}: the file is {found}, our loader read {ours_raw_sha}")
     waveform, rate = soundfile.read(audio, dtype="float32")
     if waveform.ndim > 1:
         waveform = waveform.mean(axis=1)
@@ -694,6 +699,7 @@ def _sherpa_protocol(model: Path, tokens: Path) -> dict:
     import importlib.metadata as metadata
 
     import sherpa_onnx
+    import soundfile
     from sherpa_onnx.lib import _sherpa_onnx
 
     options = _fbank_options()
@@ -713,6 +719,8 @@ def _sherpa_protocol(model: Path, tokens: Path) -> dict:
             "mel_options": options.mel_opts.as_dict(),
             "fbank_options": options.as_dict(),
         },
+        "audio_reader": {"soundfile": soundfile.__version__,
+                         "libsndfile": soundfile.__libsndfile_version__},
         "protocol": {
             "sample_rate": SHERPA_SAMPLE_RATE,
             "tail_samples": SHERPA_TAIL_SAMPLES,
@@ -732,7 +740,7 @@ def sherpa(ours_dir: Path, model: Path, tokens: Path, workers: int) -> None:
 
     ours_dir = Path(ours_dir)
     rows = _read_jsonl(ours_dir / "ours.jsonl")
-    items = [(row["key"], row["audio"], row["waveform_sha256"],
+    items = [(row["key"], row["audio"], row["waveform_sha256"], row["audio_sha256"],
               str(ours_dir / "fbank" / _fbank_name(row["key"])), row.get("probes", []))
              for row in rows]
     print(f"parity sherpa: {len(items)} clips, {workers} workers, sherpa-onnx with the card's "
@@ -909,8 +917,11 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
         "audio": {
             "clips": len(rows),
             "sample_rates": dict(Counter(row["sample_rate"] for row in rows)),
+            "channels": dict(Counter(row["channels"] for row in rows)),
             "readers": dict(Counter(row["reader"] for row in rows)),
             "direct_read_matches": len(rows) - len(waveform_mismatches),
+            "per_clip": "audio_sha256, waveform_sha256, channels, num_samples and num_frames "
+                        "are in parity_decodes.jsonl.gz",
         },
         "sources": sources,
         "pooled": pooled,
@@ -931,6 +942,11 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
     _write_jsonl_gz(decodes, ({
         "key": row["key"],
         "source": row["source"],
+        "audio_sha256": row["audio_sha256"],
+        "waveform_sha256": row["waveform_sha256"],
+        "channels": row["channels"],
+        "num_samples": row["num_samples"],
+        "num_frames": row["num_frames"],
         "identical": identical_clip(row["ours"], sherpa_rows[row["key"]]["tokens"],
                                     row["padded_tokens"]),
         "ours": row["ours"],

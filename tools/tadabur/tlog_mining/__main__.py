@@ -54,7 +54,8 @@ from pathlib import Path
 from tadabur import tlog_eval_decode as ted
 from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.tlog_ident_decode import load_decoder
-from tadabur.tlog_index import head_sha, provenance, read_jsonl, sha256_file, write_jsonl
+from tadabur.tlog_index import (head_sha, provenance, read_jsonl, sha256_file, write_json,
+                                write_jsonl)
 from tadabur.tlog_pool import default_audio
 from tadabur.tlog_tranches import SPLIT_DIR, TRANCHES_DIR
 from tadabur.tlog_vram_check import gpu_memory_mib
@@ -183,9 +184,49 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
 def _selected_rows(role: str, args: argparse.Namespace) -> list[dict]:
     """``role``'s rows for ``args.phase``: phase A's gating rows, or phase B's decodable ones."""
     if args.phase == PHASE_B:
-        return phase_b_rows(role, tranches_dir=args.tranches_dir,
-                            split_dir=args.split_dir)[0]
+        return phase_b_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir,
+                            phonetizable=_launch_phonetizer(args.parts_dir, role))[0]
     return phase_a_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+
+
+def _launch_phonetizer(parts_dir: Path, role: str):
+    """The launch's #248 verdict for one label, read from the listing the driver wrote.
+
+    Phonetizing a tranche costs ~200 s, against the 300 s a batch may hold the lock, so a worker
+    must not re-derive it. The driver phonetizes once at launch and records the refused labels;
+    the merge re-derives them from the real phonetizer before committing anything, so a wrong
+    listing can only cost a batch, never a committed row.
+    """
+    path = Path(parts_dir) / f"unphonetizable.{role}.json"
+    if not path.exists():
+        raise ValueError(f"{path} is missing: the driver writes the launch's unphonetizable "
+                         f"listing, and a worker without it cannot apply #248")
+    labels = set(json.loads(path.read_text(encoding="utf-8"))["labels"])
+    return lambda label: label not in labels
+
+
+def _write_listings(selected: dict, args: argparse.Namespace) -> None:
+    """Record each tranche's un-phonetizable labels: a worker's #248 check without the cost."""
+    for role, (decodable, listed) in selected.items():
+        print(f"{role}: {len(decodable)} rows to decode, {len(listed)} listed (#248)",
+              flush=True)
+        write_json({"tranche": role,
+                    "labels": sorted({row["assigned_label"] for row in listed
+                                      if row["assigned_label"] is not None})},
+                   Path(args.parts_dir) / f"unphonetizable.{role}.json")
+
+
+def _launch_rows(args: argparse.Namespace) -> dict[str, list[dict]]:
+    """The launch's rows per tranche, and for phase B the listing the workers read #248 from."""
+    if args.phase != PHASE_B:
+        return {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
+                                   split_dir=args.split_dir)
+                for role in PHASE_A_TRANCHES}
+    selected = {role: phase_b_rows(role, tranches_dir=args.tranches_dir,
+                                   split_dir=args.split_dir)
+                for role in PHASE_B_TRANCHES}
+    _write_listings(selected, args)
+    return {role: decodable for role, (decodable, _) in selected.items()}
 
 
 def _row_noun(phase: str) -> str:
@@ -211,9 +252,9 @@ def run(args: argparse.Namespace) -> int:
     if args.parallel != requested:
         print(f"parallel capped to {args.parallel}: whole-clip workers need "
               f"{WORKER_VRAM_MIB} MiB each", flush=True)
-    rows_by_role = {role: _selected_rows(role, args) for role in _tranches(args.phase)}
     for directory in (args.parts_dir, args.clip_dir, args.shard_cache):
         Path(directory).mkdir(parents=True, exist_ok=True)
+    rows_by_role = _launch_rows(args)
     _write_worklists(rows_by_role, args)
     gates = Gates(args.pause_file, free_disk_gb=lambda: _free_disk_gb(args.parts_dir),
                   available_ram_gb=_available_ram_gb,

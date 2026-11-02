@@ -630,6 +630,9 @@ directories: `meta.json`, `gate_override.json`, `gate_phases.json`, `gate_projec
 - `tranches/`: S7's per-role manifests, `meta.json` and the opening claims (not yet written).
 - `audit/`: S6's audit sample, verdicts and report.
 - `s2/`: the S2 validation's (page-aware preprocessing) records.
+- `consumed/`: the committed walk prefixes a later round continues after (#250) — round 2's
+  keys (`consonant2.jsonl.gz`, the same `(split, shard_file, row)` join key) and its
+  `meta.json`. They are keys only: no audio, label, decode or agreement.
 
 `schema_version` is the format's only version field; a reader that does not know it refuses
 the tree rather than guessing.

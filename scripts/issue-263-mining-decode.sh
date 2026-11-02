@@ -323,19 +323,22 @@ status() {  # [phase]
   esac
 }
 
-output_names() {  # <phase>: the merged files a complete run leaves in its out dir
+output_names() {  # <phase>: the merged files a complete run leaves in its out dir, as shell words
+  # One line of space-separated words, never one per line: this text lands in the remote ``for``
+  # header, and a newline there is a syntax error, not a separator.
   local model
   case "$1" in
-    A) printf '%s.jsonl.gz\n' "${ROLES[@]}" ;;
-    B) for model in ${MODELS//,/ }; do printf 'tlog.mined.%s.jsonl.gz\n' "$model"; done ;;
+    A) printf '%s.jsonl.gz ' "${ROLES[@]}" ;;
+    B) for model in ${MODELS//,/ }; do printf 'tlog.mined.%s.jsonl.gz ' "$model"; done ;;
   esac
 }
 
 require_merged() {
-  # ``fetch`` copies the merge as final: a partial run must refuse.
+  # ``fetch`` copies the merge as final: a partial run must refuse. `grep -qx` fails on a
+  # missing file too, where `test -f … && test …` would not abort a `set -e` script.
   ssh "$HOST" bash -s <<EOF || die "the box has no complete merge to fetch"
 set -e
-test -f '$LOGS/run.exit' && test "\$(cat '$LOGS/run.exit')" = 0
+grep -qx 0 '$LOGS/run.exit'
 test -f '$OUT/meta.json'
 for name in $(output_names "$1"); do test -f '$OUT/'\$name; done
 EOF

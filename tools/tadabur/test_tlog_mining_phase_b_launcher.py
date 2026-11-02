@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pytest
 
-from tadabur.test_tlog_mining_launcher import PLAN, _box, _run, _ssh_log
+from tadabur.test_tlog_mining_launcher import PLAN, _box, _merge_box, _run, _ssh_log
 from training import round2_verdict_fixtures as rv
 from training.test_consonant2_confirm_launcher import _round
 
@@ -148,3 +148,30 @@ def test_launch_refuses_while_the_other_phases_loop_is_live(tmp_path):
     done = _run("launch", round_, tmp_path, "B", **env)
     assert done.returncode != 0 and "still live" in done.stderr and "4242" in done.stderr
     assert "bundle" not in _ssh_log(tmp_path)
+
+
+#: Phase B's merged files, from the committed choice's candidate and the frozen prefix.
+PHASE_B_NAMES = [f"tlog.mined.{model}.jsonl.gz"
+                 for model in ("base", "c95", "r2_candidate_ema")]
+
+
+def test_the_phase_b_fetch_copies_a_complete_merge(tmp_path):
+    """The names are a shell word list: a newline per name breaks the remote ``for`` header."""
+    round_ = _with_amendment(tmp_path)
+    env = _merge_box(tmp_path, "B", PHASE_B_NAMES)
+    done = _run("fetch", round_, tmp_path, "B", **env)
+    assert done.returncode == 0, done.stderr
+    copied = Path(env["FETCH_DIR"])
+    assert sorted(path.name for path in copied.iterdir()) == sorted([*PHASE_B_NAMES,
+                                                                    "meta.json"])
+    assert f"box:{env['ISSUE_ROOT']}/B/out/" in (tmp_path / "rsync.log").read_text(
+        encoding="utf-8")
+
+
+def test_the_phase_b_fetch_refuses_a_merge_missing_a_model(tmp_path):
+    round_ = _with_amendment(tmp_path)
+    env = _merge_box(tmp_path, "B", PHASE_B_NAMES)
+    (Path(env["ISSUE_ROOT"]) / "B" / "out" / PHASE_B_NAMES[1]).unlink()
+    done = _run("fetch", round_, tmp_path, "B", **env)
+    assert done.returncode != 0 and "no complete merge" in done.stderr
+    assert not (tmp_path / "rsync.log").exists()

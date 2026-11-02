@@ -1,0 +1,155 @@
+{
+ "tlog.look/r3_candidate_live": {
+  "model": "r3_candidate_live",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+   "weights": "live",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+  }
+ },
+ "tlog.look/r3_candidate_ema": {
+  "model": "r3_candidate_ema",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+   "weights": "ema",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+  }
+ },
+ "tlog.look/c95": {
+  "model": "c95",
+  "fingerprints": {
+   "spans": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "weights": "ema",
+   "step": 10000,
+   "recipe": "aug94-mixture-v2",
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
+  }
+ },
+ "tlog.look/base": {
+  "model": "base",
+  "fingerprints": {
+   "spans": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "whole-spans",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "stream_b0": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "confirmed-stream-v2-flush",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "identity": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  }
+ }
+}

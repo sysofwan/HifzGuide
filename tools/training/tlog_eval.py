@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 
+from generate_phonemes import FALLBACK_PHONEMES
 from tadabur.qud_text import ItemReference, Unmapped, item_reference
 from tadabur.tlog_tranches import CONFIRM_ROLES, GATING
 from training.aug_readout_gate import TLOG_CONFIRM
@@ -144,6 +145,30 @@ def excluded_record(excluded: Mapping[str, str | None]) -> dict:
     return {"keys": sorted(excluded), "count": len(excluded),
             "ayat": sorted({label for label in excluded.values() if label}),
             "reason": EXCLUDED_REASON}
+
+
+#: The ayat the phonetizer cannot handle (:data:`generate_phonemes.FALLBACK_PHONEMES` keys):
+#: the only rows a round may leave out of a tlog population for a reference reason (#248).
+KNOWN_UNPHONETIZABLE = frozenset(FALLBACK_PHONEMES)
+
+
+def require_known_exclusions(excluded: Mapping[str, str | None]) -> None:
+    """Refuse an exclusion outside :data:`KNOWN_UNPHONETIZABLE`: the phonetizer handles every
+    other ayah, so leaving one out shrinks the population for a reason the rule does not allow.
+    A row naming no ayah passes: it is the other known reason, its own count."""
+    unknown = sorted({label for label in excluded.values()
+                      if label is not None and label not in KNOWN_UNPHONETIZABLE})
+    if unknown:
+        raise SystemExit(f"{unknown[0]} is left out of the look gating set but the phonetizer "
+                         f"handles it: the only known exclusions are "
+                         f"{sorted(KNOWN_UNPHONETIZABLE)}")
+
+
+def exclusion_reasons(excluded: Mapping[str, str | None]) -> dict[str, int]:
+    """The two known reasons an exclusion is allowed, counted apart (#248): an ayah the
+    phonetizer cannot handle, and a row that names no ayah at all."""
+    no_ayah = sum(1 for label in excluded.values() if label is None)
+    return {"unphonetizable": len(excluded) - no_ayah, "names_no_ayah": no_ayah}
 
 
 def confirm_views(tranches: Mapping[str, list[ClipItem]]) -> dict[str, list[ClipItem]]:

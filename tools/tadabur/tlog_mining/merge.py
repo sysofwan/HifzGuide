@@ -22,8 +22,7 @@ from tadabur.tlog_index import write_json, write_shard
 from tadabur.tlog_tranches import GATING
 from training.nonpro_decode import item_key
 
-#: The tranches phase A commits, in the launcher's order.
-PHASE_A_TRANCHES = ("look", "confirm.1", "confirm.2")
+from .selection import PHASE_A_TRANCHES
 
 
 def merge_word_times(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, Sequence[Mapping]],

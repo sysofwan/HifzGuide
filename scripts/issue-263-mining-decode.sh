@@ -38,7 +38,6 @@ CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ROUND_DIR=${ROUND_DIR:-tools/tadabur/consonant2_readout}
 TRANCHES_DIR=${TRANCHES_DIR:-tools/tadabur/tlog/tranches}
 PARALLEL=${PARALLEL:-2}
-BUDGET=${BUDGET:-28800}
 BATCH_SECONDS=${BATCH_SECONDS:-300}
 YIELD_SECONDS=${YIELD_SECONDS:-30}
 DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
@@ -122,7 +121,7 @@ stage_repo() {
 
 start_run() {  # <run args>
   # No flock wrapper: the Python loop takes the lock non-blocking for one batch at a time.
-  ssh "$HOST" "ISSUE_ROOT='$ROOT' PARALLEL=$PARALLEL BUDGET=$BUDGET PR=$PR \
+  ssh "$HOST" "ISSUE_ROOT='$ROOT' PARALLEL=$PARALLEL PR=$PR \
     BATCH_SECONDS=$BATCH_SECONDS YIELD_SECONDS=$YIELD_SECONDS \
     DISK_RESERVE_GB=$DISK_RESERVE_GB RAM_FLOOR_GB=$RAM_FLOOR_GB \
     LOOK_CLIP_CACHE='$LOOK_CLIP_CACHE' \
@@ -130,15 +129,30 @@ start_run() {  # <run args>
     >> '$ROOT/logs/run.out' 2>&1 < /dev/null & echo 'started: '\$!"
 }
 
+live_pid() {
+  # The box's loop pid, when that process is still alive (a pause lands at its next boundary).
+  ssh "$HOST" "if [ -f '$ROOT/logs/run.pid' ]; then pid=\$(cat '$ROOT/logs/run.pid' 2>/dev/null); \
+    if [ -n \"\$pid\" ] && kill -0 \"\$pid\" 2>/dev/null; then echo \"\$pid\"; fi; fi"
+}
+
+require_stopped() {
+  local pid
+  pid=$(live_pid)
+  [ -z "$pid" ] || die "the previous run is still live (pid $pid): pause it and wait for \
+    run.exit, then resume"
+}
+
 launch() {  # [phase]
   require_phase "${1:-A}"
   plan "${1:-A}" > /dev/null
+  require_stopped
   stage_repo
   start_run ""
 }
 
 resume() {
   plan A > /dev/null
+  require_stopped
   ssh "$HOST" "rm -f '$PAUSE_FILE'"
   stage_repo
   start_run --resume
@@ -242,6 +256,7 @@ run() {  # [--resume]
   trap 'exit 130' INT
   trap 'record_run_result "$?"' EXIT
   mkdir -p "$PARTS" "$OUT" "$CLIPS" "$SHARDS" "$ROOT/logs"
+  printf '%s\n' "$$" > "$ROOT/logs/run.pid"
   rm -f "$ROOT/logs/run.done" "$ROOT/logs/run.exit"
   cd "$ROOT/repo/tools"
   activate

@@ -51,12 +51,17 @@ def worker_rows(rows: Sequence[Mapping], *, shard_index: int, shard_count: int) 
 
 def run_batch(rows: Sequence[Mapping], parts_dir: Path, *,
               align_row: Callable[[Mapping], dict], budget_seconds: float,
-              clock: Callable[[], float]) -> BatchResult:
+              clock: Callable[[], float],
+              prepare_shard: Callable[[str, Sequence[Mapping]], None] | None = None) -> BatchResult:
     """Align the pending rows of ``rows`` in (shard_file, row) order within ``budget_seconds``.
 
     The budget is measured from the batch's start and checked before each row; a row already in
     its part is skipped without costing budget. A failing ``align_row`` propagates and leaves the
     rows written so far in place. ``done`` is true only when every row of ``rows`` is held.
+
+    ``prepare_shard(shard_file, pending)`` is called once per shard with rows left, before its
+    first row: the place to stream the shard's clips once (the source blob is deleted after a
+    read, so fetching per row would re-download the whole shard per clip).
     """
     started = clock()
     by_shard: dict[str, list[Mapping]] = {}
@@ -71,6 +76,8 @@ def run_batch(rows: Sequence[Mapping], parts_dir: Path, *,
                 if item_key(row["audio_path"]) not in done]
         if not left or stopped:
             continue
+        if prepare_shard is not None:
+            prepare_shard(shard_file, left)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for row in left:

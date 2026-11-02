@@ -1,10 +1,14 @@
 """One gating clip's word times (#263): CTC-force-align the filename ayah, map it to words.
 
-The reference is the filename ayah's **full text**, as :mod:`training.tlog_eval` builds the
-readout's gating reference: the phonetizer's raw (un-normalised) spaceless phoneme string and
-the per-word offsets into it (:func:`tadabur.waqf_segments.hafs_word_reference`). The teacher's
-posteriors are aligned to those phonemes with :func:`training.ctc_paths.ctc_best_path`, and
-word ``j`` takes the frames of the labels in ``offsets[j]:offsets[j + 1]``.
+The reference is the filename ayah's **full text** — the phonemes
+:mod:`training.tlog_eval` grades, whose readout reference is
+:func:`tadabur.waqf_segments.hafs_segment_reference` (space-bearing). CTC labels are phoneme
+classes, and the model's alphabet has no space, so the alignment uses
+:func:`tadabur.waqf_segments.hafs_word_reference`: the **spaceless remap of that same
+phonetization**, with the per-word offsets into it. Do not swap in the spaced builder: every
+character would be refused as outside the vocabulary. The teacher's posteriors are aligned to
+those phonemes with :func:`training.ctc_paths.ctc_best_path`, and word ``j`` takes the frames of
+the labels in ``offsets[j]:offsets[j + 1]``.
 
 Word times are in seconds of the clip: ``start`` is the first frame of the word's first
 phoneme, ``end`` the last frame of its last phoneme plus one (so adjacent words do not share a
@@ -51,6 +55,8 @@ def align_words(log_posteriors: np.ndarray, labels: Sequence[int], offsets: Sequ
     short to hold the transcript.
     """
     frames = len(log_posteriors)
+    if frames == 0:
+        raise ValueError(f"no frames for the {len(labels)}-label transcript")
     _require_offsets(offsets, len(labels))
     path = ctc_best_path(log_posteriors, labels)
     seconds_per_frame = duration_s / frames

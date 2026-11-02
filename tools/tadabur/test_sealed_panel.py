@@ -267,6 +267,8 @@ def test_every_dataset_stream_goes_through_the_row_seal():
 READ_EXEMPTIONS = {
     "tadabur/audio.py": "the guarded readers themselves",
     "tadabur/staged_audio.py": "as_staged reads back an in-memory buffer it just wrote",
+    "training/zipformer_parity.py": "the gate's sherpa phase re-reads the file directly so a "
+                                    "shared-loader mistake cannot hide (principal r2 §1)",
 }
 #: Where a parquet file may be opened without iter_shard_rows, and why.
 PARQUET_EXEMPTIONS = {

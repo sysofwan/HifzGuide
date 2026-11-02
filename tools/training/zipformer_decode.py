@@ -12,6 +12,11 @@ protocol are the card's, so this module owns all three and shares none of them w
 * **One continuous stream per item** (``spans`` and ``checks``). The kaldi fbank is computed
   once over the item plus 1.05 s of silence (the card's flush), the encoder's cache state is
   carried from call to call, and every call's 12 log-prob frames form one 40 ms timeline.
+  **No call is padded**: a call runs only while a whole :data:`INPUT_FRAMES` window is
+  available, which is sherpa-onnx's readiness rule. Our zero-padded final call emitted tokens
+  the reference runtime never produces (the parity gate's phone differences), so the one
+  diagnosis round removed it (parity r1, 2026-11-01). The tail's silence is still what lets
+  the last *complete* chunk flush a delayed word out.
   :func:`stream_checks` slices that one timeline with the transcriber's own schedule
   (:func:`training.decoding.check_schedule`); a window never restarts the model from zero.
 * **One fresh inference per check** (``checks-w1``, architect r2 + principal r1). Muraja runs
@@ -46,15 +51,12 @@ they are decoded only on the sets the Muraja harness grades.
 
 Usage (from ``tools/``)::
 
-    import onnxruntime as ort
-    from torchaudio.compliance import kaldi
-    from training.zipformer_decode import ZipformerDecoder, read_tokens
+    from training.zipformer_decode import ZipformerFiles, load_zipformer
 
-    session = ort.InferenceSession("zipformer_p_arabic_v3.2.onnx")
-    decoder = ZipformerDecoder(session, read_tokens(ZIPFORMER_DIR / "tokens.txt"),
-                               lambda wave, **options: kaldi.fbank(
-                                   torch.from_numpy(wave)[None], **options),
-                               scale=32_768.0)
+    files = ZipformerFiles(onnx=Path("..."), int8=Path("..."),
+                           text2phoneme=Path("..."), manifest=Path("..."),
+                           revision="...", benchmark_revision="...")
+    decoder = load_zipformer(files, scale=1.0)   # writes identity.json when given its path
 """
 
 from __future__ import annotations
@@ -68,24 +70,34 @@ import numpy as np
 from training import decoding
 from training.decoding import DecodeFingerprint
 from training.distill_data import SAMPLE_RATE
-from training.truth_baseline import Store
+from training.external_decode import record_identity
+from training.truth_baseline import Store, file_sha256
+from training.zipformer_stream import (BLANK_ID, CHUNK_FRAMES, INPUT_FRAMES, STEP_SAMPLES,
+                                       TAIL_SAMPLES, Emission, detokenise, featurize,
+                                       read_tokens, scan_units, state_specs, stream_frame_ids)
 
 #: The card's committed symbol table, unit inventory and licence, beside the decodes they back.
 ZIPFORMER_DIR = Path(__file__).resolve().parent.parent / "tadabur" / "zipformer_screen"
 
-#: ``tokens.txt``'s blank. Ours is 0, so no zipformer id is ever one of ours.
-BLANK_ID = 250
+#: The Hub repositories the card and the benchmark live in, and the files this screen reads.
+MODEL_REPO = "Quran-Lab/zipformer_p-arabic-v3"
+BENCHMARK_REPO = "Quran-Lab/quranic-asr-benchmark"
+ONNX_FILE = "zipformer_p_arabic_v3.2.onnx"
+INT8_FILE = "zipformer_p_arabic_v3.2.int8.onnx"
+#: v3's own export: the model the card's PER table describes (its README table is dated
+#: 2026-08-16, before v3.1). Decoded once as a decoder check, never on a comparison set.
+CARD_ONNX_FILE = "zipformer_p_arabic_v3.onnx"
+TEXT2PHONEME_FILE = "quran_text2phoneme.json"
+MANIFEST_FILE = "benchmark.jsonl"
+#: The card's left context: 256 frames at 50 Hz, about 5.1 s (its left-context probe README).
+LEFT_CONTEXT_FRAMES = 256
+#: The card's chunk: 24 output frames (0.48 s) per call, :data:`CHUNK_FRAMES` input frames.
+CHUNK_SIZE = 24
+#: The identity the decodes, and the gate's pinned scale, rest on.
+IDENTITY_PATH = ZIPFORMER_DIR / "identity.json"
 
-#: The card's analysis frame hop: 10 ms, so one encoder output step is four of them.
-FRAME_SHIFT_SAMPLES = 160
-#: One encoder output step, 40 ms at 16 kHz; the timeline :class:`Emission` indexes.
-STEP_SAMPLES = 4 * FRAME_SHIFT_SAMPLES
-#: The card's chunk 24 export: 48 frames advance, 12 log-prob frames per call, 61 input frames.
-CHUNK_FRAMES = 48
-INPUT_FRAMES = 61
-#: The card's "1.05 s of silence at the end of an utterance", 16,800 samples at 16 kHz.
-TAIL_SAMPLES = 16_800
-
+#: The protocol's constants and its run collapse are :mod:`training.zipformer_stream`'s,
+#: imported below: the parity gate's trace drives the same ONNX with that module alone.
 #: The warm-up a fresh per-check inference keeps before the check's start: one hop, 1 s.
 WARMUP_SAMPLES = decoding.HOP_SAMPLES
 #: The hop's width in output steps, the first second a window commits.
@@ -111,15 +123,17 @@ def _w1_mode(windows: bool) -> str:
     """The mode of a warm-started per-check arm, naming its two constants in milliseconds."""
     warm_up_ms = WARMUP_SAMPLES * 1000 // SAMPLE_RATE
     flush_ms = TAIL_SAMPLES * 1000 // SAMPLE_RATE
-    return (f"zipformer-checks-v1-w{warm_up_ms}ms-flush{flush_ms}ms"
+    return (f"zipformer-checks-v2-w{warm_up_ms}ms-flush{flush_ms}ms"
             + ("-windows" if windows else ""))
 
 
 #: The decode mode of each arm, and its fingerprint policy. All four differ from every mode and
-#: policy our own decodes carry, so the two kinds can never be compared by accident.
+#: policy our own decodes carry, so the two kinds can never be compared by accident. ``v2`` is
+#: the end-of-input repair (parity r1): a decode made under ``v1`` decoded a zero-padded final
+#: chunk the reference runtime never decodes, so the two protocols must never be pooled.
 ZIPFORMER_PROTOCOLS = {
-    "spans": "zipformer-spans-v1",
-    "checks": "zipformer-checks-v1",
+    "spans": "zipformer-spans-v2",
+    "checks": "zipformer-checks-v2",
     CHECKS_W1: _w1_mode(windows=False),
     CHECKS_W1_WINDOWS: _w1_mode(windows=True),
 }
@@ -143,110 +157,6 @@ SCORING_ARMS = {
 }
 
 
-@dataclass(frozen=True)
-class Emission:
-    """One non-blank CTC run: the unit's ``tokens.txt`` string and its frame span (inclusive)."""
-
-    text: str
-    start_step: int
-    end_step: int
-
-    @property
-    def midpoint(self) -> float:
-        """The mean of the run's first and last frame, as ``Segment.midpoint`` is ours."""
-        return (self.start_step + self.end_step) / 2.0
-
-
-def read_tokens(path: Path) -> dict[int, str]:
-    """``tokens.txt`` as id -> unit string, refusing a table whose blank is not :data:`BLANK_ID`.
-
-    Every line is ``<unit> <id>``; the unit may itself be a merged multi-character string.
-    """
-    text = Path(path).read_text(encoding="utf-8")
-    tokens = {}
-    for number, line in enumerate(text.splitlines(), 1):
-        if not line.strip():
-            continue
-        unit, _, id_text = line.rpartition(" ")
-        try:
-            token_id = int(id_text)
-        except ValueError as error:
-            raise ValueError(f"{path}:{number} is not '<unit> <id>': {line!r}") from error
-        tokens[token_id] = unit
-    if tokens.get(BLANK_ID) != "<blank>":
-        raise ValueError(
-            f"{path} does not put <blank> at id {BLANK_ID} (found {tokens.get(BLANK_ID)!r}); "
-            "the ids are not this model's CTC output classes"
-        )
-    return tokens
-
-
-def scan_units(frames: Iterable[int], tokens: Mapping[int, str]) -> list[Emission]:
-    """Collapse per-frame argmax into non-blank runs, each carrying its ``tokens.txt`` string.
-
-    A run ends when the id changes; the blank breaks runs of one id and is never emitted. An id
-    the table does not hold is refused rather than dropped: dropping it would silently shorten
-    the transcript where the model said something the table cannot name.
-    """
-    units: list[Emission] = []
-    previous: int | None = None
-    for step, frame in enumerate(frames):
-        token = int(frame)
-        if token == BLANK_ID:
-            previous = None
-            continue
-        if token not in tokens:
-            raise ValueError(f"tokens.txt has no unit for id {token}")
-        if token == previous:
-            last = units[-1]
-            units[-1] = Emission(last.text, last.start_step, step)
-        else:
-            units.append(Emission(tokens[token], step, step))
-        previous = token
-    return units
-
-
-def detokenise(frames: Iterable[int], tokens: Mapping[int, str]) -> str:
-    """The transcript of one frame sequence, by ``tokens.txt`` strings."""
-    return "".join(emission.text for emission in scan_units(frames, tokens))
-
-
-def featurize(samples: np.ndarray, fbank, *, scale: float) -> np.ndarray:
-    """The card's front end: scale the samples, append the 1.05 s silence, one kaldi fbank pass.
-
-    ``fbank`` receives the 1-D float32 waveform and :data:`FBANK_OPTIONS` as keywords and
-    returns one 80-bin frame per 10 ms. ``scale`` is required: the card does not pin whether
-    kaldi expects [-1, 1] or int16-scaled samples, and the gate decides it from PER.
-    """
-    waveform = np.asarray(samples, dtype=np.float32).reshape(-1) * scale
-    waveform = np.concatenate([waveform, np.zeros(TAIL_SAMPLES, dtype=np.float32)])
-    features = fbank(waveform, **FBANK_OPTIONS)
-    return np.asarray(features, dtype=np.float32)
-
-
-_NUMPY_DTYPES = {
-    "tensor(float)": np.float32,
-    "tensor(double)": np.float64,
-    "tensor(int64)": np.int64,
-    "tensor(int32)": np.int32,
-}
-
-
-def _state_spec(spec) -> tuple[str, tuple[int, ...], type]:
-    """One cache input's name, constant shape and numpy dtype, from the ONNX session."""
-    try:
-        dtype = _NUMPY_DTYPES[spec.type]
-    except KeyError as error:
-        raise ValueError(f"the ONNX input {spec.name!r} has the type {spec.type!r}") from error
-    shape = tuple(spec.shape)
-    if any(not isinstance(dim, int) or dim <= 0 for dim in shape):
-        raise ValueError(
-            f"the ONNX input {spec.name!r} has the non-constant shape {spec.shape}; the "
-            "streaming export's cache shapes must be known before the first call"
-        )
-    return spec.name, shape, dtype
-
-
 class ZipformerDecoder:
     """The card's streaming CTC decoder behind our arms: one stream, and one per check.
 
@@ -268,7 +178,7 @@ class ZipformerDecoder:
         inputs = session.get_inputs()
         if not any(spec.name == "x" for spec in inputs):
             raise ValueError("the ONNX session has no 'x' feature input")
-        self._state_specs = [_state_spec(spec) for spec in inputs if spec.name != "x"]
+        self._state_specs = state_specs(session)
         self._item_source: np.ndarray | None = None
         self._item_audio: np.ndarray | None = None
         self._item_emissions: list[Emission] | None = None
@@ -302,33 +212,24 @@ class ZipformerDecoder:
         """The item's units over one continuous stream: one fbank, one cache, one timeline."""
         return self._emissions(samples)
 
+    def stream_calls(self, samples: np.ndarray) -> list[np.ndarray]:
+        """Every call's argmax frame ids over one stream, in call order, from a zero cache.
+
+        The loop is :func:`stream_frame_ids`, sherpa-onnx's readiness rule included, so the
+        parity gate's own trace of the reference front end drives the model exactly as the
+        arms do (see that function's rule and its one diagnosis round).
+        """
+        features = featurize(samples, self.fbank, scale=self.scale)
+        if not len(features):
+            raise ValueError("the front end produced no frames")
+        return stream_frame_ids(self.session, features, self._state_specs)
+
     def _stream(self, samples: np.ndarray, offset_steps: int) -> list[Emission]:
         """One stream over ``samples``, its steps reported ``offset_steps`` later.
 
         A fresh zero cache, never carried in from another call or item.
         """
-        features = featurize(samples, self.fbank, scale=self.scale)
-        if not len(features):
-            raise ValueError("the front end produced no frames")
-        state = {name: np.zeros(shape, dtype=dtype)
-                 for name, shape, dtype in self._state_specs}
-        frames: list[np.ndarray] = []
-        cursor = 0
-        while cursor < len(features):
-            chunk = np.zeros((INPUT_FRAMES, features.shape[1]), dtype=np.float32)
-            piece = features[cursor:cursor + INPUT_FRAMES]
-            chunk[:len(piece)] = piece
-            outputs = self.session.run(None, {"x": chunk[None], **state})
-            if len(outputs) != len(self._state_specs) + 1:
-                raise ValueError(
-                    f"the ONNX session returned {len(outputs)} outputs for "
-                    f"{len(self._state_specs)} cache inputs and log_probs"
-                )
-            frames.append(np.argmax(np.asarray(outputs[0])[0], axis=-1))
-            state = {name: np.asarray(value)
-                     for (name, _, _), value in zip(self._state_specs, outputs[1:])}
-            cursor += CHUNK_FRAMES
-        emissions = scan_units(np.concatenate(frames), self.tokens)
+        emissions = scan_units(np.concatenate(self.stream_calls(samples)), self.tokens)
         if not offset_steps:
             return emissions
         return [Emission(emission.text, emission.start_step + offset_steps,
@@ -543,12 +444,123 @@ def zipformer_fingerprint(model: str, arm: str) -> DecodeFingerprint:
     )
 
 
+@dataclass(frozen=True)
+class ZipformerFiles:
+    """The card's files a run fetched, and the Hub revisions ``tokens.txt``/the table came at.
+
+    The ONNX, int8 and text-to-phoneme paths are the fetched copies outside the checkout;
+    ``tokens.txt`` and ``phoneme_units.json`` are the committed copies the card's own hashes
+    pin, so an identity record can name them by SHA-256 without a path.
+    """
+
+    onnx: Path
+    int8: Path
+    text2phoneme: Path
+    manifest: Path
+    revision: str
+    benchmark_revision: str
+
+    def identity(self, *, scale: float) -> dict:
+        """The weights, front end and gate constants every decode under these files rests on."""
+        return {
+            "model_ref": MODEL_REPO,
+            "hub_revision": self.revision,
+            "benchmark": {
+                "model_ref": BENCHMARK_REPO,
+                "hub_revision": self.benchmark_revision,
+                "manifest_sha256": file_sha256(self.manifest),
+            },
+            "files": {path.name: file_sha256(path)
+                      for path in (self.onnx, self.int8, self.text2phoneme)},
+            "tokens_sha256": file_sha256(ZIPFORMER_DIR / "tokens.txt"),
+            "units_sha256": file_sha256(ZIPFORMER_DIR / "phoneme_units.json"),
+            "chunk": CHUNK_SIZE,
+            "chunk_frames": CHUNK_FRAMES,
+            "input_frames": INPUT_FRAMES,
+            "left_context_frames": LEFT_CONTEXT_FRAMES,
+            "fbank": dict(FBANK_OPTIONS),
+            "sample_scale": scale,
+        }
+
+
+def load_zipformer(files: ZipformerFiles, *, scale: float,
+                   identity_path: Path | None = None) -> ZipformerDecoder:
+    """The card's decoder on CPU, and the identity its decodes rest on when asked.
+
+    The front end is the card's own (kaldi fbank, povey, no dither, ``snip_edges`` false) with
+    :data:`TAIL_SAMPLES` of silence appended, and ``scale`` multiplying the waveform first:
+    the card does not say whether kaldi wants [-1, 1] or int16-scaled samples, so the gate pins
+    it (:func:`training.zipformer_gate.pin_scale`) before any screen set is decoded. ONNX runs
+    with one thread per session: the screen parallelises whole items across processes, and a
+    per-session thread pool would oversubscribe the box.
+
+    ``identity_path`` writes the shared record (or refuses a run whose weights, table or
+    settings differ). The record is the same shape as every other model's
+    (:func:`training.external_decode.load_decoders`), so the arms' fingerprints key the same.
+    """
+    import onnxruntime as ort
+    from torchaudio.compliance import kaldi
+
+    def fbank(waveform, **options):
+        """The card's kaldi fbank over one 1-D float32 waveform (torchaudio wants 2-D)."""
+        import torch
+
+        return kaldi.fbank(torch.from_numpy(np.asarray(waveform))[None], **options).numpy()
+
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
+    session = ort.InferenceSession(str(Path(files.onnx)), sess_options=options,
+                                   providers=["CPUExecutionProvider"])
+    decoder = ZipformerDecoder(session, read_tokens(ZIPFORMER_DIR / "tokens.txt"), fbank,
+                               scale=scale)
+    if identity_path is not None:
+        record = {
+            "model": "zipformer",
+            "identity": files.identity(scale=scale),
+            "fingerprints": {arm: zipformer_fingerprint("zipformer", arm).as_dict()
+                             for arm in ZIPFORMER_PROTOCOLS},
+        }
+        record_identity(Path(identity_path), record, label="zipformer")
+    return decoder
+
+
 #: What one check's inference decodes, in samples: ours its span, zipformer's warm-started
-#: arm its warm-up and span plus the card's flushing tail.
+#: arm its warm-up and span plus the card's flushing tail; its windows-only arm keeps that
+#: work for the windows and cuts previews and the stop from its one stream.
 DECODED_SAMPLES = {
     "ours": lambda span: span.end - span.start,
     CHECKS_W1: lambda span: span.end - warmup_start(span) + TAIL_SAMPLES,
+    CHECKS_W1_WINDOWS: lambda span: (span.end - warmup_start(span) + TAIL_SAMPLES
+                                     if span.kind == decoding.WINDOW else 0),
 }
+
+
+def arms_decoded_samples(arms: Iterable[str], num_samples: int) -> int:
+    """The audio one item's decode hands the model over ``arms`` decoded together.
+
+    ``spans`` and ``checks`` are one stream. ``checks-w1`` decodes every check of the schedule
+    from its own zero cache. ``checks-w1-windows`` adds one stream, and its windows' fresh
+    inferences only when ``checks-w1`` did not already make them (the two arms share one
+    decoder per item, so a run of both decodes each window once). This is the compute table's
+    arithmetic and the timing probe's projection, from the same rule.
+    """
+    arms = set(arms)
+    unknown = arms - set(ZIPFORMER_PROTOCOLS)
+    if unknown:
+        raise ValueError(
+            f"not zipformer arms: {sorted(unknown)}; its arms are {sorted(ZIPFORMER_PROTOCOLS)}")
+    if num_samples <= 0:
+        raise ValueError(f"an item has positive audio, got {num_samples} samples")
+    schedule = decoding.check_schedule(num_samples)
+    total = num_samples if arms & {"spans", "checks"} else 0
+    if CHECKS_W1 in arms:
+        total += sum(DECODED_SAMPLES[CHECKS_W1](span) for span in schedule)
+    if CHECKS_W1_WINDOWS in arms:
+        total += num_samples  # its one stream
+        if CHECKS_W1 not in arms:
+            total += sum(DECODED_SAMPLES[CHECKS_W1_WINDOWS](span) for span in schedule)
+    return total
 
 
 def decoded_audio_ratio(arm: str, num_samples: int) -> float:

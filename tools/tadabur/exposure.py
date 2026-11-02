@@ -712,6 +712,26 @@ def check_disjoint(
         raise ExposureOverlap("; ".join(problems))
 
 
+def overlapping_recordings(
+    use: str, other: str, *, registry: ExposureRegistry | None = None
+) -> list:
+    """``other``'s recordings that ``use`` touched: the rows behind ``check_disjoint``.
+
+    The same source-level relation ``check_disjoint(by="source")`` screens with -- the
+    ``(shard, row_index)`` identity, a confirmed alias or a probable copy, and the audio
+    checksum -- so a caller asking "how many of this corpus's recordings did that use consume?"
+    counts recordings, not the reciters behind them. ``other`` must be a recording-level use (a
+    corpus of rows); a shard use as ``other`` would answer in shards. Both uses must have a
+    file (:class:`ExposureIncomplete` otherwise).
+    """
+    registry = registry or load_registry()
+    for name in (use, other):
+        registry._require(name)
+    if other in registry.shard_uses:
+        raise ValueError(f"{other} is a shard use; pass the recording-level use as 'other'")
+    return _shared_sources(registry, other, use)
+
+
 def _shared_sources(registry: ExposureRegistry, a: str, b: str) -> list:
     if a in registry.shard_uses and b in registry.shard_uses:
         shards_a, shards_b = set(registry.shard_uses[a].shards), set(registry.shard_uses[b].shards)

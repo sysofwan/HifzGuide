@@ -635,11 +635,19 @@ def main() -> None:
         help="a model to score (default: base and h448); its decodes cache under NAME",
     )
     parser.add_argument(
+        "--ema", action="append", default=[], metavar="NAME",
+        help="decode a model's averaged weights: a cache that records the selector is only "
+             "extended at those weights (the selector is not recoverable from the file's hash)",
+    )
+    parser.add_argument(
         "--decode-only", action="store_true",
         help="fill the caches and stop: the GPU box has no Muraja harness to grade with",
     )
     args = parser.parse_args()
     models = dict(m.split("=", 1) for m in args.model) or DEFAULT_MODELS
+    unknown = sorted(set(args.ema) - set(models))
+    if unknown:
+        parser.error(f"--ema names {unknown}, which are not --model names")
 
     files = truth_site_files()
     verdicts = read_verdicts()
@@ -654,7 +662,8 @@ def main() -> None:
     sequences: dict[str, dict[str, list[dict]]] = {}
     fingerprints: dict[str, dict] = {}
     for name, ref in models.items():
-        cache, recorded = model_caches(name, ref, items, registry, args.audio_dir)
+        cache, recorded = model_caches(name, ref, items, registry, args.audio_dir,
+                                       use_ema=name in args.ema)
         fingerprints[name] = {**cache["fingerprints"], **recorded["fingerprints"]}
         for protocol in PROTOCOLS:
             decodes[arm(name, protocol)] = {k: v[protocol] for k, v in cache["items"].items() if k in items}

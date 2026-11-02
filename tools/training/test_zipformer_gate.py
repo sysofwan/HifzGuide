@@ -5,8 +5,10 @@ its inputs and rules are pinned before any decode (``training.zipformer_gate``):
 
 * **Unit rule.** The card's tokenizer is unpublished; greedy longest-match over
   ``phoneme_units.json`` stands in, justified by a round trip: re-tokenising what the model
-  emitted must reproduce the emitted units on at least 99% of clips, else the gate stops
-  (:class:`GateStop`) and no other rule is tuned against it.
+  emitted must reproduce the emitted units on at least 99% of clips, or -- architect r3's D2
+  sort, written before the failures were inspected -- every clip it does not must be a model
+  quirk (the divergent window emitted the stand-in's way somewhere in the decode set), else
+  the gate stops (:class:`GateStop`) and no other rule is tuned against it.
 * **Scale rule.** The fbank's sample scale ([-1, 1] or x32768) is pinned by the lower PER on all
   three benchmark sources; sources that disagree, or scales within 2 points on any source, stop.
 * **Table misses** (a clip whose reference text is not in the card's table) are dropped from the
@@ -24,9 +26,11 @@ from training.zipformer_gate import (
     GateStop,
     edit_counts,
     encode_units,
+    first_divergence,
     pin_scale,
-    require_roundtrip,
+    require_stand_in,
     roundtrip_identical,
+    stand_in_record,
     source_per,
 )
 
@@ -59,27 +63,49 @@ def test_two_units_greedy_would_merge_do_not_round_trip():
     assert not roundtrip_identical(["بَ", "ا", "ا"], UNITS)
 
 
-def _clips(failures: int, total: int = 100) -> list[list[str]]:
-    return [["ا", "ا"] if i < failures else ["اا"] for i in range(total)]
+def _clips(failures: int, total: int = 100) -> dict[str, list[str]]:
+    return {f"c{i}": (["ا", "ا"] if i < failures else ["اا"]) for i in range(total)}
 
 
 def test_one_failure_in_a_hundred_clips_is_exactly_the_floor_and_passes():
-    assert require_roundtrip(_clips(1), UNITS, minimum=0.99) == pytest.approx(0.99)
+    record = stand_in_record(_clips(1), UNITS)
+    assert record["share"] == pytest.approx(0.99)
+    assert record["accepted"]
+    require_stand_in(record)
 
 
-def test_two_failures_in_a_hundred_clips_stop_the_gate():
-    with pytest.raises(GateStop):
-        require_roundtrip(_clips(2), UNITS, minimum=0.99)
+def test_every_failure_being_a_model_quirk_accepts_the_stand_in_below_the_floor():
+    # the other clips emit "اا", so the divergence is an uncertain split, not a rule
+    record = stand_in_record(_clips(2), UNITS, minimum=0.99)
+    assert not record["share"] >= 0.99
+    assert [failure["classification"] for failure in record["failures"]] == ["quirk"] * 2
+    assert record["accepted"]
+    require_stand_in(record)
 
 
-def test_the_floor_defaults_to_99_percent():
-    with pytest.raises(GateStop):
-        require_roundtrip(_clips(2), UNITS)
+def test_one_failure_the_model_never_emits_elsewhere_stops_the_gate():
+    units = ["ا", "ب", "اب", "بَ"]
+    clips = {"split": ["ا", "ب"], "other": ["بَ"]}
+    record = stand_in_record(clips, units)
+    assert [failure["classification"] for failure in record["failures"]] == ["rule"]
+    assert not record["accepted"]
+    with pytest.raises(GateStop, match="not the card's tokenizer"):
+        require_stand_in(record)
 
 
 def test_no_clips_is_an_error_not_a_pass():
     with pytest.raises(ValueError):
-        require_roundtrip([], UNITS)
+        stand_in_record({}, UNITS)
+
+
+def test_the_first_divergence_names_the_window_and_both_segmentations():
+    start, end, mine, theirs = first_divergence(["بَ", "ا", "ا", "ت"], ["بَ", "اا", "ت"])
+    assert (start, end) == (2, 4)
+    assert (mine, theirs) == (["ا", "ا"], ["اا"])
+
+
+def test_identical_segmentations_have_no_divergence():
+    assert first_divergence(["اا", "ت"], ["اا", "ت"]) is None
 
 
 # --- the committed units ----------------------------------------------------------------

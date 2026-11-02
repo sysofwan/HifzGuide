@@ -230,7 +230,7 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
     """Every file the ``preclaim`` or ``confirm`` sitting of the round opens, and only those:
     the readout decodes of :func:`sitting_roster`, the committed baseline decodes each reader
     binds, the metadata those readers open, and then G6's sites and caches (pre-claim) or the
-    round's freeze and the two confirmed tranches' manifests (confirm)."""
+    round's freeze and its confirmed tranches' manifests (confirm)."""
     from tadabur.exposure import EVALSET_MANIFEST_PATH
     from tadabur.nonpro_sources import QDAT, TARTEEL_V1
     from tadabur.qud_overlap import PILOT
@@ -239,7 +239,6 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
     from training.nonpro_eval import decodes_file as committed
     from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
     from training.qud_pilot import decodes_file as qud_committed
-    from training.tlog_eval import CONFIRM_TRANCHES
 
     spec = sources.spec
     sets = SITTING_SETS[phase]
@@ -265,7 +264,7 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
         from training.aug_readout_spec import C178
 
         files += [spec.root / "freeze.json",
-                  *(sources.tranches_dir / f"{role}.jsonl" for role in CONFIRM_TRANCHES),
+                  *(sources.tranches_dir / f"{role}.jsonl" for role in spec.confirm_tranches),
                   # The pre-registration's reproduction check (not a bar) re-grades C95 on
                   # #95's tarteel confirm and qdat, and #178 on tarteel confirm. Declared here
                   # so a sitting records the files the check opens.

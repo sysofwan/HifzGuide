@@ -433,11 +433,9 @@ class Sources:
         from training.tlog_eval import gating_items, span_trimmed_items
 
         if role != LOOK:
-            from training.tlog_eval import CONFIRM_TRANCHES
-
-            if role not in CONFIRM_TRANCHES:
+            if role not in self.spec.confirm_tranches:
                 raise SystemExit(f"{role}: this round reads the tlog tranches "
-                                 f"{[LOOK, *CONFIRM_TRANCHES]}, never {role!r}")
+                                 f"{[LOOK, *self.spec.confirm_tranches]}, never {role!r}")
         rows = load_tranche(role, self.tranches_dir)
         set_name = TLOG_LOOK if role == LOOK else TLOG_CONFIRM
         base = read_decode_file(self.decode_path(set_name, BASE))

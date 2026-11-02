@@ -12,8 +12,8 @@ Gating is the S7 manifests' own stratum, read off the frozen row and never recom
 (:data:`tadabur.tlog_tranches.GATING`). The ``reported:*`` strata and ``gating ∧ id_floor_ok``
 are their own item sets (:func:`reported_item_sets`) and never enter gating. The bootstrap
 cluster is the **surah** (the holdout pre-registration's S2 fallback): a clip is one user's
-recitation of one ayah, and the manifests name no reciter. Confirm.1 and confirm.2 are one
-pooled set before resampling (:func:`confirm_views`), each tranche still reported alone.
+recitation of one ayah, and the manifests name no reciter. A round's own confirm tranches are
+one pooled set before resampling (:func:`confirm_views`), each tranche still reported alone.
 """
 
 from __future__ import annotations
@@ -159,7 +159,7 @@ def require_known_exclusions(excluded: Mapping[str, str | None]) -> None:
     unknown = sorted({label for label in excluded.values()
                       if label is not None and label not in KNOWN_UNPHONETIZABLE})
     if unknown:
-        raise SystemExit(f"{unknown[0]} is left out of the look gating set but the phonetizer "
+        raise SystemExit(f"{unknown[0]} is left out of the gating set but the phonetizer "
                          f"handles it: the only known exclusions are "
                          f"{sorted(KNOWN_UNPHONETIZABLE)}")
 
@@ -171,19 +171,22 @@ def exclusion_reasons(excluded: Mapping[str, str | None]) -> dict[str, int]:
     return {"unphonetizable": len(excluded) - no_ayah, "names_no_ayah": no_ayah}
 
 
-def confirm_views(tranches: Mapping[str, list[ClipItem]]) -> dict[str, list[ClipItem]]:
-    """The pooled confirm set beside each tranche's own view: confirm.1 and confirm.2
+def confirm_views(tranches: Mapping[str, list[ClipItem]],
+                  roles: Sequence[str] = CONFIRM_TRANCHES) -> dict[str, list[ClipItem]]:
+    """The pooled confirm set beside each tranche's own view: the round's claimable tranches
     concatenated into one item set before resampling, each still read alone.
 
-    Only the two claimable tranches may be pooled, in claim order (confirm.2 needs confirm.1's
-    committed claim), and a clip may sit in one tranche only."""
-    unknown = sorted(set(tranches) - set(CONFIRM_TRANCHES))
+    ``roles`` is the round's pooled tranches in claim order — round 2's confirm.1 and confirm.2
+    by default, round 3's confirm.3 and confirm.4. Only those may be pooled, the second is never
+    read without the first (it needs the first's committed claim), and a clip may sit in one
+    tranche only."""
+    unknown = sorted(set(tranches) - set(roles))
     if unknown:
         raise ValueError(f"{unknown[0]} is not pooled into {POOLED_CONFIRM}: the round reads "
-                         f"{list(CONFIRM_TRANCHES)}")
-    if CONFIRM_TRANCHES[1] in tranches and CONFIRM_TRANCHES[0] not in tranches:
-        raise ValueError(f"{CONFIRM_TRANCHES[1]} is opened by {CONFIRM_TRANCHES[0]}'s committed "
-                         "claim: pool it with confirm.1, never alone")
+                         f"{list(roles)}")
+    if roles[1] in tranches and roles[0] not in tranches:
+        raise ValueError(f"{roles[1]} is opened by {roles[0]}'s committed claim: pool it with "
+                         f"{roles[0]}, never alone")
     seen: dict[str, str] = {}
     for name, items in tranches.items():
         for item in items:

@@ -1,9 +1,9 @@
-"""Round 2's pre-claim gates, sequential claims and pooled verdict (#230).
+"""The tlog rounds' pre-claim gates, sequential claims and pooled verdict (#230, #255).
 
-Round 2's pre-registration (``docs/consonant-round2-preregistration.md``) splits its readout in
-two reads: the non-tlog guards and the owner's catch-loss audit before any tranche is claimed
-(:func:`run_preclaim`), then the pooled ``confirm.1``+``confirm.2`` read
-(:func:`run_verdict`). The module holds both halves in the pre-registration's order:
+A round's pre-registration splits its readout in two reads: the non-tlog guards and the owner's
+catch-loss audit before any tranche is claimed (:func:`run_preclaim`), then the pooled confirm
+read over ``spec.confirm_tranches`` (:func:`run_verdict`). The module holds both halves in the
+pre-registration's order:
 
 * :data:`PRECLAIM_GATES` — the audit (:func:`audit_condition`), read from
   ``catch_loss/result.json`` exactly as :func:`tadabur.catch_loss_audit.score` wrote it, then
@@ -11,15 +11,20 @@ two reads: the non-tlog guards and the owner's catch-loss audit before any tranc
   table was not read cannot certify; G3's shaddah part is reported only (owner, #173).
   :func:`run_preclaim` writes ``preclaim.json`` and, on anything but an overall pass, the
   round's final verdict and doc: no claim is then possible.
-* :func:`claim` opens ``confirm.1`` and then ``confirm.2`` through
-  :mod:`tadabur.tlog_tranches`, only when ``preclaim.json`` is committed in HEAD with an
+* :func:`claim` opens the round's tranches in claim order through
+  :mod:`tadabur.tlog_tranches` — round 2's ``confirm.1`` then ``confirm.2``, round 3's
+  ``confirm.3`` then ``confirm.4`` — only when ``preclaim.json`` is committed in HEAD with an
   overall pass; every other role is refused for this round.
 * :data:`POOLED_BARS` — bars 1, 2 (absolute 4.7), 3, 4a.tlog, 4b.tlog and G4 on the pooled
   gating grades, with G5 appended per frozen substitution — and :func:`final_verdict`, the
   decision rule over both reads.
-  :func:`run_verdict` reads the two claimable tranches once, pools them before resampling
+  :func:`run_verdict` reads the spec's tranches once, pools them before resampling
   (:func:`training.tlog_eval.confirm_views`: the cluster is the surah), and writes
   ``report.json`` and ``verdict.json``; :func:`render` writes the readout doc.
+
+Round 2 decodes a control arm and reads its columns beside the candidate's; round 3 does not
+(#244), so a spec without one (:func:`has_control`) has no ``control`` key and no
+``candidate_vs_control`` table anywhere in its records or doc.
 
 Every verdict carries :data:`STATEMENT`: the tranches are a clip-level split, so the same users
 may sit on both sides. Each sitting declares the files it opens
@@ -77,7 +82,7 @@ from training.aug_readout_metrics import (
     teacher_agreement_terms,
     word_agreement_terms,
 )
-from training.aug_readout_spec import TLOG_CONFIRM, RoundSpec, check_pins
+from training.aug_readout_spec import CONSONANT2, TLOG_CONFIRM, RoundSpec, check_pins
 from training.aug_readout_verdict import (
     CONSONANT_BAR_TEXT,
     bound_condition,
@@ -92,11 +97,12 @@ from training.consonant_readout import frozen_substitutions
 from training.muraja_policy import SHIPPED_DEFAULT
 from training.tashkeel_eval import write_text_atomically
 from training.tlog_eval import (
-    CONFIRM_TRANCHES,
     ID_FLOOR_OK,
     POOLED_CONFIRM,
     confirm_views,
     excluded_record,
+    exclusion_reasons,
+    require_known_exclusions,
 )
 
 #: What every verdict and doc states of the split (the pre-registration's own sentence).
@@ -124,19 +130,35 @@ DOSE_CAVEAT = ("one point per reciter on Tadabur dev; a per-reciter cell is desc
                "defines no interval")
 AUDIT_BAR = ("the catch-loss audit: at most 20% of the decisive removed verdicts are real "
              "mistakes, and at least 80 decisive removed verdicts are heard")
-TLOG_BAR_TEXT = {
-    **CONSONANT_BAR_TEXT,
-    "bar1.all_cause": "the pooled tlog confirm.1+2 gating set, all-cause false flags per "
-                      "1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
-    "bar3.consonant_cause": "the pooled tlog confirm.1+2 gating set, consonant-caused false "
-                            "flags per 1,000: candidate − C95 paired 95% upper bound < 0",
-    "bar4a.tlog_confirm": "word agreement with the teacher on the pooled tlog confirm "
-                          "tranches: paired 95% lower bound > 0",
-    "bar4b.tlog_confirm": "the same on the teacher-departure words of the pooled tlog confirm "
-                          "tranches: paired 95% lower bound ≥ −0.5 pt",
-    "g4.tashkeel_cause": "the pooled tlog confirm.1+2 gating set, tashkeel-caused false flags "
-                         "per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
-}
+
+
+def has_control(spec: RoundSpec) -> bool:
+    """Whether the round decodes a control arm. The control is an arm on the look half, so a
+    spec that does not decode it there has none: round 3 reads the candidate alone (#244)."""
+    return CONTROL in spec.look_roles
+
+
+def bar_text(spec: RoundSpec) -> dict[str, str]:
+    """Every gate's bar text, naming the round's own pooled tranches — ``1+2`` for round 2,
+    ``3+4`` for round 3 — and reading G4's margin from ``spec.bars``: +1.0 for round 2, +3.5
+    after round 3's amendment A1. Never a literal."""
+    confirm = "+".join(role.removeprefix("confirm.") for role in spec.confirm_tranches)
+    return {
+        **CONSONANT_BAR_TEXT,
+        "bar1.all_cause": f"the pooled tlog confirm.{confirm} gating set, all-cause false "
+                          "flags per 1,000 (shipped default): candidate − C95 paired 95% "
+                          "upper bound < 0",
+        "bar3.consonant_cause": f"the pooled tlog confirm.{confirm} gating set, "
+                                "consonant-caused false flags per 1,000: candidate − C95 "
+                                "paired 95% upper bound < 0",
+        "bar4a.tlog_confirm": "word agreement with the teacher on the pooled tlog confirm "
+                              "tranches: paired 95% lower bound > 0",
+        "bar4b.tlog_confirm": "the same on the teacher-departure words of the pooled tlog "
+                              "confirm tranches: paired 95% lower bound ≥ −0.5 pt",
+        "g4.tashkeel_cause": f"the pooled tlog confirm.{confirm} gating set, tashkeel-caused "
+                             "false flags per 1,000: candidate − C95 paired 95% upper bound "
+                             f"≤ {spec.bars['tashkeel_upper_at_most']:+.1f}",
+    }
 
 
 # --- the pre-claim gates ------------------------------------------------------------------------
@@ -160,11 +182,12 @@ def preclaim_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
     comparison = comparison_name(CANDIDATE, spec.baseline)
     guards = report["guards"]
     mechanism = report["mechanism"]
+    text = bar_text(spec)
 
     def bound(name: str, table: Mapping | None, end: str, threshold: float,
               strict: bool) -> dict:
         return bound_condition(name, table, comparison, end, threshold, strict,
-                               text=TLOG_BAR_TEXT[name])
+                               text=text[name])
 
     return [
         *(bound(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], "lower",
@@ -175,7 +198,7 @@ def preclaim_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
         bound("bar4b.qdat", mechanism["qdat_departs"], "lower",
               bars["departs_lower_at_least"], False),
         point_lower_condition("bar5.qdat", report["consistency"]["qdat"],
-                              text=TLOG_BAR_TEXT["bar5.qdat"], baseline=spec.baseline),
+                              text=text["bar5.qdat"], baseline=spec.baseline),
         bound("g1.qud_other", guards["qud_other"], "upper", bars["qud_upper_at_most"], False),
         bound("g2.tadabur_dev_unseen", guards["tadabur_dev_unseen"], "lower",
               bars["tadabur_lower_at_least"], False),
@@ -195,20 +218,27 @@ def _role_grades(sources, data, roles: Mapping[str, str]) -> ar.SetData:
                       sources.grade(bound.items, bound.decodes, tuple(roles.values())))
 
 
+def _role_models(spec: RoundSpec, chosen: Mapping[str, str]) -> dict[str, str]:
+    """Model name -> role: the round's chosen arms (a control only for a round that decodes
+    one), its paired baseline and the teacher."""
+    return {**{model: role for role, model in chosen.items()},
+            spec.baseline: spec.baseline, BASE: BASE}
+
+
 def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1) -> dict:
-    """The non-tlog sets read once for the chosen candidate and control, as round 1's report.
+    """The non-tlog sets read once for the chosen arms, as round 1's report.
 
     Reads qdat (bars 4a, 4b, 5 and G3's bench kinds), the QUD other half (G1), Tadabur dev (G2)
-    and G6's caches. ``control`` holds the control's columns beside the candidate's. A set
-    whose decodes are not committed is ``None`` and cannot certify.
+    and G6's caches. A round with a control carries its columns beside the candidate's; a round
+    without one (:func:`has_control`) has no ``control`` key at all. A set whose decodes are not
+    committed is ``None`` and cannot certify.
     """
     from training.consonant_readout import catch_arm, g6_scope
 
     weights = choice["weights"]
     chosen = ar.choice_models(spec, weights)
     models = (*chosen.values(), spec.baseline, BASE)
-    roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
-             spec.baseline: spec.baseline, BASE: BASE}
+    roles = _role_models(spec, chosen)
     present = tuple(roles.values())
     absent = set(ar.absent_sets(sources, CONFIRM, weights, spec))
     shipped = SHIPPED_DEFAULT.name
@@ -270,15 +300,16 @@ def preclaim_report(sources, spec: RoundSpec, choice: Mapping, workers: int = 1)
         "sizes": {"qdat": None if qdat is None else len(qdat.items),
                   "qud_other": None if qud_other is None else len(qud_other.items),
                   "tadabur_dev_unseen": (None if tadabur is None else len(tadabur.clips))},
-        "control": {
+    }
+    if has_control(spec):
+        report["control"] = {
             "qdat": {"all_cause_per_1000": _control_point(all_cause_qdat)},
             "qud_other": {"all_cause_per_1000": _control_point(qud_table)},
             "tadabur_dev_unseen": {"teacher_agreement_points":
                                    _control_point(tadabur_table)},
             "qdat_bench": {kind: _control_point(view)
                            for kind, view in (bench_views or {}).items()},
-        },
-    }
+        }
     return report
 
 
@@ -356,16 +387,33 @@ class SittingInputs:
         return f"declared input absent: {', '.join(self.missing_inputs)}"
 
 
+def require_own_confirm_arms(roster: Mapping[str, Sequence[str]], spec: RoundSpec,
+                             weights) -> None:
+    """The pooled tlog confirm tranches (``confirm.k``) are decoded for the round's own arms at
+    their chosen weights, its paired baseline and the teacher, and nothing else: a context
+    column is never a decode target, so round 2's model — pinned in round 3's spec as ``R2`` and
+    named ``r2_*`` — never sits on a confirm tranche (round 3's pre-registration). Round 2's own
+    arms are ``r2_*`` at the weights it chose, so they pass for round 2."""
+    own = {*ar.choice_models(spec, weights).values(), spec.baseline, BASE}
+    stray = sorted(set(roster.get(TLOG_CONFIRM, ())) - own)
+    if stray:
+        raise SystemExit(f"the confirm tranches are decoded for {stray}, not the round's arms, "
+                         f"its baseline and the teacher: {sorted(own)}")
+
+
 def read_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping, weights,
                 phase: str) -> SittingInputs:
     """A sitting's declared inputs before it reads a grade: the files its
     ``Sources.input_files`` names — each sitting declares what it opens — and their digests,
     with every producer validated: the sitting's own roster, the teacher included, through the
     canonical :func:`require_manifest`. A set whose decodes are absent is not validated (it
-    cannot certify, and nothing reads it)."""
+    cannot certify, and nothing reads it). A confirm sitting's roster is checked against the
+    round's own arms first (:func:`require_own_confirm_arms`)."""
     files = list(sources.input_files(phase, weights))
     missing = [path for path in files if not path.exists()]
     roster = sitting_roster(spec, phase, weights)
+    if phase == CONFIRM:
+        require_own_confirm_arms(roster, spec, weights)
     absent = {name for name, models in roster.items()
               if any(sources.decode_path(name, model) in missing for model in models)}
     identities = require_manifest(
@@ -423,7 +471,7 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
         "verdict": aggregate([condition["verdict"] for condition in conditions]),
         "gates": {condition["name"]: condition for condition in conditions},
         "reported": reported,
-        "control": control,
+        **({"control": control} if has_control(spec) else {}),
         "audit": result,
         "bars": dict(spec.bars),
         "choice_commit": choice.commit,
@@ -438,10 +486,11 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     write_text_atomically(record, ar.canonical(preclaim))
     if preclaim["verdict"] != PASS:
         final = {"issue": spec.issue, "phase": "preclaim", "verdict": preclaim["verdict"],
-                 "statement": STATEMENT, "gates": preclaim["gates"],
-                 "control": preclaim["control"]}
+                 "statement": STATEMENT, "gates": preclaim["gates"]}
+        if "control" in preclaim:
+            final["control"] = preclaim["control"]
         write_text_atomically(layout.verdict, ar.canonical(final))
-        write_text_atomically(spec.doc_path, render(preclaim, None))
+        write_text_atomically(spec.doc_path, render(preclaim, None, spec))
     return preclaim
 
 
@@ -460,16 +509,17 @@ def _head_commit(path: Path) -> str:
 
 def claim(spec: RoundSpec, role: str, *, tranches_dir: Path = TRANCHES_DIR, date: str,
           layout: Layout | None = None) -> Path:
-    """Open one confirm tranche for this round; the operator commits the returned file.
+    """Open one of the round's confirm tranches; the operator commits the returned file.
 
-    Only ``confirm.1`` and ``confirm.2`` are claimable here — confirm.3 and confirm.4 are
-    refused under any input — and only when ``preclaim.json`` is committed in HEAD with an
-    overall pass. ``commit`` is the commit that holds that preclaim record; ``confirm.2`` also
-    needs ``confirm.1``'s committed claim (:func:`tadabur.tlog_tranches.require_claim_order`).
+    Only ``spec.confirm_tranches`` are claimable here — round 2's confirm.1 and confirm.2, round
+    3's confirm.3 and confirm.4 — and only when ``preclaim.json`` is committed in HEAD with an
+    overall pass. ``commit`` is the commit that holds that preclaim record; a tranche past the
+    round's first also needs its predecessor's committed claim
+    (:func:`tadabur.tlog_tranches.require_claim_order`).
     """
-    if role not in CONFIRM_TRANCHES:
+    if role not in spec.confirm_tranches:
         raise SystemExit(f"{role!r} cannot be claimed for {spec.name}: the round reads "
-                         f"{list(CONFIRM_TRANCHES)}")
+                         f"{list(spec.confirm_tranches)}")
     layout = layout or Layout(spec.root)
     require_preregistration_text(spec)
     require_passing_preclaim(layout, spec)
@@ -488,11 +538,12 @@ def pooled_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
     comparison = comparison_name(CANDIDATE, spec.baseline)
     main = report["main"]
     mechanism = report["mechanism"]
+    text = bar_text(spec)
 
     def bound(name: str, table: Mapping | None, end: str, threshold: float,
               strict: bool) -> dict:
         return bound_condition(name, table, comparison, end, threshold, strict,
-                               text=TLOG_BAR_TEXT[name])
+                               text=text[name])
 
     return [
         bound("bar1.all_cause", main["all_cause"], "upper",
@@ -576,14 +627,20 @@ def _partial_span(data) -> dict:
             "partial_span_share": partial / len(data.items) if data.items else None}
 
 
+def _exclusions(excluded: Mapping[str, str | None]) -> dict:
+    """The clips a population left out: their keys, the filename ayat they name, and the two
+    known reasons counted apart (:func:`training.tlog_eval.exclusion_reasons`)."""
+    return {**excluded_record(excluded), "labels": dict(sorted(excluded.items())),
+            "by_reason": exclusion_reasons(excluded)}
+
+
 def _tranche_coverage(data, present: Sequence[str], comparisons, workers: int) -> dict:
     """One tranche's declared and graded population, its partial-span share, the clips the item
     builder left out (with their filename ayat and why) and the rate at which each model commits
     nothing on a consonant carrier (an empty slot). Naming the excluded clips keeps a graded
     population smaller than its manifest from dropping rows silently."""
     return {**_partial_span(data), "excluded": len(data.excluded),
-            "excluded_clips": {**excluded_record(data.excluded),
-                               "labels": dict(sorted(data.excluded.items()))},
+            "excluded_clips": _exclusions(data.excluded),
             "empty_slots": compare(
                 abstention_terms(data.items, ar.checks_text(data, present), present, workers),
                 POINTS, comparisons)}
@@ -591,13 +648,12 @@ def _tranche_coverage(data, present: Sequence[str], comparisons, workers: int) -
 
 def _graded_population(items: Sequence, tranches: Mapping) -> dict:
     """What the pooled gating read actually graded: its clips and surah clusters, and the
-    union of the two tranches' excluded clips, so the difference from the frozen 5,762-row
-    manifest is named rather than implied."""
-    excluded = {**tranches["confirm.1"].excluded, **tranches["confirm.2"].excluded}
+    union of the round's tranches' excluded clips by reason, so the difference from the frozen
+    row manifest is named rather than implied."""
+    excluded = {key: label for data in tranches.values()
+                for key, label in data.excluded.items()}
     return {"clips": len(items), "surahs": len({item.surah for item in items}),
-            "excluded": len(excluded),
-            "excluded_clips": {**excluded_record(excluded),
-                               "labels": dict(sorted(excluded.items()))}}
+            "excluded": len(excluded), "excluded_clips": _exclusions(excluded)}
 
 
 def dose_response(tadabur, present: Sequence[str], baseline: str) -> dict:
@@ -619,24 +675,38 @@ def dose_response(tadabur, present: Sequence[str], baseline: str) -> dict:
     return {"caveat": DOSE_CAVEAT, "reciters": rows}
 
 
+def _merged_decodes(sets: Mapping[str, ar.SetData], present: Sequence[str]
+                    ) -> dict[str, dict[str, dict]]:
+    """The tranches' decode lines for each role, merged by item key: a clip sits in one tranche,
+    so the union is exact."""
+    return {role: {key: line for data in sets.values()
+                   for key, line in data.decodes[role].items()} for role in present}
+
+
 def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
                    present: Sequence[str], preclaim: Mapping, workers: int) -> dict | None:
-    """The pooled confirm read: both tranches once, their span-trimmed views, the reported
-    tables. ``None`` when the pooled gating set holds no item (nothing can certify)."""
+    """The pooled confirm read: the spec's tranches once, their span-trimmed views, the reported
+    tables. ``None`` when the pooled gating set holds no item (nothing can certify).
+
+    Every tranche is read before anything is graded, and a clip their item builders left out
+    must be a known exclusion (:func:`training.tlog_eval.require_known_exclusions`): an
+    exclusion the rule does not allow refuses the sitting before its first grade (#248)."""
     tranches, trimmed = {}, {}
-    for role in CONFIRM_TRANCHES:
-        for data, table in zip(sources.tlog_views(role, models), (tranches, trimmed)):
-            bound = _bound_set(data, roles)
-            table[role] = ar.SetData(
-                bound.items, bound.decodes,
-                sources.grade(bound.items, bound.decodes, present),
-                excluded=bound.excluded)
-    pooled = confirm_views({role: data.items for role, data in tranches.items()})
+    for role in spec.confirm_tranches:
+        gating, span = sources.tlog_views(role, models)
+        tranches[role], trimmed[role] = _bound_set(gating, roles), _bound_set(span, roles)
+    require_known_exclusions({key: label for data in tranches.values()
+                              for key, label in data.excluded.items()})
+    tranches = {role: ar.SetData(data.items, data.decodes,
+                                 sources.grade(data.items, data.decodes, present),
+                                 excluded=data.excluded)
+                for role, data in tranches.items()}
+    pooled = confirm_views({role: data.items for role, data in tranches.items()},
+                           spec.confirm_tranches)
     items = pooled[POOLED_CONFIRM]
     if not items:
         return None
-    decodes = {role: {**tranches["confirm.1"].decodes[role],
-                      **tranches["confirm.2"].decodes[role]} for role in present}
+    decodes = _merged_decodes(tranches, present)
     grades = sources.grade(items, decodes, present)
     comparisons = spec.comparisons
     texts = ar.checks_text(ar.SetData(items, decodes), present)
@@ -670,10 +740,10 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
     companions["teacher_shared_flags"] = _teacher_shared_flags(grades, spec.baseline)
     # The span-trimmed sensitivity: the same gating decodes, each item cut to the span its
     # decode records. Reported only, never graded into gating.
-    span_pooled = confirm_views({role: data.items for role, data in trimmed.items()})
+    span_pooled = confirm_views({role: data.items for role, data in trimmed.items()},
+                                spec.confirm_tranches)
     span_items = span_pooled[POOLED_CONFIRM]
-    span_decodes = {role: {**trimmed["confirm.1"].decodes[role],
-                           **trimmed["confirm.2"].decodes[role]} for role in present}
+    span_decodes = _merged_decodes(trimmed, present)
     tarteel = _bound_set(sources.tarteel(CONFIRM, models), roles)
     tarteel_texts = ar.checks_text(tarteel, present)
     dev = sources.tadabur(models)
@@ -682,7 +752,7 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
         {roles[name]: lines for name, lines in dev.decodes.items() if name in roles},
         {roles[name]: blanks for name, blanks in dev.blanks.items() if name in roles},
         dev.redecoded_identical)
-    return {
+    report = {
         "issue": spec.issue,
         "statement": STATEMENT,
         "baseline": spec.baseline,
@@ -704,10 +774,6 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
             "equals": agreement(tarteel.items, tarteel_texts, EQUALS)},
         "dose_response": dose_response(tadabur, present, spec.baseline),
         "bar2_companions": companions,
-        "candidate_vs_control": {
-            "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
-                             ((CANDIDATE, CONTROL),)),
-            "caveat": CONTROL_CAVEAT},
         "strata": {ID_FLOOR_OK: _tables(floor_grades, present, comparisons)},
         "coverage": {
             "tranches": {role: _tranche_coverage(data, present, comparisons, workers)
@@ -720,6 +786,12 @@ def _pooled_report(sources, spec: RoundSpec, models, roles: Mapping[str, str],
                     "preclaim": preclaim["verdict"],
                     "verdict": final_verdict(preclaim, conditions)},
     }
+    if has_control(spec):
+        report["candidate_vs_control"] = {
+            "table": compare(false_flag_terms(grades, present, shipped), PER_1000,
+                             ((CANDIDATE, CONTROL),)),
+            "caveat": CONTROL_CAVEAT}
+    return report
 
 
 def _unreadable_report(spec: RoundSpec, preclaim: Mapping, reason: str,
@@ -747,16 +819,17 @@ def _unreadable_report(spec: RoundSpec, preclaim: Mapping, reason: str,
 
 def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers: int = 1,
                 tranches_dir: Path = TRANCHES_DIR) -> dict:
-    """Read ``confirm.1`` and ``confirm.2`` once, pool them, and write the report and verdict.
+    """Read the round's confirm tranches once, pool them, and write the report and verdict.
 
     Refused before any tranche is read unless the pre-registration is committed at its pinned
     hash, the freeze is committed unchanged, the producers' identities are the pinned, chosen
-    models, the committed pre-claim record is a pass under those same pins, both claims are
-    committed in HEAD, and ``verdict.json`` is absent (the sitting reads once). Inside the
-    claim, and before any confirm decode is opened, #95's reproduction check re-grades C95 on
-    #95's own sources and stops on a mismatch (#249); its record is written beside the bars. A
-    declared input that is absent, or a pooled tranche that holds no gating item, writes a
-    cannot-certify verdict instead of reading nothing's file or grading an empty population.
+    models, the committed pre-claim record is a pass under those same pins, every one of
+    ``spec.confirm_tranches`` is claimed in HEAD, and ``verdict.json`` is absent (the sitting
+    reads once). Inside the claim, and before any confirm decode is opened, #95's reproduction
+    check re-grades C95 on #95's own sources and stops on a mismatch (#249); its record is
+    written beside the bars. A declared input that is absent, or a pooled tranche that holds no
+    gating item, writes a cannot-certify verdict instead of reading nothing's file or grading an
+    empty population.
     """
     from tadabur.tlog_tranches import require_claim
 
@@ -764,7 +837,7 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
     preclaim = require_passing_preclaim(layout, spec)
     tranches_dir = Path(tranches_dir)
     sources.tranches_dir = tranches_dir
-    for role in CONFIRM_TRANCHES:
+    for role in spec.confirm_tranches:
         require_claim(role, tranches_dir)
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the pooled confirm read happens once")
@@ -774,8 +847,7 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
     weights = committed.choice["weights"]
     chosen = ar.choice_models(spec, weights)
     models = (*chosen.values(), spec.baseline, BASE)
-    roles = {**{chosen[CANDIDATE]: CANDIDATE, chosen[CONTROL]: CONTROL},
-             spec.baseline: spec.baseline, BASE: BASE}
+    roles = _role_models(spec, chosen)
     present = tuple(roles.values())
     declared = read_inputs(sources, spec, layout, committed.choice, weights, CONFIRM)
 
@@ -804,7 +876,7 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
         write_text_atomically(layout.verdict, ar.canonical(
             {"issue": spec.issue, "statement": STATEMENT,
              "preclaim": preclaim["verdict"], **report["verdict"]}))
-        write_text_atomically(spec.doc_path, render(preclaim, report))
+        write_text_atomically(spec.doc_path, render(preclaim, report, spec))
     return report
 
 
@@ -834,11 +906,15 @@ def _measure(value) -> str:
     return f"{value:g}" if isinstance(value, int) else _number(value)
 
 
-def render(preclaim: Mapping, report: Mapping | None = None) -> str:
+def render(preclaim: Mapping, report: Mapping | None = None,
+           spec: RoundSpec = CONSONANT2) -> str:
     """The round's readout doc as text: the verdict, every gate with its frozen bar and the
     numbers it read, the reported tables with their estimates and intervals, and the
     clip-level-split statement. ``report=None`` is a round the pre-claim ended; a report with
-    ``unreadable`` renders why."""
+    ``unreadable`` renders why. ``spec`` names the round's tranches and, when it has one, the
+    pre-registration's required disclosure; only the parts a round lacks are omitted, so a round
+    with a control renders as it always has."""
+    confirm = " + ".join(spec.confirm_tranches)
     lines = [f"# The tlog consonant round's readout (#{preclaim['issue']})", "",
              STATEMENT, "",
              f"Pre-claim verdict: {preclaim['verdict']}", ""]
@@ -854,14 +930,16 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
         lines += ["", "## The control's columns", "",
                   json.dumps(preclaim["control"], ensure_ascii=False, sort_keys=True)]
     if report is None:
-        lines += ["", "No confirm tranche was claimed: confirm.1 and confirm.2 are not "
-                      "decoded, and the round ends here."]
+        lines += ["", f"No confirm tranche was claimed: {' and '.join(spec.confirm_tranches)} "
+                      "are not decoded, and the round ends here."]
         return "\n".join(lines) + "\n"
     verdict = report["verdict"]
     lines += ["", "## The pooled confirm verdict", "",
               f"Verdict: {verdict['verdict']} (pre-claim {verdict['preclaim']})", "",
               "### Bars", ""]
     lines += _condition_lines(verdict["conditions"])
+    if spec.readout_disclosure:
+        lines += ["", *spec.readout_disclosure]
     if report.get("reproduction"):
         lines += ["", "### Reproduction check (not a bar)", ""]
         lines += _reproduction_lines(report["reproduction"])
@@ -871,7 +949,7 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
         return "\n".join(lines) + "\n"
     baseline = report["baseline"]
     lines += ["", "### The pooled gating tables", ""]
-    lines += _tables_lines("pooled confirm.1 + confirm.2", report["main"], baseline)
+    lines += _tables_lines(f"pooled {confirm}", report["main"], baseline)
     lines += ["", "### Each tranche alone", ""]
     for role, table in report["tranches"].items():
         lines += _tables_lines(role, table, baseline)
@@ -897,7 +975,7 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
                            ("agreement where the teacher equals the reference", "equals")):
         lines += ["", *_single_lines(f"Tarteel v1 confirm, {title}", tarteel[reading], baseline)]
     lines += ["", "### Span-trimmed sensitivity", ""]
-    lines += _tables_lines("span-trimmed confirm.1 + confirm.2",
+    lines += _tables_lines(f"span-trimmed {confirm}",
                            report["sensitivity"]["span_trimmed"], baseline)
     lines += ["", "### Shaddah, reported only", ""]
     lines += _single_lines("shaddah agreement with the teacher",
@@ -914,10 +992,11 @@ def render(preclaim: Mapping, report: Mapping | None = None) -> str:
         lines.append(f"| {row['reciter_id']} | {row['clips']} | "
                      f"{_number(points.get(CANDIDATE))} | {_number(points.get(baseline))} | "
                      f"{_number(row['candidate_vs_baseline'])} |")
-    lines += ["", "### Candidate − control", "",
-              report["candidate_vs_control"]["caveat"], ""]
-    lines += _single_lines("candidate − control", report["candidate_vs_control"]["table"],
-                           baseline)
+    if report.get("candidate_vs_control"):
+        lines += ["", "### Candidate − control", "",
+                  report["candidate_vs_control"]["caveat"], ""]
+        lines += _single_lines("candidate − control", report["candidate_vs_control"]["table"],
+                               baseline)
     lines += ["", f"Reported strata: {report['coverage']['reported_strata']['status']} — "
               f"{report['coverage']['reported_strata']['reason']}"]
     return "\n".join(lines) + "\n"

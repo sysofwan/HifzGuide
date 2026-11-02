@@ -306,12 +306,42 @@ def test_an_unclaimed_round_3_tranche_is_refused(tmp_path, chosen, claims):
         _read(round_, "confirm.3")
 
 
-def test_confirm_4_is_refused_while_claim_3_is_not_committed(tmp_path, chosen):
-    round_ = _round(tmp_path, claims=("confirm.1", "confirm.2"))
-    _claim(round_, "confirm.3", commit=False)
-    _claim(round_, "confirm.4")
-    with pytest.raises(ValueError, match="confirm.3"):
-        _read(round_, "confirm.4")
+def test_confirm_3_is_refused_while_claim_4_is_not_committed(tmp_path, chosen):
+    round_ = _round(tmp_path, claims=("confirm.1", "confirm.2", "confirm.3"))
+    with pytest.raises(ValueError, match=r"confirm[.]4"):
+        _read(round_, "confirm.3")
+
+
+def test_a_round_3_claim_4_written_but_not_committed_opens_neither_tranche(tmp_path, chosen):
+    round_ = _round(tmp_path, claims=("confirm.1", "confirm.2", "confirm.3"))
+    _claim(round_, "confirm.4", commit=False)
+    for role in TRANCHES:
+        with pytest.raises(ValueError, match="claim"):
+            _read(round_, role)
+
+
+def test_a_round_3_claim_4_edited_since_its_commit_opens_neither_tranche(tmp_path, chosen):
+    round_ = _round(tmp_path)
+    path = round_.tranches / "confirm.4.claim.json"
+    path.write_text(path.read_text(encoding="utf-8").replace("227", "228"), encoding="utf-8")
+    for role in TRANCHES:
+        with pytest.raises(ValueError, match=r"confirm[.]4"):
+            _read(round_, role)
+
+
+def test_a_confirm_decode_needs_both_claims_before_it_loads_a_model(
+        tmp_path, chosen, monkeypatch):
+    round_ = _round(tmp_path, claims=("confirm.1", "confirm.2", "confirm.3"))
+    loaded: list = []
+    monkeypatch.setattr(
+        ted, "selection_rows",
+        lambda role, spec=None: ted.read_confirm_manifest(role, tranches_dir=round_.tranches,
+                                                          spec=spec))
+    monkeypatch.setattr(ted, "load_models", lambda *args, **kwargs: loaded.append(kwargs) or {})
+    with pytest.raises(ValueError, match=r"confirm[.]4"):
+        ted.decode_shards(parts_dir=tmp_path, cache_dir=tmp_path, models=CHOSEN,
+                          role="confirm.3", spec=ROUND3)
+    assert loaded == []
 
 
 def test_a_round_3_claim_that_is_written_but_not_committed_opens_nothing(tmp_path, chosen):
@@ -569,6 +599,12 @@ def test_the_look_merge_writes_into_the_spec_s_decodes_for_the_spec_s_arms(
     assert seen["merge_decodes"]["args"][1] == ROUND3.root / "decodes"
     assert tuple(seen["merge_decodes"]["models"]) == R3_ARMS
     assert seen["run_provenance"]["spec"] == ROUND3
+
+
+def test_the_look_merge_provenance_records_the_workers_the_run_used(tmp_path, monkeypatch):
+    seen = _cli(monkeypatch, "merge", "--parts-dir", str(tmp_path), "--spec", "consonant3",
+                "--processes", "4", "--threads", "1", merge_decodes={}, run_provenance={})
+    assert (seen["run_provenance"]["processes"], seen["run_provenance"]["threads"]) == (4, 1)
 
 
 def test_the_look_merge_still_defaults_to_round_2(tmp_path, monkeypatch):

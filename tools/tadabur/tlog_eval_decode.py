@@ -88,7 +88,7 @@ from .tlog_index import (commit_of, head_sha, provenance, read_jsonl, sha256_fil
                          write_shard)
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 from .tlog_pool import default_audio, row_key
-from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR, load_tranche
+from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR, load_tranche, require_claim
 from training.aug_readout_gate import look_models, model_spec
 from training.aug_readout_spec import (C95_SHA256, CANDIDATE_SHA256, CONSONANT1, CONSONANT2,
                                        SPECS, RoundSpec, tlog_round)
@@ -246,7 +246,9 @@ def read_confirm_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR,
     Only the round's own :attr:`RoundSpec.confirm_tranches` are read (round 2's
     ``confirm.1``/``confirm.2``, round 3's ``confirm.3``/``confirm.4``): the role is checked
     before any file is opened, and the tranche's own claim and its predecessor's must be
-    committed (:func:`tadabur.tlog_tranches.load_tranche`). The round's committed
+    committed (:func:`tadabur.tlog_tranches.load_tranche`). A round whose confirm sitting reads
+    once (:attr:`RoundSpec.confirm_needs_all_claims`) reads none of its tranches until every
+    one of their claims is committed, so a sitting never half-opens. The round's committed
     ``choice.json`` is required too, so no confirm row is read before the look chose. A row
     whose key also sits in any other tranche's manifest (the look's, or another confirm's) is a
     planted row and is refused, so a row of an unclaimed tranche is never decoded. The caller
@@ -258,6 +260,9 @@ def read_confirm_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR,
         raise ValueError(f"this decode reads the {spec.name} confirm tranches "
                          f"{list(spec.confirm_tranches)}, not {role!r}")
     directory = Path(tranches_dir)
+    if spec.confirm_needs_all_claims:
+        for name in spec.confirm_tranches:
+            require_claim(name, directory)
     rows = load_tranche(role, directory)
     committed_choice(layout or Layout(spec.root), spec=spec)
     own = {row_key(row) for row in rows}

@@ -293,6 +293,29 @@ def test_the_launch_starts_the_detached_run_on_the_box_under_the_gpu_lock(tmp_pa
 
 
 @pytest.mark.parametrize("phase", PHASES)
+def test_the_launch_creates_the_logs_dir_a_clean_box_lacks(tmp_path, phase):
+    """``stage_repo`` must create ``$ISSUE_ROOT/<phase>/logs``: the detached run's redirect
+    writes there before anything else on a fresh box does. ``_box`` pre-creates it, so this
+    box starts without one and only the launch's ``mkdir`` can make the redirect work."""
+    box = _box(tmp_path, phase)
+    (tmp_path / "issue" / phase / "logs").rmdir()
+    bindir = tmp_path / "clean-bin"
+    bindir.mkdir()
+    _mock(bindir / "ssh", '#!/bin/sh\nprintf "%s\\n" "$2" >> "$SSH_LOG"\n'
+          'case "$2" in\n'
+          '  *nohup*) exec sh -c "$2" ;;\n'
+          '  *"&&"*) cat >/dev/null ;;\n'
+          '  mkdir\\ -p\\ *) exec sh -c "$2" ;;\n'
+          '  *) cat >/dev/null ;;\n'
+          'esac\n')
+    done = _run(phase, "launch", _repo(tmp_path), tmp_path,
+                **{**box, "PATH": f"{bindir}:{box['PATH']}"})
+    assert done.returncode == 0, done.stderr
+    assert _started(tmp_path) == f"run {phase}"
+    assert (tmp_path / "issue" / phase / "logs" / "run.out").exists()
+
+
+@pytest.mark.parametrize("phase", PHASES)
 def test_the_resume_restages_and_starts_a_resumed_run_at_the_low_parallelism(tmp_path, phase):
     done = _run(phase, "resume", _repo(tmp_path), tmp_path, **_box(tmp_path, phase))
     assert done.returncode == 0, done.stderr

@@ -196,6 +196,8 @@ stage_repo() {
   repo_root=$(git rev-parse --show-toplevel)
   branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
   sha=$(git -C "$repo_root" rev-parse HEAD)
+  # Each phase owns its logs dir; the detached run's redirect needs it before its nohup.
+  ssh "$HOST" "mkdir -p '$ROOT/$PHASE/logs'"
   ssh "$HOST" "mkdir -p '$ROOT' && rm -rf '$ROOT/repo' '$ROOT/repo.bundle'"
   git -C "$repo_root" bundle create - "$(bundle_ref "$repo_root")" \
     | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
@@ -279,6 +281,9 @@ require_decoded() {
       ssh "$HOST" bash -s <<EOF || die "the box's $PHASE run has no complete decodes to fetch"
 set -e
 test -s '$ROOT/$PHASE/logs/jobs.txt'
+for set_name in ${SETS[*]}; do
+  grep -q "^\$set_name " '$ROOT/$PHASE/logs/jobs.txt'
+done
 while read -r set_name shard; do
   grep -Eq " \$set_name shard \$shard exit 0\$" '$ROOT/$PHASE/logs/events'
   for model in ${MODELS//,/ }; do

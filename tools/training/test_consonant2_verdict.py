@@ -68,6 +68,15 @@ def cv():
     return consonant2_verdict
 
 
+@pytest.fixture(autouse=True)
+def reproduction_check_passes(monkeypatch):
+    """The verdict runs #95's reproduction check first (#249), which re-grades C95 on #95's real
+    decodes with the real harness; these fixtures stand in for it. The check itself is tested in
+    ``test_verdict_reproduction.py``."""
+    monkeypatch.setattr(ar, "reproduction", lambda *args, **kwargs: ar.REPRODUCTION)
+    monkeypatch.setattr(ar, "reproduction_inputs", lambda *args, **kwargs: [], raising=False)
+
+
 # --- the bars, on hand-built tables ---------------------------------------------------------------
 
 

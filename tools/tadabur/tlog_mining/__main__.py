@@ -30,6 +30,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -42,6 +43,8 @@ from tadabur.tlog_index import head_sha, provenance, read_jsonl, sha256_file, wr
 from tadabur.tlog_pool import default_audio
 from tadabur.tlog_tranches import SPLIT_DIR, TRANCHES_DIR
 from tadabur.waqf_segments import hafs_word_reference
+from training.external_decode import record_identity
+from training.nonpro_decode import item_key
 from training.tlog_eval import _canonical_words
 
 from .batch import pending, run_batch, worker_rows
@@ -53,19 +56,28 @@ from .word_times import build_record
 
 #: The box's GPU lock, the file round 3's launcher holds.
 GPU_LOCK = Path("/root/scratch/gpu.lock")
-#: How long a worker may overrun the batch before the parent stops it: one in-flight row plus
-#: its teardown. The worker's own budget is checked between rows, so it normally stops itself.
-OVERDUE_SECONDS = 60
+#: Wall-clock slack after a batch's budget before the parent stops its workers: the in-flight
+#: row's flush and the interpreter's teardown. The worker's own budget is checked between rows,
+#: so it normally stops itself first.
+BATCH_GRACE_SECONDS = 10
+#: How long a stopped worker gets to exit after ``terminate()`` before it is killed.
+REAP_SECONDS = 30
+#: The run's teacher record, written once into the parts directory.
+TEACHER_RECORD = "teacher.json"
 
 
 def align(args: argparse.Namespace) -> int:
     """One worker's batch over its shard share, appending to the parts and stopping on budget."""
+    started = time.monotonic()
     require_phase(args.phase)
     rows = _worker_rows(args)
     decoder, identity, fingerprint = load_decoder()
     _record_teacher(args.parts_dir, identity, fingerprint)
+    # The batch's budget covers this worker from spawn, so selection and the model load (the
+    # lock-held cost round 3 waits for) are inside it, not on top of it.
+    budget = max(0.0, args.budget_seconds - (time.monotonic() - started))
     result = run_batch(rows, args.parts_dir, align_row=_align_row(decoder, args),
-                       budget_seconds=args.budget_seconds, clock=time.monotonic,
+                       budget_seconds=budget, clock=time.monotonic,
                        prepare_shard=lambda shard, pending: _fetch_shard(shard, pending, args))
     print(f"{args.role} worker {args.shard_index}: wrote {result.written}, done={result.done}",
           flush=True)
@@ -73,17 +85,40 @@ def align(args: argparse.Namespace) -> int:
 
 
 def _worker_rows(args: argparse.Namespace) -> list[dict]:
-    """The worker's rows: its written worklist, else its share of the tranche's gating rows."""
-    if args.worklist is not None:
-        return read_jsonl(args.worklist)
-    return worker_rows(phase_a_rows(args.role, tranches_dir=args.tranches_dir,
-                                    split_dir=args.split_dir),
-                       shard_index=args.shard_index, shard_count=args.shard_count)
+    """The worker's rows: its written worklist, else its share of the tranche's gating rows.
+
+    A worklist is not an authorization: every row must be a gating row of ``--role``, of this
+    worker's shard share, and identical to the committed manifest row. Selection is re-read
+    through :func:`phase_a_rows`, so a stale or forged worklist cannot put a row the launcher
+    must never touch (a reported stratum, a train or confirm.3/4 row) through the teacher.
+    """
+    rows = phase_a_rows(args.role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+    share = worker_rows(rows, shard_index=args.shard_index, shard_count=args.shard_count)
+    if args.worklist is None:
+        return share
+    canonical = {item_key(row["audio_path"]): row for row in share}
+    listed = read_jsonl(args.worklist)
+    seen = set()
+    for row in listed:
+        key = item_key(row["audio_path"])
+        if key in seen:
+            raise ValueError(f"{key} appears twice in {args.worklist}")
+        seen.add(key)
+        if key not in canonical:
+            raise ValueError(f"{key} is not a gating row of {args.role} worker "
+                             f"{args.shard_index}/{args.shard_count}")
+        if row != canonical[key]:
+            raise ValueError(f"{key}: the worklist is not the committed manifest row")
+    return listed
 
 
 def run(args: argparse.Namespace) -> int:
     """The give-way loop: one lock-held batch at a time, the gates checked at every boundary."""
     require_phase(args.phase)
+    # A stop signal unwinds through `_run_workers`'s finally, so its workers are reaped before
+    # the lock is released; a hard kill leaves the parts intact and the next run resumes.
+    for signal_number in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(signal_number, _raise_exit)
     if not args.resume and any(Path(args.parts_dir).glob("word_times.*.jsonl")):
         raise SystemExit(f"{args.parts_dir} already holds records: pass --resume to continue "
                          f"that run, or use a fresh --parts-dir")
@@ -155,30 +190,52 @@ def _run_workers(role: str, indexes: list[int], budget: float, args: argparse.Na
     if args.look_clip_cache is not None:
         command += ["--look-clip-cache", str(args.look_clip_cache)]
     environment = {**os.environ, "OMP_NUM_THREADS": "1"}
-    started = time.monotonic()
-    processes = [(index, subprocess.Popen(
-        [*command, "--shard-index", str(index), "--budget-seconds", str(budget),
-         "--worklist", str(Path(args.parts_dir) / f"worklist.{role}.{index}.jsonl")],
-        env=environment)) for index in indexes]
+    deadline = time.monotonic() + budget + BATCH_GRACE_SECONDS
+    processes = []
     failures = []
-    for index, process in processes:
-        remaining = max(0.0, budget - (time.monotonic() - started))
-        try:
-            status = process.wait(timeout=remaining + OVERDUE_SECONDS)
-        except subprocess.TimeoutExpired:
-            # Past the batch's deadline: the row in flight is lost, its part line is not.
-            process.terminate()
-            try:
-                process.wait(timeout=OVERDUE_SECONDS)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            continue
-        if status != 0:
-            failures.append((index, status))
+    try:
+        for index in indexes:
+            processes.append((index, subprocess.Popen(
+                [*command, "--shard-index", str(index), "--budget-seconds", str(budget),
+                 "--worklist", str(Path(args.parts_dir) / f"worklist.{role}.{index}.jsonl")],
+                env=environment)))
+        for index, process in processes:
+            status = _wait_within(process, deadline)
+            if status is not None and status != 0:
+                failures.append((index, status))
+    finally:
+        # A spawn or wait failure must not outlive this call: the caller's next act releases
+        # the GPU lock, and a child still holding GPU work would race round 3 for it.
+        for _, process in processes:
+            _reap(process)
     if failures:
         index, status = failures[0]
         raise RuntimeError(f"{role} worker {index} exited {status}")
+
+
+def _raise_exit(signal_number: int, frame) -> None:
+    """A driver's signal becomes a clean unwinding exit (128 + the signal)."""
+    raise SystemExit(128 + signal_number)
+
+
+def _wait_within(process: subprocess.Popen, deadline: float) -> int | None:
+    """The worker's status, or ``None`` when the batch's deadline stopped it (its row is lost)."""
+    try:
+        return process.wait(timeout=max(0.0, deadline - time.monotonic()))
+    except subprocess.TimeoutExpired:
+        return None
+
+
+def _reap(process: subprocess.Popen) -> None:
+    """Terminate and reap a worker that is still running (no-op once it has exited)."""
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
 
 
 def _align_row(decoder, args: argparse.Namespace):
@@ -237,32 +294,23 @@ def _verified(path: Path, row: dict) -> Path:
 
 
 def _record_teacher(parts_dir: Path, identity: dict, fingerprint: dict) -> None:
-    """The run's teacher identity, once: ``merge`` refuses a run whose workers disagree.
+    """The run's teacher record, written once and checked on every later worker and resume.
 
-    Workers of the first batch may race here; each writes its own pid-named file, and every
-    later batch sees one and writes nothing.
+    A run whose parts were made with other weights or a different dtype is refused before this
+    worker aligns another row, so a resumed run cannot append to a mixed teacher.
     """
     directory = Path(parts_dir)
     directory.mkdir(parents=True, exist_ok=True)
-    if any(directory.glob("teacher-*.json")):
-        return
-    path = directory / f"teacher-{os.getpid()}.json"
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps({"identity": identity, "fingerprint": fingerprint},
-                                    ensure_ascii=False, sort_keys=True) + "\n",
-                         encoding="utf-8")
-    os.replace(temporary, path)
+    record_identity(directory / TEACHER_RECORD, {"identity": identity, "fingerprint": fingerprint},
+                    label="this worker's teacher")
 
 
 def _teacher(parts_dir: Path) -> dict:
-    """The run's teacher record, from the workers' files; a disagreement is a refusal."""
-    records = [json.loads(path.read_text(encoding="utf-8"))
-               for path in sorted(Path(parts_dir).glob("teacher-*.json"))]
-    if not records:
+    """The run's teacher record, if the run reached the teacher at all."""
+    path = Path(parts_dir) / TEACHER_RECORD
+    if not path.exists():
         return {}
-    if any(record != records[0] for record in records[1:]):
-        raise ValueError("the workers' teacher identities disagree")
-    return {"teacher": records[0]}
+    return {"teacher": json.loads(path.read_text(encoding="utf-8"))}
 
 
 def _free_disk_gb(path: Path) -> float:

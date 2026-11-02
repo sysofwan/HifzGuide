@@ -1,10 +1,11 @@
-"""Phase A's CLI glue (#263): one worker's batch from a written worklist, on stubs.
+"""Phase A's CLI glue (#263): a worker from a validated worklist, on stubs.
 
 The modules below the CLI are covered by their own tests; this file covers the wiring the box
-actually runs — ``python -m tadabur.tlog_mining align`` reading the parent's worklist, fetching
-a shard's clips once, calling the teacher, and appending the records. The teacher's forward pass
-and the clip decoder are stubbed (no GPU, no audio), and the reference is a planted two-word
-transcript, so the real ``build_record``/``align_words`` path is exercised end to end.
+actually runs — ``python -m tadabur.tlog_mining align`` validating the parent's worklist,
+fetching a shard's clips once, calling the teacher, and appending the records. The teacher's
+forward pass and the clip decoder are stubbed (no GPU, no audio), the reference is a planted
+two-word transcript, and the selection is stubbed to the fixture's rows, so the real worklist
+checks, ``build_record``/``align_words`` and the parent's batch bound are exercised end to end.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from tadabur.tlog_mining import __main__ as cli
 from training.ctc_paths import ctc_best_path
 
 SHARD = "clean-00001-of-00411"
+OTHER_SHARD = "clean-00002-of-00411"
 REFERENCE = "بت"
 OFFSETS = [0, 1, 2]
 FRAMES = 8
@@ -48,15 +50,20 @@ class FakeDecoder:
         return [_posteriors() for _ in spans]
 
 
-def _row(number: int, payload: bytes) -> dict:
-    return {"split": "clean", "shard_file": SHARD, "row": number,
-            "audio_path": f"2_1_{number}.flac", "audio_sha256": hashlib.sha256(payload).hexdigest(),
+def _row(number: int, payload: bytes, *, shard: str = SHARD) -> dict:
+    return {"split": "clean", "shard_file": shard, "row": number,
+            "audio_path": f"2_1_{number}.flac",
+            "audio_sha256": hashlib.sha256(payload).hexdigest(),
             "filename_label": "2:1", "stratum": "gating"}
+
+
+def _identity(fingerprint: dict | None = None) -> tuple:
+    return FakeDecoder(), {"model_ref": "teacher"}, fingerprint or {"store": "spans"}
 
 
 @pytest.fixture
 def box(tmp_path, monkeypatch):
-    """A worklist of two cached clips, a stubbed teacher and a planted reference."""
+    """A worklist of two cached clips, a stubbed teacher, reference and selection."""
     parts, clips = tmp_path / "parts", tmp_path / "clips"
     parts.mkdir()
     clips.mkdir()
@@ -68,37 +75,43 @@ def box(tmp_path, monkeypatch):
         rows.append(row)
     worklist = parts / "worklist.look.0.jsonl"
     worklist.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
-    monkeypatch.setattr(cli, "load_decoder",
-                        lambda: (FakeDecoder(), {"model_ref": "teacher"},
-                                 {"store": "spans"}))
+    monkeypatch.setattr(cli, "phase_a_rows", lambda role, **kwargs: [dict(row) for row in rows])
+    monkeypatch.setattr(cli, "load_decoder", lambda: _identity())
     monkeypatch.setattr(cli, "default_audio", lambda data: np.zeros(FRAMES))
     monkeypatch.setattr(cli, "hafs_word_reference", lambda: (lambda words: (REFERENCE, OFFSETS)))
     monkeypatch.setattr(cli, "_canonical_words", lambda label: ["word-1", "word-2"])
-    return {"parts": parts, "clips": clips, "worklist": worklist, "rows": rows}
+    return {"parts": parts, "clips": clips, "worklist": worklist, "rows": rows,
+            "shard_cache": tmp_path / "shards", "tranches": tmp_path / "tranches",
+            "split": tmp_path / "split"}
 
 
-def _align(box, tmp_path, monkeypatch, *extra: str) -> int:
-    """Run the CLI's ``align``; returns its exit code."""
+def _align(box, monkeypatch, *extra: str, shard_index: int = 0, shard_count: int = 1) -> int:
+    """Run the CLI's ``align``; returns 0 on success and 1 on a refusal."""
     monkeypatch.setattr(cli.sys, "argv", [
-        "tlog_mining", "align", "--role", "look", "--shard-index", "0", "--shard-count", "1",
-        "--parts-dir", str(box["parts"]), "--clip-dir", str(box["clips"]),
-        "--shard-cache", str(tmp_path / "shards"), "--worklist", str(box["worklist"]),
-        "--budget-seconds", "60", *extra])
+        "tlog_mining", "align", "--role", "look", "--shard-index", str(shard_index),
+        "--shard-count", str(shard_count), "--parts-dir", str(box["parts"]),
+        "--clip-dir", str(box["clips"]), "--shard-cache", str(box["shard_cache"]),
+        "--worklist", str(box["worklist"]), "--budget-seconds", "60",
+        "--tranches-dir", str(box["tranches"]), "--split-dir", str(box["split"]), *extra])
     with pytest.raises(SystemExit) as thrown:
         cli.main()
     code = thrown.value.code
     return 0 if code is None or code == 0 else 1
 
 
+def _part_path(box) -> Path:
+    return box["parts"] / f"word_times.{SHARD}.jsonl"
+
+
 def _part(box) -> list[dict]:
-    path = box["parts"] / f"word_times.{SHARD}.jsonl"
+    path = _part_path(box)
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
-def test_a_worker_aligns_its_worklist_into_the_part(box, tmp_path, monkeypatch):
-    assert _align(box, tmp_path, monkeypatch) == 0
+def test_a_worker_aligns_its_worklist_into_the_part(box, monkeypatch):
+    assert _align(box, monkeypatch) == 0
     records = _part(box)
     assert [record["key"] for record in records] == [
         f"{row['audio_path']}#0" for row in box["rows"]]
@@ -112,14 +125,77 @@ def test_a_worker_aligns_its_worklist_into_the_part(box, tmp_path, monkeypatch):
                                                          (path[0][1] + 1) * seconds])
     assert records[0]["word_times"][1] == pytest.approx([path[1][0] * seconds,
                                                          (path[1][1] + 1) * seconds])
-    assert (box["parts"] / f"word_times.{SHARD}.jsonl").read_text().count("\n") == 2
+    assert _part_path(box).read_text().count("\n") == 2
 
 
-def test_a_second_batch_writes_nothing_and_leaves_the_part_alone(box, tmp_path, monkeypatch):
-    assert _align(box, tmp_path, monkeypatch) == 0
-    before = (box["parts"] / f"word_times.{SHARD}.jsonl").read_text(encoding="utf-8")
-    assert _align(box, tmp_path, monkeypatch) == 0
-    assert (box["parts"] / f"word_times.{SHARD}.jsonl").read_text(encoding="utf-8") == before
+def test_a_second_batch_writes_nothing_and_leaves_the_part_alone(box, monkeypatch):
+    assert _align(box, monkeypatch) == 0
+    before = _part_path(box).read_text(encoding="utf-8")
+    assert _align(box, monkeypatch) == 0
+    assert _part_path(box).read_text(encoding="utf-8") == before
+
+
+# --- the worklist is not an authorization ---------------------------------------------------------
+
+
+def test_a_worklist_row_outside_the_selection_is_refused(box, monkeypatch, capsys):
+    foreign = {**_row(9, b"foreign"), "stratum": "reported:unclean"}
+    box["worklist"].write_text(json.dumps(foreign) + "\n", encoding="utf-8")
+    assert _align(box, monkeypatch) == 1
+    assert "not a gating row" in capsys.readouterr().err
+    assert _part(box) == []
+
+
+def test_a_worklist_row_that_is_not_the_manifest_row_is_refused(box, monkeypatch, capsys):
+    altered = {**box["rows"][0], "audio_sha256": "00" * 32}
+    box["worklist"].write_text(json.dumps(altered) + "\n", encoding="utf-8")
+    assert _align(box, monkeypatch) == 1
+    assert "not the committed manifest row" in capsys.readouterr().err
+    assert _part(box) == []
+
+
+def test_a_worklist_row_twice_is_refused(box, monkeypatch, capsys):
+    row = json.dumps(box["rows"][0])
+    box["worklist"].write_text(row + "\n" + row + "\n", encoding="utf-8")
+    assert _align(box, monkeypatch) == 1
+    assert "appears twice" in capsys.readouterr().err
+
+
+def test_a_worklist_row_of_another_workers_share_is_refused(box, monkeypatch, capsys):
+    """Worker 0 of 2 owns one of the two shards; a row of the other is not its work."""
+    first = box["rows"][0]
+    other = _row(3, b"clip-3", shard=OTHER_SHARD)
+    monkeypatch.setattr(cli, "phase_a_rows", lambda role, **kwargs: [dict(first), dict(other)])
+    box["worklist"].write_text(json.dumps(other) + "\n", encoding="utf-8")
+    assert _align(box, monkeypatch, shard_count=2) == 1
+    assert "not a gating row" in capsys.readouterr().err
+
+
+def test_a_sealed_tranche_is_not_a_role_the_worker_accepts(box, monkeypatch):
+    monkeypatch.setattr(cli.sys, "argv", [
+        "tlog_mining", "align", "--role", "confirm.3", "--shard-index", "0", "--shard-count", "1",
+        "--parts-dir", str(box["parts"]), "--clip-dir", str(box["clips"]),
+        "--shard-cache", str(box["shard_cache"])])
+    with pytest.raises(SystemExit) as thrown:
+        cli.main()
+    assert thrown.value.code != 0
+    assert _part(box) == []
+
+
+# --- the teacher record binds a resumed run -------------------------------------------------------
+
+
+def test_a_changed_teacher_fingerprint_is_refused_before_a_row(box, monkeypatch, capsys):
+    assert _align(box, monkeypatch) == 0
+    before = _part_path(box).read_text(encoding="utf-8")
+    monkeypatch.setattr(cli, "load_decoder",
+                        lambda: _identity({"store": "spans", "dtype": "fp32"}))
+    assert _align(box, monkeypatch) == 1
+    assert "records other weights or settings" in capsys.readouterr().err
+    assert _part_path(box).read_text(encoding="utf-8") == before
+
+
+# --- the shard, and the batch's bound -------------------------------------------------------------
 
 
 def test_a_shard_is_streamed_once_for_all_its_missing_clips(tmp_path, monkeypatch):
@@ -141,22 +217,37 @@ def test_a_shard_is_streamed_once_for_all_its_missing_clips(tmp_path, monkeypatc
     assert calls == [(SHARD, [1, 2, 3])]
 
 
+def _worker_args(tmp_path) -> Namespace:
+    return Namespace(parts_dir=tmp_path, clip_dir=tmp_path, shard_cache=tmp_path,
+                     tranches_dir=tmp_path, split_dir=tmp_path, parallel=2,
+                     look_clip_cache=None, phase="A")
+
+
 def test_the_parent_stops_a_worker_that_overruns_the_batch(tmp_path, monkeypatch):
     """The worker's own budget is per row; the parent bounds the whole batch (and its startup)."""
-    monkeypatch.setattr(cli, "OVERDUE_SECONDS", 0.5)
+    monkeypatch.setattr(cli, "BATCH_GRACE_SECONDS", 0.5)
     spawn = subprocess.Popen
     monkeypatch.setattr(cli.subprocess, "Popen",
                         lambda *a, **k: spawn([sys.executable, "-c",
                                                "import time; time.sleep(30)"]))
-    args = Namespace(parts_dir=tmp_path, clip_dir=tmp_path, shard_cache=tmp_path,
-                     tranches_dir=tmp_path, split_dir=tmp_path, parallel=1,
-                     look_clip_cache=None, phase="A")
     started = time.monotonic()
-    cli._run_workers("look", [0], 0.1, args)
+    cli._run_workers("look", [0], 0.1, _worker_args(tmp_path))
     assert time.monotonic() - started < 10
 
 
-def test_a_phase_other_than_a_is_refused_with_a_message(box, tmp_path, monkeypatch, capsys):
-    assert _align(box, tmp_path, monkeypatch, "--phase", "B") == 1
-    assert "phase B" in capsys.readouterr().err
-    assert _part(box) == []
+def test_a_spawn_failure_reaps_the_worker_already_started(tmp_path, monkeypatch):
+    """The caller releases the GPU lock next; no child may outlive the failed spawn."""
+    monkeypatch.setattr(cli, "BATCH_GRACE_SECONDS", 0.5)
+    spawn = subprocess.Popen
+    children = []
+
+    def fake(*args, **kwargs):
+        if children:
+            raise OSError("cannot fork")
+        children.append(spawn([sys.executable, "-c", "import time; time.sleep(30)"]))
+        return children[0]
+
+    monkeypatch.setattr(cli.subprocess, "Popen", fake)
+    with pytest.raises(OSError, match="cannot fork"):
+        cli._run_workers("look", [0, 1], 60, _worker_args(tmp_path))
+    assert children[0].poll() is not None

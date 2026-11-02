@@ -1,16 +1,19 @@
-"""Decode the tlog ``look`` tranche's gating rows for round 2 (#212); no grading.
+"""Decode a tlog round's ``look`` or ``confirm`` gating rows; no grading.
 
-Round 2 reads tlog look gating and bar 4's teacher check sequence, but S6/S7 committed only
-whole-clip ``spans``. This module streams each shard once and decodes its gating rows with the
-three models the narrowed run needs — the base teacher, C95 and the #178 candidate's averaged
-weights — into the Tarteel v1 record shape ``training.aug_readout`` already grades, under the
-one store that readout reads: the app's ``checks``. It decodes **only**: nothing here scores,
-counts a flag or compares a model.
+The round's spec (``--spec``, default round 2) decides the arms, the model pins, the confirm
+tranches and the committed choice it reads. Round 2 reads tlog look gating and bar 4's teacher
+check sequence (#212); round 3 decodes ``r3_candidate_live``/``r3_candidate_ema`` on the look
+gating and the teacher, C95 and the chosen round-3 weights on ``confirm.3`` + ``confirm.4``
+(#251, #256). This module streams each shard once and decodes its gating rows into the Tarteel
+v1 record shape ``training.aug_readout`` already grades, under the one store that readout
+reads: the app's ``checks``. It decodes **only**: nothing here scores, counts a flag or
+compares a model.
 
-The look tranche is the only input. Any other role is refused before a file is opened, and a
-look row whose row key also appears in a committed ``confirm.<k>.jsonl`` is refused too, so no
-confirm row is ever opened. Each wanted shard is streamed once, its audio's SHA-256 checked
-before it is decoded, and the shard deleted once read.
+The look tranche or one of the round's claimed confirm tranches is the only input. Any other
+role is refused before a file is opened, a look row whose row key also appears in a committed
+``confirm.<k>.jsonl`` is refused, and so is a confirm row planted from another tranche, so no
+row of an unclaimed tranche is ever opened. Each wanted shard is streamed once, its audio's
+SHA-256 checked before it is decoded, and the shard deleted once read.
 
 The selected clips are kept in a box-local clip cache (never the repository, never the fetched
 output), each file named by the checksum it must hold: ``cache`` populates it for the gating
@@ -30,17 +33,18 @@ featurised once and every model still pending on it runs on those features
 (``--no-share-features`` reproduces the per-model path, which is a benchmark's control). The
 records are unchanged by sharing -- ``parity`` re-decodes the first :data:`PARITY_SHARDS`
 gating shards and compares its parts with the committed decodes of exactly those shards,
-line for line, writing ``tools/tadabur/consonant2_readout/decodes/shared_parity.json``. It
-compares decode text only: nothing here grades.
+line for line, writing ``<spec root>/decodes/shared_parity.json``. It compares decode text
+only: nothing here grades.
 
 Model identities are the round's pins, checked here rather than through
-``training.aug_readout_decode``'s #95 gate: C95 and the #178 candidate by their checkpoint
-SHA-256, the teacher by the hub revision its loaded config resolved to.
+``training.aug_readout_decode``'s #95 gate: the teacher by the hub revision its loaded config
+resolved to, every other model by the SHA-256 of its checkpoint the round's spec pins.
 
-Parts go to ``<parts-dir>/tlog.look.<shard_file>.<model>.jsonl``, one file per shard and
+Parts go to ``<parts-dir>/tlog.<role>.<shard_file>.<model>.jsonl``, one file per shard and
 model, so a killed run resumes by key. ``merge`` gathers them into
-``tools/tadabur/consonant2_readout/decodes/tlog.look.<model>.jsonl.gz`` with a ``meta.json``;
-every model must cover every selected row exactly once, and a labelled row's ``word_from``/
+``<spec root>/decodes/tlog.look.<model>.jsonl.gz`` with a ``meta.json``; ``merge-confirm`` pools
+the round's confirm tranches into ``tlog.confirm.<model>.jsonl.gz`` with ``meta.confirm.json``.
+Every model must cover every selected row exactly once, and a labelled row's ``word_from``/
 ``word_to`` become S6's identified span of the clip (the decode wrote the whole ayah).
 
 Usage, from ``tools/`` on the GPU box (``decode`` and ``merge`` under
@@ -57,6 +61,15 @@ Usage, from ``tools/`` on the GPU box (``decode`` and ``merge`` under
     python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
         --models base c95 candidate_ema --processes 6 --threads 1 --pr 213
     python -m tadabur.tlog_eval_decode parity --parts-dir DIR --out shared_parity.json
+
+``--spec`` selects the round for every subcommand (default ``consonant2``); round 3's
+look and confirm decodes read its own arms and tranches::
+
+    OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --spec consonant3 \\
+        --parts-dir DIR --cache-dir DIR --role look --models r3_candidate_live \\
+        r3_candidate_ema --shard-index 0 --shard-count 4
+    python -m tadabur.tlog_eval_decode merge-confirm --spec consonant3 --parts-dir DIR \\
+        --models base c95 r3_candidate_ema
 """
 
 from __future__ import annotations
@@ -75,10 +88,10 @@ from .tlog_index import (commit_of, head_sha, provenance, read_jsonl, sha256_fil
                          write_shard)
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 from .tlog_pool import default_audio, row_key
-from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR, load_tranche
-from training.aug_readout_gate import model_spec
-from training.aug_readout_spec import (C95_SHA256, CANDIDATE_SHA256, CONSONANT1,
-                                       CONSONANT2, RoundSpec)
+from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR, load_tranche, require_claim
+from training.aug_readout_gate import look_models, model_spec
+from training.aug_readout_spec import (C95_SHA256, CANDIDATE_SHA256, CONSONANT1, CONSONANT2,
+                                       SPECS, RoundSpec, tlog_round)
 from training.external_decode import (ModelSpec, Recording, append_timing, decode_recordings,
                                       load_decoders)
 from training.nonpro_decode import item_key
@@ -94,6 +107,9 @@ RUN_MODELS = ("base", "c95", "candidate_ema")
 #: The round-2 arms' decode roles (#227): the candidate's and the control's live and EMA
 #: weights, whose checkpoints the round's spec pins.
 ROUND2_MODELS = ("r2_candidate_live", "r2_candidate_ema", "r2_control_live", "r2_control_ema")
+#: The decode models a round adds to the teacher, its baseline and its own look arms: round 2's
+#: look tranche is #212's, whose narrowed run still reloads #178's candidate and ``h448`` (#227).
+EXTRA_DECODE_MODELS = {CONSONANT2.name: MODELS}
 #: The three checkpoints, by the SHA-256 of their bytes (#174's C95, #178's candidate, h448).
 H448_SHA256 = "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
 PINNED_SHA256 = {"c95": C95_SHA256, "candidate_ema": CANDIDATE_SHA256, "h448": H448_SHA256}
@@ -109,6 +125,10 @@ RUN_THREADS = 1
 GATE_ROWS = 12
 RUN_LIMIT_HOURS = 11.0
 DECODES_ROOT = Path(__file__).parent / "consonant2_readout" / "decodes"
+#: The rounds the command line serves: the rounds whose decodes read the tlog tranches (#227,
+#: #251). A spec outside them is not a decoder round.
+TLOG_SPECS = tuple(name for name, specification in SPECS.items()
+                   if tlog_round(specification))
 #: The shards the shared-feature re-decode is compared with the committed decodes on: the
 #: first 20 gating shards in name order (#213).
 PARITY_SHARDS = 20
@@ -134,11 +154,16 @@ RUN_STORES = {"checks": CHECK_STORE}
 # --- the models and their pins ------------------------------------------------------------------
 
 
+def round_model_specs(spec: RoundSpec = CONSONANT2) -> dict[str, ModelSpec]:
+    """The round's look arms' decode specs, from the identities the round pins (#227, #251).
+    Until a round's arms are pinned, every role is refused by name: it never resolves to
+    another round's checkpoints."""
+    return {name: model_spec(name, spec) for name in look_models(spec)}
+
+
 def round2_model_specs(spec: RoundSpec = CONSONANT2) -> dict[str, ModelSpec]:
-    """The round-2 arms' decode specs, from the identities the round pins (#227). Until the run
-    issues fill those in, every role is refused by name: it never resolves to #94's
-    checkpoints."""
-    return {name: model_spec(name, spec) for name in ROUND2_MODELS}
+    """Round 2's arms' decode specs (#227): :func:`round_model_specs` under its original name."""
+    return round_model_specs(spec)
 
 
 def model_specs() -> dict[str, ModelSpec]:
@@ -153,13 +178,16 @@ def model_specs() -> dict[str, ModelSpec]:
 
 
 def require_pinned_identities(identities: Mapping[str, Mapping[str, object]],
-                              models: Sequence[str] = MODELS) -> None:
+                              models: Sequence[str] = MODELS,
+                              spec: RoundSpec = CONSONANT2) -> None:
     """Refuse an identity record that is not one of ``models`` at its pin.
 
     ``identities`` is the ``identity`` record ``load_decoders`` wrote for each model. The
     teacher is its reference plus the hub revision the loaded config resolved to — the check
-    that pins a moving ``main`` after the load; a checkpoint is the SHA-256 of its bytes. A
-    missing or extra model is a refusal naming it, never a silently smaller run.
+    that pins a moving ``main`` after the load; a checkpoint is the SHA-256 of its bytes, read
+    from the round's spec. A model the round pins nothing for is refused by name rather than
+    matched against another round's pin. A missing or extra model is a refusal naming it, never
+    a silently smaller run.
     """
     missing = set(models) - set(identities)
     if missing:
@@ -173,18 +201,15 @@ def require_pinned_identities(identities: Mapping[str, Mapping[str, object]],
                 DEFAULT_MODELS["base"], PINNED_BASE_REVISION):
             raise ValueError(f"base is {base.get('model_ref')}@{base.get('hub_revision')}, "
                              f"not {DEFAULT_MODELS['base']}@{PINNED_BASE_REVISION}")
-    for name in (name for name in models if name in PINNED_SHA256):
-        found = identities[name].get("checkpoint_sha256")
-        if found != PINNED_SHA256[name]:
-            raise ValueError(f"{name} is {found}, not the pinned {PINNED_SHA256[name]}")
-    for name in (name for name in models if name in ROUND2_MODELS):
-        pinned = CONSONANT2.models.get(name)
-        if pinned is None:
-            raise ValueError(f"{name} is not pinned by the round's spec yet: it is not a "
+    for name in (name for name in models if name != "base"):
+        pinned = spec.models.get(name)
+        expected = pinned.checkpoint_sha256 if pinned is not None else PINNED_SHA256.get(name)
+        if expected is None:
+            raise ValueError(f"{name} is not pinned by the {spec.name} spec yet: it is not a "
                              "checkpoint this decoder can run")
         found = identities[name].get("checkpoint_sha256")
-        if found != pinned.checkpoint_sha256:
-            raise ValueError(f"{name} is {found}, not the pinned {pinned.checkpoint_sha256}")
+        if found != expected:
+            raise ValueError(f"{name} is {found}, not the pinned {expected}")
 
 
 # --- the look tranche only ----------------------------------------------------------------------
@@ -218,21 +243,26 @@ def read_confirm_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR,
                           layout=None, spec: RoundSpec = CONSONANT2) -> list[dict]:
     """One claimable confirm tranche's committed manifest rows, every stratum.
 
-    Only ``confirm.1`` and ``confirm.2`` are read (#230): the role is checked before any file
-    is opened, and the tranche's own claim and its predecessor's must be committed
-    (:func:`tadabur.tlog_tranches.load_tranche`). The round's committed ``choice.json`` is
-    required too, so no confirm row is read before the look chose. A row whose key also sits in
-    any other tranche's manifest (the look's, or another confirm's) is a planted row and is
-    refused, so a row of an unclaimed tranche is never decoded. The caller takes
-    :func:`gating_rows`.
+    Only the round's own :attr:`RoundSpec.confirm_tranches` are read (round 2's
+    ``confirm.1``/``confirm.2``, round 3's ``confirm.3``/``confirm.4``): the role is checked
+    before any file is opened, and the tranche's own claim and its predecessor's must be
+    committed (:func:`tadabur.tlog_tranches.load_tranche`). A round whose confirm sitting reads
+    once (:attr:`RoundSpec.confirm_needs_all_claims`) reads none of its tranches until every
+    one of their claims is committed, so a sitting never half-opens. The round's committed
+    ``choice.json`` is required too, so no confirm row is read before the look chose. A row
+    whose key also sits in any other tranche's manifest (the look's, or another confirm's) is a
+    planted row and is refused, so a row of an unclaimed tranche is never decoded. The caller
+    takes :func:`gating_rows`.
     """
     from training.aug_readout_gate import Layout, committed_choice
-    from training.tlog_eval import CONFIRM_TRANCHES
 
-    if role not in CONFIRM_TRANCHES:
-        raise ValueError(f"this decode reads the confirm tranches {list(CONFIRM_TRANCHES)}, "
-                         f"not {role!r}")
+    if role not in spec.confirm_tranches:
+        raise ValueError(f"this decode reads the {spec.name} confirm tranches "
+                         f"{list(spec.confirm_tranches)}, not {role!r}")
     directory = Path(tranches_dir)
+    if spec.confirm_needs_all_claims:
+        for name in spec.confirm_tranches:
+            require_claim(name, directory)
     rows = load_tranche(role, directory)
     committed_choice(layout or Layout(spec.root), spec=spec)
     own = {row_key(row) for row in rows}
@@ -256,13 +286,14 @@ def gating_rows(rows: Sequence[Mapping]) -> list[dict]:
     return [row for row in rows if row["stratum"] == GATING]
 
 
-def selection_rows(role: str) -> list[dict]:
+def selection_rows(role: str, spec: RoundSpec = CONSONANT2) -> list[dict]:
     """The role's committed manifest rows: the look's, or one claimable confirm tranche's.
 
     A confirm role never touches the look manifest: its rows come from
     :func:`read_confirm_manifest`, which also checks the claim and the committed choice.
     """
-    return read_manifest(LOOK) if role == LOOK else read_confirm_manifest(role)
+    return (read_manifest(LOOK) if role == LOOK
+            else read_confirm_manifest(role, spec=spec))
 
 
 # --- one shard, every model ---------------------------------------------------------------------
@@ -422,16 +453,16 @@ def cache_selection(clip_cache: Path, shard_cache: Path, *,
                     rows: Sequence[Mapping] | None = None, shard_index: int = 0,
                     shard_count: int = 1, stream: Callable | None = None,
                     on_download: Callable[[str], None] | None = None,
-                    role: str = LOOK) -> dict:
+                    role: str = LOOK, spec: RoundSpec = CONSONANT2) -> dict:
     """Populate the box's clip cache with the selected rows, one pass over their shards.
 
-    The rows are the manifest's gating stratum unless given; each clip is stored under its
+    The rows are the role's gating stratum unless given; each clip is stored under its
     verified checksum, and the shard is deleted once read (``shard_rows``'s contract), so the
     selection can be decoded again without the source. Nothing is decoded or graded.
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
-    rows = gating_rows(selection_rows(role)) if rows is None else list(rows)
+    rows = gating_rows(selection_rows(role, spec=spec)) if rows is None else list(rows)
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
@@ -532,10 +563,11 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
 
 def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, Sequence],
                           provenance: Mapping, models: Sequence[str],
-                          claims: Mapping[str, Mapping] | None = None) -> dict:
-    """Pool confirm.1's and confirm.2's parts into one sorted file per model (#230).
+                          claims: Mapping[str, Mapping] | None = None,
+                          spec: RoundSpec = CONSONANT2) -> dict:
+    """Pool the round's confirm tranches into one sorted file per model (#230, #256).
 
-    ``manifests`` is exactly the two claimable tranches' rows, from
+    ``manifests`` is exactly the round's :attr:`RoundSpec.confirm_tranches`, from
     :func:`read_confirm_manifest`. Every model must hold each tranche's **gating** row exactly
     once: a missing, repeated or foreign row is a ``ValueError`` naming the model, so a partial
     run can never look complete. A clip in both tranches is refused before anything is written.
@@ -544,16 +576,15 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
     ``meta.confirm.json`` (never the look's ``meta.json``) with each tranche's
     :func:`tadabur.tlog_tranches.claim_record` under ``claims`` when the caller supplies them.
     """
-    from training.tlog_eval import CONFIRM_TRANCHES
-
-    if set(manifests) != set(CONFIRM_TRANCHES):
-        missing = sorted(set(CONFIRM_TRANCHES) - set(manifests))
-        extra = sorted(set(manifests) - set(CONFIRM_TRANCHES))
-        raise ValueError(f"the pooled confirm merge needs exactly {list(CONFIRM_TRANCHES)}, "
+    tranches = spec.confirm_tranches
+    if set(manifests) != set(tranches):
+        missing = sorted(set(tranches) - set(manifests))
+        extra = sorted(set(manifests) - set(tranches))
+        raise ValueError(f"the pooled confirm merge needs exactly {list(tranches)}, "
                          f"not {missing[0] if missing else extra[0]}")
     owner: dict[str, str] = {}
     expected = {}
-    for role in CONFIRM_TRANCHES:
+    for role in tranches:
         rows = gating_rows(manifests[role])
         expected[role] = {item_key(row["audio_path"]) for row in rows}
         for key in expected[role]:
@@ -564,7 +595,7 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
     pooled: dict[str, list[dict]] = {}
     for model in models:
         lines: list[dict] = []
-        for role in CONFIRM_TRANCHES:
+        for role in tranches:
             parts = sorted(parts_dir.glob(f"tlog.{role}.*.{model}.jsonl"))
             found = [line for path in parts for line in read_jsonl(path)]
             keys = [line["key"] for line in found]
@@ -585,7 +616,7 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
     for model, lines in pooled.items():
         write_shard(lines, out_dir / f"tlog.confirm.{model}.jsonl.gz")
         counts[model] = len(lines)
-    meta = {**provenance, "tranches": list(CONFIRM_TRANCHES), "models": list(models),
+    meta = {**provenance, "tranches": list(tranches), "models": list(models),
             "rows": counts,
             "identities": _part_identities(parts_dir, models)}
     if claims is not None:
@@ -675,19 +706,28 @@ def run_identities(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict[
         encoding="utf-8"))["identity"] for name in models}
 
 
-def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
-    """The run's decoders, with every identity checked against its pin after the load."""
+def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS,
+                spec: RoundSpec = CONSONANT2) -> dict:
+    """The run's decoders for ``spec``, with every identity checked after the load.
+
+    The models are the teacher, the round's baseline and its own look arms — round 2 also
+    reloads #212's look models (:data:`EXTRA_DECODE_MODELS`). Another round's arm is refused by
+    name before anything loads, and an arm the round has not pinned yet is refused by
+    ``model_spec``, never resolved to another round's checkpoint.
+    """
     parts_dir = Path(parts_dir)
     parts_dir.mkdir(parents=True, exist_ok=True)
-    unknown = set(models) - set(MODELS) - set(ROUND2_MODELS)
-    if unknown:
-        raise ValueError(f"{sorted(unknown)[0]} is not a round-2 model "
-                         f"{[*MODELS, *ROUND2_MODELS]}")
-    specs = {**{name: spec for name, spec in model_specs().items() if name in models},
-             **{name: model_spec(name, CONSONANT2) for name in models
-                if name in ROUND2_MODELS}}
+    allowed = {MODELS[0], spec.baseline, *look_models(spec),
+               *EXTRA_DECODE_MODELS.get(spec.name, ())}
+    if unknown := [name for name in models if name not in allowed]:
+        raise ValueError(f"{unknown[0]} is not a {spec.name} decode model: {sorted(allowed)}")
+    specs = {}
+    for name in models:
+        # #212's look models are reloaded under the round that produced them; every other model
+        # is the given round's own pin (#227, #251).
+        specs[name] = model_spec(name, CONSONANT1 if name not in spec.models else spec)
     decoders = load_decoders(lambda name: parts_dir / f"{name}.identity.json", specs)
-    require_pinned_identities(run_identities(parts_dir, models), models)
+    require_pinned_identities(run_identities(parts_dir, models), models, spec=spec)
     return decoders
 
 
@@ -764,8 +804,8 @@ def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) 
 
 def require_confirm_models(models: Sequence[str], spec: RoundSpec = CONSONANT2) -> None:
     """Refuse a confirm decode of a model outside the frozen set: the teacher, the round's
-    baseline, and the committed choice's candidate and control. A look-only context model or
-    the other weight selector is not a confirm producer."""
+    baseline, and the committed choice's arms. A look-only context model, another round's arm
+    (``r2_*`` under round 3) or the other weight selector is not a confirm producer."""
     from training.aug_readout_gate import (Layout, arm_model, chosen_weights,
                                            committed_choice)
 
@@ -783,7 +823,8 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
                   clip_cache: Path | None = None,
                   on_download: Callable[[str], None] | None = None,
                   shard_files: Sequence[str] | None = None,
-                  share_features: bool = True, role: str = LOOK) -> dict:
+                  share_features: bool = True, role: str = LOOK,
+                  spec: RoundSpec = CONSONANT2) -> dict:
     """Decode one process's share of the look or one confirm tranche's gating rows.
 
     Each shard is streamed once for every model in ``models`` under ``stores``; processes
@@ -792,13 +833,14 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     restricts the selection to the named gating shards (the parity run's first 20), each of
     which must hold a gating row; index and count then split that selection. With
     ``share_features`` (on by default, off only to reproduce the per-model path) the checks
-    store featurises each item once for every model pending on it.
+    store featurises each item once for every model pending on it. The round's spec decides
+    the arms, the pins, the confirm tranches and the committed choice.
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
     if role != LOOK:
-        require_confirm_models(models)
-    rows = gating_rows(selection_rows(role))
+        require_confirm_models(models, spec=spec)
+    rows = gating_rows(selection_rows(role, spec=spec))
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
@@ -810,8 +852,11 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
             raise ValueError(f"{unknown[0]} is not a gating shard of the {role!r} tranche")
         chosen = sorted(set(shard_files))
     shards = chosen[shard_index::shard_count]
+    # Round 2's tests stub the two-argument call; another round's spec is passed explicitly.
+    decoders = (load_models(parts_dir, models) if spec.name == CONSONANT2.name
+                else load_models(parts_dir, models, spec=spec))
     timings = _decode_shards(shards, by_shard, parts_dir=parts_dir, cache_dir=cache_dir,
-                             decoders=load_models(parts_dir, models),
+                             decoders=decoders,
                              word_counts=ayah_word_counts(), stores=stores,
                              clip_cache=clip_cache, share_features=share_features,
                              on_download=on_download, role=role)
@@ -821,12 +866,14 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
 def gate_verdict(parts_dir: Path, *, elapsed_seconds: float,
                  limit_hours: float = RUN_LIMIT_HOURS, processes: int = RUN_PROCESSES,
                  threads: int = RUN_THREADS,
-                 total_audio_s: float | None = None) -> dict:
+                 total_audio_s: float | None = None,
+                 spec: RoundSpec = CONSONANT2) -> dict:
     """Project the whole selection from the timing lines written so far, and record it.
 
     ``elapsed_seconds`` is the wall the run itself has taken (all processes together, not the
     summed shard walls, which double-count), so the projection is in this configuration's
-    terms. The record lands in ``<parts-dir>/gate_timing.json``.
+    terms. The record lands in ``<parts-dir>/gate_timing.json`` and names the round whose look
+    selection it projected.
     """
     lines = read_jsonl(Path(parts_dir) / "timing.jsonl")
     total = (selection_audio_seconds(gating_rows(read_manifest(LOOK)))
@@ -834,7 +881,8 @@ def gate_verdict(parts_dir: Path, *, elapsed_seconds: float,
     record = {**slice_verdict(sum(line["audio_seconds"] for line in lines), elapsed_seconds,
                               total, limit_hours),
               "shards": len(lines), "items": sum(line["items"] for line in lines),
-              "total_audio_s": total, "processes": processes, "threads": threads}
+              "total_audio_s": total, "processes": processes, "threads": threads,
+              "spec": spec.name}
     write_json(record, Path(parts_dir) / "gate_timing.json")
     return record
 
@@ -850,18 +898,19 @@ def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
                    stores: Mapping = RUN_STORES, processes: int = RUN_PROCESSES,
                    threads: int = RUN_THREADS, pull_request: int | None = None,
                    elapsed_seconds: float | None = None,
-                   manifest_commit: str | None = None) -> dict:
+                   manifest_commit: str | None = None,
+                   spec: RoundSpec = CONSONANT2) -> dict:
     """What ``meta.json`` records of the run: code, models, the selection, its inputs, the
     parallelism, the gate's verdict and the timings.
 
     The model pins are read from the parts' own identity records and checked against the
-    module's pins, so a parts dir carried from another run cannot cite weights this merge never
+    round's pins, so a parts dir carried from another run cannot cite weights this merge never
     saw. ``manifest_commit`` is the commit main holds the frozen manifest at (the launcher
     resolves it); without one the branch's last commit touching the file is recorded.
     ``elapsed_seconds`` is the run's own wall, when the launcher measured it.
     """
     identities = run_identities(parts_dir, models)
-    require_pinned_identities(identities, models)
+    require_pinned_identities(identities, models, spec=spec)
     gate = Path(parts_dir) / "gate_timing.json"
     return {**provenance(head_sha(), pull_request),
             "selection": f"{LOOK}.{GATING}",
@@ -872,7 +921,8 @@ def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
             "base_revision": (identities["base"]["hub_revision"]
                               if "base" in models else None),
             "checkpoint_sha256": {name: identities[name]["checkpoint_sha256"]
-                                  for name in models if name in PINNED_SHA256},
+                                  for name in models
+                                  if name != "base" and "checkpoint_sha256" in identities[name]},
             "manifest_commit": (manifest_commit
                                 or commit_of(TRANCHES_DIR / f"{LOOK}.jsonl")),
             "tranche_meta_sha256": sha256_file(TRANCHES_DIR / "meta.json"),
@@ -974,6 +1024,12 @@ def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
 # --- CLI ----------------------------------------------------------------------------------------
 
 
+def _add_spec(parser: argparse.ArgumentParser) -> None:
+    """The round a command reads: only the rounds whose decodes read the tlog tranches."""
+    parser.add_argument("--spec", choices=TLOG_SPECS, default=CONSONANT2.name,
+                        help="the round whose models, pins and tranches the command reads")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -991,25 +1047,30 @@ def main() -> None:
     decode_.add_argument("--no-share-features", action="store_true",
                          help="featurise every check once per model, as before #213")
     decode_.add_argument("--role", default=LOOK, help="look, or a claimed confirm tranche")
+    _add_spec(decode_)
     cache_ = commands.add_parser("cache", help="persist the gating rows' clips into the box cache")
     cache_.add_argument("--clip-cache", type=Path, required=True)
     cache_.add_argument("--shard-cache", type=Path, required=True)
     cache_.add_argument("--shard-index", type=int, default=0)
     cache_.add_argument("--shard-count", type=int, default=1)
     cache_.add_argument("--role", default=LOOK, help="look, or a claimed confirm tranche")
+    _add_spec(cache_)
     coverage_ = commands.add_parser("coverage", help="verify and count the cached gating clips")
     coverage_.add_argument("--clip-cache", type=Path, required=True)
     coverage_.add_argument("--role", default=LOOK,
                            help="look, or a claimed confirm tranche whose clips are cached")
+    _add_spec(coverage_)
     gate_ = commands.add_parser("gate", help="project the selection from the timing lines so far")
     gate_.add_argument("--parts-dir", type=Path, required=True)
     gate_.add_argument("--elapsed-seconds", type=float, required=True)
     gate_.add_argument("--limit-hours", type=float, default=RUN_LIMIT_HOURS)
     gate_.add_argument("--processes", type=int, default=RUN_PROCESSES)
     gate_.add_argument("--threads", type=int, default=RUN_THREADS)
+    _add_spec(gate_)
     merge_ = commands.add_parser("merge", help="merge the parts into the committed decodes")
     merge_.add_argument("--parts-dir", type=Path, required=True)
-    merge_.add_argument("--out-dir", type=Path, default=DECODES_ROOT)
+    merge_.add_argument("--out-dir", type=Path, default=None,
+                        help="the decodes dir (default: <spec root>/decodes)")
     merge_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
     merge_.add_argument("--processes", type=int, default=RUN_PROCESSES)
     merge_.add_argument("--threads", type=int, default=RUN_THREADS)
@@ -1019,61 +1080,73 @@ def main() -> None:
                         help="the run's own wall, for meta.json")
     merge_.add_argument("--manifest-commit", default=None,
                         help="the commit main holds the frozen manifest at")
+    _add_spec(merge_)
     merge_confirm_ = commands.add_parser(
-        "merge-confirm", help="pool confirm.1 and confirm.2 into one file per model")
+        "merge-confirm", help="pool the spec's confirm tranches into one file per model")
     merge_confirm_.add_argument("--parts-dir", type=Path, required=True)
-    merge_confirm_.add_argument("--out-dir", type=Path, default=DECODES_ROOT)
+    merge_confirm_.add_argument("--out-dir", type=Path, default=None,
+                                help="the decodes dir (default: <spec root>/decodes)")
     merge_confirm_.add_argument("--models", nargs="+", required=True)
     merge_confirm_.add_argument("--pr", type=int, default=None,
                                 help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
+    _add_spec(merge_confirm_)
     parity_ = commands.add_parser("parity", help="compare a shared re-decode with the decodes")
     parity_.add_argument("--parts-dir", type=Path, required=True)
-    parity_.add_argument("--out", type=Path, default=PARITY_PATH)
+    parity_.add_argument("--out", type=Path, default=None,
+                         help="the record (default: <spec root>/decodes/shared_parity.json)")
     parity_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
     parity_.add_argument("--processes", type=int, default=RUN_PROCESSES)
     parity_.add_argument("--threads", type=int, default=RUN_THREADS)
     parity_.add_argument("--pr", type=int, default=None,
                          help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
+    _add_spec(parity_)
     args = parser.parse_args()
+    specification = SPECS[args.spec]
+    decodes_dir = specification.root / "decodes"
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
                                models=args.models, shard_index=args.shard_index,
                                shard_count=args.shard_count, clip_cache=args.clip_cache,
                                shard_files=args.shard_files, role=args.role,
-                               share_features=not args.no_share_features)
+                               share_features=not args.no_share_features,
+                               spec=specification)
     elif args.command == "gate":
         result = gate_verdict(args.parts_dir, elapsed_seconds=args.elapsed_seconds,
                               limit_hours=args.limit_hours, processes=args.processes,
-                              threads=args.threads)
+                              threads=args.threads, spec=specification)
     elif args.command == "cache":
         result = cache_selection(args.clip_cache, args.shard_cache,
                                  shard_index=args.shard_index, shard_count=args.shard_count,
-                                 role=args.role)
+                                 role=args.role, spec=specification)
     elif args.command == "coverage":
-        result = cache_coverage(gating_rows(selection_rows(args.role)), args.clip_cache)
+        result = cache_coverage(gating_rows(selection_rows(args.role, spec=specification)),
+                                args.clip_cache)
     elif args.command == "merge-confirm":
         from tadabur.tlog_tranches import claim_record
-        from training.tlog_eval import CONFIRM_TRANCHES
 
+        tranches = specification.confirm_tranches
         result = merge_confirm_decodes(
-            args.parts_dir, args.out_dir,
-            manifests={role: read_confirm_manifest(role) for role in CONFIRM_TRANCHES},
-            claims={role: claim_record(role) for role in CONFIRM_TRANCHES},
-            provenance=provenance(head_sha(), args.pr), models=args.models)
+            args.parts_dir, args.out_dir or decodes_dir,
+            manifests={role: read_confirm_manifest(role, spec=specification)
+                       for role in tranches},
+            claims={role: claim_record(role) for role in tranches},
+            provenance=provenance(head_sha(), args.pr), models=args.models,
+            spec=specification)
     elif args.command == "parity":
         result = parity_record(args.parts_dir, models=args.models, shards=parity_shards(),
+                               decodes_dir=decodes_dir,
                                processes=args.processes, threads=args.threads,
                                pull_request=args.pr)
-        write_json(result, args.out)
+        write_json(result, args.out or decodes_dir / PARITY_PATH.name)
     else:
-        result = merge_decodes(args.parts_dir, args.out_dir,
+        result = merge_decodes(args.parts_dir, args.out_dir or decodes_dir,
                                manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",
                                provenance=run_provenance(
                                    args.parts_dir, models=args.models,
                                    processes=args.processes, threads=args.threads,
                                    pull_request=args.pr,
                                    elapsed_seconds=args.elapsed_seconds,
-                                   manifest_commit=args.manifest_commit),
+                                   manifest_commit=args.manifest_commit, spec=specification),
                                models=args.models)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
     # 3 is the launcher's "the gate stopped the run; post it" code.

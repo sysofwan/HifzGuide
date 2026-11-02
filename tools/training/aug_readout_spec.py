@@ -141,6 +141,14 @@ class RoundSpec:
     g3_reported_kinds: tuple[str, ...] = ()
     #: The doc the round's freeze renders to.
     freeze_doc_path: Path = CONSONANT_FREEZE_DOC_PATH
+    #: The claimable confirm tranches a round pools, in claim order: round 2 reads S7's first
+    #: two (#230), round 3 the next two (#256).
+    confirm_tranches: tuple[str, ...] = ("confirm.1", "confirm.2")
+    #: Whether a confirm sitting reads **none** of the round's tranches until every one of them
+    #: is claimed: round 3 decodes both tranches in one sitting, so a missing ``confirm.4``
+    #: claim must stop ``confirm.3`` too (#256 review R1.1). Round 2 opened each tranche on its
+    #: own claim and its predecessor's.
+    confirm_needs_all_claims: bool = False
 
 
 AUG95 = RoundSpec(
@@ -290,6 +298,10 @@ CONSONANT3 = replace(
         **{(name, R2): Decodes(CONSONANT2_ROOT, "r2_candidate_ema")
            for name in R2_NON_TLOG_SETS},
     },
+    #: Round 2 read S7's first two tranches; round 3 reads the next two, in claim order, and
+    #: decodes neither until both are claimed.
+    confirm_tranches=("confirm.3", "confirm.4"),
+    confirm_needs_all_claims=True,
     look_roles=(CANDIDATE,),
     arm_prefix=R3_ARM_PREFIX,
     #: #253 fills the pre-registration's pin, as #229 did for round 2.

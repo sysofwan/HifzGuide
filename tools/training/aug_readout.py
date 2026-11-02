@@ -346,14 +346,24 @@ class Sources:
         return self._nonpro(RETASY, RETASY_SET, models,
                             lambda item: item.labels["final_label"] == IN_CORRECT)
 
+    def nonpro_paths(self, dataset, set_name: str, models: Sequence[str]) -> dict[str, Path]:
+        """The decode file :meth:`_nonpro` opens for each model of one non-tlog set: the
+        committed baseline decodes it reuses (the base teacher always) and this sitting's
+        readout decodes."""
+        from training.nonpro_eval import decodes_file as committed
+
+        return {**{m: committed(dataset, m) for m in BASELINES if m == BASE or m in models},
+                **{m: self.decode_path(set_name, m) for m in models if m not in BASELINES}}
+
     def _nonpro(self, dataset, set_name: str, models: Sequence[str],
                 keep: Callable | None = None) -> SetData:
         from tadabur.waqf_segments import hafs_segment_reference
         from training.external_corpus import read_decode_file
-        from training.nonpro_eval import build_items, decodes_file as committed
+        from training.nonpro_eval import build_items
 
-        baselines = {m: read_decode_file(committed(dataset, m)) for m in BASELINES
-                     if m == BASE or m in models}
+        baselines = {m: read_decode_file(path)
+                     for m, path in self.nonpro_paths(dataset, set_name, models).items()
+                     if m in BASELINES}
         items, _ = build_items(dataset, list(baselines[BASE].values()), hafs_segment_reference())
         items = [i for i in items if keep is None or keep(i)]
         decodes = {**{m: baselines[m] for m in models if m in BASELINES},
@@ -872,6 +882,19 @@ REPRODUCTION = {"tarteel_v1_confirm": {"flagged": 1971, "graded": 41572},
                 "qdat": {"flagged": 670, "graded": 11502}}
 
 
+def _reproduction_sets() -> tuple[tuple[str, object, str, Callable], ...]:
+    """#95's two confirm sets: its name in the report, the corpus, the decode-file set name its
+    files resolve from, and the :class:`Sources` reader that opens them with
+    :data:`REPRODUCTION_MODELS`. One table, so the files :func:`reproduction_inputs` digests
+    cannot drift from the ones the check opens."""
+    from tadabur.nonpro_sources import QDAT, TARTEEL_V1
+
+    return (
+        ("tarteel_v1_confirm", TARTEEL_V1, f"tarteel_v1.{CONFIRM}",
+         lambda sources: sources.tarteel(CONFIRM, REPRODUCTION_MODELS)),
+        ("qdat", QDAT, QDAT_SET, lambda sources: sources.qdat(REPRODUCTION_MODELS)))
+
+
 def reproduction(sources: Sources) -> dict:
     """Re-grade C95 on #95's two confirm sets with #95's model set and return **totals only**:
     no per-word, per-cause or per-substitution datum is returned, logged or written.
@@ -885,13 +908,33 @@ def reproduction(sources: Sources) -> dict:
         raise ValueError("the reproduction check reads #95's own inputs, never another round's")
 
     totals = {}
-    for name, data in (("tarteel_v1_confirm", sources.tarteel(CONFIRM, REPRODUCTION_MODELS)),
-                       ("qdat", sources.qdat(REPRODUCTION_MODELS))):
+    for name, _, _, read in _reproduction_sets():
+        data = read(sources)
         grades = sources.grade(data.items, data.decodes, REPRODUCTION_MODELS)
         num, den = false_flag_terms(grades, REPRODUCTION_MODELS, SHIPPED_DEFAULT.name
                                     ).by_model["candidate_ema"]
         totals[name] = {"flagged": int(num.sum()), "graded": int(den.sum())}
     return totals
+
+
+def reproduction_inputs(sources: Sources | None = None) -> list[Path]:
+    """Every file :func:`reproduction` opens: #95's four-model decodes of its two confirm sets,
+    resolved by the same :meth:`Sources.nonpro_paths` the readers use, and the harness's
+    ``quran.db`` (the harness opens it, not Python)."""
+    sources = sources or Sources()
+    decodes = [path for _, dataset, set_name, _ in _reproduction_sets()
+               for path in sources.nonpro_paths(dataset, set_name,
+                                                REPRODUCTION_MODELS).values()]
+    return [*dict.fromkeys(decodes), sources.harness().quran_db]
+
+
+def reproduction_record(totals: Mapping, harness: Mapping) -> dict:
+    """A passed reproduction check's record: its totals beside #95's, that it ran before the
+    confirm read, the SHA-256 of every file it opened, and the harness that graded it.
+    ``harness`` is the identity the sitting declared (:meth:`Sources.harness_identity`)."""
+    return {"passed": True, "counts": totals, "expected": dict(REPRODUCTION),
+            "order": "before the confirm read",
+            "inputs": digests(reproduction_inputs()), "harness": dict(harness)}
 
 
 def require_reproduction(counts: Mapping, expected: Mapping = REPRODUCTION) -> None:

@@ -752,9 +752,11 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
     Refused before any tranche is read unless the pre-registration is committed at its pinned
     hash, the freeze is committed unchanged, the producers' identities are the pinned, chosen
     models, the committed pre-claim record is a pass under those same pins, both claims are
-    committed in HEAD, and ``verdict.json`` is absent (the sitting reads once). A declared input
-    that is absent, or a pooled tranche that holds no gating item, writes a cannot-certify
-    verdict instead of reading nothing's file or grading an empty population.
+    committed in HEAD, and ``verdict.json`` is absent (the sitting reads once). Inside the
+    claim, and before any confirm decode is opened, #95's reproduction check re-grades C95 on
+    #95's own sources and stops on a mismatch (#249); its record is written beside the bars. A
+    declared input that is absent, or a pooled tranche that holds no gating item, writes a
+    cannot-certify verdict instead of reading nothing's file or grading an empty population.
     """
     from tadabur.tlog_tranches import require_claim
 
@@ -784,6 +786,10 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
                "missing_inputs": declared.missing_inputs,
                "harness": sources.harness_identity()}
     with hold_sitting(layout.claim("confirm"), sitting):
+        # #95's reproduction check, not a bar: re-grade C95 on #95's own confirm sets with
+        # #95's decodes and stop on any mismatch, before this round's confirm read (#249).
+        totals = ar.reproduction(ar.Sources())
+        ar.require_reproduction(totals)
         if not declared.present:
             report = _unreadable_report(spec, preclaim, declared.absent_reason,
                                         declared.missing_inputs)
@@ -793,6 +799,7 @@ def run_verdict(sources, spec: RoundSpec, layout: Layout | None = None, workers:
                 report = _unreadable_report(
                     spec, preclaim, "the pooled gating tranches hold no item",
                     declared.missing_inputs)
+        report["reproduction"] = ar.reproduction_record(totals, sitting["harness"])
         write_text_atomically(layout.report, ar.canonical(report))
         write_text_atomically(layout.verdict, ar.canonical(
             {"issue": spec.issue, "statement": STATEMENT,

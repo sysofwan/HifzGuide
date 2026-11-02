@@ -599,6 +599,17 @@ python -m tadabur.tlog_schedule plan --after tadabur/tlog/consumed/consonant2.js
 python -m pytest -q tadabur/test_tlog_consumed.py
 ```
 
+### What the run consumed (#254)
+
+The 10,000-step run read walk rows **73,991-149,543**: `consumed/consonant3.jsonl.gz` (SHA-256
+`abc3e168…7d222`), byte for byte the NAS copy
+(`/Volumes/NetBackup/HifzGuide/round3-consumed/`), with `consumed/consonant3.meta.json` beside it.
+**75,553 keys** (clean 49,707 / unclean 25,846) over **139 shard files**, disjoint from round 2's
+73,990 — a test rebuilds the frozen walk and asserts both facts, and the file's line order is the
+walk's. It reads 195 rows and 582 windows past the plan (75,358 / 240,002), the same small
+read-ahead round 2 saw. The run's readings are in `docs/consonant-round3-candidate.md`; the next
+tranche's replenishment carves from the rows outside both consumed files.
+
 ## Overlay v1
 
 The overlay is the committed per-row metadata of `tarteel-ai/tlog` at revision

@@ -1,0 +1,16 @@
+{
+ "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+ "copied": "2026-11-02",
+ "copied_from": "root@cuda-dev:/root/scratch/issue-252/runs/consonant3_candidate/tlog_consumed.jsonl.gz",
+ "first_walk_row": 73991,
+ "keys": 75553,
+ "last_walk_row": 149543,
+ "nas_path": "/Volumes/NetBackup/HifzGuide/round3-consumed/tlog_consumed.jsonl.gz",
+ "note": "Round 3 candidate (#254) tlog consumed keys, byte for byte the NAS copy: the frozen schedule's walk rows 73,991-149,543, disjoint from round 2's 73,990 and starting where they stop.",
+ "sha256": "abc3e168632b0c83ca0f49c7a0da3b59dbd1ce0506bb75476c5391265837d222",
+ "shard_files": 139,
+ "splits": {
+  "clean": 49707,
+  "unclean": 25846
+ }
+}

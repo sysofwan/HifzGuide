@@ -224,6 +224,40 @@ def test_the_committed_keys_and_meta_are_tracked_not_gitignored(path):
     assert subprocess.run(["git", "check-ignore", "-q", str(path)], cwd=ROOT).returncode == 1
 
 
+# --- round 3's consumed keys (#254) --------------------------------------------------------------
+
+CONSUMED3 = CONSUMED_DIR / "consonant3.jsonl.gz"
+META3 = CONSUMED_DIR / "consonant3.meta.json"
+PINNED3_SHA256 = "abc3e168632b0c83ca0f49c7a0da3b59dbd1ce0506bb75476c5391265837d222"
+CHECKPOINT3_SHA256 = "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+NAS3_PATH = "/Volumes/NetBackup/HifzGuide/round3-consumed/tlog_consumed.jsonl.gz"
+CUDA_DEV3_DIR = "root@cuda-dev:/root/scratch/issue-252/runs/consonant3_candidate/"
+CONSUMED3_ROWS = 75_553
+
+
+def test_round_3_s_keys_are_the_walk_s_rows_past_round_2_s():
+    """#254's run starts where round 2's stopped: the committed keys are the walk's rows
+    73,991 onward, disjoint from round 2's, and the meta is the file's own counts."""
+    keys = tlog_schedule.read_consumed_keys(CONSUMED3)
+    round2 = tlog_schedule.read_consumed_keys(CONSUMED)
+    schedule = tlog_schedule.read_schedule(tlog_schedule.SCHEDULE_PATH)
+    joined = tlog_schedule.require_walk_prefix([*round2, *keys], _real_rows(), schedule)
+    assert len(keys) == CONSUMED3_ROWS and not set(keys) & set(round2)
+    assert joined.length == len(round2) + len(keys)
+    meta = json.loads(META3.read_text(encoding="utf-8"))
+    assert meta["sha256"] == sha256_file(CONSUMED3) == PINNED3_SHA256
+    assert meta["keys"] == len(keys)
+    assert meta["splits"] == dict(Counter(split for split, _, _ in keys))
+    assert meta["shard_files"] == len({(split, shard) for split, shard, _ in keys})
+    assert (meta["first_walk_row"], meta["last_walk_row"]) == (len(round2) + 1, joined.length)
+    assert meta["checkpoint_sha256"] == CHECKPOINT3_SHA256
+    text = META3.read_text(encoding="utf-8")
+    assert NAS3_PATH in text and CUDA_DEV3_DIR in text
+    for path in (CONSUMED3, META3):
+        assert subprocess.run(["git", "check-ignore", "-q", str(path)],
+                              cwd=ROOT).returncode == 1
+
+
 def test_reading_keys_returns_them_in_line_order(tmp_path):
     path = tmp_path / "keys.jsonl.gz"
     keys = [("unclean", _stem("unclean", 3), 7), ("clean", _stem("clean", 1), 0),

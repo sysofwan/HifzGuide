@@ -709,11 +709,13 @@ def _final_flags(kept) -> int:
 
     This is the number the app shows after every look and the ratchet have been applied, so it
     is the only count a gain against the single-decode approximation may subtract; an any-look
-    flag that the ratchet rescued is not a flag the reader ever sees.
+    flag that the ratchet rescued is not a flag the reader ever sees. A word still ``pending``
+    at the end is ``NOT_GRADED`` (:func:`training.muraja_policy.site_outcome`), not a flag.
     """
-    from training.muraja_policy import CORRECT, SHIPPED_DEFAULT, displayed
+    from training.muraja_policy import CORRECT, PENDING, SHIPPED_DEFAULT, displayed
 
-    return sum(displayed(status["quality"], SHIPPED_DEFAULT) != CORRECT
+    return sum(status["quality"] != PENDING
+               and displayed(status["quality"], SHIPPED_DEFAULT) != CORRECT
                for status in kept.values())
 
 
@@ -898,6 +900,7 @@ def exposure() -> dict:
     trained outside Tadabur, so their exposure is unknown, not zero.
     """
     from tadabur.exposure import (
+        AUG_TRAINING,
         CONSONANT_TRAINING,
         CONSONANT2_TRAINING,
         SYNTHETIC_EDIT_DONOR,
@@ -908,10 +911,13 @@ def exposure() -> dict:
 
     registry = load_registry()
     inherited = tuple(registry.shared_baseline_uses())
+    # C95 is #94's augmentation candidate (a continuation of h448); #178's consonant1 use
+    # continued *from* C95, so it is the round-2 model's parent, never C95's. Every candidate
+    # also inherits the h448 shard uses its lineage started from.
     lineage = {
         "base": None,
-        "c95": (CONSONANT_TRAINING, *inherited),
-        "r2_candidate_ema": (CONSONANT_TRAINING, CONSONANT2_TRAINING, *inherited),
+        "c95": (AUG_TRAINING, *inherited),
+        "r2_candidate_ema": (AUG_TRAINING, CONSONANT_TRAINING, CONSONANT2_TRAINING, *inherited),
         "zipformer": None,
     }
     out = {
@@ -1184,9 +1190,9 @@ def report() -> dict:
                      "horizon_hours": HORIZON_HOURS, "stop": bool(probe["stop"]),
                      "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat "
                              "items, projected over the batch's jobs at that point; the batch "
-                             "stops past 12 h (architect r2, AC 6). The Tarteel v1 confirm half "
-                             "was decoded afterwards as its own job, and its measured wall is "
-                             "in the compute table"}
+                             "stops past 12 h (architect r2, AC 6). The Tarteel v1 set was "
+                             "decoded afterwards as its own job, and its measured wall is in "
+                             "the compute table"}
     # the stop gates' facts, before a single section is scored: a gated-out run has no normal
     # comparison report (R1.9; parity-gate.md's ordered gates)
     require_gates({"gates": gate_table, "probe": probe_section})
@@ -1215,11 +1221,11 @@ def report() -> dict:
 
 
 def _report_only_sets() -> dict:
-    """QUD's unread half, Tarteel v1's confirm half and qdat_bench: report only, never a gate."""
+    """QUD's unread half, Tarteel v1's truth sites and qdat_bench: report only, never a gate."""
     from training import zipformer_sets
 
     return {"qud_other": zipformer_sets.qud_other(),
-            "tarteel_v1_confirm": zipformer_sets.tarteel_confirm(),
+            "tarteel_v1": zipformer_sets.tarteel(),
             "qdat_bench": zipformer_sets.qdat_bench(),
             "rule": "the sets the cards say zipformer probably trained on are read beside the "
                     "verdict, never inside it, and each arm's committed transcript is the arm "

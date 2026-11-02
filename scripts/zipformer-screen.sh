@@ -15,6 +15,7 @@
 #   scripts/zipformer-screen.sh screen         # the timing probe (stop past 12 h), then every
 #                                              # comparison set; decodes land in $ROOT/screen
 #   scripts/zipformer-screen.sh check <step>   # pid, status and log tail of a running/ended step
+#   scripts/zipformer-screen.sh <step> print   # print the runner body without touching the box
 #   scripts/zipformer-screen.sh fetchout <step> DIR   # pull the committed JSON outputs back
 #
 # Each step stages the current branch as a clean bundle clone on the box (so the cited code
@@ -51,6 +52,7 @@ EDITS_DIR=${EDITS_DIR:-/root/scratch/issue-117/stage/edits/audio}
 SHIP_A_DIR=${SHIP_A_DIR:-/root/scratch/issue-90/clips}
 QDAT_CACHE=${QDAT_CACHE:-$SCREEN/qdat_cache}
 QUD_CACHE=${QUD_CACHE:-$SCREEN/qud_cache}
+TARTEEL_CACHE=${TARTEEL_CACHE:-$SCREEN/tarteel_cache}
 #: The committed files a step's `fetchout` pulls back.
 FETCH_OUT_FILES=(disjointness.json card_gate.json card_gate.v3.json identity.json parity.json
                  parity_decodes.jsonl.gz)
@@ -60,7 +62,7 @@ action=${2:-}
 case "$step" in
   fetch|disjointness|gate|parity|screen) ;;
   *)
-    echo "usage: $0 {fetch|disjointness|gate|parity|screen} [launch|check|fetchout DIR]" >&2
+    echo "usage: $0 {fetch|disjointness|gate|parity|screen} [launch|check|print|fetchout DIR]" >&2
     exit 2
     ;;
 esac
@@ -115,6 +117,7 @@ python -u -m training.zipformer_screen_decode --batch \\
     --qdat-cache '$QDAT_CACHE' \\
     --ship-a-dir '$SHIP_A_DIR' \\
     --qud-cache '$QUD_CACHE' \\
+    --tarteel-cache '$TARTEEL_CACHE' \\
     --workers '$WORKERS'
 SCREEN
       ;;
@@ -163,7 +166,8 @@ fetchout() {
   mkdir -p "$destination"
   if [ "$step" = screen ]; then
     # the decodes and their identities were written on the box, not in the clone
-    rsync -a --exclude qdat_cache --exclude qud_cache "$HOST:$SCREEN/" "$destination/"
+    rsync -a --exclude qdat_cache --exclude qud_cache --exclude tarteel_cache \
+      "$HOST:$SCREEN/" "$destination/"
     echo "fetched the screen step's probe, decodes and identities into $destination"
     return
   fi
@@ -179,5 +183,7 @@ case "$action" in
   launch|"") launch ;;
   check) check ;;
   fetchout) fetchout "${3:-}" ;;
-  *) echo "usage: $0 {fetch|disjointness|gate} [launch|check|fetchout DIR]" >&2; exit 2 ;;
+  print) command_for ;;
+  *) echo "usage: $0 {fetch|disjointness|gate|screen} [launch|check|print|fetchout DIR]" >&2
+     exit 2 ;;
 esac

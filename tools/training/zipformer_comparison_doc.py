@@ -424,10 +424,10 @@ def _exposure(record: Mapping) -> list[str]:
 
 
 def _report_only_sets(record: Mapping) -> list[str]:
-    """QUD's unread half, Tarteel v1's confirm half and qdat_bench: report only."""
+    """QUD's unread half, Tarteel v1's truth sites and qdat_bench: report only."""
     sets = record["sets"]
     rows = []
-    for name in ("qud_other", "tarteel_v1_confirm"):
+    for name in ("qud_other", "tarteel_v1"):
         section = sets[name]
         for side_name in ("correct_side", "mistake_side"):
             cell = section[side_name]
@@ -446,7 +446,8 @@ def _report_only_sets(record: Mapping) -> list[str]:
     for arm, kinds in bench["agreement"].items():
         for kind in ("consonant", "haraka", "shaddah"):
             row = kinds[kind]
-            bench_rows.append([arm, kind, _cell(100 * row["agreement"]),
+            bench_rows.append([arm, bench["arms"][arm]["arm"], kind,
+                               _cell(100 * row["agreement"]),
                                f"{row['agree']}/{row['agree'] + row['other'] + row['none']}",
                                _cell(100 * row["agreement_committed"])])
     missing = [f"{name}: {', '.join(section['missing_arms'])} has no committed decode"
@@ -455,17 +456,18 @@ def _report_only_sets(record: Mapping) -> list[str]:
     return ["## The report-only sets", "",
             sets["rule"] + ".", "",
             *((" ".join(missing) + ".", "") if missing else ()),
-            "QUD's unread half and Tarteel v1's confirm half, decoded at the carrier "
-            "(`training.truth_scorer`: commit rate, committed accuracy, and decode-flagged on the "
-            "correct side or silent corrections on the mistake side):", "",
+            "QUD's unread half and Tarteel v1's truth sites (both pre-registered halves), "
+            "decoded at the carrier (`training.truth_scorer`: commit rate, committed accuracy, "
+            "and decode-flagged on the correct side or silent corrections on the mistake side):",
+            "",
             _table(["set", "side", "arm", "sites", "commit rate", "committed accuracy",
                     "flagged / silent"], rows),
-            "qdat_bench against the experts' transcript, per class (the bench clips are qdat's "
-            f"audio, so the decodes are qdat's; {bench['clips']} clips, "
-            f"{bench['departures']['words']} departure words in "
+            "qdat_bench against the experts' transcript, per class, from the arm the arm map "
+            f"prescribes (the bench clips are qdat's audio, so the decodes are qdat's; "
+            f"{bench['clips']} clips, {bench['departures']['words']} departure words in "
             f"{bench['departures']['clips']} clips):", "",
-            _table(["arm", "class", "agreement %", "agree/slots", "committed agreement %"],
-                   bench_rows)]
+            _table(["arm", "scored arm", "class", "agreement %", "agree/slots",
+                    "committed agreement %"], bench_rows)]
 
 
 def _notes(record: Mapping) -> list[str]:
@@ -500,14 +502,14 @@ def _notes(record: Mapping) -> list[str]:
             "qdat's own bytes, so the decodes are the models' qdat decodes; what the corpus adds "
             "is the expert `phonetic_transcript`, which is read where the gated Hub token is and "
             "never committed. Only the agreement summary is in this record.", "",
-            "**The report-only sets read one arm per model and name what is missing.** QUD's "
-            "unread half and Tarteel v1's confirm half are scored at the carrier from each arm's "
-            "committed transcript: ours from the app's own per-check decodes, zipformer from its "
-            "single stream, because that is the only store those corpora carry. The round-2 "
-            "candidate has no committed QUD decode, so its QUD arm is named missing rather than "
-            "filled with another model's numbers. Tarteel v1's look half is not read: the "
-            "round-2 candidate never decoded it, and scoring a different population per model "
-            "would not be a comparison.", "",
+            "**The report-only sets read one arm per model and the whole population.** QUD's "
+            "unread half and both of Tarteel v1's pre-registered halves are scored at the "
+            "carrier from each arm's committed transcript: ours from the app's own per-check "
+            "decodes, zipformer from its single stream, because that is the only store those "
+            "corpora carry. All four models decode every item of each set; an arm missing one "
+            "refuses the table rather than shrinking the population. qdat_bench reads the arm "
+            "the arm map prescribes (ours `stream_b0`, zipformer `spans`), so its expert "
+            "agreement is on the same text as every other whole-item metric.", "",
             "**What the screen cannot separate.** qdat and the benchmark's tlog_holdout carry "
             "zipformer's known text prior (its card admits 39.5% of planted haraka mistakes "
             "reported, and ikhfnaa written on 81 of 94 plain-noon clips); the catch side is "

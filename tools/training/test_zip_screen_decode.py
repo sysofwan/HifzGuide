@@ -1,9 +1,9 @@
 """Tests for the screen's decode driver (#245): the plan's outcomes and the edit checks.
 
-The driver decodes the benchmark and the edits with our three models, through the shared loop.
-Two things it must not get wrong are testable without a GPU or audio: every clip the plan decodes
-carries the exposure class the readout partitions on, and no edit audio is decoded unless its
-bytes are the manifest's.
+The driver decodes the benchmark, the edits and Tarteel v1's look half with our models, through
+the shared loop. Two things it must not get wrong are testable without a GPU or audio: every
+clip the plan decodes carries the exposure class the readout partitions on, and no edit audio is
+decoded unless its bytes are the manifest's.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from tadabur.synthetic_edits import read_items
-from training.zip_screen_decode import BENCHMARK_SET, EDITS_SET, STORES
+from training.zip_screen_decode import BENCHMARK_SET, EDITS_SET, STORES, TARTEEL_LOOK_SET
 from training.zip_screen_decode import _clip_outcome, edit_recordings
 
 
@@ -27,9 +27,14 @@ def test_a_decoded_clip_the_plan_does_not_classify_is_refused():
         _clip_outcome(plan)
 
 
-def test_the_two_decoded_sets_each_name_a_store():
-    assert sorted(STORES) == sorted([BENCHMARK_SET, EDITS_SET])
-    assert [set(stores) for stores in STORES.values()] == [{"decode"}, {"decode"}]
+def test_every_decoded_set_names_the_store_its_readout_reads():
+    from training.truth_baseline import CHECKS, CHECK_STORE, DECODE_STORE
+
+    assert set(STORES) == {BENCHMARK_SET, EDITS_SET, TARTEEL_LOOK_SET}
+    assert STORES[BENCHMARK_SET] == {"decode": DECODE_STORE}
+    assert STORES[EDITS_SET] == {"decode": DECODE_STORE}
+    #: The look half is the corpus readouts' store: a check sequence, not a single stream.
+    assert STORES[TARTEEL_LOOK_SET] == {CHECKS: CHECK_STORE}
     assert set(STORES[BENCHMARK_SET]["decode"].protocols) == {"stream_b0", "spans"}
 
 

@@ -2,71 +2,71 @@
  "agreement": {
   "base": {
    "consonant": {
-    "agree": 3061,
-    "agreement": 0.9367,
-    "agreement_committed": 0.9839,
-    "none": 157,
-    "other": 50
+    "agree": 2998,
+    "agreement": 0.9174,
+    "agreement_committed": 0.9852,
+    "none": 225,
+    "other": 45
    },
    "haraka": {
-    "agree": 2455,
-    "agreement": 0.9086,
-    "agreement_committed": 0.9984,
-    "none": 243,
-    "other": 4
+    "agree": 2453,
+    "agreement": 0.9078,
+    "agreement_committed": 0.9988,
+    "none": 246,
+    "other": 3
    },
    "shaddah": {
-    "agree": 329,
-    "agreement": 0.9014,
-    "agreement_committed": 0.9114,
-    "none": 4,
-    "other": 32
+    "agree": 342,
+    "agreement": 0.937,
+    "agreement_committed": 0.9396,
+    "none": 1,
+    "other": 22
    }
   },
   "c95": {
    "consonant": {
-    "agree": 2954,
-    "agreement": 0.9039,
-    "agreement_committed": 0.9613,
-    "none": 195,
-    "other": 119
+    "agree": 2895,
+    "agreement": 0.8859,
+    "agreement_committed": 0.9656,
+    "none": 270,
+    "other": 103
    },
    "haraka": {
-    "agree": 2397,
-    "agreement": 0.8871,
-    "agreement_committed": 0.9852,
-    "none": 269,
-    "other": 36
+    "agree": 2419,
+    "agreement": 0.8953,
+    "agreement_committed": 0.9882,
+    "none": 254,
+    "other": 29
    },
    "shaddah": {
-    "agree": 325,
-    "agreement": 0.8904,
-    "agreement_committed": 0.9181,
-    "none": 11,
-    "other": 29
+    "agree": 341,
+    "agreement": 0.9342,
+    "agreement_committed": 0.9394,
+    "none": 2,
+    "other": 22
    }
   },
   "r2_candidate_ema": {
    "consonant": {
-    "agree": 3062,
-    "agreement": 0.937,
-    "agreement_committed": 0.9833,
-    "none": 154,
-    "other": 52
+    "agree": 2994,
+    "agreement": 0.9162,
+    "agreement_committed": 0.9868,
+    "none": 234,
+    "other": 40
    },
    "haraka": {
-    "agree": 2475,
-    "agreement": 0.916,
-    "agreement_committed": 0.9928,
-    "none": 209,
-    "other": 18
+    "agree": 2480,
+    "agreement": 0.9178,
+    "agreement_committed": 0.9924,
+    "none": 203,
+    "other": 19
    },
    "shaddah": {
-    "agree": 336,
-    "agreement": 0.9205,
-    "agreement_committed": 0.9359,
-    "none": 6,
-    "other": 23
+    "agree": 345,
+    "agreement": 0.9452,
+    "agreement_committed": 0.9452,
+    "none": 0,
+    "other": 20
    }
   },
   "zipformer-checks": {
@@ -95,19 +95,19 @@
  },
  "arms": {
   "base": {
-   "protocol": "checks",
+   "arm": "stream_b0",
    "source": "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz"
   },
   "c95": {
-   "protocol": "checks",
+   "arm": "stream_b0",
    "source": "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz"
   },
   "r2_candidate_ema": {
-   "protocol": "checks",
+   "arm": "stream_b0",
    "source": "tadabur/consonant2_readout/decodes/qdat.r2_candidate_ema.jsonl.gz"
   },
   "zipformer-checks": {
-   "protocol": "checks",
+   "arm": "spans",
    "source": "tadabur/zipformer_screen/decodes/qdat.zipformer.jsonl.gz"
   }
  },
@@ -193,6 +193,6 @@
   "words": 28
  },
  "issue": 245,
- "rule": "the experts' phonetic_transcript, read on the Hub and never committed: each model's committed text on the clip's own audio, letter by letter over the transcript's slots, per class; and where the transcript leaves the mushaf (the departure words), which no model is scored on here",
+ "rule": "the experts' phonetic_transcript, read on the Hub and never committed: each model's whole-item text in the arm the arm map prescribes for qdat_bench (ours stream_b0, zipformer spans) on the clip's own audio, letter by letter over the transcript's slots, per class; and where the transcript leaves the mushaf (the departure words), which no model is scored on here",
  "set": "qdat_bench"
 }

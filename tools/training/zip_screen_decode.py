@@ -15,7 +15,11 @@ spec's pinned identities, so every line carries the provenance and arms the read
 
 Zipformer itself is decoded by :mod:`training.zipformer_decode`; this module only ever loads our
 models. qdat and Ship A are not re-decoded here: #156 and Ship A's committed decodes already
-carry every arm the readout reads. Usage (on the GPU box, from a copy of ``tools/``)::
+carry every arm the readout reads. Tarteel v1's confirm half is round 2's committed decode; its
+**look half** was read while that round chose its recipe and never decoded for the final
+candidate, so the screen decodes that one arm itself (``--set tarteel-look``) under the same
+pinned identities and the recorded check sequence the corpus readouts use. Usage (on the GPU
+box, from a copy of ``tools/``)::
 
   flock /root/scratch/gpu.lock env OMP_NUM_THREADS=1 python -m training.zip_screen_decode \\
       --set benchmark --models base,c95,r2_candidate_ema \\
@@ -23,6 +27,11 @@ carry every arm the readout reads. Usage (on the GPU box, from a copy of ``tools
 
   flock /root/scratch/gpu.lock env OMP_NUM_THREADS=1 python -m training.zip_screen_decode \\
       --set edits --audio-dir /root/scratch/issue-117/stage/edits/audio \\
+      --out-dir /root/scratch/zipformer/decodes
+
+  flock /root/scratch/gpu.lock env OMP_NUM_THREADS=1 python -m training.zip_screen_decode \\
+      --set tarteel-look --models r2_candidate_ema \\
+      --tarteel-cache /root/scratch/zipformer/screen/tarteel_cache \\
       --out-dir /root/scratch/zipformer/decodes
 """
 
@@ -42,10 +51,13 @@ from training.external_decode import (
     decode_recordings,
     load_decoders,
 )
-from training.truth_baseline import DECODE_STORE
+from training.truth_baseline import CHECKS, CHECK_STORE, DECODE_STORE
 
 BENCHMARK_SET = "benchmark"
 EDITS_SET = "edits"
+#: The Tarteel v1 look half: round 2 read the confirm half once for its final candidate, so the
+#: comparison's look-half arm for that candidate is the screen's own decode.
+TARTEEL_LOOK_SET = "tarteel-look"
 #: The three models this screen decodes: the teacher and the two candidates named in #245.
 MODELS = ("base", "c95", "r2_candidate_ema")
 #: The benchmark plan's outcomes, in the order a line records them.
@@ -53,8 +65,10 @@ OUTCOMES = ("verdict", "trained", "same_group")
 
 #: What each set decodes, by store label (:func:`training.external_decode.decode_recordings`
 #: takes a label per store it times): the benchmark and the edits are whole items (``spans``
-#: beside ``stream_b0`` in one pass).
-STORES = {BENCHMARK_SET: {"decode": DECODE_STORE}, EDITS_SET: {"decode": DECODE_STORE}}
+#: beside ``stream_b0`` in one pass); the Tarteel look half is the recorded check sequence,
+#: the store every corpus readout reads for that set.
+STORES = {BENCHMARK_SET: {"decode": DECODE_STORE}, EDITS_SET: {"decode": DECODE_STORE},
+          TARTEEL_LOOK_SET: {CHECKS: CHECK_STORE}}
 
 
 def _clip_outcome(plan: dict) -> dict[str, str]:
@@ -123,13 +137,36 @@ def edit_recordings(audio_dir: Path) -> Iterator[Recording]:
         yield Recording((item["item_id"],), load)
 
 
+def tarteel_look_recordings(cache_dir: Path) -> Iterator[Recording]:
+    """Tarteel v1's **look half**, which no round decoded for its final candidate.
+
+    The half is the pre-registered split's (:func:`tadabur.tarteel_split.load_split`; the look
+    half is the one a recipe may read, #128), and the source is the canonical #156 dataset
+    (:func:`training.nonpro_decode.recordings`) streamed shard by shard, never staged.
+    """
+    from tadabur.nonpro_sources import DATASETS
+    from tadabur.tarteel_split import load_split
+    from training.nonpro_decode import recordings as dataset_recordings
+
+    dataset = DATASETS["tarteel_v1"]
+    keep = {f"{clip}#0" for clip in load_split()["look"]}
+    for shard in dataset.shards:
+        for recording in dataset_recordings(dataset, shard, cache_dir):
+            if any(key in keep for key in recording.keys):
+                yield recording
+
+
 def recordings(set_name: str, work_dir: Path | None,
-               audio_dir: Path | None) -> Iterator[Recording]:
+               audio_dir: Path | None, cache_dir: Path | None = None) -> Iterator[Recording]:
     """The set's recordings; each source's own directory is required, never defaulted."""
     if set_name == BENCHMARK_SET:
         if work_dir is None:
             raise SystemExit(f"{BENCHMARK_SET} reads the pinned fetch: pass --work-dir")
         return benchmark_recordings(work_dir)
+    if set_name == TARTEEL_LOOK_SET:
+        if cache_dir is None:
+            raise SystemExit(f"{TARTEEL_LOOK_SET} reads the corpus shards: pass --tarteel-cache")
+        return tarteel_look_recordings(cache_dir)
     if audio_dir is None:
         raise SystemExit(f"{EDITS_SET} reads the rendered audio: pass --audio-dir")
     return edit_recordings(audio_dir)
@@ -145,7 +182,7 @@ def identity_path(out_dir: Path, set_name: str, model: str) -> Path:
 
 def run(set_name: str, models: Sequence[str], out_dir: Path, work_dir: Path | None,
         audio_dir: Path | None, limit: int | None = None,
-        spec: RoundSpec = CONSONANT2) -> None:
+        spec: RoundSpec = CONSONANT2, cache_dir: Path | None = None) -> None:
     """Decode ``set_name`` for ``models``, appending to the files already there (resumable).
 
     ``limit`` decodes only the set's first items: the smoke run that proves the sources and the
@@ -156,7 +193,7 @@ def run(set_name: str, models: Sequence[str], out_dir: Path, work_dir: Path | No
     decoders = load_decoders(lambda model: identity_path(out_dir, set_name, model),
                              {model: model_spec(model, spec=spec) for model in models})
     paths = {model: decodes_path(out_dir, set_name, model) for model in decoders}
-    source = recordings(set_name, work_dir, audio_dir)
+    source = recordings(set_name, work_dir, audio_dir, cache_dir)
     timing = decode_recordings(
         source if limit is None else itertools.islice(source, limit), decoders, paths,
         f"{set_name} {','.join(models)}", STORES[set_name])
@@ -172,10 +209,11 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, help="the benchmark fetch's work directory")
     parser.add_argument("--audio-dir", type=Path, help="the rendered edit audio")
+    parser.add_argument("--tarteel-cache", type=Path, help="Tarteel v1's shard cache")
     parser.add_argument("--limit", type=int, help="decode only the set's first items (smoke)")
     args = parser.parse_args()
     run(args.set, args.models.split(","), args.out_dir, args.work_dir, args.audio_dir,
-        limit=args.limit)
+        limit=args.limit, cache_dir=args.tarteel_cache)
 
 
 if __name__ == "__main__":

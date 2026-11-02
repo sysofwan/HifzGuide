@@ -13,6 +13,8 @@ probe's throughput. Torch-free: no ONNX file, no audio, no download.
 from __future__ import annotations
 
 import json
+import shlex
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -193,3 +195,55 @@ def test_a_failed_parity_record_stops_the_decode_before_the_model_is_loaded(tmp_
     path.write_text(json.dumps(broken), encoding="utf-8")
     with pytest.raises(ParityStop, match="did not pass: studio"):
         screen.require_parity_gate(path)
+
+
+# --- the launcher's screen command and the sets it feeds ------------------------------------
+
+
+def test_the_launcher_s_screen_command_names_every_set_directory():
+    """The runner this launcher writes must satisfy the batch's own directory contract."""
+    script = Path(__file__).resolve().parents[2] / "scripts" / "zipformer-screen.sh"
+    assert subprocess.run(["bash", "-n", str(script)]).returncode == 0
+    printed = subprocess.run(["bash", str(script), "screen", "print"], capture_output=True,
+                             text=True, check=True, stdin=subprocess.DEVNULL).stdout
+    argv = shlex.split(printed.replace("\\\n", " "))
+    flags = {argv[i][2:].replace("-", "_"): argv[i + 1]
+             for i in range(len(argv) - 1) if argv[i].startswith("--")}
+    args = SimpleNamespace(**{flag: Path(flags[flag]) for flag in screen.SET_DIRECTORY.values()})
+    assert set(screen.directories(args)) == set(screen.SET_DIRECTORY)
+    assert "tarteel_cache" in flags
+
+
+def test_tarteel_reads_both_halves_without_a_half_filter(monkeypatch):
+    import training.nonpro_decode as nonpro
+    from tadabur.nonpro_sources import DATASETS
+
+    dataset = DATASETS["tarteel_v1"]
+
+    def fake_recordings(dataset_, shard, cache_dir):
+        yield screen.Recording((f"{shard}#0",), lambda: (np.arange(2), []))
+
+    monkeypatch.setattr(nonpro, "recordings", fake_recordings)
+    assert screen.keep_keys("tarteel") is None
+    keys = [list(recording.keys) for recording in screen.tarteel_recordings(Path("/cache"))]
+    assert keys == [[f"{shard}#0"] for shard in dataset.shards]
+
+
+def test_the_screen_decodes_tarteel_look_from_the_canonical_corpus(monkeypatch):
+    import training.nonpro_decode as nonpro
+    from tadabur.tarteel_split import load_split
+    from training import zip_screen_decode as ours
+
+    split = load_split()
+    look, confirm = sorted(split["look"])[0], sorted(split["confirm"])[0]
+
+    def fake_recordings(dataset, shard, cache_dir):
+        for clip in (look, confirm):
+            yield ours.Recording((f"{clip}#0",), lambda: (np.arange(2), []))
+
+    monkeypatch.setattr(nonpro, "recordings", fake_recordings)
+    # one protocol only, the recorded check sequence every corpus readout reads for this set
+    assert set(ours.STORES[ours.TARTEEL_LOOK_SET]) == {"checks"}
+    produced = {key for recording in ours.tarteel_look_recordings(Path("/cache"))
+                for key in recording.keys}
+    assert produced == {f"{look}#0"}

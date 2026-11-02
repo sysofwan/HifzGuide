@@ -200,6 +200,14 @@ def test_the_ratchet_gain_reads_the_final_grades_not_the_any_look_flags():
     assert readout._any_look_flags({1: graded}) == 1
 
 
+def test_a_pending_final_word_is_not_a_displayed_flag():
+    from training.muraja_policy import FLAGGED, PENDING
+
+    # a word the session ended while still pending is NOT_GRADED, not a flag the reader sees
+    assert readout._final_flags({1: {"quality": PENDING}}) == 0
+    assert readout._final_flags({1: {"quality": PENDING}, 2: {"quality": FLAGGED}}) == 1
+
+
 def test_exposure_is_counted_at_recording_level_over_the_full_lineage():
     exposure = readout.exposure()
     assert exposure["inherited"]  # the shared-baseline uses every candidate inherits
@@ -210,8 +218,9 @@ def test_exposure_is_counted_at_recording_level_over_the_full_lineage():
         assert row["exposed"] <= row["recordings"]
         assert row["share"] == pytest.approx(100 * row["exposed"] / row["recordings"], abs=0.2)
     assert exposure["models"]["base"]["synthetic_edit.source"]["exposed"] is None
-    assert exposure["lineage"]["r2_candidate_ema"][:2] == ["consonant1.training",
-                                                           "consonant2.training"]
+    assert exposure["lineage"]["c95"] == ["aug.training", *exposure["inherited"]]
+    assert exposure["lineage"]["r2_candidate_ema"] == [
+        "aug.training", "consonant1.training", "consonant2.training", *exposure["inherited"]]
 
 
 def test_ship_a_is_refused_when_an_arm_has_not_decoded_every_item(monkeypatch):
@@ -261,3 +270,36 @@ def test_two_mushafs_do_not_share_a_bootstrap_cluster():
         [site("a.wav", "tarteel_v1:tarteel_v1:geminate:agreed"),
          site("b.wav", "tarteel_v1:tarteel_v1:geminate:agreed")], mushaf=False)
     assert surahs["a.wav"] == surahs["b.wav"]
+
+
+def test_qdat_bench_scores_the_arm_map_s_arm_not_the_check_sequence(monkeypatch):
+    from training import zipformer_sets
+
+    # the texts deliberately differ: only the arm map's arm may be the scored one
+    ours = {"audio_filename": "a.wav", "start_sample": 0, "end_sample": 1,
+            "checks": [{"hop": "بَ"}], "stream_b0": "تَ"}
+    zipformer = {"audio_filename": "a.wav", "start_sample": 0, "end_sample": 1,
+                 "checks": [{"hop": "بَ"}], "spans": "ثَ"}
+
+    def fake_rows(path):
+        return [zipformer if "zipformer" in str(path) else ours]
+
+    monkeypatch.setattr(zipformer_sets, "read_rows", fake_rows)
+    texts, arms = zipformer_sets.qdat_bench_texts()
+    assert texts["base"]["a.wav"] == "تَ"
+    assert texts["c95"]["a.wav"] == "تَ"
+    assert texts["r2_candidate_ema"]["a.wav"] == "تَ"
+    assert texts["zipformer-checks"]["a.wav"] == "ثَ"
+    assert arms["base"]["arm"] == "stream_b0"
+    assert arms["zipformer-checks"]["arm"] == "spans"
+
+
+def test_a_report_only_arm_missing_an_item_refuses_instead_of_intersecting():
+    from types import SimpleNamespace as NS
+
+    from training import zipformer_sets
+
+    sites = [NS(audio_filename="a.wav", start_sample=0, end_sample=1)]
+    zipformer_sets._require_coverage("s", sites, {"base": {"a.wav@0:1": "بَ"}})
+    with pytest.raises(ValueError, match="arms missing items"):
+        zipformer_sets._require_coverage("s", sites, {"base": {}})

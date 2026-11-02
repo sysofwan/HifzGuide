@@ -5,8 +5,8 @@ sets those three never trained on. :mod:`training.zip_screen_decode` is our mode
 this module is zipformer's, through the arms :mod:`training.zipformer_decode` defines:
 
 * **the single stream** (``spans`` and ``checks``) on every set: the benchmark's 577 allowed
-  clips, the 300 synthetic edits, qdat's 1,505 clips, Ship A's 530 verified sites and the unread
-  QUD half;
+  clips, the 300 synthetic edits, qdat's 1,505 clips, Ship A's 530 verified sites, Tarteel v1's
+  truth-site clips (both halves) and the unread QUD half;
 * **the warm-started per-check arms** (``checks-w1`` and ``checks-w1-windows``) only where
   Muraja's engine grades the set — qdat's false flags and Ship A's catches. Those are the only
   app-outcome verdict metrics (#245, architect r2); the remaining sets are report-only from the
@@ -193,22 +193,17 @@ def qdat_recordings(cache_dir: Path) -> Iterator[Recording]:
 
 
 def tarteel_recordings(cache_dir: Path) -> Iterator[Recording]:
-    """Tarteel v1's **confirm half**, from the canonical #156 source, shard by shard.
+    """Tarteel v1's **truth-site clips**, both pre-registered halves, shard by shard.
 
-    One half only: the look half is decoded for three of the four compared arms (the round-2
-    candidate never decoded it), so scoring it would silently change the population from model
-    to model. The clips are the split's own ids (:func:`tadabur.tarteel_split.load_split`),
-    streamed from the dataset and deleted per shard, never staged.
+    The readout scores both halves for all four models, so the set is the whole corpus: its
+    source is streamed from the canonical #156 dataset and deleted per shard, never staged.
     """
     from tadabur.nonpro_sources import DATASETS
     from training.nonpro_decode import recordings as dataset_recordings
 
     dataset = DATASETS["tarteel_v1"]
-    keep = keep_keys(TARTEEL)
     for shard in dataset.shards:
-        for recording in dataset_recordings(dataset, shard, cache_dir):
-            if any(key in keep for key in recording.keys):
-                yield recording
+        yield from dataset_recordings(dataset, shard, cache_dir)
 
 
 def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
@@ -231,16 +226,12 @@ def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
 def keep_keys(set_name: str) -> set[str] | None:
     """The items of a set that are part of it, when its source yields more.
 
-    QUD's unread half, and Tarteel v1's confirm half (the one every compared arm decodes).
+    QUD's unread half. Tarteel v1 is the whole corpus (both halves), so it needs no filter.
     """
     if set_name == QUD_OTHER:
         from training.consonant_readout import load_qud_complement
 
         return load_qud_complement()
-    if set_name == TARTEEL:
-        from tadabur.tarteel_split import load_split
-
-        return {f"{clip}#0" for clip in load_split()["confirm"]}
     return None
 
 
@@ -295,9 +286,7 @@ def item_lengths(set_name: str) -> list[int]:
         from training.nonpro_eval import decodes_file
         from tadabur.nonpro_sources import DATASETS
 
-        keep = keep_keys(TARTEEL)
-        return [length for length in
-                _decoded_lengths(decodes_file(DATASETS["tarteel_v1"], "base"), keep)]
+        return _decoded_lengths(decodes_file(DATASETS["tarteel_v1"], "base"))
 
     from tadabur.qud_overlap import PILOT
     from training.qud_pilot import decodes_file

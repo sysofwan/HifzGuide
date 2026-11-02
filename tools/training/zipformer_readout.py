@@ -57,7 +57,7 @@ DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "zipformer-comparison.
 #: The four models this screen reports, and the three it compares against zipformer.
 MODELS = ("base", "zipformer", "r2_candidate_ema", "c95")
 STUDENTS = ("base", "r2_candidate_ema", "c95")
-TEACHER, CANDIDATE = "base", "r2_candidate_ema"
+TEACHER, CANDIDATE, C95 = "base", "r2_candidate_ema", "c95"
 #: The arm each model's whole-item text is read from (`metric_arm`'s answer); the committed
 #: decodes carry it.
 WHOLE_ITEM = {"base": "stream_b0", "c95": "stream_b0", "r2_candidate_ema": "stream_b0",
@@ -172,12 +172,16 @@ _AYAH_INDEX: list[dict[str, tuple[int, int]]] = []
 def _build_ayah_index() -> dict[str, tuple[int, int]]:
     from quran_transcript import Aya
 
+    from tadabur.panel_seal import SealedPanelError
+
     index: dict[str, tuple[int, int]] = {}
     for surah in range(1, 115):
         for ayah in range(1, 300):
             try:
                 words = Aya(surah, ayah).get().imlaey_words
-            except Exception:
+            except SealedPanelError:
+                raise
+            except Exception:  # past an ayah's end the library raises; the surah is over
                 break
             index.setdefault(_bare(" ".join(words)), (surah, ayah))
     return index
@@ -295,7 +299,11 @@ def qdat_set():
 
 
 def qdat_false_flags(harness) -> dict:
-    """The all-cause false flags per 1,000 graded words, per arm, and the paired differences."""
+    """The all-cause false flags per 1,000 graded words, per arm, and the paired differences.
+
+    ``by_cause`` splits the same words by what Muraja attributes the flag to (a consonant error
+    or a tashkeel one), so a model's false flags can be read as the kind of mistake they are.
+    """
     from training.aug_readout_metrics import compare, false_flag_terms
     from training.external_corpus import word_grades
     from training.muraja_policy import SHIPPED_DEFAULT
@@ -304,13 +312,18 @@ def qdat_false_flags(harness) -> dict:
     arms = (*STUDENTS, f"zipformer-{ZIP_CHECKS}", f"zipformer-{ZIP_STREAM}")
     build, grades = word_grades(items, decodes, harness, arms, [SHIPPED_DEFAULT])
     terms = false_flag_terms(grades, arms, SHIPPED_DEFAULT.name)
-    view = compare(terms, PER_1000, [(CANDIDATE, TEACHER),
-                                     (f"zipformer-{ZIP_CHECKS}", TEACHER),
-                                     (f"zipformer-{ZIP_CHECKS}", CANDIDATE),
-                                     ("c95", TEACHER),
-                                     (f"zipformer-{ZIP_STREAM}", f"zipformer-{ZIP_CHECKS}")])
+    comparisons = [(CANDIDATE, TEACHER), (f"zipformer-{ZIP_CHECKS}", TEACHER),
+                   (f"zipformer-{ZIP_CHECKS}", CANDIDATE), (C95, TEACHER),
+                   (f"zipformer-{ZIP_STREAM}", f"zipformer-{ZIP_CHECKS}")]
+    view = compare(terms, PER_1000, comparisons)
+    from training.aug_readout_metrics import CONSONANT, TASHKEEL_CAUSE
+
+    by_cause = {
+        cause: compare(false_flag_terms(grades, arms, SHIPPED_DEFAULT.name, cause=cause),
+                       PER_1000, comparisons)
+        for cause in (CONSONANT, TASHKEEL_CAUSE)}
     return {"harness": build, "items": len(items), "arms": list(arms), "words": len(terms.clusters),
-            **view}
+            **view, "by_cause": by_cause}
 
 
 # --- the synthetic edits -------------------------------------------------------------------
@@ -324,16 +337,36 @@ def edits_rates() -> dict:
     items = read_items()
     texts = whole_item_texts("edits")
     out = {"items": len(items), "arms": {}, "differences": {}}
-    for role in ("edit", "decoy"):
+
+    def view_for(role: str, operation: str | None = None) -> dict | None:
+        selected = [item for item in items if item["role"] == role
+                    and (operation is None or item["operation"] == operation)]
+        if not selected:
+            return None
         observations = {
             model: [(item["pair_id"],
                      int(teacher_agrees(item, texts[model][item["item_id"]])), 1)
-                    for item in items if item["role"] == role]
+                    for item in selected]
             for model in MODELS}
-        view = rate_view(observations,
+        return rate_view(observations,
                          [(model, CANDIDATE) for model in MODELS if model != CANDIDATE], PERCENT)
+
+    for role in ("edit", "decoy"):
+        view = view_for(role)
         out["arms"][role] = {model: view["models"][model] for model in MODELS}
         out["differences"][role] = view["comparisons"]
+    # the pooled rate hides an operation a model handles badly: read each one its own arm
+    out["operations"] = {}
+    for operation in sorted({item["operation"] for item in items}):
+        reading = {}
+        for role in ("edit", "decoy"):
+            view = view_for(role, operation)
+            reading[role] = {
+                "clips": sum(1 for item in items if item["role"] == role
+                             and item["operation"] == operation),
+                "models": {} if view is None else view["models"],
+                "comparisons": {} if view is None else view["comparisons"]}
+        out["operations"][operation] = reading
     return out
 
 
@@ -354,11 +387,15 @@ def _mark_counts(decode: str, reference: str) -> dict:
     """One clip's carrier counts, read off the carrier-anchored alignment.
 
     A reference carrier's prescription is the mark written after it (past a shaddah) — one of
-    the three harakat, or no mark, which is how the mushaf writes a sukun. A carrier the local
-    alignment never reached is counted apart (``unaligned``), not as an empty slot: its slot
-    may be missing with its consonant, which the per-class error already measures.
+    the three harakat, or no mark, which is how the mushaf writes a sukun. The commitment rules
+    are :mod:`training.site_outcomes`' canonical ones: a carrier the alignment never reached, or
+    reached with a *different* consonant, has no slot at all (``unaligned``), and a carrier with
+    more than one distinct mark is committed but not accurate (``MULTIPLE``), exactly as the
+    site rules read them. Counting a wrong carrier or an internally contradictory mark as
+    accurate would publish a decode that misheard the letter as a correct tashkeel commitment.
     """
     from training.acceptance_stats import SHADDAH_MARK
+    from training.site_outcomes import MULTIPLE
     from training.tashkeel_eval import SHORT_VOWELS, carrier_readings
 
     readings = carrier_readings(decode, reference)
@@ -368,22 +405,24 @@ def _mark_counts(decode: str, reference: str) -> dict:
         if unicodedata.combining(char):
             continue
         reading = readings.get(index)
-        if reading is None:
+        if reading is None or reading.decoded != char:
             out["unaligned"] += 1
             continue
         after = index + 1
         if after < len(reference) and reference[after] == SHADDAH_MARK:
             after += 1
         prescribed = reference[after] if after < len(reference) else None
-        marks = reading.marks
+        distinct = list(dict.fromkeys(reading.marks))
+        committed = (None if not distinct else
+                     distinct[0] if len(distinct) == 1 else MULTIPLE)
         if prescribed in SHORT_VOWELS:
             out["haraka_slots"] += 1
-            out["haraka_empty"] += not marks
-            out["committed"] += bool(marks)
-            out["accurate"] += prescribed in marks
+            out["haraka_empty"] += committed is None
+            out["committed"] += committed is not None
+            out["accurate"] += committed == prescribed
         else:
             out["sukun_slots"] += 1
-            out["sukun_empty"] += not marks
+            out["sukun_empty"] += committed is None
     return out
 
 
@@ -458,29 +497,54 @@ def commit_lines() -> dict:
 
 
 def ship_a_set():
-    """Ship A's sites, and each model's whole-item text and recorded check sequence, on the
-    items every compared arm holds (the candidate's committed cache covers 363 of 512)."""
+    """Ship A's whole verified population: every site, and every arm's decode on every item.
+
+    The pre-registered population is the whole verified set, so an arm missing an item is
+    refused. The earlier version intersected the compared arms' caches and answered a smaller
+    question: the candidate and C95 held 363 of the 512 items, so 29 of the 75 mistake sites
+    never entered the catch table (review R1.3).
+    """
     from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
     from tadabur.truth_sites import TRUTH_SITES_DIR, load_truth_sites
     from training.truth_baseline import (CHECKS as TB_CHECKS, CHECK_STORE, DECODE_STORE,
-                                         item_key, items_of, read_cache)
+                                         items_of, read_cache)
 
     sites = load_truth_sites(TRUTH_SITES_DIR / "ship_a_verified.jsonl")
-    items = items_of(sites, load_staged_clips(REGISTRY_PATH))
-    caches = {model: read_cache(CHECK_STORE.path(model))["items"] for model in STUDENTS}
-    shared = set(caches[CANDIDATE]) & set(caches[TEACHER]) & set(items)
-    kept = [site for site in sites if item_key(site) in shared]
+    required = set(items_of(sites, load_staged_clips(REGISTRY_PATH)))
     decodes, sequences = {}, {}
     for model in STUDENTS:
         decode = read_cache(DECODE_STORE.path(model))["items"]
-        decodes[model] = {key: decode[key][WHOLE_ITEM[model]] for key in shared}
-        sequences[model] = {key: caches[model][key][TB_CHECKS] for key in shared}
+        checks = read_cache(CHECK_STORE.path(model))["items"]
+        missing = sorted(required - set(decode) - set(checks))
+        if missing:
+            raise ValueError(
+                f"{model}: {len(missing)} of Ship A's {len(required)} items have no decode, "
+                f"e.g. {missing[:3]}; the pre-registered population is never intersected away")
+        decodes[model] = {key: decode[key][WHOLE_ITEM[model]] for key in required}
+        sequences[model] = {key: checks[key][TB_CHECKS] for key in required}
     w1, spans = zipformer_lines("ship-a", "w1"), zipformer_lines("ship-a")
-    spans_text = {key: spans[key]["spans"] for key in shared}
+    missing = sorted(required - set(w1) - set(spans))
+    if missing:
+        raise ValueError(f"zipformer: {len(missing)} Ship A items are not decoded")
+    spans_text = {key: spans[key]["spans"] for key in required}
     for arm, source in ((ZIP_CHECKS, w1), (ZIP_STREAM, spans)):
         decodes[f"zipformer-{arm}"] = spans_text
-        sequences[f"zipformer-{arm}"] = {key: source[key][arm] for key in shared}
-    return kept, decodes, sequences
+        sequences[f"zipformer-{arm}"] = {key: source[key][arm] for key in required}
+    return sites, decodes, sequences
+
+
+def _sides(sites) -> tuple[list, list, int]:
+    """The sites by human verdict: mistakes, correct recitation, and how many have no side.
+
+    A site whose heard value is unclear or pending is neither: scoring it as correct
+    recitation would put unlabelled sites in the correct-side denominator
+    (:func:`training.site_outcomes.side`).
+    """
+    from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE, side
+
+    mistakes = [site for site in sites if side(site) == MISTAKE_SIDE]
+    correct = [site for site in sites if side(site) == CORRECT_SIDE]
+    return mistakes, correct, len(sites) - len(mistakes) - len(correct)
 
 
 def _site_rows(subset, outcome_of, arm, clusters) -> list[tuple[int, int, int]]:
@@ -491,22 +555,24 @@ def ship_a_outcomes(harness) -> dict:
     """Each arm's flagged counts on Ship A's mistake and correct sites, the paired differences,
     and the ratchet-free line from each model's one whole-item decode."""
     from training.muraja_policy import SHIPPED_DEFAULT, WORD_FLAGGED
-    from training.site_outcomes import MISTAKE_SIDE, side
     from training.truth_baseline import app_outcomes
 
     sites, decodes, sequences = ship_a_set()
     _, kept = app_outcomes(sites, [], decodes, sequences, harness)
     scoring = SHIPPED_DEFAULT.name
-    mistakes = [site for site in sites if side(site) == MISTAKE_SIDE]
-    correct = [site for site in sites if side(site) != MISTAKE_SIDE]
+    mistakes, correct, without_side = _sides(sites)
 
     def flagged(arm, site):
         return kept.grades[scoring][arm][site.site_id].outcome in WORD_FLAGGED
 
-    arms = ("base", CANDIDATE, f"zipformer-{ZIP_CHECKS}", f"zipformer-{ZIP_STREAM}")
+    arms = (TEACHER, C95, CANDIDATE, f"zipformer-{ZIP_CHECKS}", f"zipformer-{ZIP_STREAM}")
     clusters = {site.site_id: index
                 for index, site in enumerate(sorted(sites, key=lambda s: s.site_id))}
     return {"sites": len(sites), "mistakes": len(mistakes), "correct": len(correct),
+            "without_side": without_side,
+            "rule": "sites are split by the human verdict only: correct recitation, a real "
+                    "mistake, or (unclear/pending) no side, which leaves both denominators and "
+                    "is reported apart",
             "harness": harness.build,
             "mistakes_flagged": rate_view(
                 {arm: _site_rows(mistakes, flagged, arm, clusters) for arm in arms},
@@ -516,7 +582,47 @@ def ship_a_outcomes(harness) -> dict:
                 {arm: _site_rows(correct, flagged, arm, clusters) for arm in arms}, [], PERCENT),
             "whole_item": _whole_item_outcomes(sites, decodes["base"],
                                                decodes[f"zipformer-{ZIP_STREAM}"],
-                                               mistakes, correct)}
+                                               mistakes, correct),
+            "truth_sites": _truth_site_outcomes(sites, sequences)}
+
+
+def _truth_site_outcomes(sites, sequences) -> dict:
+    """The decode-level truth-site outcomes per arm, on the correct and the mistake sides.
+
+    ``training.truth_scorer``'s canonical read: what each arm's committed transcript commits at
+    the carrier -- commit rate, committed accuracy, decode-level flags, missed mistakes and
+    silent corrections -- with the clustered bootstrap, and C95 beside the verdict arms. The
+    app-outcome table above is Muraja's read of the same sites; this one has no engine between
+    the decode and the site.
+    """
+    from tadabur.exclusions import current
+    from tadabur.ship_a_verified import load_designs
+    from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
+    from training.decoding import committed_text
+    from training.truth_scorer import ALL, score
+
+    registry = load_staged_clips(REGISTRY_PATH)
+    reciters = {clip: clip_record.reciter_id for clip, clip_record in registry.items()}
+    texts = {arm: {key: committed_text(sequence) for key, sequence in rows.items()}
+             for arm, rows in sequences.items()}
+    comparisons = [(arm, TEACHER) for arm in texts if arm != TEACHER]
+    # Ship A's frozen per-site design (the inverse listening probability), as the truth
+    # baseline's own report reads them
+    weights = {site_id: design.weight for site_id, design in load_designs().items()}
+    report = score(sites, reciters, texts, comparisons, None, weights, current())
+    cells = {}
+    for cell in report["cells"]:
+        if cell["family"] != ALL or cell["heard"] != ALL:
+            continue
+        if not cell.get("arms"):
+            continue
+        cells[cell["side"]] = {"sites": cell["sites"], "reciters": cell["reciters"],
+                               "arms": {arm: row["rates"]
+                                        for arm, row in cell["arms"].items()},
+                               "differences": cell["differences"]}
+    return {"rule": "the canonical truth-site read on the same sites: each arm's committed "
+                    "transcript, no Muraja engine; correct and mistake sides never pooled",
+            "sites": len(sites), "cells": cells, "bootstrap": report["bootstrap"]}
 
 
 def _whole_item_outcomes(sites, base, zipformer, mistakes, correct) -> dict:
@@ -589,11 +695,34 @@ def _look_metrics(looks, kept) -> tuple[int, int, int, int]:
     return words, flagged, rescued, multi
 
 
+def _any_look_flags(runs: Mapping) -> int:
+    """Words flagged by at least one look, over every item of one arm.
+
+    Rescue and diversity only: this is *not* the flag the reader sees, so it never enters the
+    ratchet gain (see :func:`_final_flags`).
+    """
+    return sum(_look_metrics(*item)[1] for item in runs.values())
+
+
+def _final_flags(kept) -> int:
+    """Words the ratchet left flagged: the *displayed final grade* per word, nothing earlier.
+
+    This is the number the app shows after every look and the ratchet have been applied, so it
+    is the only count a gain against the single-decode approximation may subtract; an any-look
+    flag that the ratchet rescued is not a flag the reader ever sees.
+    """
+    from training.muraja_policy import CORRECT, SHIPPED_DEFAULT, displayed
+
+    return sum(displayed(status["quality"], SHIPPED_DEFAULT) != CORRECT
+               for status in kept.values())
+
+
 def _qdat_looks() -> dict:
     """qdat's look diversity: each arm's rescue rate and its ratchet gain against the
     single-decode approximation of the same model's whole-item text."""
+    from training.aug_readout_metrics import comparison_name
     from training.external_corpus import placement, placed_words
-    from training.muraja_policy import Item, MurajaText, single_decode_checks
+    from training.muraja_policy import SINGLE_DECODE, Item, MurajaText, single_decode_checks
 
     items, decodes = qdat_set()
     text = MurajaText(_harness().quran_db)
@@ -625,16 +754,32 @@ def _qdat_looks() -> dict:
                                              item.end_sample - item.start_sample)))
              for item in items],
             {f"{arm}#{key}": where for key, where in at.items()})
-        words = flagged = rescued = multi = flagged_single = 0
+        words = flagged = rescued = multi = 0
+        final = final_single = 0
+        terms = {arm: [], SINGLE_DECODE: []}
         for item in items:
-            w, f, r, m = _look_metrics(*runs[f"{arm}#{item.key}"])
+            graded = runs[f"{arm}#{item.key}"]
+            approximation = singles[f"{arm}#{item.key}"]
+            w, f, r, m = _look_metrics(*graded)
             words, flagged, rescued, multi = words + w, flagged + f, rescued + r, multi + m
-            flagged_single += _look_metrics(*singles[f"{arm}#{item.key}"])[1]
-        table[arm] = {"words": words, "flagged": flagged,
-                      "flagged_single_decode": flagged_single,
-                      "rescue_rate": round(100 * rescued / flagged, 2) if flagged else None,
-                      "ratchet_gain": flagged - flagged_single,
-                      "multi_look_share": round(100 * multi / words, 2) if words else None}
+            final += _final_flags(graded[1])
+            final_single += _final_flags(approximation[1])
+            terms[arm].append((item.cluster, _final_flags(graded[1]), w))
+            terms[SINGLE_DECODE].append((item.cluster, _final_flags(approximation[1]), w))
+        gain = rate_view(terms, [(arm, SINGLE_DECODE)], PER_1000)
+        table[arm] = {
+            "words": words,
+            "flagged_any_look": flagged,
+            "flagged_any_look_single_decode": _any_look_flags(singles),
+            "rescue_rate": round(100 * rescued / flagged, 2) if flagged else None,
+            "final_flagged": final,
+            "final_flagged_single_decode": final_single,
+            # the diagnostic principal r1 §3 names: final flags under the recorded checks minus
+            # final flags under SINGLE_DECODE, clustered by the item's reciter
+            "ratchet_gain": final - final_single,
+            "ratchet_gain_per_1000_words": gain["comparisons"].get(
+                comparison_name(arm, SINGLE_DECODE)),
+            "multi_look_share": round(100 * multi / words, 2) if words else None}
     return table
 
 
@@ -741,31 +886,67 @@ def _measured_wall() -> dict:
 
 
 def exposure() -> dict:
-    """The synthetic edits' source and donor recordings, and the share of each lineage's Tadabur
-    training reciters that touches them: the reciter-in-training screen, the only one the
-    registry runs on our models. The teacher and zipformer trained outside Tadabur."""
-    from tadabur.exposure import (AUG_TRAINING, CONSONANT_TRAINING, CONSONANT2_TRAINING,
-                                  SYNTHETIC_EDIT_DONOR, SYNTHETIC_EDIT_SOURCE, load_registry)
+    """The synthetic edits' source and donor recordings against each model's full lineage.
+
+    The question is contamination, not naming: a shared reciter is not evidence that the
+    recording itself was consumed. Each model's *full lineage* -- its own round's uses plus the
+    shared-baseline uses every candidate warm-started from h448 inherits -- is compared with the
+    corpus's recordings by the registry's own source/alias rule
+    (:func:`tadabur.exposure.overlapping_recordings`, the rows behind
+    ``check_disjoint(..., by="source")``). Counts and shares are of **recordings**; the reciter
+    screen stays beside them, labelled as the weaker diagnostic it is. The teacher and zipformer
+    trained outside Tadabur, so their exposure is unknown, not zero.
+    """
+    from tadabur.exposure import (
+        CONSONANT_TRAINING,
+        CONSONANT2_TRAINING,
+        SYNTHETIC_EDIT_DONOR,
+        SYNTHETIC_EDIT_SOURCE,
+        load_registry,
+        overlapping_recordings,
+    )
 
     registry = load_registry()
-    uses = {"base": None, "c95": (AUG_TRAINING, CONSONANT_TRAINING),
-            "r2_candidate_ema": (CONSONANT_TRAINING, CONSONANT2_TRAINING),
-            "zipformer": None}
-    out = {"rule": "share of the edit set's reciters in the lineage's Tadabur training uses; "
-                   "the teacher (Muaalem) and zipformer trained outside Tadabur, so their "
-                   "exposure is unknown by name, not zero",
-           "uses": {model: list(use) if use is not None else None
-                    for model, use in uses.items()}, "models": {}}
+    inherited = tuple(registry.shared_baseline_uses())
+    lineage = {
+        "base": None,
+        "c95": (CONSONANT_TRAINING, *inherited),
+        "r2_candidate_ema": (CONSONANT_TRAINING, CONSONANT2_TRAINING, *inherited),
+        "zipformer": None,
+    }
+    out = {
+        "rule": "each model's recordings-exposed share of the edit set's source and donor "
+                "clips, over its full lineage (its round's uses plus the shared-baseline uses "
+                "it inherited from h448), by the registry's source/alias rule; the reciter "
+                "share is the weaker name screen, kept beside it. The teacher and zipformer "
+                "trained outside Tadabur (unknown, not zero). A source or donor clip inside the "
+                "candidate's lineage confounds the catch-side bar: a caught edit may be a "
+                "memorised clip, not a caught mistake",
+        "lineage": {model: (None if uses is None else list(uses))
+                    for model, uses in lineage.items()},
+        "inherited": list(inherited),
+        "models": {},
+    }
     for corpus in (SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR):
-        reciters = {row.reciter_id for row in registry.recordings[corpus]}
-        for model, model_uses in uses.items():
-            trained = (None if model_uses is None
-                       else {r for use in model_uses for r in registry.reciters(use)})
-            out["models"].setdefault(model, {})[corpus] = {
-                "reciters": len(reciters), "exposed": None if trained is None
-                else len(reciters & trained),
-                "share": None if trained is None
-                else round(100 * len(reciters & trained) / len(reciters), 1)}
+        rows = registry.recordings[corpus]
+        recordings = {row.source for row in rows}
+        reciters = {row.reciter_id for row in rows}
+        for model, uses in lineage.items():
+            entry = {"recordings": len(recordings), "reciters": len(reciters)}
+            if uses is None:
+                entry.update({"exposed": None, "share": None, "exposed_reciters": None,
+                              "reciter_share": None})
+            else:
+                touched = set()
+                for use in uses:
+                    touched |= set(overlapping_recordings(use, corpus, registry=registry))
+                trained = {reciter for use in uses for reciter in registry.reciters(use)}
+                entry.update({
+                    "exposed": len(touched),
+                    "share": round(100 * len(touched) / len(recordings), 1),
+                    "exposed_reciters": len(reciters & trained),
+                    "reciter_share": round(100 * len(reciters & trained) / len(reciters), 1)})
+            out["models"].setdefault(model, {})[corpus] = entry
     return out
 
 
@@ -928,9 +1109,10 @@ def _ship_a_bar(record: Mapping) -> dict:
     view = record["ship_a"]["mistakes_flagged"]["models"]
     arm = view[f"zipformer-{ZIP_CHECKS}"]["point"]
     bar = view[CANDIDATE]["point"] - CATCH_POINTS
+    mistakes = record["ship_a"]["mistakes"]
     return {"zipformer": arm, "candidate": view[CANDIDATE]["point"], "bar": round(bar, 2),
             "passed": bool(arm >= bar),
-            "note": "on the candidate's 363 committed items (46 of 75 mistake sites)"}
+            "note": f"over the whole verified population ({mistakes} mistake sites)"}
 
 
 def match_rule(record: Mapping) -> dict:
@@ -1001,8 +1183,10 @@ def report() -> dict:
                      "projected_hours": round(probe["projected_seconds"] / 3600.0, 2),
                      "horizon_hours": HORIZON_HOURS, "stop": bool(probe["stop"]),
                      "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat "
-                             "items, projected over every job; the batch stops past 12 h "
-                             "(architect r2, AC 6)"}
+                             "items, projected over the batch's jobs at that point; the batch "
+                             "stops past 12 h (architect r2, AC 6). The Tarteel v1 confirm half "
+                             "was decoded afterwards as its own job, and its measured wall is "
+                             "in the compute table"}
     # the stop gates' facts, before a single section is scored: a gated-out run has no normal
     # comparison report (R1.9; parity-gate.md's ordered gates)
     require_gates({"gates": gate_table, "probe": probe_section})
@@ -1021,12 +1205,26 @@ def report() -> dict:
         "edits": edits_rates(),
         "commit": commit_lines(),
         "ship_a": ship_a_outcomes(harness),
+        "sets": _report_only_sets(),
         "look_diversity": look_diversity(),
     }
     record["match_rule"] = match_rule(record)
     record["report_only"] = ratchet_free(record)
     record["verdict"] = verdict(record)
     return record
+
+
+def _report_only_sets() -> dict:
+    """QUD's unread half, Tarteel v1's confirm half and qdat_bench: report only, never a gate."""
+    from training import zipformer_sets
+
+    return {"qud_other": zipformer_sets.qud_other(),
+            "tarteel_v1_confirm": zipformer_sets.tarteel_confirm(),
+            "qdat_bench": zipformer_sets.qdat_bench(),
+            "rule": "the sets the cards say zipformer probably trained on are read beside the "
+                    "verdict, never inside it, and each arm's committed transcript is the arm "
+                    "the corpora's own readouts use. qdat_bench's expert transcript is read on "
+                    "the gated Hub and never committed; only its agreement summary is"}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

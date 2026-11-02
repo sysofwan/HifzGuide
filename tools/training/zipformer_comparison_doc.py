@@ -49,8 +49,17 @@ def _gates(record: Mapping) -> list[str]:
     rows = []
     for name, gate in gates.items():
         if name == "parity":
-            rows.append([name, "v3.2 fp32 vs sherpa-onnx 2.0.1", "PASS" if gate["passed"]
-                         else "STOP", "—", "—"])
+            plan = gate.get("plan") or {}
+            probe = gate.get("probe") or {}
+            rows.append([name, "v3.2 fp32 vs sherpa-onnx 2.0.1",
+                         "PASS (validated)" if gate.get("validated") else
+                         ("PASS recorded, not validated" if gate["passed"] else "STOP"),
+                         f"{plan.get('decoded')}/{plan.get('clips')} planned clips; "
+                         f"{probe.get('checks')} canary checks, {probe.get('ambiguous_decisions')} "
+                         f"cuts unresolved, {probe.get('resolved_decisions')} resolved from the "
+                         "reference's frame outputs",
+                         ", ".join(f"{source} {_cell(entry['identical'])}/{entry['clips']}"
+                                   for source, entry in sorted((gate.get('sources') or {}).items()))])
         else:
             per = gate["character_per"]
             scale = str(gate["pinned_scale"])
@@ -159,6 +168,11 @@ def _correct(record: Mapping) -> list[str]:
     diffs = []
     for name, row in qdat["comparisons"].items():
         diffs.append([name, _cell(row["point"]) + _interval(row)])
+    cause_rows = []
+    for cause, view in qdat["by_cause"].items():
+        for model, row in view["models"].items():
+            cause_rows.append([cause, model, _cell(row["point"]) + _interval(row),
+                               _counts(row)])
     benchmark = record["benchmark"]
     sources = []
     for source, rows_ in benchmark["sources"].items():
@@ -179,7 +193,9 @@ def _correct(record: Mapping) -> list[str]:
             "### qdat: all-cause false flags per 1,000 graded words", "",
             "The app outcome, replayed through Muraja's own engine at the shipped default. "
             "Zipformer is graded from `checks-w1`, ours from their recorded checks.", "",
-            _table(["arm", "per 1,000", "flagged/graded"], rows),
+            _table(["arm", "false flags / 1,000", "words"], rows),
+            "Split by what the flag is attributed to, on the same words:", "",
+            _table(["cause", "arm", "false flags / 1,000", "words"], cause_rows), "",
             _table(["paired difference", "per 1,000"], diffs),
             "### The benchmark: per-class phoneme error", "",
             f"{benchmark['clips']['scored']} of the {benchmark['clips']['verdict']} verdict clips "
@@ -204,21 +220,52 @@ def _catch(record: Mapping) -> list[str]:
         for model, row in edits["arms"][role].items():
             rows.append([role, model, _cell(row["point"]) + _interval(row),
                          _counts(row)])
+    operation_rows = []
+    for operation, reading in edits["operations"].items():
+        for role in ("edit", "decoy"):
+            for model, row in reading[role]["models"].items():
+                operation_rows.append([operation, role, model,
+                                       _cell(row["point"]) + _interval(row),
+                                       _counts(row)])
     ship = record["ship_a"]
     ship_rows = []
     for arm, row in ship["mistakes_flagged"]["models"].items():
         ship_rows.append([arm, _cell(row["point"]) + _interval(row),
                           _counts(row)])
+    truth = ship["truth_sites"]
+    truth_rows = []
+    for side_name in ("correct", "mistake"):
+        cell = truth["cells"].get(side_name)
+        if cell is None:
+            continue
+        for arm, rates in cell["arms"].items():
+            truth_rows.append([
+                side_name, arm,
+                _cell(rates["commit_rate"]["point"]),
+                _cell(rates["committed_accuracy"]["point"]),
+                _cell(rates.get("decode_flagged", {}).get("point")
+                      if side_name == "correct" else
+                      rates.get("silent_corrections", {}).get("point")),
+                str(cell["sites"])])
     return ["## The catch side", "",
             "### The synthetic edits", "",
             "An edit is heard when the decode spells the label at the carrier; a decoy is left "
             "unchanged when it spells the prescribed letter. Paired by the edit pair.", "",
             _table(["role", "model", "rate %", "count"], rows),
+            "Per operation, because a pooled rate hides an operation a model handles badly:", "",
+            _table(["operation", "role", "model", "rate %", "count"], operation_rows),
             "### Ship A's mistake sites flagged", "",
-            f"On the {ship['mistakes']} mistake sites (of {ship['sites']} sites) in the items the "
-            "candidate's committed cache holds; the candidate's cache covers 363 of the 512 "
-            "Ship A items, so 46 of its 75 mistake sites are read.", "",
-            _table(["arm", "flagged %", "flagged/sites"], ship_rows)]
+            f"On the whole verified population: {ship['mistakes']} mistake sites and "
+            f"{ship['correct']} correct sites of {ship['sites']} sites, with "
+            f"{ship['without_side']} sites carrying no human verdict and therefore scoring on "
+            "neither side. C95 sits beside the verdict arms.", "",
+            _table(["arm", "flagged %", "flagged/sites"], ship_rows),
+            "### Ship A: the decode-level truth-site read", "",
+            "What each arm's committed transcript commits at the carrier, with no Muraja engine "
+            "between the decode and the site (`training.truth_scorer`). Correct and mistake "
+            "sides are never pooled.", "",
+            _table(["side", "arm", "commit rate", "committed accuracy",
+                    "decode-flagged / silent corrections", "sites"], truth_rows)]
 
 
 def _commit(record: Mapping) -> list[str]:
@@ -286,9 +333,13 @@ def _match(record: Mapping) -> list[str]:
 
 def _diversity(record: Mapping) -> list[str]:
     diversity = record["look_diversity"]
-    rows = [[arm, _cell(row["words"]), _cell(row["flagged"]),
+    rows = [[arm, _cell(row["words"]), _cell(row["flagged_any_look"]),
              _cell(row["multi_look_share"]), _cell(row["rescue_rate"]),
-             _cell(row["ratchet_gain"])] for arm, row in diversity["qdat"].items()]
+             _cell(row["final_flagged"]), _cell(row["final_flagged_single_decode"]),
+             _cell(row["ratchet_gain"]),
+             _cell((row["ratchet_gain_per_1000_words"] or {}).get("point"))
+             + _interval(row["ratchet_gain_per_1000_words"])]
+            for arm, row in diversity["qdat"].items()]
     ship = [[arm, _cell(row["graded"]), _cell(row["flagged_any"]),
              _cell(row["hidden_catches"]), _cell(row["hidden_rate"])]
             for arm, row in diversity["ship_a"].items()]
@@ -296,10 +347,13 @@ def _diversity(record: Mapping) -> list[str]:
             "Muraja keeps each word's best grade across its looks. A model that is right on every "
             "look has no rescue and no hidden catch; a noisy one has both, so nothing here is a "
             "goal in itself. Rescue rate is the share of qdat words flagged by at least one look "
-            "whose kept grade is correct; ratchet gain is the flagged words under the recorded "
-            "checks minus those under one whole-item decode.", "",
-            _table(["qdat arm", "words", "flagged", "multi-look %", "rescue %", "ratchet gain"],
-                   rows),
+            "whose kept grade is correct. Ratchet gain is the **displayed final** flagged words "
+            "under the recorded checks minus those under one whole-item decode (an any-look flag "
+            "the ratchet rescued is not a flag the reader sees), with the item-clustered paired "
+            "difference per 1,000 words.", "",
+            _table(["qdat arm", "words", "flagged by any look", "multi-look %", "rescue %",
+                    "final flagged", "final flagged (single decode)", "ratchet gain",
+                    "gain / 1,000 words"], rows),
             "Ship A's mistake sites: caught by no look once the ratchet keeps the best grade.", "",
             _table(["arm", "graded", "flagged by any look", "hidden catches", "hidden %"], ship)]
 
@@ -354,11 +408,64 @@ def _exposure(record: Mapping) -> list[str]:
     rows = []
     for model, corpora in exposure["models"].items():
         for corpus, row in corpora.items():
-            rows.append([model, corpus, _cell(row["share"]), _cell(row["exposed"]),
-                         _cell(row["reciters"])])
+            rows.append([model, corpus, f"{row['exposed']}/{row['recordings']}",
+                         _cell(row["share"]),
+                         f"{row['exposed_reciters']}/{row['reciters']}",
+                         _cell(row["reciter_share"])])
+    lineage = ["; ".join(uses) if uses else "outside Tadabur (unknown)"
+               for uses in exposure["lineage"].values()]
     return ["## Exposure", "",
             exposure["rule"] + ".", "",
-            _table(["model", "edit corpus", "reciters exposed %", "exposed", "reciters"], rows)]
+            "Each model's lineage: " + "; ".join(
+                f"**{model}**: {uses}" for model, uses in zip(exposure["lineage"], lineage))
+            + ".", "",
+            _table(["model", "edit corpus", "recordings exposed", "recordings %",
+                    "reciters exposed", "reciters %"], rows)]
+
+
+def _report_only_sets(record: Mapping) -> list[str]:
+    """QUD's unread half, Tarteel v1's confirm half and qdat_bench: report only."""
+    sets = record["sets"]
+    rows = []
+    for name in ("qud_other", "tarteel_v1_confirm"):
+        section = sets[name]
+        for side_name in ("correct_side", "mistake_side"):
+            cell = section[side_name]
+            if cell is None:
+                continue
+            for arm, rates in cell["arms"].items():
+                rows.append([
+                    name, side_name.replace("_side", ""), arm, str(cell["sites"]),
+                    _cell(rates["commit_rate"]["point"]),
+                    _cell(rates["committed_accuracy"]["point"]),
+                    _cell(rates.get("decode_flagged", {}).get("point")
+                          if side_name == "correct_side" else
+                          rates.get("silent_corrections", {}).get("point"))])
+    bench = sets["qdat_bench"]
+    bench_rows = []
+    for arm, kinds in bench["agreement"].items():
+        for kind in ("consonant", "haraka", "shaddah"):
+            row = kinds[kind]
+            bench_rows.append([arm, kind, _cell(100 * row["agreement"]),
+                               f"{row['agree']}/{row['agree'] + row['other'] + row['none']}",
+                               _cell(100 * row["agreement_committed"])])
+    missing = [f"{name}: {', '.join(section['missing_arms'])} has no committed decode"
+               for name, section in sets.items()
+               if isinstance(section, dict) and section.get("missing_arms")]
+    return ["## The report-only sets", "",
+            sets["rule"] + ".", "",
+            *((" ".join(missing) + ".", "") if missing else ()),
+            "QUD's unread half and Tarteel v1's confirm half, decoded at the carrier "
+            "(`training.truth_scorer`: commit rate, committed accuracy, and decode-flagged on the "
+            "correct side or silent corrections on the mistake side):", "",
+            _table(["set", "side", "arm", "sites", "commit rate", "committed accuracy",
+                    "flagged / silent"], rows),
+            "qdat_bench against the experts' transcript, per class (the bench clips are qdat's "
+            f"audio, so the decodes are qdat's; {bench['clips']} clips, "
+            f"{bench['departures']['words']} departure words in "
+            f"{bench['departures']['clips']} clips):", "",
+            _table(["arm", "class", "agreement %", "agree/slots", "committed agreement %"],
+                   bench_rows)]
 
 
 def _notes(record: Mapping) -> list[str]:
@@ -389,10 +496,18 @@ def _notes(record: Mapping) -> list[str]:
             "**The int8 export is a numerics line only.** Its single piece of evidence is the "
             "identity's pinned SHA-256; no int8 decode is committed, compared or used, and no "
             "call in this screen loads it.", "",
-            "**qdat_bench is not read.** Its 159 clips are qdat's own bytes, so their decodes "
-            "are qdat's; only its expert `phonetic_transcript` would add, and that read needs "
-            "the gated Hub token, which lives on cuda-dev. The qdat side scores every model "
-            "against the phonetizer reference over the mushaf, as the other readouts do.", "",
+            "**qdat_bench reads the experts' transcript, not their audio twice.** Its clips are "
+            "qdat's own bytes, so the decodes are the models' qdat decodes; what the corpus adds "
+            "is the expert `phonetic_transcript`, which is read where the gated Hub token is and "
+            "never committed. Only the agreement summary is in this record.", "",
+            "**The report-only sets read one arm per model and name what is missing.** QUD's "
+            "unread half and Tarteel v1's confirm half are scored at the carrier from each arm's "
+            "committed transcript: ours from the app's own per-check decodes, zipformer from its "
+            "single stream, because that is the only store those corpora carry. The round-2 "
+            "candidate has no committed QUD decode, so its QUD arm is named missing rather than "
+            "filled with another model's numbers. Tarteel v1's look half is not read: the "
+            "round-2 candidate never decoded it, and scoring a different population per model "
+            "would not be a comparison.", "",
             "**What the screen cannot separate.** qdat and the benchmark's tlog_holdout carry "
             "zipformer's known text prior (its card admits 39.5% of planted haraka mistakes "
             "reported, and ikhfnaa written on 81 of 94 plain-noon clips); the catch side is "
@@ -405,4 +520,5 @@ def render(record: Mapping) -> str:
     return "\n".join([HEADER, *_verdict(record), *_gates(record), *_sets(record),
                       *_disjointness(record), *_correct(record), *_catch(record),
                       *_commit(record), *_match(record), *_diversity(record), *_compute(record),
-                      *_report_only(record), *_exposure(record), *_notes(record)]).rstrip() + "\n"
+                      *_report_only(record), *_report_only_sets(record), *_exposure(record),
+                      *_notes(record)]).rstrip() + "\n"

@@ -24,7 +24,7 @@ GO = the correct side closes half the gap on qdat and tlog_holdout and the catch
 |---|---|---|---|---|
 | edit_decoys_unchanged | 94.67 | 60.00 | 95.00 | **fail** |
 | edits_heard | 17.33 | 31.33 | 26.33 | **fail** |
-| ship_a_mistakes_flagged | 30.43 | 34.78 | 29.78 | pass |
+| ship_a_mistakes_flagged | 30.67 | 36.00 | 31.00 | **fail** |
 
 Correct side: passes. Catch side: fails.
 
@@ -37,7 +37,7 @@ architect r4); the card gate's two runs stay here as records, not as verdicts.
 |---|---|---|---|---|
 | card_gate_v3_2_baseline | v3.2 (baseline) | baseline | 570/577 (98.79%), minimum 99%; failures: quirk: 4, rule: 3 | phone 3.96, studio 1.25, unseen 4.08 |
 | card_gate_v3_decoder_check | v3 (card) | STOP | 570/577 (98.79%), minimum 99%; failures: quirk: 3, rule: 4 | phone 4.34, studio 1.28, unseen 4.40 |
-| parity | v3.2 fp32 vs sherpa-onnx 2.0.1 | PASS | — | — |
+| parity | v3.2 fp32 vs sherpa-onnx 2.0.1 | PASS (validated) | 577/577 planned clips; 28 canary checks, 0 cuts unresolved, 11 resolved from the reference's frame outputs | phone 177/177, studio 200/200, unseen 200/200 |
 
 **v3** stopped: only 570 of 577 clips (0.9879) re-tokenise to their emitted units, below 0.9900, and 4 of 7 failures register a segmentation the model never emits: the longest-match stand-in is not the card's tokenizer, so no PER against it can be trusted.
 
@@ -84,13 +84,29 @@ Reciter-name screen, per source: everyayah_heldout: 3 EveryAyah reciters, unname
 
 The app outcome, replayed through Muraja's own engine at the shipped default. Zipformer is graded from `checks-w1`, ours from their recorded checks.
 
-| arm | per 1,000 | flagged/graded |
+| arm | false flags / 1,000 | words |
 |---|---|---|
 | base | 29.52 [22.43, 37.35] | 343/11620 |
 | c95 | 58.25 [47.08, 70.95] | 670/11502 |
 | r2_candidate_ema | 37.20 [29.06, 46.26] | 433/11639 |
 | zipformer-checks | 24.38 [18.49, 30.96] | 287/11774 |
 | zipformer-checks-w1 | 20.42 [15.01, 26.45] | 241/11800 |
+
+Split by what the flag is attributed to, on the same words:
+
+| cause | arm | false flags / 1,000 | words |
+|---|---|---|---|
+| consonant | base | 10.67 [7.55, 14.07] | 124/11620 |
+| consonant | c95 | 36.43 [29.25, 44.33] | 419/11502 |
+| consonant | r2_candidate_ema | 19.85 [15.08, 25.25] | 231/11639 |
+| consonant | zipformer-checks | 15.54 [11.57, 19.92] | 183/11774 |
+| consonant | zipformer-checks-w1 | 13.31 [9.59, 17.63] | 157/11800 |
+| tashkeel | base | 8.52 [5.20, 12.46] | 99/11620 |
+| tashkeel | c95 | 11.65 [7.56, 16.45] | 134/11502 |
+| tashkeel | r2_candidate_ema | 7.73 [4.50, 11.39] | 90/11639 |
+| tashkeel | zipformer-checks | 2.80 [1.30, 4.58] | 33/11774 |
+| tashkeel | zipformer-checks-w1 | 1.86 [0.76, 3.18] | 22/11800 |
+
 
 | paired difference | per 1,000 |
 |---|---|
@@ -145,16 +161,63 @@ An edit is heard when the decode spells the label at the carrier; a decoy is lef
 | decoy | r2_candidate_ema | 60.00 [52.00, 68.00] | 90/150 |
 | decoy | zipformer | 94.67 [90.67, 98.00] | 142/150 |
 
+Per operation, because a pooled rate hides an operation a model handles badly:
+
+| operation | role | model | rate % | count |
+|---|---|---|---|---|
+| consonant_swap | edit | base | 18.03 [8.20, 27.87] | 11/61 |
+| consonant_swap | edit | c95 | 27.87 [16.39, 39.34] | 17/61 |
+| consonant_swap | edit | r2_candidate_ema | 21.31 [11.48, 32.79] | 13/61 |
+| consonant_swap | edit | zipformer | 3.28 [0.00, 8.20] | 2/61 |
+| consonant_swap | decoy | base | 50.82 [37.70, 63.93] | 31/61 |
+| consonant_swap | decoy | c95 | 54.10 [40.98, 65.57] | 33/61 |
+| consonant_swap | decoy | r2_candidate_ema | 52.46 [39.34, 63.93] | 32/61 |
+| consonant_swap | decoy | zipformer | 93.44 [86.89, 98.36] | 57/61 |
+| shaddah_added | edit | base | 24.24 [9.09, 39.39] | 8/33 |
+| shaddah_added | edit | c95 | 24.24 [9.09, 39.39] | 8/33 |
+| shaddah_added | edit | r2_candidate_ema | 18.18 [6.06, 33.33] | 6/33 |
+| shaddah_added | edit | zipformer | 15.15 [3.03, 27.27] | 5/33 |
+| shaddah_added | decoy | base | 78.79 [63.64, 90.91] | 26/33 |
+| shaddah_added | decoy | c95 | 78.79 [63.64, 90.91] | 26/33 |
+| shaddah_added | decoy | r2_candidate_ema | 75.76 [60.61, 90.91] | 25/33 |
+| shaddah_added | decoy | zipformer | 96.97 [90.91, 100.00] | 32/33 |
+| shaddah_removed | edit | base | 26.79 [16.07, 39.29] | 15/56 |
+| shaddah_removed | edit | c95 | 51.79 [39.29, 64.29] | 29/56 |
+| shaddah_removed | edit | r2_candidate_ema | 50.00 [37.50, 62.50] | 28/56 |
+| shaddah_removed | edit | zipformer | 33.93 [21.43, 46.43] | 19/56 |
+| shaddah_removed | decoy | base | 55.36 [42.86, 67.86] | 31/56 |
+| shaddah_removed | decoy | c95 | 60.71 [48.21, 73.21] | 34/56 |
+| shaddah_removed | decoy | r2_candidate_ema | 58.93 [46.43, 71.43] | 33/56 |
+| shaddah_removed | decoy | zipformer | 94.64 [87.50, 100.00] | 53/56 |
+
 ### Ship A's mistake sites flagged
 
-On the 46 mistake sites (of 377 sites) in the items the candidate's committed cache holds; the candidate's cache covers 363 of the 512 Ship A items, so 46 of its 75 mistake sites are read.
+On the whole verified population: 75 mistake sites and 410 correct sites of 530 sites, with 45 sites carrying no human verdict and therefore scoring on neither side. C95 sits beside the verdict arms.
 
 | arm | flagged % | flagged/sites |
 |---|---|---|
-| base | 32.61 [19.57, 45.65] | 15/46 |
-| r2_candidate_ema | 34.78 [21.74, 50.00] | 16/46 |
-| zipformer-checks | 30.43 [17.39, 43.48] | 14/46 |
-| zipformer-checks-w1 | 30.43 [17.39, 43.48] | 14/46 |
+| base | 32.00 [21.33, 42.67] | 24/75 |
+| c95 | 34.67 [24.00, 45.33] | 26/75 |
+| r2_candidate_ema | 36.00 [25.33, 46.67] | 27/75 |
+| zipformer-checks | 33.33 [22.67, 44.00] | 25/75 |
+| zipformer-checks-w1 | 30.67 [20.00, 41.33] | 23/75 |
+
+### Ship A: the decode-level truth-site read
+
+What each arm's committed transcript commits at the carrier, with no Muraja engine between the decode and the site (`training.truth_scorer`). Correct and mistake sides are never pooled.
+
+| side | arm | commit rate | committed accuracy | decode-flagged / silent corrections | sites |
+|---|---|---|---|---|---|
+| correct | base | 0.91 | 0.38 | 0.57 | 402 |
+| correct | c95 | 0.92 | 0.35 | 0.60 | 402 |
+| correct | r2_candidate_ema | 0.90 | 0.42 | 0.52 | 402 |
+| correct | zipformer-checks | 0.98 | 0.94 | 0.06 | 402 |
+| correct | zipformer-checks-w1 | 0.86 | 0.90 | 0.09 | 402 |
+| mistake | base | 0.99 | 0.78 | 0.20 | 56 |
+| mistake | c95 | 1.00 | 0.71 | 0.26 | 56 |
+| mistake | r2_candidate_ema | 0.97 | 0.78 | 0.20 | 56 |
+| mistake | zipformer-checks | 0.99 | 0.27 | 0.72 | 56 |
+| mistake | zipformer-checks-w1 | 0.77 | 0.28 | 0.54 | 56 |
 
 ## Commit, empty slots and teacher agreement (step 6)
 
@@ -166,10 +229,10 @@ Step 6's carrier lines, never pooled across the correct and catch sides: the emp
 
 | model | empty haraka slot % | empty sukun slot % | commit rate % | committed accuracy % |
 |---|---|---|---|---|
-| base | 9.25 [8.60, 9.80] (1471/15896) | 99.72 [99.66, 99.78] (20999/21058) | 90.75 [90.20, 91.40] (14425/15896) | 99.95 [99.90, 99.99] (14418/14425) |
-| c95 | 7.95 [7.38, 8.44] (1265/15916) | 99.63 [99.56, 99.70] (21021/21099) | 92.05 [91.56, 92.62] (14651/15916) | 99.85 [99.78, 99.91] (14629/14651) |
-| r2_candidate_ema | 7.78 [7.18, 8.32] (1239/15918) | 99.65 [99.57, 99.73] (21027/21101) | 92.22 [91.68, 92.82] (14679/15918) | 99.91 [99.86, 99.95] (14666/14679) |
-| zipformer | 0.30 [0.20, 0.42] (49/16080) | 99.95 [99.93, 99.98] (21529/21539) | 99.70 [99.58, 99.80] (16031/16080) | 99.94 [99.89, 99.97] (16021/16031) |
+| base | 6.08 [5.62, 6.48] (894/14701) | 99.58 [99.48, 99.67] (13681/13739) | 93.92 [93.52, 94.38] (13807/14701) | 99.96 [99.92, 99.99] (13801/13807) |
+| c95 | 5.29 [4.89, 5.63] (778/14696) | 99.49 [99.38, 99.59] (13742/13813) | 94.71 [94.37, 95.11] (13918/14696) | 99.86 [99.79, 99.92] (13899/13918) |
+| r2_candidate_ema | 5.26 [4.82, 5.65] (779/14811) | 99.49 [99.37, 99.62] (13770/13840) | 94.74 [94.35, 95.18] (14032/14811) | 99.90 [99.85, 99.95] (14018/14032) |
+| zipformer | 0.11 [0.06, 0.16] (17/15992) | 99.95 [99.91, 99.98] (16831/16840) | 99.89 [99.84, 99.94] (15975/15992) | 99.94 [99.90, 99.98] (15966/15975) |
 
 ### The catch side: the 150 edits
 
@@ -177,10 +240,10 @@ Each edit's own labelled reference; 150 items, paired by edit.
 
 | model | empty haraka slot % | empty sukun slot % | commit rate % | committed accuracy % |
 |---|---|---|---|---|
-| base | 10.96 [10.18, 11.72] (649/5924) | 99.61 [99.42, 99.77] (7943/7974) | 89.04 [88.28, 89.82] (5275/5924) | 99.85 [99.74, 99.94] (5267/5275) |
-| c95 | 8.79 [8.10, 9.51] (522/5937) | 99.60 [99.42, 99.76] (7973/8005) | 91.21 [90.49, 91.90] (5415/5937) | 99.82 [99.66, 99.94] (5405/5415) |
-| r2_candidate_ema | 8.97 [8.23, 9.73] (533/5943) | 99.68 [99.52, 99.81] (7978/8004) | 91.03 [90.27, 91.77] (5410/5943) | 99.80 [99.65, 99.92] (5399/5410) |
-| zipformer | 1.08 [0.52, 1.87] (65/6044) | 99.94 [99.87, 99.99] (8208/8213) | 98.92 [98.13, 99.48] (5979/6044) | 99.85 [99.73, 99.95] (5970/5979) |
+| base | 7.31 [6.66, 7.95] (392/5359) | 99.38 [99.06, 99.64] (4941/4972) | 92.69 [92.05, 93.34] (4967/5359) | 99.86 [99.75, 99.96] (4960/4967) |
+| c95 | 5.80 [5.23, 6.38] (313/5394) | 99.36 [99.07, 99.63] (5007/5039) | 94.20 [93.62, 94.77] (5081/5394) | 99.86 [99.73, 99.96] (5074/5081) |
+| r2_candidate_ema | 5.83 [5.20, 6.47] (314/5385) | 99.51 [99.28, 99.70] (5027/5052) | 94.17 [93.53, 94.80] (5071/5385) | 99.88 [99.78, 99.96] (5065/5071) |
+| zipformer | 0.32 [0.17, 0.49] (19/5902) | 99.92 [99.83, 99.98] (6226/6231) | 99.68 [99.51, 99.83] (5883/5902) | 99.90 [99.79, 99.98] (5877/5883) |
 
 ### Teacher agreement (our students only, a clone diagnostic)
 
@@ -198,29 +261,29 @@ single-stream checks matches checks-w1 when the paired 95% interval of the diffe
 | metric | single-stream minus checks-w1 | interval |
 |---|---|---|
 | qdat_false_flags | 3.95 [1.96, 6.13] | excludes 0 |
-| ship_a_catches | 0.00 [-6.52, 6.52] | contains 0 |
+| ship_a_catches | 2.67 [-4.00, 9.33] | contains 0 |
 
 The interval excludes zero: `checks-w1` stands as the fair comparison, at its compute cost below.
 
 ## Look diversity (explanation, never a gate)
 
-Muraja keeps each word's best grade across its looks. A model that is right on every look has no rescue and no hidden catch; a noisy one has both, so nothing here is a goal in itself. Rescue rate is the share of qdat words flagged by at least one look whose kept grade is correct; ratchet gain is the flagged words under the recorded checks minus those under one whole-item decode.
+Muraja keeps each word's best grade across its looks. A model that is right on every look has no rescue and no hidden catch; a noisy one has both, so nothing here is a goal in itself. Rescue rate is the share of qdat words flagged by at least one look whose kept grade is correct. Ratchet gain is the **displayed final** flagged words under the recorded checks minus those under one whole-item decode (an any-look flag the ratchet rescued is not a flag the reader sees), with the item-clustered paired difference per 1,000 words.
 
-| qdat arm | words | flagged | multi-look % | rescue % | ratchet gain |
-|---|---|---|---|---|---|
-| base | 11950 | 3710 | 98.58 | 83.83 | 1853 |
-| c95 | 11890 | 3884 | 97.31 | 74.74 | 1744 |
-| r2_candidate_ema | 11970 | 3215 | 97.89 | 78.82 | 1518 |
-| zipformer-checks | 12011 | 528 | 99.14 | 22.92 | 115 |
-| zipformer-checks-w1 | 12006 | 1590 | 99.57 | 78.49 | 1177 |
-| zipformer-checks-w1-windows | 12011 | 1343 | 99.23 | 72.08 | 930 |
+| qdat arm | words | flagged by any look | multi-look % | rescue % | final flagged | final flagged (single decode) | ratchet gain | gain / 1,000 words |
+|---|---|---|---|---|---|---|---|---|
+| base | 11950 | 3710 | 98.58 | 83.83 | 347 | 1560 | -1213 | -101.51 [-111.85, -91.61] |
+| c95 | 11890 | 3884 | 97.31 | 74.74 | 674 | 1772 | -1098 | -92.35 [-102.74, -82.24] |
+| r2_candidate_ema | 11970 | 3215 | 97.89 | 78.82 | 435 | 1379 | -944 | -78.86 [-88.76, -69.44] |
+| zipformer-checks | 12011 | 528 | 99.14 | 22.92 | 287 | 286 | 1 | 0.08 [-1.01, 1.35] |
+| zipformer-checks-w1 | 12006 | 1590 | 99.57 | 78.49 | 242 | 286 | -44 | -3.66 [-6.14, -1.33] |
+| zipformer-checks-w1-windows | 12011 | 1343 | 99.23 | 72.08 | 256 | 286 | -30 | -2.50 [-4.38, -0.75] |
 
 Ship A's mistake sites: caught by no look once the ratchet keeps the best grade.
 
 | arm | graded | flagged by any look | hidden catches | hidden % |
 |---|---|---|---|---|
-| r2_candidate_ema | 46 | 26 | 10 | 21.74 |
-| zipformer-checks-w1 | 46 | 27 | 13 | 28.26 |
+| r2_candidate_ema | 75 | 43 | 16 | 21.33 |
+| zipformer-checks-w1 | 75 | 42 | 17 | 22.67 |
 
 ## Compute
 
@@ -244,6 +307,7 @@ The timing probe measured 50.86 audio-seconds per wall-second on 20 qdat items a
 | qud-other/decode | 10261 | 86479.70 | 86479.70 | 1872.10 |
 | ship-a/decode | 512 | 5301.30 | 5301.30 | 109.80 |
 | ship-a/w1 | 512 | 5301.30 | 154108.40 | 2760.20 |
+| tarteel/decode | 4413 | 40739.90 | 40739.90 | 1005.00 |
 
 ## Report only: the ratchet-free lines
 
@@ -262,23 +326,60 @@ Ship A's whole-item outcomes (single-decode approximation):
 
 | model | mistake sites flagged | correct sites flagged |
 |---|---|---|
-| base | 15/46 | 153/331 |
-| zipformer | 14/46 | 38/331 |
+| base | 26/75 | 180/410 |
+| zipformer | 25/75 | 48/410 |
+
+## The report-only sets
+
+the sets the cards say zipformer probably trained on are read beside the verdict, never inside it, and each arm's committed transcript is the arm the corpora's own readouts use. qdat_bench's expert transcript is read on the gated Hub and never committed; only its agreement summary is.
+
+qud_other: r2_candidate_ema has no committed decode.
+
+QUD's unread half and Tarteel v1's confirm half, decoded at the carrier (`training.truth_scorer`: commit rate, committed accuracy, and decode-flagged on the correct side or silent corrections on the mistake side):
+
+| set | side | arm | sites | commit rate | committed accuracy | flagged / silent |
+|---|---|---|---|---|---|---|
+| qud_other | correct | base | 102979 | 0.98 | 0.99 | 0.01 |
+| qud_other | correct | c95 | 102979 | 0.99 | 1.00 | 0.00 |
+| qud_other | correct | zipformer-checks | 102979 | 1.00 | 1.00 | 0.00 |
+| tarteel_v1_confirm | correct | base | 53389 | 0.98 | 0.99 | 0.01 |
+| tarteel_v1_confirm | correct | c95 | 53389 | 0.99 | 0.99 | 0.01 |
+| tarteel_v1_confirm | correct | r2_candidate_ema | 53389 | 0.99 | 0.99 | 0.01 |
+| tarteel_v1_confirm | correct | zipformer-checks | 53389 | 1.00 | 1.00 | 0.00 |
+
+qdat_bench against the experts' transcript, per class (the bench clips are qdat's audio, so the decodes are qdat's; 159 clips, 28 departure words in 23 clips):
+
+| arm | class | agreement % | agree/slots | committed agreement % |
+|---|---|---|---|---|
+| base | consonant | 93.67 | 3061/3268 | 98.39 |
+| base | haraka | 90.86 | 2455/2702 | 99.84 |
+| base | shaddah | 90.14 | 329/365 | 91.14 |
+| c95 | consonant | 90.39 | 2954/3268 | 96.13 |
+| c95 | haraka | 88.71 | 2397/2702 | 98.52 |
+| c95 | shaddah | 89.04 | 325/365 | 91.81 |
+| r2_candidate_ema | consonant | 93.70 | 3062/3268 | 98.33 |
+| r2_candidate_ema | haraka | 91.60 | 2475/2702 | 99.28 |
+| r2_candidate_ema | shaddah | 92.05 | 336/365 | 93.59 |
+| zipformer-checks | consonant | 98.65 | 3224/3268 | 99.23 |
+| zipformer-checks | haraka | 98.70 | 2667/2702 | 99.85 |
+| zipformer-checks | shaddah | 97.81 | 357/365 | 97.81 |
 
 ## Exposure
 
-share of the edit set's reciters in the lineage's Tadabur training uses; the teacher (Muaalem) and zipformer trained outside Tadabur, so their exposure is unknown by name, not zero.
+each model's recordings-exposed share of the edit set's source and donor clips, over its full lineage (its round's uses plus the shared-baseline uses it inherited from h448), by the registry's source/alias rule; the reciter share is the weaker name screen, kept beside it. The teacher and zipformer trained outside Tadabur (unknown, not zero). A source or donor clip inside the candidate's lineage confounds the catch-side bar: a caught edit may be a memorised clip, not a caught mistake.
 
-| model | edit corpus | reciters exposed % | exposed | reciters |
-|---|---|---|---|---|
-| base | synthetic_edit.donor | — | — | 22 |
-| base | synthetic_edit.source | — | — | 44 |
-| c95 | synthetic_edit.donor | 100.00 | 22 | 22 |
-| c95 | synthetic_edit.source | 100.00 | 44 | 44 |
-| r2_candidate_ema | synthetic_edit.donor | 100.00 | 22 | 22 |
-| r2_candidate_ema | synthetic_edit.source | 100.00 | 44 | 44 |
-| zipformer | synthetic_edit.donor | — | — | 22 |
-| zipformer | synthetic_edit.source | — | — | 44 |
+Each model's lineage: **base**: outside Tadabur (unknown); **c95**: consonant1.training; h448.init_validation; h448.training; **r2_candidate_ema**: consonant1.training; consonant2.training; h448.init_validation; h448.training; **zipformer**: outside Tadabur (unknown).
+
+| model | edit corpus | recordings exposed | recordings % | reciters exposed | reciters % |
+|---|---|---|---|---|---|
+| base | synthetic_edit.donor | None/77 | — | None/22 | — |
+| base | synthetic_edit.source | None/150 | — | None/44 | — |
+| c95 | synthetic_edit.donor | 77/77 | 100.00 | 22/22 | 100.00 |
+| c95 | synthetic_edit.source | 150/150 | 100.00 | 44/44 | 100.00 |
+| r2_candidate_ema | synthetic_edit.donor | 77/77 | 100.00 | 22/22 | 100.00 |
+| r2_candidate_ema | synthetic_edit.source | 150/150 | 100.00 | 44/44 | 100.00 |
+| zipformer | synthetic_edit.donor | None/77 | — | None/22 | — |
+| zipformer | synthetic_edit.source | None/150 | — | None/44 | — |
 
 ## Notes a reader needs beside the verdict
 
@@ -294,6 +395,8 @@ share of the edit set's reciters in the lineage's Tadabur training uses; the tea
 
 **The int8 export is a numerics line only.** Its single piece of evidence is the identity's pinned SHA-256; no int8 decode is committed, compared or used, and no call in this screen loads it.
 
-**qdat_bench is not read.** Its 159 clips are qdat's own bytes, so their decodes are qdat's; only its expert `phonetic_transcript` would add, and that read needs the gated Hub token, which lives on cuda-dev. The qdat side scores every model against the phonetizer reference over the mushaf, as the other readouts do.
+**qdat_bench reads the experts' transcript, not their audio twice.** Its clips are qdat's own bytes, so the decodes are the models' qdat decodes; what the corpus adds is the expert `phonetic_transcript`, which is read where the gated Hub token is and never committed. Only the agreement summary is in this record.
+
+**The report-only sets read one arm per model and name what is missing.** QUD's unread half and Tarteel v1's confirm half are scored at the carrier from each arm's committed transcript: ours from the app's own per-check decodes, zipformer from its single stream, because that is the only store those corpora carry. The round-2 candidate has no committed QUD decode, so its QUD arm is named missing rather than filled with another model's numbers. Tarteel v1's look half is not read: the round-2 candidate never decoded it, and scoring a different population per model would not be a comparison.
 
 **What the screen cannot separate.** qdat and the benchmark's tlog_holdout carry zipformer's known text prior (its card admits 39.5% of planted haraka mistakes reported, and ikhfnaa written on 81 of 94 plain-noon clips); the catch side is where that shows, and it is why the verdict is read on it.

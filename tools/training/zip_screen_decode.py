@@ -33,7 +33,7 @@ import itertools
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
-from tadabur.audio import decode_to_mono_16k
+from tadabur.audio import decode_to_mono_16k, read_audio_bytes
 from training.aug_readout_gate import model_spec
 from training.aug_readout_spec import CONSONANT2, RoundSpec
 from training.external_decode import (
@@ -112,7 +112,7 @@ def edit_recordings(audio_dir: Path) -> Iterator[Recording]:
             raise ValueError(f"{path} is {found}, not the manifest's {expected}")
 
         def load(item=item, path=path, expected=expected):
-            samples = decode_to_mono_16k(path.read_bytes())
+            samples = decode_to_mono_16k(read_audio_bytes(path))
             return samples, [{
                 "key": item["item_id"], "audio_filename": item["output"]["audio_filename"],
                 "audio_sha256": expected, "operation": item["operation"],

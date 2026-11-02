@@ -94,12 +94,13 @@ def test_the_batch_decodes_every_job_of_every_set_when_the_projection_fits(tmp_p
     # the warm-started verdict arms only on the two sets Muraja's engine grades
     assert set(decoded) == {
         ("benchmark", "decode"), ("edits", "decode"), ("qdat", "decode"), ("qdat", "w1"),
-        ("ship-a", "decode"), ("ship-a", "w1"), ("qud-other", "decode")}
+        ("ship-a", "decode"), ("ship-a", "w1"), ("qud-other", "decode"),
+        ("tarteel", "decode")}
 
 
 def test_a_batch_that_leaves_a_set_without_its_directory_is_refused():
     args = SimpleNamespace(work_dir="fetch", edits_dir=None, qdat_cache="qdat",
-                           ship_a_dir="clips", qud_cache="qud")
+                           ship_a_dir="clips", qud_cache="qud", tarteel_cache="tarteel")
     with pytest.raises(SystemExit):
         screen.directories(args)
 

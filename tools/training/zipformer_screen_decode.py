@@ -85,11 +85,12 @@ EDITS = "edits"
 QDAT = "qdat"
 SHIP_A = "ship-a"
 QUD_OTHER = "qud-other"
+TARTEEL = "tarteel"
 DECODE = "decode"
 W1 = "w1"
 
 #: The sets, in the order the batch decodes them (:data:`JOBS` walks this order).
-SETS = (BENCHMARK, EDITS, QDAT, SHIP_A, QUD_OTHER)
+SETS = (BENCHMARK, EDITS, QDAT, SHIP_A, QUD_OTHER, TARTEEL)
 #: Which stores a set decodes: the per-check arms only on the sets the Muraja harness grades —
 #: qdat's all-cause false flags and Ship A's catches (owner-confirmed amendment 2026-10-31).
 SET_STORES = {
@@ -98,6 +99,7 @@ SET_STORES = {
     QDAT: (DECODE, W1),
     SHIP_A: (DECODE, W1),
     QUD_OTHER: (DECODE,),
+    TARTEEL: (DECODE,),
 }
 STORE_MAPS: dict[str, Mapping[str, Store]] = {DECODE: ZIPFORMER_STORES, W1: ZIPFORMER_W1_STORES}
 
@@ -106,7 +108,7 @@ JOBS = tuple((set_name, store) for set_name in SETS for store in SET_STORES[set_
 #: The flag each set's own source directory arrives by. A set never defaults another's
 #: directory: a wrong one decodes the wrong clips instead of failing.
 SET_DIRECTORY = {BENCHMARK: "work_dir", EDITS: "edits_dir", QDAT: "qdat_cache",
-                 SHIP_A: "ship_a_dir", QUD_OTHER: "qud_cache"}
+                 SHIP_A: "ship_a_dir", QUD_OTHER: "qud_cache", TARTEEL: "tarteel_cache"}
 
 #: The timing probe: qdat items through the verdict arm, and the batch's horizon (AC 6).
 PROBE_ITEMS = 20
@@ -190,6 +192,25 @@ def qdat_recordings(cache_dir: Path) -> Iterator[Recording]:
         yield from dataset_recordings(QDAT_DATASET, shard, cache_dir)
 
 
+def tarteel_recordings(cache_dir: Path) -> Iterator[Recording]:
+    """Tarteel v1's **confirm half**, from the canonical #156 source, shard by shard.
+
+    One half only: the look half is decoded for three of the four compared arms (the round-2
+    candidate never decoded it), so scoring it would silently change the population from model
+    to model. The clips are the split's own ids (:func:`tadabur.tarteel_split.load_split`),
+    streamed from the dataset and deleted per shard, never staged.
+    """
+    from tadabur.nonpro_sources import DATASETS
+    from training.nonpro_decode import recordings as dataset_recordings
+
+    dataset = DATASETS["tarteel_v1"]
+    keep = keep_keys(TARTEEL)
+    for shard in dataset.shards:
+        for recording in dataset_recordings(dataset, shard, cache_dir):
+            if any(key in keep for key in recording.keys):
+                yield recording
+
+
 def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
     """The set's items, from its own source directory."""
     from training import zip_screen_decode
@@ -202,16 +223,25 @@ def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
         return qdat_recordings(directory)
     if set_name == SHIP_A:
         return ship_a_recordings(directory)
+    if set_name == TARTEEL:
+        return tarteel_recordings(directory)
     return qud_recordings(directory)
 
 
 def keep_keys(set_name: str) -> set[str] | None:
-    """The items of a set that are part of it, when its source yields more: QUD's other half."""
-    if set_name != QUD_OTHER:
-        return None
-    from training.consonant_readout import load_qud_complement
+    """The items of a set that are part of it, when its source yields more.
 
-    return load_qud_complement()
+    QUD's unread half, and Tarteel v1's confirm half (the one every compared arm decodes).
+    """
+    if set_name == QUD_OTHER:
+        from training.consonant_readout import load_qud_complement
+
+        return load_qud_complement()
+    if set_name == TARTEEL:
+        from tadabur.tarteel_split import load_split
+
+        return {f"{clip}#0" for clip in load_split()["confirm"]}
+    return None
 
 
 # --- the batch's arithmetic ----------------------------------------------------------------
@@ -261,6 +291,14 @@ def item_lengths(set_name: str) -> list[int]:
         spans = {item_key(site): site.end_sample - site.start_sample
                  for site in load_truth_sites(TRUTH_SITES_DIR / "ship_a_verified.jsonl")}
         return [spans[key] for key in sorted(spans)]
+    if set_name == TARTEEL:
+        from training.nonpro_eval import decodes_file
+        from tadabur.nonpro_sources import DATASETS
+
+        keep = keep_keys(TARTEEL)
+        return [length for length in
+                _decoded_lengths(decodes_file(DATASETS["tarteel_v1"], "base"), keep)]
+
     from tadabur.qud_overlap import PILOT
     from training.qud_pilot import decodes_file
 
@@ -531,6 +569,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--qdat-cache", type=Path, help="qdat's shard cache")
     parser.add_argument("--ship-a-dir", type=Path, help="Ship A's staged clips")
     parser.add_argument("--qud-cache", type=Path, help="QUD's shard cache")
+    parser.add_argument("--tarteel-cache", type=Path, help="Tarteel v1's shard cache")
     parser.add_argument("--probe-record", type=Path, help="the batch's timing-probe record")
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--limit", type=int, help="decode only the first items of one job")

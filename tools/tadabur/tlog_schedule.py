@@ -19,21 +19,31 @@ synthetic seam: they are checked against the count, hash and shard coverage, not
 rows, clips, windows and real-audio seconds of each split, the shards touched, the share of the
 pool and the clean surahs covered, walking the same :func:`interleave_order` the reader uses.
 
+``tools/tadabur/tlog/consumed/`` holds the keys a run consumed -- round 2's, byte for byte
+(``consonant2.jsonl.gz`` beside its ``meta.json``). A later round continues the frozen walk past
+them: :func:`require_walk_prefix` proves the key set is the walk's first rows,
+:func:`tadabur.tlog_pool.iter_training_rows` starts there, and ``plan --after`` reports the next
+prefix with the cumulative surah coverage (#250).
+
 Usage (from ``tools/``)::
 
   python -m tadabur.tlog_schedule build                  # write training_schedule.json
   python -m tadabur.tlog_schedule plan --windows 240000  # write training_prefix.json
+  python -m tadabur.tlog_schedule plan --after tadabur/tlog/consumed/consonant2.jsonl.gz \\
+      --windows 240000 --out /tmp/training_prefix.round3.json
 """
 
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import random
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
@@ -48,9 +58,14 @@ INTERLEAVE_WIDTH = 8
 DEFAULT_PREFIX_WINDOWS = 240_000
 SCHEDULE_PATH = Path(__file__).parent / "tlog" / "training_schedule.json"
 PREFIX_PATH = Path(__file__).parent / "tlog" / "training_prefix.json"
+#: The committed consumed-keys sets (#250): one file per round, beside a ``meta.json``.
+CONSUMED_DIR = Path(__file__).parent / "tlog" / "consumed"
+#: Round 2's consumed keys, the frozen schedule's first 73,990 walk rows.
+CONSONANT2_CONSUMED = CONSUMED_DIR / "consonant2.jsonl.gz"
 
 _FIELDS = frozenset({"seed", "interleave_width", "overlay_commit", "rows_sha256", "count",
                      "shards"})
+_KEY_FIELDS = frozenset({"split", "shard_file", "row"})
 _HEX_40 = re.compile(r"[0-9a-f]{40}")
 _HEX_64 = re.compile(r"[0-9a-f]{64}")
 
@@ -226,6 +241,129 @@ def interleave_order(rows: Iterable[Mapping[str, Any]],
     return interleave_streams(rows_by_shard(rows, schedule), schedule)
 
 
+# --- the walk prefix a later round starts after (#250) -------------------------------------------
+
+Key = tuple[str, str, int]
+
+
+@dataclass(frozen=True)
+class ConsumedPrefix:
+    """The walk rows a run already consumed: a later round starts after them (#250).
+
+    ``keys`` is the set of ``(split, shard_file, row)`` the consumed-keys log holds, ``length``
+    the walk length they cover, and ``line_order_is_walk_order`` whether the log's lines are in
+    the walk's order -- reported, never required: the reader appends as it yields, but a copy
+    may be reordered without changing what was consumed.
+    """
+
+    keys: frozenset[Key]
+    length: int
+    line_order_is_walk_order: bool
+
+
+def read_consumed_keys(path: Path) -> list[Key]:
+    """A consumed-keys log's keys in line order: one ``{"split", "shard_file", "row"}`` object
+    per line and nothing else, which is exactly what the reader appends.
+
+    The walk is rebuilt from the pool and the schedule, never from this file: the file says
+    which rows a run read, and :func:`require_walk_prefix` says whether they are the walk's
+    first rows.
+    """
+    keys: list[Key] = []
+    with gzip.open(Path(path), "rt", encoding="utf-8") as handle:
+        for number, line in enumerate(handle, 1):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"{path}:{number} is not JSON: {error}") from error
+            if not isinstance(record, dict) or set(record) != _KEY_FIELDS:
+                raise ValueError(f"{path}:{number} is not a consumed-keys record: {record!r}")
+            split, shard, row = record["split"], record["shard_file"], record["row"]
+            if (not isinstance(split, str) or split not in TLOG_SPLITS
+                    or not isinstance(shard, str) or not shard
+                    or isinstance(row, bool) or not isinstance(row, int) or row < 0):
+                raise ValueError(f"{path}:{number} is not a consumed key: {record!r}")
+            keys.append((split, shard, row))
+    return keys
+
+
+def consumed_keys_path(path: Path) -> Path:
+    """The committed copy of the consumed-keys file ``path`` names.
+
+    Round 2's keys lived on the box's scratch disk, which is disposable; the repo commits the
+    set a later round continues from (#250), so a training run reads what the repo holds, not
+    what a machine happens to keep. A name the repo does not commit refuses.
+    """
+    committed = CONSUMED_DIR / Path(path).name
+    if not committed.is_file():
+        raise ValueError(f"{path} names no committed consumed-keys file: {committed} is not "
+                         f"in the repo -- copy it there and commit it (#250)")
+    return committed
+
+
+def _walk_head(by_shard: Mapping[tuple[str, str], Sequence[Mapping[str, Any]]],
+               schedule: Schedule, length: int) -> list[Mapping[str, Any]]:
+    """The walk's first ``length`` rows from already-grouped rows; a shorter walk refuses."""
+    head = list(islice(interleave_streams(by_shard, schedule), length))
+    if len(head) != length:
+        raise ValueError(f"the consumed keys name {length} rows but the walk has {len(head)}")
+    return head
+
+
+def _require_walk_keys(keys: Iterable[Key], head: Sequence[Mapping[str, Any]], *,
+                       where: str) -> list[Key]:
+    """Refuse unless ``keys`` is, as a set, exactly ``head``'s keys; return the walk's keys."""
+    from .tlog_pool import row_key
+
+    walked = [row_key(row) for row in head]
+    named, named_walk = frozenset(keys), frozenset(walked)
+    if named != named_walk:
+        absent = sorted(named_walk - named)
+        foreign = sorted(named - named_walk)
+        raise ValueError(f"{where} are not the walk's first {len(head)} rows: "
+                         f"{len(absent)} of the walk's rows are absent (e.g. {absent[:1]}), "
+                         f"{len(foreign)} are not in it (e.g. {foreign[:1]})")
+    return walked
+
+
+def require_walk_prefix(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
+                        schedule: Schedule) -> ConsumedPrefix:
+    """Verify that ``keys`` (in line order) are exactly the walk's first ``len(keys)`` rows.
+
+    The walk is :func:`interleave_order`; its key set, not the line order, must equal the
+    keys'. A duplicate, a key that is not in the prefix, a missing key, a key no row of the
+    pool has, and a file longer than the walk all refuse. ``rows`` must be the schedule's rows:
+    :func:`require_schedule` is the caller's, because this walk is metadata only and never
+    touches a shard.
+    """
+    keys = list(keys)
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"the consumed keys repeat a key: {len(keys)} lines, "
+                         f"{len(set(keys))} distinct")
+    head = _walk_head(rows_by_shard(rows, schedule), schedule, len(keys))
+    walked = _require_walk_keys(keys, head, where="the consumed keys")
+    return ConsumedPrefix(frozenset(keys), len(keys), walked == keys)
+
+
+def require_prefix_by_shard(after: ConsumedPrefix,
+                            by_shard: Mapping[tuple[str, str], Sequence[Mapping[str, Any]]],
+                            schedule: Schedule) -> dict[tuple[str, str], int]:
+    """The reader's re-check of a prefix verified elsewhere, and its per-shard counts.
+
+    ``by_shard`` is the reader's validated grouping (:func:`require_schedule`). A prefix whose
+    key count is not its walk length, or whose keys are not this walk's first rows, refuses
+    here, before a shard is opened: a prefix verified against other rows cannot start this run
+    into rows it already read. The counts are what each shard's stream starts past, so the
+    shards open at the cut continue mid-shard rather than being re-interleaved from scratch.
+    """
+    if len(after.keys) != after.length:
+        raise ValueError(f"the consumed prefix is {after.length} walk rows but holds "
+                         f"{len(after.keys)} keys")
+    head = _walk_head(by_shard, schedule, after.length)
+    _require_walk_keys(after.keys, head, where="the consumed prefix")
+    return dict(Counter(shard_of(row) for row in head))
+
+
 def add_split_row(totals: dict[str, dict[str, int | float]],
                   row: Mapping[str, Any]) -> None:
     """Add one row to a per-split totals map; :func:`split_totals` and the reader's live
@@ -269,7 +407,7 @@ def _clean_surahs(rows: Iterable[Mapping[str, Any]]) -> list[int]:
 
 
 def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, windows: int,
-                use=None) -> dict:
+                use=None, after: ConsumedPrefix | None = None) -> dict:
     """The planned prefix of a run of ``windows`` tlog windows, walking
     :func:`interleave_order`.
 
@@ -278,6 +416,13 @@ def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, window
     windows and real seconds per split, the shards touched, the prefix's share of the pool, and
     the clean surahs covered against the pool's. Surah coverage covers clean rows only: unclean
     rows carry no filename label.
+
+    ``after`` makes the plan a later round's: the walk starts at its first row past
+    ``after.length`` and the window target is counted from that boundary, so the report is what
+    the run reads. It adds the cumulative report -- ``surahs_new`` (the prefix's clean surahs
+    the consumed rows lacked), ``surahs_cumulative`` (consumed plus prefix) and
+    ``share_of_pool_cumulative`` (consumed plus prefix rows over the pool) -- and leaves round
+    2's report untouched. ``after`` must be a verified prefix (:func:`require_walk_prefix`).
 
     :func:`require_schedule` runs first, so a plan is never reported for a schedule the reader
     would refuse: the commit's ``use`` binds the recorded overlay, and the count, hash and shard
@@ -288,16 +433,18 @@ def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, window
     from .tlog_pool import _windows_per_clip
 
     pool = list(rows)
-    require_schedule(schedule, pool, use=use)
+    by_shard = require_schedule(schedule, pool, use=use)
+    walk = interleave_streams(by_shard, schedule)
+    consumed = [] if after is None else _walk_head(by_shard, schedule, after.length)
     taken: list[Mapping[str, Any]] = []
     running = 0
-    for row in interleave_order(pool, schedule):
+    for row in islice(walk, 0 if after is None else after.length, None):
         taken.append(row)
         running += _windows_per_clip(row)
         if running >= windows:
             break
     totals = split_totals(taken)
-    return {
+    report = {
         "target_windows": windows,
         "rows": len(taken),
         "clips": len(taken),
@@ -311,6 +458,14 @@ def plan_prefix(rows: Iterable[Mapping[str, Any]], schedule: Schedule, *, window
         "surahs_covered": _clean_surahs(taken),
         "surahs_in_pool": _clean_surahs(pool),
     }
+    if after is not None:
+        covered = set(report["surahs_covered"])
+        consumed_surahs = set(_clean_surahs(consumed))
+        report["surahs_new"] = sorted(covered - consumed_surahs)
+        report["surahs_cumulative"] = sorted(covered | consumed_surahs)
+        report["share_of_pool_cumulative"] = (
+            (after.length + len(taken)) / len(pool) if pool else 0.0)
+    return report
 
 
 # --- CLI ----------------------------------------------------------------------------------------
@@ -328,16 +483,24 @@ def build(*, schedule_path: Path = SCHEDULE_PATH) -> Schedule:
 
 
 def plan(*, windows: int = DEFAULT_PREFIX_WINDOWS, schedule_path: Path = SCHEDULE_PATH,
-         prefix_path: Path = PREFIX_PATH) -> dict:
+         prefix_path: Path = PREFIX_PATH, after: Path | None = None) -> dict:
     """The committed schedule's planned prefix, written to ``prefix_path``.
 
     The schedule is bound to the committed use before the report is written: a schedule for
     another overlay, or one whose count, hash or shards are not the pool's, refuses.
+
+    ``after`` is a consumed-keys log read as given (this planner runs on any machine's copy) and
+    verified as the walk's first rows before anything is written, so a keys file that is not a
+    prefix never produces a report.
     """
     from .tlog_pool import load_training_rows, training_use
 
-    report = plan_prefix(load_training_rows(), read_schedule(schedule_path), windows=windows,
-                         use=training_use())
+    rows = load_training_rows()
+    schedule = read_schedule(schedule_path)
+    prefix = None
+    if after is not None:
+        prefix = require_walk_prefix(read_consumed_keys(after), rows, schedule)
+    report = plan_prefix(rows, schedule, windows=windows, use=training_use(), after=prefix)
     write_json(report, Path(prefix_path))
     return report
 
@@ -351,7 +514,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     plan_ = commands.add_parser("plan", help="write the planned prefix of a window target")
     plan_.add_argument("--windows", type=int, default=DEFAULT_PREFIX_WINDOWS)
     plan_.add_argument("--schedule-path", type=Path, default=SCHEDULE_PATH)
-    plan_.add_argument("--prefix-path", type=Path, default=PREFIX_PATH)
+    plan_.add_argument("--prefix-path", "--out", dest="prefix_path", type=Path,
+                       default=PREFIX_PATH)
+    plan_.add_argument("--after", type=Path,
+                       help="a consumed-keys log to start after (e.g. "
+                       "tadabur/tlog/consumed/consonant2.jsonl.gz): the plan is then the next "
+                       "prefix past its walk rows, with the cumulative report (#250)")
     args = parser.parse_args(argv)
     if args.command == "build":
         schedule = build(schedule_path=args.schedule_path)
@@ -361,7 +529,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                   "schedule_sha256": sha256_file(Path(args.schedule_path))}
     else:
         result = plan(windows=args.windows, schedule_path=args.schedule_path,
-                      prefix_path=args.prefix_path)
+                      prefix_path=args.prefix_path, after=args.after)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
 
 

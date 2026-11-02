@@ -13,8 +13,9 @@ decoded whole by the teacher, C95 and round 2's EMA candidate into ``checks`` an
 ``--parts-dir``. A shard's clips are fetched once before its first row, and the worker decodes
 shard by shard while the batch's budget lasts.
 
-``run`` is the preemptible driver for either phase: :func:`tadabur.tlog_mining.give_way.run_give_way`
-takes the GPU lock non-blocking for one batch at a time, and each batch spawns the workers that
+``run`` is the preemptible driver for either phase:
+:func:`tadabur.tlog_mining.give_way.run_give_way` takes the GPU lock non-blocking for one batch at
+a time, and each batch spawns the workers that
 still have rows to do. The PAUSE file and the disk/RAM floors stop it at a batch boundary. It
 exits 3 when a gate stopped it (a pause is deliberate — ``resume`` clears it and reruns) and 0
 when no row is left.
@@ -167,6 +168,7 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
         return share
     canonical = {item_key(row["audio_path"]): row for row in share}
     listed = read_jsonl(args.worklist)
+    noun = "mined" if args.phase == PHASE_B else "gating"
     seen = set()
     for row in listed:
         key = item_key(row["audio_path"])
@@ -174,8 +176,8 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
             raise ValueError(f"{key} appears twice in {args.worklist}")
         seen.add(key)
         if key not in canonical:
-            raise ValueError(f"{key} is not a {_row_noun(args.phase)} row of {args.role} "
-                             f"worker {args.shard_index}/{args.shard_count}")
+            raise ValueError(f"{key} is not a {noun} row of {args.role} worker "
+                             f"{args.shard_index}/{args.shard_count}")
         if row != canonical[key]:
             raise ValueError(f"{key}: the worklist is not the committed manifest row")
     return listed
@@ -227,10 +229,6 @@ def _launch_rows(args: argparse.Namespace) -> dict[str, list[dict]]:
                 for role in PHASE_B_TRANCHES}
     _write_listings(selected, args)
     return {role: decodable for role, (decodable, _) in selected.items()}
-
-
-def _row_noun(phase: str) -> str:
-    return "mined" if phase == PHASE_B else "gating"
 
 
 def _tranches(phase: str) -> tuple[str, ...]:

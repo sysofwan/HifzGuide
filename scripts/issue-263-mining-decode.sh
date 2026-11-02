@@ -90,7 +90,8 @@ require_phase() {  # <phase>
   case "$1" in
     A) ;;
     B) require_amendment ;;
-    C) die "phase C is not runnable here: it waits for round 3's verdict and its committed live/EMA choice (phases A and B only)" ;;
+    C) die "phase C is not runnable here: it waits for round 3's verdict and its committed \
+live/EMA choice (phases A and B only)" ;;
     *) die "unknown phase $1: this launcher runs phase A and phase B only" ;;
   esac
 }
@@ -98,7 +99,8 @@ require_phase() {  # <phase>
 require_amendment() {
   local found
   git cat-file -e "HEAD:$AMENDMENT" 2>/dev/null \
-    || die "$AMENDMENT is not committed at HEAD: phase B needs the mining amendment at its pinned SHA-256"
+    || die "$AMENDMENT is not committed at HEAD: phase B needs the mining amendment at its \
+pinned SHA-256"
   found=$(git show "HEAD:$AMENDMENT" | PYTHONPATH="$CODE_TOOLS" python -c '
 import hashlib, sys
 from tadabur.tlog_mining.selection import MINING_AMENDMENT_SHA256
@@ -106,7 +108,8 @@ found = hashlib.sha256(sys.stdin.buffer.read()).hexdigest()
 print("" if found == MINING_AMENDMENT_SHA256 else found)
 ') || die "the pinned amendment SHA-256 in $CODE_TOOLS cannot be read: phase B refuses"
   [ -z "$found" ] \
-    || die "$AMENDMENT at HEAD is $found, not the pinned SHA-256: phase B needs slice 1's amendment pinned"
+    || die "$AMENDMENT at HEAD is $found, not the pinned SHA-256: phase B needs slice 1's \
+amendment pinned"
 }
 
 require_committed() {  # <path>
@@ -271,7 +274,8 @@ status() {  # [phase]
       ;;
     0)
       echo "done: exit 0"
-      ssh "$HOST" "grep -E '^(stopped=|look:|confirm|base:|c95:|r2_|label sources:|unphonetizable:)' \
+      ssh "$HOST" "grep -E \
+        '^(stopped=|look:|confirm\\.|base:|c95:|r2_|label sources:|unphonetizable:)' \
         '$LOGS/run.out' || true"
       ;;
     3)

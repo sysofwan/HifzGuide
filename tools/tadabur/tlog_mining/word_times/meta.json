@@ -1,0 +1,40 @@
+{
+ "code_sha": "469ab906955a651a726e3eeac4f3f09098eae0bd",
+ "pull_request": 263,
+ "pull_request_ref": "refs/pull/263/head",
+ "teacher": {
+  "fingerprint": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "whole-spans",
+   "model": "obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "identity": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  }
+ },
+ "tranches": {
+  "confirm.1": {
+   "aligned": 2755,
+   "fallback": 88,
+   "fallback_rate": 0.03095321843123461,
+   "rows": 2843
+  },
+  "confirm.2": {
+   "aligned": 2820,
+   "fallback": 99,
+   "fallback_rate": 0.03391572456320658,
+   "rows": 2919
+  },
+  "look": {
+   "aligned": 2767,
+   "fallback": 86,
+   "fallback_rate": 0.030143708377146864,
+   "rows": 2853
+  }
+ }
+}

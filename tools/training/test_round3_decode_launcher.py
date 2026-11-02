@@ -338,11 +338,11 @@ def _box_run_env(tmp_path: Path, choice: str | None, *, timeout_body: str = "exi
     """The box's shell shape for ``run``: no ``python`` on PATH until the conda env is
     activated, and a ``timeout`` stub in place of the decode phase (nothing decodes here)."""
     root = tmp_path / "issue"
-    (root / "repo" / "readout").mkdir(parents=True)
+    (root / "repo" / "readout").mkdir(parents=True, exist_ok=True)
     if choice is not None:
         (root / "repo" / "readout" / "choice.json").write_text(choice, encoding="utf-8")
     prefix = tmp_path / "env"
-    (prefix / "bin").mkdir(parents=True)
+    (prefix / "bin").mkdir(parents=True, exist_ok=True)
     _mock(prefix / "bin" / "python",
           f'#!/bin/sh\ntouch "{tmp_path / "activated"}"\nexec "{sys.executable}" "$@"\n')
     conda_script = tmp_path / "conda.sh"
@@ -350,7 +350,7 @@ def _box_run_env(tmp_path: Path, choice: str | None, *, timeout_body: str = "exi
         conda_script.write_text(f'conda() {{ PATH="{prefix}/bin:$PATH"; export PATH; }}\n',
                                 encoding="utf-8")
     bindir = tmp_path / "run-bin"
-    bindir.mkdir()
+    bindir.mkdir(parents=True, exist_ok=True)
     _mock(bindir / "timeout",
           f'#!/bin/sh\nprintf "%s" "$MODELS" > "{tmp_path / "models"}"\n{timeout_body}\n')
     return {**os.environ, "PATH": f"{bindir}:/usr/bin:/bin", "CONDA": str(conda_script),

@@ -42,7 +42,8 @@ import pytest
 
 from tadabur import tlog_eval_decode as ted
 from tadabur.test_tlog_eval_confirm import SHARDS, _claim, _lines, _manifests, _rows
-from tadabur.test_tlog_eval_decode import BASE_REVISION, PINNED_SHA256, _write_jsonl
+from tadabur.test_tlog_eval_decode import (BASE_REVISION, PINNED_SHA256, _manifest_row,
+                                           _write_jsonl)
 from training import aug_readout_gate as ag
 from training import aug_readout_spec as asp
 from training import round2_fixtures as fx
@@ -380,8 +381,15 @@ def test_a_confirm_decode_reads_only_the_spec_s_tranches(tmp_path, chosen, monke
 MODELS = ("base", "c95")
 
 
+#: Each tranche's clips are its own: real tranches share no clip, so the pooled merge's
+#: clip-disjointness check applies to round 3 exactly as it does to round 2.
+CLIP_NAMES = {"confirm.3": "2_1_{row}.flac", "confirm.4": "2_2_{row}.flac"}
+
+
 def _r3_manifests() -> dict[str, list[dict]]:
-    return {role: [dict(row) for row in _rows(role) if row["stratum"] == "gating"]
+    return {role: [_manifest_row(row, shard_file=SHARDS[role],
+                                 audio_path=CLIP_NAMES[role].format(row=row))
+                   for row in (1, 2, 3)]
             for role in TRANCHES}
 
 
@@ -442,6 +450,17 @@ def test_the_round_3_merge_refuses_a_model_that_misses_repeats_or_adds_a_row(
     with pytest.raises(ValueError, match="c95"):
         ted.merge_confirm_decodes(parts, tmp_path / "decodes", manifests=manifests,
                                   provenance={}, models=MODELS, spec=ROUND3)
+
+
+def test_the_round_3_merge_refuses_a_clip_in_both_tranches(tmp_path):
+    manifests = _r3_manifests()
+    manifests["confirm.4"] = [dict(manifests["confirm.3"][0], shard_file=SHARDS["confirm.4"]),
+                              *manifests["confirm.4"]]
+    with pytest.raises(ValueError, match="both"):
+        ted.merge_confirm_decodes(_r3_parts(tmp_path, manifests), tmp_path / "decodes",
+                                  manifests=manifests, provenance={}, models=MODELS,
+                                  spec=ROUND3)
+    assert not (tmp_path / "decodes").exists() or not list((tmp_path / "decodes").iterdir())
 
 
 def test_round_2_s_merge_still_refuses_round_3_s_tranches(tmp_path):

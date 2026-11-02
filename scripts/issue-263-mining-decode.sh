@@ -362,8 +362,12 @@ run() {  # [--resume] [--phase A|B]
     esac
     shift
   done
-  require_phase "$phase"
+  # Phase B's amendment check reads HEAD of the *staged* clone on the box (and of the caller's
+  # worktree on the Mac side), so the phase is read from inside the repository, not the ssh
+  # session's home directory.
   phase_dirs "$phase"
+  cd "$ROOT/repo" || die "the box's clone $ROOT/repo is missing: stage the repository first"
+  require_phase "$phase"
   # A signal's EXIT trap reads the last command's status, so translate TERM and INT here.
   trap 'exit 143' TERM
   trap 'exit 130' INT

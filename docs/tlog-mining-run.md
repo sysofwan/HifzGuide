@@ -66,8 +66,9 @@ Two attempts were needed. **The first aborted on its own memory, not round 3's:*
   `torch.OutOfMemoryError` inside `wav2vec2_bert` self-attention: "this process has 5.97 GiB …
   Process 725252 has 8.85 GiB … total capacity 15.48 GiB", and the parent raised
   `confirm.2 worker 1 exited 1`. It had written **8,029 of the 8,615 rows**; the resume wrote the
-  other 586, and 105 of the first attempt's confirm.2 rows are the crashed worker's — the batch
-  it died in never printed a `wrote` line, which is why the logged counts sum 105 short.
+  other 586, and the first attempt's `wrote` lines sum 396 short of 8,029 — 291 confirm.1 rows
+  from a batch the parent reaped at its deadline without terminal lines, and 105 confirm.2 rows
+  from the crashed worker — so the split cannot be read off the lines alone.
 - **#272** (`469ab90`, merged 15:11:55Z) sizes the whole-clip workers from the card's free
   memory and caps the count (`WORKER_VRAM_MIB = 9500`); it changes how many clips are in
   flight, never how one is aligned. The resume restaged the box at `469ab90` (15:20:37Z),
@@ -75,23 +76,23 @@ Two attempts were needed. **The first aborted on its own memory, not round 3's:*
   key: the remaining **586 rows** in two worker batches (`wrote 410`, then `wrote 176,
   done=True`), 15:20:38Z → 15:29:06Z, exit 0, then the merge.
 
-The split is read from the workers' own `wrote` lines, never from part-file mtimes: parts are
-appended across attempts, so a file modified during the resume also holds rows the first attempt
-wrote. Summing the lines, the first attempt wrote 2,853 look + 2,843 confirm.1 + 2,333 confirm.2
-rows, and the resume the last 586; together the 8,615 records the merge requires.
+The split comes from the final totals, not from part-file mtimes (parts are appended across
+attempts) or a line sum: 8,615 records minus the resume's two logged batches. Per tranche the
+first attempt held 2,853 look rows, 2,843 confirm.1 and 2,333 confirm.2 (2,919 − 586).
 
 **GPU time.** The resumed attempt's line is the measured one: `batches=3 gpu_seconds=431
 yielded_seconds=60` — 0.12 GPU-h held and 60 s yielded, against 508 s wall, for 586 rows. The
-aborted attempt's line was lost with the crash, so its time is reconstructed from the batch
-cadence, not from a throughput ratio: it ran 13 worker batches — look 1, confirm.1 7, confirm.2
-5 — of which 10 stopped at the 300 s batch budget (`BATCH_SECONDS`: six confirm.1 and four
-confirm.2 batches), and three ended early (look's single batch, confirm.1's last, both
-`done=True`, and confirm.2's crashed one). The budget-limited
-batches alone are ≈ 3,000–3,100 s; the three early ones add at most 310 s each. **Total
-≈ 3.4–4.5 k lock-held seconds ≈ 0.95–1.24 GPU-h, best estimate ≈ 1.1 GPU-h**, so the
-pre-registration's ≲ 1 GPU-h estimate was slightly optimistic. Wall time was ≈ 84 min across
-both attempts (75.6 min before the abort, 8.5 min after). These are lock-held seconds rather
-than pure compute: clip fetches inside a batch count too.
+aborted attempt's line was lost with the crash, so only a bound is recoverable. Its batches are
+counted from the 28 teacher-load starts before the resume marker: **14 `P=2` worker
+batches — look 1, confirm.1 8, confirm.2 5**. Twelve stopped at the 300 s budget (`BATCH_SECONDS`:
+seven confirm.1, five confirm.2, including the OOM batch, whose surviving worker printed
+`wrote 426, done=False`); look's single batch and confirm.1's last finished early (`done=True`).
+The first attempt therefore held between 3,600 s (twelve full budgets) and 4,340 s (fourteen at
+the 310 s deadline ceiling). With the measured 431 s, **the total is 4,030–4,770 lock-held
+seconds ≈ 1.12–1.33 GPU-h** — a bound, not a measurement, and the pre-registration's ≲ 1 GPU-h
+estimate was optimistic. Wall time was ≈ 84 min across both attempts (75.6 min before the
+abort, 8.5 min after). These are lock-held seconds rather than pure compute: clip fetches
+inside a batch count too.
 
 **Time yielded to round 3.** 60 s measured — 12% of the resumed run's held-plus-yielded 491 s.
 The 15:03:25Z–15:20:38Z window was a dead run, not a yield, and round 3's smoke gate used it
@@ -115,7 +116,9 @@ revision and is checked against the row's checksum.
   under #272, the measured and estimated GPU time, and the 60 s yielded to round 3.
 - 2026-11-02: the row split and the GPU reconstruction corrected after review. The earlier
   attempt values (6,819 / 1,796) came from part-file mtimes, which do not partition attempts
-  because parts are appended to; the workers' `wrote` lines give 8,029 / 586. The GPU estimate
-  now reconstructs the aborted attempt from its batch cadence instead of scaling a throughput
-  ratio from those counts. `meta.json` no longer records issue #263 as a pull request, and the
-  dataset revision's location is stated.
+  because parts are appended to; the final totals give 8,029 / 586. `meta.json` no longer
+  records issue #263 as a pull request, and the dataset revision's location is stated.
+- 2026-11-02: second review correction. The batch count rises to 14 (one confirm.1 batch was
+  reaped without terminal `wrote` lines, so its 291 rows are not in the log sums), and the
+  first attempt is now reported as a 3,600–4,340 s bound rather than a point estimate; the OOM
+  batch also ran to its budget.

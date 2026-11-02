@@ -187,15 +187,23 @@ def freeze_doc_path(spec: RoundSpec) -> Path:
     return spec.freeze_doc_path
 
 
+def tlog_freeze_module(spec: RoundSpec):
+    """The tlog round's freeze module: round 2's cause split and informative power line, or
+    round 3's power rule and known exclusions. Each owns its record and its doc."""
+    from training import consonant2_readout, consonant3_readout
+    from training.aug_readout_spec import CONSONANT3
+
+    return consonant3_readout if spec.name == CONSONANT3.name else consonant2_readout
+
+
 def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) -> dict:
     """A model's cause split and top substitutions on the **look** half, for the freeze command's
     dry run: it grades and prints, and writes nothing. A round that reads the tlog tranches
-    refuses without its committed pre-registration before grading anything."""
+    refuses without its committed pre-registration before grading anything; its dry run prints
+    the whole record instead of one model's summary."""
     _require_look(half)
     if tlog_round(spec):
-        from training.consonant2_readout import run_freeze as tlog_freeze
-
-        return tlog_freeze(spec, sources, model)
+        return tlog_freeze_module(spec).run_freeze(spec, sources, model)
     model = model or spec.baseline
     data = sources.tarteel(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
@@ -327,10 +335,9 @@ def write_freeze(sources, half: str, path: Path | None = None, doc_path: Path | 
     if path.exists():
         raise SystemExit(f"{path.name} exists: the freeze is fixed")
     if tlog_round(spec):
-        from training import consonant2_readout as round2
-
-        record = round2.freeze_record(sources, spec)
-        render = round2.render
+        module = tlog_freeze_module(spec)
+        record = module.freeze_record(sources, spec)
+        render = module.render
     else:
         from training.consonant_freeze_doc import render
 
@@ -1024,10 +1031,10 @@ def main() -> None:
                   f"{freeze_doc_path(specification)}: {len(record['substitutions'])} G5 "
                   f"substitutions, {record['items']} clips")
     elif args.command == "doc":
-        from training import consonant2_readout, consonant_freeze_doc
+        from training import consonant_freeze_doc
 
         specification = round_spec(args.spec)
-        render = (consonant2_readout.render if tlog_round(specification)
+        render = (tlog_freeze_module(specification).render if tlog_round(specification)
                   else consonant_freeze_doc.render)
         path, doc_path = freeze_path(specification), freeze_doc_path(specification)
         write_text_atomically(doc_path, render(json.loads(path.read_text(encoding="utf-8"))))

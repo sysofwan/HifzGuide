@@ -31,8 +31,9 @@ def test_95_and_the_consonant_round_are_two_specs_over_one_pipeline():
             "tadabur_dev_unseen", "ship_a_verified"} <= set(con.sets)
     assert "retasy" not in con.sets  # descriptive only for this round (#171)
     assert asp.spec("consonant2").baseline == "c95"  # round 2 exists (#227)
+    assert asp.spec("consonant3").baseline == "c95"  # round 3 exists (#251)
     with pytest.raises(KeyError):
-        asp.spec("consonant3")
+        asp.spec("consonant4")
 
 
 def test_the_consonant_spec_pins_muraja_and_the_harness():

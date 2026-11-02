@@ -36,7 +36,6 @@ from training.aug_readout_spec import (C95, CONSONANT2_ROOT, EMA, R2, R2_ARM_PRE
                                        TLOG_LOOK, RoundSpec, check_pins)
 from training.consonant2_readout import DAL_TA
 from training.muraja_policy import SHIPPED_DEFAULT
-from training.truth_baseline import CHECK_STORE
 
 #: Round 2's committed artifacts: its report and freeze give ρ, its freeze fixes the look
 #: exclusions and G5's list this round must reproduce, its models give G6 the EMA's identity.
@@ -50,6 +49,8 @@ FREEZE_MODELS = (C95, R2, BASE)
 FREEZE_LABELS = {C95: "C95", R2: "round 2 EMA", BASE: "teacher"}
 #: The models every power-rule SE pairs: round 2's EMA against C95.
 POWER_MODELS = (R2, C95)
+#: The non-tlog sets G1, G2 and G3 read, from round 2's committed decodes.
+GUARD_SETS = ("qdat", "qud_other", "tadabur_dev_unseen")
 #: The command that writes the freeze; recorded in the artifact for the PR's command log.
 FREEZE_COMMAND = "python -m training.consonant_readout freeze --spec consonant3 --half look"
 RULE = ("C95's and round 2's EMA's tlog look gating false flags per 1,000 graded words by "
@@ -286,15 +287,33 @@ def g5_se(grades: Sequence, rows: Sequence[Mapping]) -> list[dict]:
 
 
 def freeze_inputs(sources) -> list[Path]:
-    """Every committed file the freeze reads: the look set's three decodes, the tranche
-    manifest that selects its rows, both truth-baseline check caches G6 reads, and round 2's
-    ``models.json`` identity."""
-    from tadabur.tlog_tranches import TRANCHES_DIR
+    """Every committed file the freeze's decision reads: the look set's three decodes and its
+    tranche manifest; G1–G3's six readout decodes with every committed baseline, frozen QUD
+    half and Tadabur grid/manifest their populations come from (the qdat_bench experts'
+    transcripts are read from the pinned dataset revision, not a local file); ρ's two round-2
+    artifacts; G6's identity record and both truth-baseline caches (:func:`catch_required`). A
+    changed one of any of these changes the record's `inputs`."""
+    from tadabur.exposure import EVALSET_MANIFEST_PATH
+    from tadabur.nonpro_sources import QDAT
+    from tadabur.qud_overlap import PILOT
+    from training.aug_readout_gate import BASELINES
+    from training.consonant_readout import QUD_SELECTION_PATH, catch_required
+    from training.nonpro_eval import decodes_file as committed
+    from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
+    from training.qud_pilot import decodes_file as qud_committed
 
-    return [*(sources.decode_path(TLOG_LOOK, model) for model in FREEZE_MODELS),
-            TRANCHES_DIR / f"{LOOK}.jsonl",
-            *(CHECK_STORE.directory / f"{model}.json" for model in (ROUND2_EMA, C95)),
-            ROUND2_MODELS_PATH]
+    return [
+        *(sources.decode_path(TLOG_LOOK, model) for model in FREEZE_MODELS),
+        sources.tranches_dir / f"{LOOK}.jsonl",
+        *(sources.decode_path(name, model) for name in GUARD_SETS for model in POWER_MODELS),
+        committed(QDAT, BASE),
+        *(qud_committed(slug, model) for slug in PILOT for model in BASELINES),
+        QUD_SELECTION_PATH,
+        *(GAP_DECODES / f"clean.{model}.jsonl.gz" for model in BASELINES),
+        GRID_PATH, EVALSET_MANIFEST_PATH,
+        ROUND2_REPORT_PATH, ROUND2_FREEZE_PATH, ROUND2_MODELS_PATH,
+        *catch_required((ROUND2_EMA, C95)),
+    ]
 
 
 def _require_round2_exclusions(excluded: Mapping[str, str | None]) -> None:

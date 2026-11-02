@@ -438,3 +438,25 @@ def test_round_2_s_freeze_command_still_takes_its_own_dry_run(monkeypatch, tmp_p
                                       "--half", "look", "--dry-run"])
     cr.main()
     assert json.loads(capsys.readouterr().out)["model"] == "c95"
+
+
+# --- the inputs the decision reads ---------------------------------------------------------------
+
+
+def test_the_inputs_fingerprint_every_source_the_power_rule_reads(run):
+    """R1.1: ρ's artifacts, the guard sets' decodes and G6's decode caches decide the freeze, so
+    each of them is in the record's ``inputs``."""
+    record = run.write()
+    expected = [run.c3.ROUND2_REPORT_PATH, run.c3.ROUND2_FREEZE_PATH, run.c3.ROUND2_MODELS_PATH,
+                *(run.sources.decode_path(name, model)
+                  for name in run.c3.GUARD_SETS for model in run.c3.POWER_MODELS),
+                *(CHECK_STORE.directory / f"{m}.json" for m in ("r2_candidate_ema", "c95"))]
+    assert ag.digests(expected).items() <= record["inputs"].items()
+
+
+def test_changing_a_power_rule_source_moves_its_recorded_digest(run):
+    before = ag.digests(run.c3.freeze_inputs(run.sources))
+    run.c3.ROUND2_REPORT_PATH.write_text('{"main": {}}\n', encoding="utf-8")
+    after = ag.digests(run.c3.freeze_inputs(run.sources))
+    name = ag.input_name(run.c3.ROUND2_REPORT_PATH)
+    assert before[name] != after[name]

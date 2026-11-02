@@ -9,7 +9,7 @@ never reinterpreted, by :mod:`training.aug_readout_verdict`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from collections.abc import Mapping
 
@@ -20,14 +20,18 @@ from training.external_decode import ModelSpec
 AUG95_ROOT = Path(__file__).parent.parent / "tadabur" / "aug_readout"
 CONSONANT_ROOT = Path(__file__).parent.parent / "tadabur" / "consonant_readout"
 CONSONANT2_ROOT = Path(__file__).parent.parent / "tadabur" / "consonant2_readout"
+CONSONANT3_ROOT = Path(__file__).parent.parent / "tadabur" / "consonant3_readout"
 DOCS_DIR = Path(__file__).parent.parent.parent / "docs"
 PREREG_PATH = DOCS_DIR / "consonant-round-preregistration.md"
 CONSONANT2_PREREG_PATH = DOCS_DIR / "consonant-round2-preregistration.md"
+CONSONANT3_PREREG_PATH = DOCS_DIR / "consonant-round3-preregistration.md"
 AUG95_DOC_PATH = DOCS_DIR / "augmentation-readout.md"
 CONSONANT_DOC_PATH = DOCS_DIR / "consonant-round-readout.md"
 CONSONANT2_DOC_PATH = DOCS_DIR / "consonant-round2-readout.md"
+CONSONANT3_DOC_PATH = DOCS_DIR / "consonant-round3-readout.md"
 CONSONANT_FREEZE_DOC_PATH = DOCS_DIR / "consonant-round-freeze.md"
 CONSONANT2_FREEZE_DOC_PATH = DOCS_DIR / "consonant-round2-freeze.md"
+CONSONANT3_FREEZE_DOC_PATH = DOCS_DIR / "consonant-round3-freeze.md"
 
 MURAJA_COMMIT = "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
 HARNESS_SHA256 = "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b"
@@ -54,6 +58,8 @@ R2_CONTROL_REF = "/root/scratch/issue-223/runs/consonant2_control/checkpoint.pt"
 R2_CONTROL_SHA256 = "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c20473"
 #: The prefix of the arms' decode names: ``r2_<arm>_<weights>`` (#227).
 R2_ARM_PREFIX = "r2_"
+#: Round 3's own prefix: ``r3_<arm>_<weights>`` (#251).
+R3_ARM_PREFIX = "r3_"
 
 
 @dataclass(frozen=True)
@@ -100,6 +106,10 @@ class RoundSpec:
     #: (``h448``, the teacher) are committed elsewhere and added on Tadabur, as #95 does.
     students: tuple[str, ...] = (CANDIDATE, CONTROL)
     bars: Mapping[str, float] = field(default_factory=dict)
+    #: A bar the round registered at one margin and kept, by a dated amendment, only as a
+    #: reported row: ``bar name -> (registered margin, amendment)``. The effective margin is
+    #: always ``bars[name]``; the freeze prints the rejected registered row beside it.
+    registered_margins: Mapping[str, tuple[float, str]] = field(default_factory=dict)
     models: Mapping[str, ModelIdentity] = field(default_factory=dict)
     #: This round's own readout directory: its decodes, manifests, choice and results live here,
     #: never in another round's, whose committed decodes stay immutable (#175 review R1.1).
@@ -241,7 +251,51 @@ CONSONANT2 = RoundSpec(
     g3_reported_kinds=("shaddah",),
     freeze_doc_path=CONSONANT2_FREEZE_DOC_PATH)
 
-SPECS = {AUG95.name: AUG95, CONSONANT1.name: CONSONANT1, CONSONANT2.name: CONSONANT2}
+#: Round 2's candidate at its averaged weights: round 3's context column, read from round 2's
+#: committed decodes (#251).
+R2 = "r2"
+
+#: The non-tlog sets round 2's pre-claim read round 2's own arms on: round 3 reads round 2's
+#: committed EMA decodes of them, never a copy.
+R2_NON_TLOG_SETS = ("qdat", "qud_other", "tadabur_dev_unseen")
+
+CONSONANT3 = replace(
+    CONSONANT2,
+    name="consonant3", issue=251, root=CONSONANT3_ROOT,
+    title="The round-3 consonant round's readout (#251)",
+    doc_path=CONSONANT3_DOC_PATH,
+    prereg_path=CONSONANT3_PREREG_PATH,
+    freeze_doc_path=CONSONANT3_FREEZE_DOC_PATH,
+    #: Round 3 has no control arm; its students are the candidate and C95.
+    students=(CANDIDATE, C95),
+    #: G4's effective margin is +3.5 after amendment A1 rejected the registered +2.5; the
+    #: freeze also refuses unless every guard's pass probability at true zero is at least 0.85.
+    bars={**CONSONANT2.bars, "tashkeel_upper_at_most": 3.5, "power_at_least": 0.85},
+    registered_margins={"tashkeel_upper_at_most": (2.5, "A1")},
+    models={
+        C95: CONSONANT2.models[C95],
+        # Round 2's EMA is the context column; round 3's own arms are unfilled until its run
+        # issue pins them, and are refused by name until then (round 2's pattern).
+        R2: ModelIdentity(R2_CANDIDATE_REF, EMA, 10_000, CANDIDATE_RECIPE,
+                          R2_CANDIDATE_SHA256),
+    },
+    #: Round 2's committed look gating and non-tlog decodes are read in place, never copied:
+    #: round 3's own decodes land in its own root.
+    decode_sources={
+        **CONSONANT2.decode_sources,
+        (TLOG_LOOK, R2): Decodes(CONSONANT2_ROOT, "r2_candidate_ema"),
+        ("qud_other", BASE): Decodes(CONSONANT2_ROOT, "base"),
+        **{(name, R2): Decodes(CONSONANT2_ROOT, "r2_candidate_ema")
+           for name in R2_NON_TLOG_SETS},
+    },
+    look_roles=(CANDIDATE,),
+    arm_prefix=R3_ARM_PREFIX,
+    #: The freeze issue fills the pre-registration's pin, as #229 did for round 2.
+    pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, ""),
+)
+
+SPECS = {AUG95.name: AUG95, CONSONANT1.name: CONSONANT1, CONSONANT2.name: CONSONANT2,
+         CONSONANT3.name: CONSONANT3}
 
 
 def spec(name: str) -> RoundSpec:

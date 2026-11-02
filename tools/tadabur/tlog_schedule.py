@@ -308,6 +308,19 @@ def _require_walk_keys(keys: Iterable[Key], head: Sequence[Mapping[str, Any]], *
     return walked
 
 
+def _prefix_head(keys: list[Key], rows: Iterable[Mapping[str, Any]], schedule: Schedule, *,
+                 extra: int = 0) -> tuple[list[Mapping[str, Any]], list[Key]]:
+    """The walk's first ``len(keys) + extra`` rows, with ``keys`` proven to be that prefix:
+    no duplicate, no key the walk does not hold, none missing. Returns the head and the
+    walk's own keys."""
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"the consumed keys repeat a key: {len(keys)} lines, "
+                         f"{len(set(keys))} distinct")
+    head = _walk_head(rows_by_shard(rows, schedule), schedule, len(keys) + extra)
+    walked = _require_walk_keys(keys, head[:len(keys)], where="the consumed keys")
+    return head, walked
+
+
 def require_walk_prefix(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
                         schedule: Schedule) -> ConsumedPrefix:
     """Verify that ``keys`` (in line order) are exactly the walk's first ``len(keys)`` rows.
@@ -319,12 +332,24 @@ def require_walk_prefix(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
     touches a shard.
     """
     keys = list(keys)
-    if len(set(keys)) != len(keys):
-        raise ValueError(f"the consumed keys repeat a key: {len(keys)} lines, "
-                         f"{len(set(keys))} distinct")
-    head = _walk_head(rows_by_shard(rows, schedule), schedule, len(keys))
-    walked = _require_walk_keys(keys, head, where="the consumed keys")
+    _, walked = _prefix_head(keys, rows, schedule)
     return ConsumedPrefix(frozenset(keys), len(keys), walked == keys)
+
+
+def next_walk_key(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
+                  schedule: Schedule) -> Key:
+    """The walk row a resumed run reads first after ``keys``: the smoke gate's offset
+    assertion (#252).
+
+    ``keys`` are re-checked as the walk's first rows, exactly as :func:`require_walk_prefix`
+    does, so a log that names rows the walk does not hold -- or a duplicate -- refuses here
+    rather than shifting the offset silently.
+    """
+    keys = list(keys)
+    head, _ = _prefix_head(keys, rows, schedule, extra=1)
+    from .tlog_pool import row_key
+
+    return row_key(head[-1])
 
 
 def require_prefix_by_shard(after: ConsumedPrefix,

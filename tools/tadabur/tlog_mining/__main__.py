@@ -13,6 +13,12 @@ have rows to do. The PAUSE file and the disk/RAM floors stop it at a batch bound
 when a gate stopped it (a pause is deliberate — ``resume`` clears it and reruns) and 0 when no
 row is left.
 
+A whole clip's forward pass is memory-hungry — the longest gating clip (85.9 s) leaves one bf16
+teacher process holding ~9.1 GiB — so ``run`` sizes the process count from the card's free
+memory against :data:`WORKER_VRAM_MIB` and caps the requested ``--parallel`` accordingly (two
+workers OOM'd at 15.5 GiB on 2026-11-02). The cap is printed and the worklists are written for
+the capped count.
+
 ``merge`` gathers the parts into the committed files, then the launcher fetches them back.
 
 Usage, from ``tools/`` on the box::
@@ -42,6 +48,7 @@ from tadabur.tlog_ident_decode import load_decoder
 from tadabur.tlog_index import head_sha, provenance, read_jsonl, sha256_file, write_jsonl
 from tadabur.tlog_pool import default_audio
 from tadabur.tlog_tranches import SPLIT_DIR, TRANCHES_DIR
+from tadabur.tlog_vram_check import gpu_memory_mib
 from tadabur.waqf_segments import hafs_word_reference
 from training.external_decode import record_identity
 from training.nonpro_decode import item_key
@@ -64,6 +71,12 @@ BATCH_GRACE_SECONDS = 10
 REAP_SECONDS = 30
 #: The run's teacher record, written once into the parts directory.
 TEACHER_RECORD = "teacher.json"
+#: What one whole-clip base-teacher worker needs resident on the card, with headroom.
+#: Measured 2026-11-02: two workers on the 15.5 GiB card OOM'd at confirm.2 (each held
+#: 5.97 and 8.85 GiB; the failing clip's attention needed 1.10 GiB more), so the longest
+#: gating clip (85.9 s) alone reserves ~9.1 GiB. Whole-clip phase A therefore gives each
+#: worker this budget and caps the process count to what the card's free memory holds.
+WORKER_VRAM_MIB = 9500
 
 
 def align(args: argparse.Namespace) -> int:
@@ -115,6 +128,8 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
 def run(args: argparse.Namespace) -> int:
     """The give-way loop: one lock-held batch at a time, the gates checked at every boundary."""
     require_phase(args.phase)
+    requested = args.parallel
+    args.parallel = _worker_count(requested, gpu_memory_mib("memory.free"))
     # A stop signal unwinds through `_run_workers`'s finally, so its workers are reaped before
     # the lock is released; a hard kill leaves the parts intact and the next run resumes.
     for signal_number in (signal.SIGTERM, signal.SIGINT):
@@ -122,6 +137,9 @@ def run(args: argparse.Namespace) -> int:
     if not args.resume and any(Path(args.parts_dir).glob("word_times.*.jsonl")):
         raise SystemExit(f"{args.parts_dir} already holds records: pass --resume to continue "
                          f"that run, or use a fresh --parts-dir")
+    if args.parallel != requested:
+        print(f"parallel capped to {args.parallel}: whole-clip workers need "
+              f"{WORKER_VRAM_MIB} MiB each", flush=True)
     rows_by_role = {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
                                        split_dir=args.split_dir)
                     for role in PHASE_A_TRANCHES}
@@ -169,6 +187,15 @@ def _batch(rows_by_role: dict, args: argparse.Namespace):
                 return False
         return True
     return batch
+
+
+def _worker_count(requested: int, free_mib: int) -> int:
+    """The whole-clip workers the card's free memory can hold, at most ``requested``.
+
+    One worker is always run: a card with less free memory than one worker's budget cannot
+    finish a clip either way, and the caller's floor must not turn into a refusal to start.
+    """
+    return max(1, min(requested, free_mib // WORKER_VRAM_MIB))
 
 
 def _write_worklists(rows_by_role: dict, args: argparse.Namespace) -> None:

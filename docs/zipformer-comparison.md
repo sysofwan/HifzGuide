@@ -271,12 +271,12 @@ Muraja keeps each word's best grade across its looks. A model that is right on e
 
 | qdat arm | words | flagged by any look | multi-look % | rescue % | final flagged | final flagged (single decode) | ratchet gain | gain / 1,000 words |
 |---|---|---|---|---|---|---|---|---|
-| base | 11950 | 3710 | 98.58 | 83.83 | 347 | 1560 | -1213 | -101.51 [-111.85, -91.61] |
-| c95 | 11890 | 3884 | 97.31 | 74.74 | 674 | 1772 | -1098 | -92.35 [-102.74, -82.24] |
-| r2_candidate_ema | 11970 | 3215 | 97.89 | 78.82 | 435 | 1379 | -944 | -78.86 [-88.76, -69.44] |
-| zipformer-checks | 12011 | 528 | 99.14 | 22.92 | 287 | 286 | 1 | 0.08 [-1.01, 1.35] |
-| zipformer-checks-w1 | 12006 | 1590 | 99.57 | 78.49 | 242 | 286 | -44 | -3.66 [-6.14, -1.33] |
-| zipformer-checks-w1-windows | 12011 | 1343 | 99.23 | 72.08 | 256 | 286 | -30 | -2.50 [-4.38, -0.75] |
+| base | 11950 | 3710 | 98.58 | 83.83 | 343 | 1500 | -1157 | -96.82 [-107.36, -86.58] |
+| c95 | 11890 | 3884 | 97.31 | 74.74 | 670 | 1631 | -961 | -80.82 [-91.21, -70.63] |
+| r2_candidate_ema | 11970 | 3215 | 97.89 | 78.82 | 433 | 1270 | -837 | -69.92 [-80.15, -60.17] |
+| zipformer-checks | 12011 | 528 | 99.14 | 22.92 | 287 | 282 | 5 | 0.42 [-0.84, 2.00] |
+| zipformer-checks-w1 | 12006 | 1590 | 99.57 | 78.49 | 241 | 282 | -41 | -3.41 [-5.96, -0.99] |
+| zipformer-checks-w1-windows | 12011 | 1343 | 99.23 | 72.08 | 256 | 282 | -26 | -2.16 [-4.18, -0.17] |
 
 Ship A's mistake sites: caught by no look once the ratchet keeps the best grade.
 
@@ -307,7 +307,7 @@ The timing probe measured 50.86 audio-seconds per wall-second on 20 qdat items a
 | qud-other/decode | 10261 | 86479.70 | 86479.70 | 1872.10 |
 | ship-a/decode | 512 | 5301.30 | 5301.30 | 109.80 |
 | ship-a/w1 | 512 | 5301.30 | 154108.40 | 2760.20 |
-| tarteel/decode | 4413 | 40739.90 | 40739.90 | 1005.00 |
+| tarteel/decode | 4537 | 42278.10 | 42278.10 | 1035.60 |
 
 ## Report only: the ratchet-free lines
 
@@ -333,42 +333,41 @@ Ship A's whole-item outcomes (single-decode approximation):
 
 the sets the cards say zipformer probably trained on are read beside the verdict, never inside it, and each arm's committed transcript is the arm the corpora's own readouts use. qdat_bench's expert transcript is read on the gated Hub and never committed; only its agreement summary is.
 
-qud_other: r2_candidate_ema has no committed decode.
-
-QUD's unread half and Tarteel v1's confirm half, decoded at the carrier (`training.truth_scorer`: commit rate, committed accuracy, and decode-flagged on the correct side or silent corrections on the mistake side):
+QUD's unread half and Tarteel v1's truth sites (both pre-registered halves), decoded at the carrier (`training.truth_scorer`: commit rate, committed accuracy, and decode-flagged on the correct side or silent corrections on the mistake side):
 
 | set | side | arm | sites | commit rate | committed accuracy | flagged / silent |
 |---|---|---|---|---|---|---|
 | qud_other | correct | base | 102979 | 0.98 | 0.99 | 0.01 |
 | qud_other | correct | c95 | 102979 | 0.99 | 1.00 | 0.00 |
+| qud_other | correct | r2_candidate_ema | 102979 | 0.99 | 0.99 | 0.01 |
 | qud_other | correct | zipformer-checks | 102979 | 1.00 | 1.00 | 0.00 |
-| tarteel_v1_confirm | correct | base | 53389 | 0.98 | 0.99 | 0.01 |
-| tarteel_v1_confirm | correct | c95 | 53389 | 0.99 | 0.99 | 0.01 |
-| tarteel_v1_confirm | correct | r2_candidate_ema | 53389 | 0.99 | 0.99 | 0.01 |
-| tarteel_v1_confirm | correct | zipformer-checks | 53389 | 1.00 | 1.00 | 0.00 |
+| tarteel_v1 | correct | base | 109359 | 0.98 | 0.99 | 0.01 |
+| tarteel_v1 | correct | c95 | 109359 | 0.99 | 0.99 | 0.01 |
+| tarteel_v1 | correct | r2_candidate_ema | 109359 | 0.99 | 0.99 | 0.01 |
+| tarteel_v1 | correct | zipformer-checks | 109359 | 1.00 | 1.00 | 0.00 |
 
-qdat_bench against the experts' transcript, per class (the bench clips are qdat's audio, so the decodes are qdat's; 159 clips, 28 departure words in 23 clips):
+qdat_bench against the experts' transcript, per class, from the arm the arm map prescribes (the bench clips are qdat's audio, so the decodes are qdat's; 159 clips, 28 departure words in 23 clips):
 
-| arm | class | agreement % | agree/slots | committed agreement % |
-|---|---|---|---|---|
-| base | consonant | 93.67 | 3061/3268 | 98.39 |
-| base | haraka | 90.86 | 2455/2702 | 99.84 |
-| base | shaddah | 90.14 | 329/365 | 91.14 |
-| c95 | consonant | 90.39 | 2954/3268 | 96.13 |
-| c95 | haraka | 88.71 | 2397/2702 | 98.52 |
-| c95 | shaddah | 89.04 | 325/365 | 91.81 |
-| r2_candidate_ema | consonant | 93.70 | 3062/3268 | 98.33 |
-| r2_candidate_ema | haraka | 91.60 | 2475/2702 | 99.28 |
-| r2_candidate_ema | shaddah | 92.05 | 336/365 | 93.59 |
-| zipformer-checks | consonant | 98.65 | 3224/3268 | 99.23 |
-| zipformer-checks | haraka | 98.70 | 2667/2702 | 99.85 |
-| zipformer-checks | shaddah | 97.81 | 357/365 | 97.81 |
+| arm | scored arm | class | agreement % | agree/slots | committed agreement % |
+|---|---|---|---|---|---|
+| base | stream_b0 | consonant | 91.74 | 2998/3268 | 98.52 |
+| base | stream_b0 | haraka | 90.78 | 2453/2702 | 99.88 |
+| base | stream_b0 | shaddah | 93.70 | 342/365 | 93.96 |
+| c95 | stream_b0 | consonant | 88.59 | 2895/3268 | 96.56 |
+| c95 | stream_b0 | haraka | 89.53 | 2419/2702 | 98.82 |
+| c95 | stream_b0 | shaddah | 93.42 | 341/365 | 93.94 |
+| r2_candidate_ema | stream_b0 | consonant | 91.62 | 2994/3268 | 98.68 |
+| r2_candidate_ema | stream_b0 | haraka | 91.78 | 2480/2702 | 99.24 |
+| r2_candidate_ema | stream_b0 | shaddah | 94.52 | 345/365 | 94.52 |
+| zipformer-checks | spans | consonant | 98.65 | 3224/3268 | 99.23 |
+| zipformer-checks | spans | haraka | 98.70 | 2667/2702 | 99.85 |
+| zipformer-checks | spans | shaddah | 97.81 | 357/365 | 97.81 |
 
 ## Exposure
 
 each model's recordings-exposed share of the edit set's source and donor clips, over its full lineage (its round's uses plus the shared-baseline uses it inherited from h448), by the registry's source/alias rule; the reciter share is the weaker name screen, kept beside it. The teacher and zipformer trained outside Tadabur (unknown, not zero). A source or donor clip inside the candidate's lineage confounds the catch-side bar: a caught edit may be a memorised clip, not a caught mistake.
 
-Each model's lineage: **base**: outside Tadabur (unknown); **c95**: consonant1.training; h448.init_validation; h448.training; **r2_candidate_ema**: consonant1.training; consonant2.training; h448.init_validation; h448.training; **zipformer**: outside Tadabur (unknown).
+Each model's lineage: **base**: outside Tadabur (unknown); **c95**: aug.training; h448.init_validation; h448.training; **r2_candidate_ema**: aug.training; consonant1.training; consonant2.training; h448.init_validation; h448.training; **zipformer**: outside Tadabur (unknown).
 
 | model | edit corpus | recordings exposed | recordings % | reciters exposed | reciters % |
 |---|---|---|---|---|---|
@@ -397,6 +396,6 @@ Each model's lineage: **base**: outside Tadabur (unknown); **c95**: consonant1.t
 
 **qdat_bench reads the experts' transcript, not their audio twice.** Its clips are qdat's own bytes, so the decodes are the models' qdat decodes; what the corpus adds is the expert `phonetic_transcript`, which is read where the gated Hub token is and never committed. Only the agreement summary is in this record.
 
-**The report-only sets read one arm per model and name what is missing.** QUD's unread half and Tarteel v1's confirm half are scored at the carrier from each arm's committed transcript: ours from the app's own per-check decodes, zipformer from its single stream, because that is the only store those corpora carry. The round-2 candidate has no committed QUD decode, so its QUD arm is named missing rather than filled with another model's numbers. Tarteel v1's look half is not read: the round-2 candidate never decoded it, and scoring a different population per model would not be a comparison.
+**The report-only sets read one arm per model and the whole population.** QUD's unread half and both of Tarteel v1's pre-registered halves are scored at the carrier from each arm's committed transcript: ours from the app's own per-check decodes, zipformer from its single stream, because that is the only store those corpora carry. All four models decode every item of each set; an arm missing one refuses the table rather than shrinking the population. qdat_bench reads the arm the arm map prescribes (ours `stream_b0`, zipformer `spans`), so its expert agreement is on the same text as every other whole-item metric.
 
 **What the screen cannot separate.** qdat and the benchmark's tlog_holdout carry zipformer's known text prior (its card admits 39.5% of planted haraka mistakes reported, and ikhfnaa written on 81 of 94 plain-noon clips); the catch side is where that shows, and it is why the verdict is read on it.

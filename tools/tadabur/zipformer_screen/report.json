@@ -1944,11 +1944,11 @@
     "workers": 12
    },
    "tarteel/decode": {
-    "audio_seconds": 40739.9,
-    "decoded_audio_seconds": 40739.9,
-    "items": 4413,
-    "wall_seconds": 1005.0,
-    "workers": 12
+    "audio_seconds": 42278.1,
+    "decoded_audio_seconds": 42278.1,
+    "items": 4537,
+    "wall_seconds": 1035.6,
+    "workers": 6
    }
   }
  },
@@ -2668,11 +2668,12 @@
   "lineage": {
    "base": null,
    "c95": [
-    "consonant1.training",
+    "aug.training",
     "h448.init_validation",
     "h448.training"
    ],
    "r2_candidate_ema": [
+    "aug.training",
     "consonant1.training",
     "consonant2.training",
     "h448.init_validation",
@@ -2895,115 +2896,115 @@
  "look_diversity": {
   "qdat": {
    "base": {
-    "final_flagged": 347,
-    "final_flagged_single_decode": 1560,
+    "final_flagged": 343,
+    "final_flagged_single_decode": 1500,
     "flagged_any_look": 3710,
     "flagged_any_look_single_decode": 1857,
     "multi_look_share": 98.58,
-    "ratchet_gain": -1213,
+    "ratchet_gain": -1157,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -111.85103404472879,
+      "lower": -107.36082234988437,
       "method": "bootstrap",
       "reason": "",
-      "upper": -91.6131134486346
+      "upper": -86.57773308521115
      },
-     "point": -101.5062761506276
+     "point": -96.82008368200837
     },
     "rescue_rate": 83.83,
     "words": 11950
    },
    "c95": {
-    "final_flagged": 674,
-    "final_flagged_single_decode": 1772,
+    "final_flagged": 670,
+    "final_flagged_single_decode": 1631,
     "flagged_any_look": 3884,
     "flagged_any_look_single_decode": 2140,
     "multi_look_share": 97.31,
-    "ratchet_gain": -1098,
+    "ratchet_gain": -961,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -102.74463841738795,
+      "lower": -91.20853791253609,
       "method": "bootstrap",
       "reason": "",
-      "upper": -82.24250821639181
+      "upper": -70.6270086516496
      },
-     "point": -92.34650967199326
+     "point": -80.8242220353238
     },
     "rescue_rate": 74.74,
     "words": 11890
    },
    "r2_candidate_ema": {
-    "final_flagged": 435,
-    "final_flagged_single_decode": 1379,
+    "final_flagged": 433,
+    "final_flagged_single_decode": 1270,
     "flagged_any_look": 3215,
     "flagged_any_look_single_decode": 1697,
     "multi_look_share": 97.89,
-    "ratchet_gain": -944,
+    "ratchet_gain": -837,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -88.76198932420198,
+      "lower": -80.14525173466588,
       "method": "bootstrap",
       "reason": "",
-      "upper": -69.4362378902044
+      "upper": -60.172793267836724
      },
-     "point": -78.86382623224729
+     "point": -69.92481203007519
     },
     "rescue_rate": 78.82,
     "words": 11970
    },
    "zipformer-checks": {
     "final_flagged": 287,
-    "final_flagged_single_decode": 286,
+    "final_flagged_single_decode": 282,
     "flagged_any_look": 528,
     "flagged_any_look_single_decode": 413,
     "multi_look_share": 99.14,
-    "ratchet_gain": 1,
+    "ratchet_gain": 5,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -1.009291855486855,
+      "lower": -0.8436006569067559,
       "method": "bootstrap",
       "reason": "",
-      "upper": 1.3457224739824691
+      "upper": 1.9995042898998636
      },
-     "point": 0.08325701440346084
+     "point": 0.4162850720173146
     },
     "rescue_rate": 22.92,
     "words": 12011
    },
    "zipformer-checks-w1": {
-    "final_flagged": 242,
-    "final_flagged_single_decode": 286,
+    "final_flagged": 241,
+    "final_flagged_single_decode": 282,
     "flagged_any_look": 1590,
     "flagged_any_look_single_decode": 413,
     "multi_look_share": 99.57,
-    "ratchet_gain": -44,
+    "ratchet_gain": -41,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -6.144280293100602,
+      "lower": -5.956467097000964,
       "method": "bootstrap",
       "reason": "",
-      "upper": -1.3335528141264081
+      "upper": -0.9937703158634908
      },
-     "point": -3.664834249541893
+     "point": -3.41495918707313
     },
     "rescue_rate": 78.49,
     "words": 12006
    },
    "zipformer-checks-w1-windows": {
     "final_flagged": 256,
-    "final_flagged_single_decode": 286,
+    "final_flagged_single_decode": 282,
     "flagged_any_look": 1343,
     "flagged_any_look_single_decode": 413,
     "multi_look_share": 99.23,
-    "ratchet_gain": -30,
+    "ratchet_gain": -26,
     "ratchet_gain_per_1000_words": {
      "interval": {
-      "lower": -4.384885034670841,
+      "lower": -4.183827765197063,
       "method": "bootstrap",
       "reason": "",
-      "upper": -0.7466974206654527
+      "upper": -0.1656860126074273
      },
-     "point": -2.4977104321039048
+     "point": -2.1646823744900514
     },
     "rescue_rate": 72.08,
     "words": 12011
@@ -3054,7 +3055,7 @@
   "measured_unit": "seconds",
   "measured_wall_seconds": 104.8,
   "projected_hours": 3.6,
-  "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat items, projected over the batch's jobs at that point; the batch stops past 12 h (architect r2, AC 6). The Tarteel v1 confirm half was decoded afterwards as its own job, and its measured wall is in the compute table",
+  "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat items, projected over the batch's jobs at that point; the batch stops past 12 h (architect r2, AC 6). The Tarteel v1 set was decoded afterwards as its own job, and its measured wall is in the compute table",
   "stop": false
  },
  "qdat": {
@@ -3682,71 +3683,71 @@
    "agreement": {
     "base": {
      "consonant": {
-      "agree": 3061,
-      "agreement": 0.9367,
-      "agreement_committed": 0.9839,
-      "none": 157,
-      "other": 50
+      "agree": 2998,
+      "agreement": 0.9174,
+      "agreement_committed": 0.9852,
+      "none": 225,
+      "other": 45
      },
      "haraka": {
-      "agree": 2455,
-      "agreement": 0.9086,
-      "agreement_committed": 0.9984,
-      "none": 243,
-      "other": 4
+      "agree": 2453,
+      "agreement": 0.9078,
+      "agreement_committed": 0.9988,
+      "none": 246,
+      "other": 3
      },
      "shaddah": {
-      "agree": 329,
-      "agreement": 0.9014,
-      "agreement_committed": 0.9114,
-      "none": 4,
-      "other": 32
+      "agree": 342,
+      "agreement": 0.937,
+      "agreement_committed": 0.9396,
+      "none": 1,
+      "other": 22
      }
     },
     "c95": {
      "consonant": {
-      "agree": 2954,
-      "agreement": 0.9039,
-      "agreement_committed": 0.9613,
-      "none": 195,
-      "other": 119
+      "agree": 2895,
+      "agreement": 0.8859,
+      "agreement_committed": 0.9656,
+      "none": 270,
+      "other": 103
      },
      "haraka": {
-      "agree": 2397,
-      "agreement": 0.8871,
-      "agreement_committed": 0.9852,
-      "none": 269,
-      "other": 36
+      "agree": 2419,
+      "agreement": 0.8953,
+      "agreement_committed": 0.9882,
+      "none": 254,
+      "other": 29
      },
      "shaddah": {
-      "agree": 325,
-      "agreement": 0.8904,
-      "agreement_committed": 0.9181,
-      "none": 11,
-      "other": 29
+      "agree": 341,
+      "agreement": 0.9342,
+      "agreement_committed": 0.9394,
+      "none": 2,
+      "other": 22
      }
     },
     "r2_candidate_ema": {
      "consonant": {
-      "agree": 3062,
-      "agreement": 0.937,
-      "agreement_committed": 0.9833,
-      "none": 154,
-      "other": 52
+      "agree": 2994,
+      "agreement": 0.9162,
+      "agreement_committed": 0.9868,
+      "none": 234,
+      "other": 40
      },
      "haraka": {
-      "agree": 2475,
-      "agreement": 0.916,
-      "agreement_committed": 0.9928,
-      "none": 209,
-      "other": 18
+      "agree": 2480,
+      "agreement": 0.9178,
+      "agreement_committed": 0.9924,
+      "none": 203,
+      "other": 19
      },
      "shaddah": {
-      "agree": 336,
-      "agreement": 0.9205,
-      "agreement_committed": 0.9359,
-      "none": 6,
-      "other": 23
+      "agree": 345,
+      "agreement": 0.9452,
+      "agreement_committed": 0.9452,
+      "none": 0,
+      "other": 20
      }
     },
     "zipformer-checks": {
@@ -3775,19 +3776,19 @@
    },
    "arms": {
     "base": {
-     "protocol": "checks",
+     "arm": "stream_b0",
      "source": "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz"
     },
     "c95": {
-     "protocol": "checks",
+     "arm": "stream_b0",
      "source": "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz"
     },
     "r2_candidate_ema": {
-     "protocol": "checks",
+     "arm": "stream_b0",
      "source": "tadabur/consonant2_readout/decodes/qdat.r2_candidate_ema.jsonl.gz"
     },
     "zipformer-checks": {
-     "protocol": "checks",
+     "arm": "spans",
      "source": "tadabur/zipformer_screen/decodes/qdat.zipformer.jsonl.gz"
     }
    },
@@ -3873,7 +3874,7 @@
     "words": 28
    },
    "issue": 245,
-   "rule": "the experts' phonetic_transcript, read on the Hub and never committed: each model's committed text on the clip's own audio, letter by letter over the transcript's slots, per class; and where the transcript leaves the mushaf (the departure words), which no model is scored on here",
+   "rule": "the experts' phonetic_transcript, read on the Hub and never committed: each model's whole-item text in the arm the arm map prescribes for qdat_bench (ours stream_b0, zipformer spans) on the clip's own audio, letter by letter over the transcript's slots, per class; and where the transcript leaves the mushaf (the departure words), which no model is scored on here",
    "set": "qdat_bench"
   },
   "qud_other": {
@@ -3881,6 +3882,7 @@
    "arms": [
     "base",
     "c95",
+    "r2_candidate_ema",
     "zipformer-checks"
    ],
    "bootstrap": {
@@ -3949,6 +3951,35 @@
        "upper": 0.005391789098488626
       }
      },
+     "r2_candidate_ema": {
+      "commit_rate": {
+       "den": 207322.0,
+       "lower": 0.9864833214758267,
+       "method": "bootstrap",
+       "num": 204731.0406571181,
+       "point": 0.9875027283989066,
+       "reason": "",
+       "upper": 0.9884349333056093
+      },
+      "committed_accuracy": {
+       "den": 204731.0406571181,
+       "lower": 0.993839569136575,
+       "method": "bootstrap",
+       "num": 203574.08421679033,
+       "point": 0.9943488958166073,
+       "reason": "",
+       "upper": 0.9948382369856098
+      },
+      "decode_flagged": {
+       "den": 207322.0,
+       "lower": 0.005098114114478244,
+       "method": "bootstrap",
+       "num": 1156.9564403277718,
+       "point": 0.0055804807995667215,
+       "reason": "",
+       "upper": 0.006083192467034241
+      }
+     },
      "zipformer-checks": {
       "commit_rate": {
        "den": 207322.0,
@@ -4003,6 +4034,29 @@
        "upper": -0.0034583107463671326
       }
      },
+     "r2_candidate_ema - base": {
+      "commit_rate": {
+       "lower": 0.004254199023459787,
+       "method": "bootstrap",
+       "point": 0.005203355644767815,
+       "reason": "",
+       "upper": 0.00613877534773879
+      },
+      "committed_accuracy": {
+       "lower": 0.0027766900083260465,
+       "method": "bootstrap",
+       "point": 0.0034319137162239777,
+       "reason": "",
+       "upper": 0.004091101446799486
+      },
+      "decode_flagged": {
+       "lower": -0.003991835835993072,
+       "method": "bootstrap",
+       "point": -0.0033417619859412795,
+       "reason": "",
+       "upper": -0.002700274090526527
+      }
+     },
      "zipformer-checks - base": {
       "commit_rate": {
        "lower": 0.015387509212184272,
@@ -4030,11 +4084,9 @@
     "reciters": 226,
     "sites": 102979
    },
-   "missing_arms": [
-    "r2_candidate_ema"
-   ],
+   "missing_arms": [],
    "mistake_side": null,
-   "rule": "QUD's unread half, the frozen complement's segments of the pilot's two mushafs, scored against the corpus's truth sites (report only: zipformer probably trained on it). The round-2 candidate has no committed QUD decode, so its arm is named missing",
+   "rule": "QUD's unread half, the frozen complement's segments of the pilot's two mushafs, scored against the corpus's truth sites (report only: zipformer probably trained on it)",
    "set": "qud_other",
    "sides": {
     "correct": 102979,
@@ -4044,7 +4096,7 @@
    "sites": 105034
   },
   "rule": "the sets the cards say zipformer probably trained on are read beside the verdict, never inside it, and each arm's committed transcript is the arm the corpora's own readouts use. qdat_bench's expert transcript is read on the gated Hub and never committed; only its agreement summary is",
-  "tarteel_v1_confirm": {
+  "tarteel_v1": {
    "arm_note": "each arm's committed transcript from its recorded check sequence; zipformer's is the single stream's checks, ours the app's own per-check decodes",
    "arms": [
     "base",
@@ -4057,210 +4109,210 @@
     "replicates": 10000,
     "seed": 20261008
    },
-   "clips": 4399,
+   "clips": 8918,
    "correct_side": {
     "arms": {
      "base": {
       "commit_rate": {
-       "den": 109374.0,
-       "lower": 0.9817908365088456,
+       "den": 109359.0,
+       "lower": 0.9811636798421097,
        "method": "bootstrap",
-       "num": 107518.86492914076,
-       "point": 0.983038609990864,
+       "num": 107412.0,
+       "point": 0.9821962527089677,
        "reason": "",
-       "upper": 0.9843597217425224
+       "upper": 0.9833288756970735
       },
       "committed_accuracy": {
-       "den": 107518.86492914076,
-       "lower": 0.9880948970258893,
+       "den": 107412.0,
+       "lower": 0.9891431125975891,
        "method": "bootstrap",
-       "num": 106346.62200446732,
-       "point": 0.9890973279391855,
+       "num": 106314.0,
+       "point": 0.9897776784716792,
        "reason": "",
-       "upper": 0.9900788811823403
+       "upper": 0.9904359953973588
       },
       "decode_flagged": {
-       "den": 109374.0,
-       "lower": 0.009757352005269086,
+       "den": 109359.0,
+       "lower": 0.009393551177382692,
        "method": "bootstrap",
-       "num": 1172.2429246734382,
-       "point": 0.010717747587849382,
+       "num": 1098.0,
+       "point": 0.010040325899102955,
        "reason": "",
-       "upper": 0.011701491901441898
+       "upper": 0.01066509900163784
       }
      },
      "c95": {
       "commit_rate": {
-       "den": 109374.0,
-       "lower": 0.9852826753397743,
+       "den": 109359.0,
+       "lower": 0.986018289172997,
        "method": "bootstrap",
-       "num": 107907.28935157473,
-       "point": 0.9865899514653823,
+       "num": 107934.0,
+       "point": 0.9869695223987052,
        "reason": "",
-       "upper": 0.9878853194330512
+       "upper": 0.9878687610984676
       },
       "committed_accuracy": {
-       "den": 107907.28935157473,
-       "lower": 0.9854909941151858,
+       "den": 107934.0,
+       "lower": 0.9857993397884806,
        "method": "bootstrap",
-       "num": 106468.9788786422,
-       "point": 0.9866708682835472,
+       "num": 106494.0,
+       "point": 0.9866585135360498,
        "reason": "",
-       "upper": 0.9878133647267008
+       "upper": 0.9875291861221001
       },
       "decode_flagged": {
-       "den": 109374.0,
-       "lower": 0.012031070924474937,
+       "den": 109359.0,
+       "lower": 0.01231169888554601,
        "method": "bootstrap",
-       "num": 1438.3104729325314,
-       "point": 0.013150387413210922,
+       "num": 1440.0,
+       "point": 0.013167640523413711,
        "reason": "",
-       "upper": 0.014307550951928665
+       "upper": 0.014009473660139932
       }
      },
      "r2_candidate_ema": {
       "commit_rate": {
-       "den": 109374.0,
-       "lower": 0.9857186683281222,
+       "den": 109359.0,
+       "lower": 0.9860565265251716,
        "method": "bootstrap",
-       "num": 107949.88152851965,
-       "point": 0.9869793692149839,
+       "num": 107942.0,
+       "point": 0.9870426759571685,
        "reason": "",
-       "upper": 0.9882450442156514
+       "upper": 0.9879955304208543
       },
       "committed_accuracy": {
-       "den": 107949.88152851965,
-       "lower": 0.9909417190014513,
+       "den": 107942.0,
+       "lower": 0.991182252803043,
        "method": "bootstrap",
-       "num": 107063.73081148561,
-       "point": 0.9917910913426995,
+       "num": 107056.0,
+       "point": 0.9917918882362751,
        "reason": "",
-       "upper": 0.9926121446589239
+       "upper": 0.9924029035945681
       },
       "decode_flagged": {
-       "den": 109374.0,
-       "lower": 0.007291446255580144,
+       "den": 109359.0,
+       "lower": 0.007499965002853553,
        "method": "bootstrap",
-       "num": 886.1507170340567,
-       "point": 0.008102023488526127,
+       "num": 886.0,
+       "point": 0.008101756599822603,
        "reason": "",
-       "upper": 0.008938502707617
+       "upper": 0.008704202555521257
       }
      },
      "zipformer-checks": {
       "commit_rate": {
-       "den": 109374.0,
-       "lower": 0.9983454778250275,
+       "den": 109359.0,
+       "lower": 0.9983872063189312,
        "method": "bootstrap",
-       "num": 109255.2880235808,
-       "point": 0.9989146234350101,
+       "num": 109220.0,
+       "point": 0.9987289569216983,
        "reason": "",
-       "upper": 0.9993635267631958
+       "upper": 0.9990412573492915
       },
       "committed_accuracy": {
-       "den": 109255.2880235808,
-       "lower": 0.9982853353240222,
+       "den": 109220.0,
+       "lower": 0.9980969312932295,
        "method": "bootstrap",
-       "num": 109109.74370676451,
-       "point": 0.9986678510537186,
+       "num": 109051.0,
+       "point": 0.9984526643471892,
        "reason": "",
-       "upper": 0.9990479105428802
+       "upper": 0.9988114417477497
       },
       "decode_flagged": {
-       "den": 109374.0,
-       "lower": 0.0009512868282271679,
+       "den": 109359.0,
+       "lower": 0.0011871363685713443,
        "method": "bootstrap",
-       "num": 145.54431681628995,
-       "point": 0.0013307030630340844,
+       "num": 169.0,
+       "point": 0.0015453689225395258,
        "reason": "",
-       "upper": 0.0017128256365255099
+       "upper": 0.0019009875330100543
       }
      }
     },
     "differences": {
      "c95 - base": {
       "commit_rate": {
-       "lower": 0.0020790602651149155,
+       "lower": 0.0036616749243979065,
        "method": "bootstrap",
-       "point": 0.003551341474518299,
+       "point": 0.004773269689737458,
        "reason": "",
-       "upper": 0.004874760799336632
+       "upper": 0.0057215373444580355
       },
       "committed_accuracy": {
-       "lower": -0.0038514766025503273,
+       "lower": -0.004169850299541963,
        "method": "bootstrap",
-       "point": -0.002426459655638258,
+       "point": -0.0031191649356293594,
        "reason": "",
-       "upper": -0.001020931781375023
+       "upper": -0.002079785913899263
       },
       "decode_flagged": {
-       "lower": 0.0010516884609558233,
+       "lower": 0.0021043397865757366,
        "method": "bootstrap",
-       "point": 0.00243263982536154,
+       "point": 0.0031273146243107567,
        "reason": "",
-       "upper": 0.003830401221170097
+       "upper": 0.004156368593380543
       }
      },
      "r2_candidate_ema - base": {
       "commit_rate": {
-       "lower": 0.002796160737224096,
+       "lower": 0.0038993210011644547,
        "method": "bootstrap",
-       "point": 0.00394075922411985,
+       "point": 0.004846423248200837,
        "reason": "",
-       "upper": 0.005016849760325212
+       "upper": 0.0056818385027333496
       },
       "committed_accuracy": {
-       "lower": 0.001653781218157882,
+       "lower": 0.0012634211110322119,
        "method": "bootstrap",
-       "point": 0.0026937634035140157,
+       "point": 0.0020142097645958756,
        "reason": "",
-       "upper": 0.003738131164299588
+       "upper": 0.002745380012491768
       },
       "decode_flagged": {
-       "lower": -0.003639260771342868,
+       "lower": -0.002658158526841918,
        "method": "bootstrap",
-       "point": -0.0026157240993232543,
+       "point": -0.0019385692992803516,
        "reason": "",
-       "upper": -0.001592772598443897
+       "upper": -0.0012016582058839544
       }
      },
      "zipformer-checks - base": {
       "commit_rate": {
-       "lower": 0.014482626722780986,
+       "lower": 0.015361864797722242,
        "method": "bootstrap",
-       "point": 0.01587601344414613,
+       "point": 0.016532704212730565,
        "reason": "",
-       "upper": 0.017153769570752084
+       "upper": 0.017609787025545706
       },
       "committed_accuracy": {
-       "lower": 0.008497687734975423,
+       "lower": 0.007884535454383371,
        "method": "bootstrap",
-       "point": 0.009570523114533103,
+       "point": 0.008674985875509966,
        "reason": "",
-       "upper": 0.01069941867289187
+       "upper": 0.009474387407682312
       },
       "decode_flagged": {
-       "lower": -0.010501373530844004,
+       "lower": -0.009283116501624163,
        "method": "bootstrap",
-       "point": -0.009387044524815298,
+       "point": -0.008494956976563429,
        "reason": "",
-       "upper": -0.008329226588682329
+       "upper": -0.007714871667546755
       }
      }
     },
     "reciters": 113,
-    "sites": 53389
+    "sites": 109359
    },
    "missing_arms": [],
    "mistake_side": null,
-   "rule": "Tarteel v1's confirm half (the look half is decoded for three of the four arms), scored against the corpus's truth sites (report only: zipformer probably trained on it)",
-   "set": "tarteel_v1_confirm",
+   "rule": "Tarteel v1's truth sites, both halves of the pre-registered split, scored against the corpus's own truth sites (report only: zipformer probably trained on it)",
+   "set": "tarteel_v1",
    "sides": {
-    "correct": 53389,
+    "correct": 109374,
     "mistake": 0,
-    "no_side": 3587
+    "no_side": 7398
    },
-   "sites": 56976
+   "sites": 116772
   }
  },
  "ship_a": {

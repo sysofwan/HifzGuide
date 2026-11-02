@@ -306,6 +306,14 @@ def test_an_unclaimed_round_3_tranche_is_refused(tmp_path, chosen, claims):
         _read(round_, "confirm.3")
 
 
+def test_confirm_4_is_refused_while_claim_3_is_not_committed(tmp_path, chosen):
+    round_ = _round(tmp_path, claims=("confirm.1", "confirm.2"))
+    _claim(round_, "confirm.3", commit=False)
+    _claim(round_, "confirm.4")
+    with pytest.raises(ValueError, match="confirm.3"):
+        _read(round_, "confirm.4")
+
+
 def test_confirm_3_is_refused_while_claim_4_is_not_committed(tmp_path, chosen):
     round_ = _round(tmp_path, claims=("confirm.1", "confirm.2", "confirm.3"))
     with pytest.raises(ValueError, match=r"confirm[.]4"):

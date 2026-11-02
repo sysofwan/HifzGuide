@@ -37,7 +37,7 @@ RAM_FLOOR_GB = 16
 
 @dataclass(frozen=True)
 class GiveWayResult:
-    """Where the loop stopped and what it spent: ``stopped`` is ``done``/``pause``/``disk``/``ram``."""
+    """Where the loop stopped (``done``, ``pause``, ``disk`` or ``ram``) and what it spent."""
 
     stopped: str
     batches: int
@@ -99,7 +99,8 @@ class Gates:
 
 
 def run_give_way(batch: Callable[[float], bool], *, lock: GpuLock, gates: Gates,
-                 sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic,
+                 sleep: Callable[[float], None] = time.sleep,
+                 clock: Callable[[], float] = time.monotonic,
                  batch_seconds: float = BATCH_SECONDS,
                  yield_seconds: float = YIELD_SECONDS) -> GiveWayResult:
     """Run ``batch(batch_seconds)`` under the lock, one batch per iteration, until it says done.

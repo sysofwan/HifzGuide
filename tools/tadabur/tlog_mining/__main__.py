@@ -111,7 +111,8 @@ def _batch(rows_by_role: dict, args: argparse.Namespace):
             shares = [worker_rows(rows_by_role[role], shard_index=index,
                                   shard_count=args.parallel)
                       for index in range(args.parallel)]
-            indexes = [index for index, share in enumerate(shares) if pending(share, args.parts_dir)]
+            indexes = [index for index, share in enumerate(shares)
+                       if pending(share, args.parts_dir)]
             if indexes:
                 _run_workers(role, indexes, budget, args)
                 return False

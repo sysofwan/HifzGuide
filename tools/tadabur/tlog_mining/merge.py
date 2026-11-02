@@ -88,7 +88,7 @@ def _read_parts(parts_dir: Path) -> dict[str, dict]:
 
 
 def _tranche_records(tranche: str, expected: set[str], records: Mapping[str, dict]) -> list[dict]:
-    """``tranche``'s records in key order, refusing a missing or foreign key."""
+    """``tranche``'s records in key order, refusing a gating row with no record."""
     missing = sorted(expected - set(records))
     if missing:
         raise ValueError(f"{tranche}: {len(missing)} gating rows have no record "

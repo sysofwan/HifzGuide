@@ -1,17 +1,23 @@
-"""Phase A's CLI (#263), run on the GPU box by ``scripts/issue-263-mining-decode.sh``.
+"""The mining CLI (#263), run on the GPU box by ``scripts/issue-263-mining-decode.sh``.
 
-``align`` is one worker's batch: the shards ``sorted(shards)[shard_index::shard_count]`` of
-``--role``'s gating rows, each clip run whole through the base teacher
+Phase A. ``align`` is one worker's batch: the shards ``sorted(shards)[shard_index::shard_count]``
+of ``--role``'s gating rows, each clip run whole through the base teacher
 (:func:`tadabur.tlog_ident_decode.load_decoder`, which pins the hub revision), aligned, and
 appended to its shard's part (``batch.run_batch``). The clip is fetched into ``--clip-dir``
 once, by hardlink from the round-2 look clip cache when it holds it and by a verified shard
 stream otherwise; its SHA-256 is checked before the teacher sees it.
 
-``run`` is the preemptible driver: :func:`tadabur.tlog_mining.give_way.run_give_way` takes the
-GPU lock non-blocking for one batch at a time, and each batch spawns the workers that still
-have rows to do. The PAUSE file and the disk/RAM floors stop it at a batch boundary. It exits 3
-when a gate stopped it (a pause is deliberate — ``resume`` clears it and reruns) and 0 when no
-row is left.
+Phase B. ``decode`` is one worker's batch: its share of ``--role``'s mined rows, each clip
+decoded whole by the teacher, C95 and round 2's EMA candidate into ``checks`` and ``spans``
+(:func:`tadabur.tlog_mining.mined_decode.decode_batch`), one part per shard and model under
+``--parts-dir``. A shard's clips are fetched once before its first row, and the worker decodes
+shard by shard while the batch's budget lasts.
+
+``run`` is the preemptible driver for either phase: :func:`tadabur.tlog_mining.give_way.run_give_way`
+takes the GPU lock non-blocking for one batch at a time, and each batch spawns the workers that
+still have rows to do. The PAUSE file and the disk/RAM floors stop it at a batch boundary. It
+exits 3 when a gate stopped it (a pause is deliberate — ``resume`` clears it and reruns) and 0
+when no row is left.
 
 A whole clip's forward pass is memory-hungry — the longest gating clip (85.9 s) leaves one bf16
 teacher process holding ~9.1 GiB — so ``run`` sizes the process count from the card's free
@@ -25,9 +31,11 @@ Usage, from ``tools/`` on the box::
 
     python -m tadabur.tlog_mining align --role look --shard-index 0 --shard-count 2 \\
         --parts-dir DIR --clip-dir DIR --look-clip-cache DIR --shard-cache DIR
-    python -m tadabur.tlog_mining run --parts-dir DIR --clip-dir DIR --pause-file PATH \\
+    python -m tadabur.tlog_mining decode --role confirm.1 --shard-index 0 --shard-count 2 \\
+        --parts-dir DIR --clip-dir DIR --shard-cache DIR
+    python -m tadabur.tlog_mining run --phase B --parts-dir DIR --clip-dir DIR --pause-file PATH \\
         --parallel 2 --batch-seconds 300 --yield-seconds 30
-    python -m tadabur.tlog_mining merge --parts-dir DIR --out-dir DIR --pull-request 263
+    python -m tadabur.tlog_mining merge --phase B --parts-dir DIR --out-dir DIR --pull-request 263
 """
 
 from __future__ import annotations
@@ -40,6 +48,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 from tadabur import tlog_eval_decode as ted
@@ -57,8 +66,11 @@ from training.tlog_eval import _canonical_words
 from .batch import pending, run_batch, worker_rows
 from .give_way import (BATCH_SECONDS, DISK_RESERVE_GB, RAM_FLOOR_GB, YIELD_SECONDS, Gates,
                        GpuLock, run_give_way)
-from .merge import PHASE_A_TRANCHES, merge_word_times
-from .selection import PHASE, phase_a_rows, require_phase
+from .merge import PHASE_A_TRANCHES, merge_mined_decodes, merge_word_times
+from .mined_decode import (MINED_MODELS, decode_batch, grouped_by_shard,
+                           pending as mined_pending)
+from .selection import (PHASE, PHASE_A, PHASE_B, PHASE_B_TRANCHES, phase_a_rows, phase_b_rows,
+                        require_phase)
 from .word_times import build_record
 
 #: The box's GPU lock, the file round 3's launcher holds.
@@ -83,6 +95,7 @@ def align(args: argparse.Namespace) -> int:
     """One worker's batch over its shard share, appending to the parts and stopping on budget."""
     started = time.monotonic()
     require_phase(args.phase)
+    _require_worker(args, "align", PHASE_A)
     rows = _worker_rows(args)
     decoder, identity, fingerprint = load_decoder()
     _record_teacher(args.parts_dir, identity, fingerprint)
@@ -97,15 +110,57 @@ def align(args: argparse.Namespace) -> int:
     return 0
 
 
-def _worker_rows(args: argparse.Namespace) -> list[dict]:
-    """The worker's rows: its written worklist, else its share of the tranche's gating rows.
+def decode(args: argparse.Namespace) -> int:
+    """One phase B worker's batch: its shard share of a tranche, decoded into the parts."""
+    started = time.monotonic()
+    require_phase(args.phase)
+    _require_worker(args, "decode", PHASE_B)
+    rows = _worker_rows(args)
+    # The committed choice binds the producer set: a round that chose other weights than phase
+    # B's fixed three is refused here, before three checkpoints load.
+    ted.require_confirm_models(list(MINED_MODELS))
+    decoders = ted.load_models(args.parts_dir, models=list(MINED_MODELS))
+    stream = ted.shard_stream(args.shard_cache)
+    word_counts = ted.ayah_word_counts()
+    written = 0
+    for shard_file, shard_rows in sorted(grouped_by_shard(rows).items()):
+        if not mined_pending(shard_rows, args.parts_dir, role=args.role, models=MINED_MODELS):
+            continue
+        # The budget covers this worker from spawn: a shard whose clips are not fetched yet is
+        # not started once the batch has spent it (a fetched shard decodes from the cache).
+        if args.budget_seconds - (time.monotonic() - started) <= 0:
+            break
+        _fetch_shard(shard_file, shard_rows, args)
+        result = decode_batch(
+            shard_rows, args.parts_dir, role=args.role, decoders=decoders, stream=stream,
+            word_counts=word_counts,
+            budget_seconds=max(0.0, args.budget_seconds - (time.monotonic() - started)),
+            clock=time.monotonic, share_features=True, load_audio=default_audio,
+            clip_cache=args.clip_dir)
+        written += result.written
+    print(f"{args.role} worker {args.shard_index}: decoded {written}, "
+          f"done={not mined_pending(rows, args.parts_dir, role=args.role, models=MINED_MODELS)}",
+          flush=True)
+    return 0
 
-    A worklist is not an authorization: every row must be a gating row of ``--role``, of this
-    worker's shard share, and identical to the committed manifest row. Selection is re-read
-    through :func:`phase_a_rows`, so a stale or forged worklist cannot put a row the launcher
-    must never touch (a reported stratum, a train or confirm.3/4 row) through the teacher.
+
+def _require_worker(args: argparse.Namespace, worker: str, phase: str) -> None:
+    """Refuse a worker command run for the phase whose rows it does not know how to read."""
+    if args.phase != phase:
+        raise ValueError(f"phase {args.phase} does not {worker}: `{worker}` is phase "
+                         f"{phase}'s worker")
+
+
+def _worker_rows(args: argparse.Namespace) -> list[dict]:
+    """The worker's rows: its written worklist, else its share of ``--role``'s selected rows.
+
+    A worklist is not an authorization: every row must be a row of ``--role`` for this phase, of
+    this worker's shard share, and identical to the committed manifest row. Selection is re-read
+    through :func:`phase_a_rows` / :func:`phase_b_rows`, so a stale or forged worklist cannot put
+    a row the launcher must never touch (a gating row, an unlabelled unclean row, a train or
+    confirm.3/4 row) through a model.
     """
-    rows = phase_a_rows(args.role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+    rows = _selected_rows(args.role, args)
     share = worker_rows(rows, shard_index=args.shard_index, shard_count=args.shard_count)
     if args.worklist is None:
         return share
@@ -118,11 +173,27 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
             raise ValueError(f"{key} appears twice in {args.worklist}")
         seen.add(key)
         if key not in canonical:
-            raise ValueError(f"{key} is not a gating row of {args.role} worker "
-                             f"{args.shard_index}/{args.shard_count}")
+            raise ValueError(f"{key} is not a {_row_noun(args.phase)} row of {args.role} "
+                             f"worker {args.shard_index}/{args.shard_count}")
         if row != canonical[key]:
             raise ValueError(f"{key}: the worklist is not the committed manifest row")
     return listed
+
+
+def _selected_rows(role: str, args: argparse.Namespace) -> list[dict]:
+    """``role``'s rows for ``args.phase``: phase A's gating rows, or phase B's decodable ones."""
+    if args.phase == PHASE_B:
+        return phase_b_rows(role, tranches_dir=args.tranches_dir,
+                            split_dir=args.split_dir)[0]
+    return phase_a_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+
+
+def _row_noun(phase: str) -> str:
+    return "mined" if phase == PHASE_B else "gating"
+
+
+def _tranches(phase: str) -> tuple[str, ...]:
+    return PHASE_B_TRANCHES if phase == PHASE_B else PHASE_A_TRANCHES
 
 
 def run(args: argparse.Namespace) -> int:
@@ -134,15 +205,13 @@ def run(args: argparse.Namespace) -> int:
     # the lock is released; a hard kill leaves the parts intact and the next run resumes.
     for signal_number in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signal_number, _raise_exit)
-    if not args.resume and any(Path(args.parts_dir).glob("word_times.*.jsonl")):
+    if not args.resume and any(Path(args.parts_dir).glob(_parts_glob(args.phase))):
         raise SystemExit(f"{args.parts_dir} already holds records: pass --resume to continue "
                          f"that run, or use a fresh --parts-dir")
     if args.parallel != requested:
         print(f"parallel capped to {args.parallel}: whole-clip workers need "
               f"{WORKER_VRAM_MIB} MiB each", flush=True)
-    rows_by_role = {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
-                                       split_dir=args.split_dir)
-                    for role in PHASE_A_TRANCHES}
+    rows_by_role = {role: _selected_rows(role, args) for role in _tranches(args.phase)}
     for directory in (args.parts_dir, args.clip_dir, args.shard_cache):
         Path(directory).mkdir(parents=True, exist_ok=True)
     _write_worklists(rows_by_role, args)
@@ -158,8 +227,10 @@ def run(args: argparse.Namespace) -> int:
 
 
 def merge(args: argparse.Namespace) -> int:
-    """The parts into ``<out-dir>/<tranche>.jsonl.gz`` and ``meta.json``."""
+    """The parts into the phase's committed files: phase A's word times, phase B's decodes."""
     require_phase(args.phase)
+    if args.phase == PHASE_B:
+        return _merge_mined(args)
     manifests = {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
                                     split_dir=args.split_dir)
                  for role in PHASE_A_TRANCHES}
@@ -173,20 +244,54 @@ def merge(args: argparse.Namespace) -> int:
     return 0
 
 
+def _merge_mined(args: argparse.Namespace) -> int:
+    """Phase B's merge, and the counts its run note cites: rows per model, per label source."""
+    rows: dict[str, list[dict]] = {}
+    listed: dict[str, list[dict]] = {}
+    for role in PHASE_B_TRANCHES:
+        rows[role], listed[role] = phase_b_rows(role, tranches_dir=args.tranches_dir,
+                                                split_dir=args.split_dir)
+    counts = merge_mined_decodes(args.parts_dir, args.out_dir, rows=rows,
+                                 unphonetizable=listed,
+                                 provenance=provenance(args.code_sha or head_sha(),
+                                                       args.pull_request),
+                                 models=list(MINED_MODELS))
+    sources = Counter(row["label_source"] for tranche in PHASE_B_TRANCHES
+                      for row in rows[tranche])
+    print(f"label sources: {dict(sources)}", flush=True)
+    print(f"unphonetizable: {sum(len(entries) for entries in listed.values())} rows listed "
+          f"(#248)", flush=True)
+    for model, count in counts.items():
+        print(f"{model}: {count} rows", flush=True)
+    return 0
+
+
 def _batch(rows_by_role: dict, args: argparse.Namespace):
     """The give-way loop's batch: spawn the workers of the first role with rows left."""
     def batch(budget: float) -> bool:
-        for role in PHASE_A_TRANCHES:
+        for role in _tranches(args.phase):
             shares = [worker_rows(rows_by_role[role], shard_index=index,
                                   shard_count=args.parallel)
                       for index in range(args.parallel)]
             indexes = [index for index, share in enumerate(shares)
-                       if pending(share, args.parts_dir)]
+                       if _pending(share, role, args)]
             if indexes:
                 _run_workers(role, indexes, budget, args)
                 return False
         return True
     return batch
+
+
+def _pending(rows: list[dict], role: str, args: argparse.Namespace) -> bool:
+    """Whether any of ``rows`` still lacks a record, for ``args.phase``'s parts."""
+    if args.phase == PHASE_B:
+        return mined_pending(rows, args.parts_dir, role=role, models=MINED_MODELS)
+    return pending(rows, args.parts_dir)
+
+
+def _parts_glob(phase: str) -> str:
+    """The part files a run of ``phase`` leaves in its parts directory."""
+    return "tlog.*.jsonl" if phase == PHASE_B else "word_times.*.jsonl"
 
 
 def _worker_count(requested: int, free_mib: int) -> int:
@@ -200,7 +305,7 @@ def _worker_count(requested: int, free_mib: int) -> int:
 
 def _write_worklists(rows_by_role: dict, args: argparse.Namespace) -> None:
     """Each worker's rows, written once at launch: a batch then costs no selection read."""
-    for role in PHASE_A_TRANCHES:
+    for role in _tranches(args.phase):
         for index in range(args.parallel):
             share = worker_rows(rows_by_role[role], shard_index=index,
                                 shard_count=args.parallel)
@@ -209,7 +314,8 @@ def _write_worklists(rows_by_role: dict, args: argparse.Namespace) -> None:
 
 def _run_workers(role: str, indexes: list[int], budget: float, args: argparse.Namespace) -> None:
     """Spawn the worker indexes and bound the whole batch in the parent, not just their rows."""
-    command = [sys.executable, "-m", "tadabur.tlog_mining", "align", "--role", role,
+    worker = "decode" if args.phase == PHASE_B else "align"
+    command = [sys.executable, "-m", "tadabur.tlog_mining", worker, "--role", role,
                "--parts-dir", str(args.parts_dir), "--clip-dir", str(args.clip_dir),
                "--shard-cache", str(args.shard_cache), "--shard-count", str(args.parallel),
                "--tranches-dir", str(args.tranches_dir), "--split-dir", str(args.split_dir),
@@ -359,21 +465,30 @@ def main() -> None:
         command.add_argument("--tranches-dir", type=Path, default=TRANCHES_DIR)
         command.add_argument("--split-dir", type=Path, default=SPLIT_DIR)
         command.add_argument("--phase", default=PHASE,
-                             help=f"the only runnable phase ({PHASE}); B and C are refused")
+                             help=f"{PHASE_A}, or {PHASE_B} under its pinned amendment "
+                                  f"(phase C is refused)")
 
-    align_parser = commands.add_parser("align", help="one worker's batch")
-    align_parser.add_argument("--role", choices=list(PHASE_A_TRANCHES), required=True)
-    align_parser.add_argument("--shard-index", type=int, required=True)
-    align_parser.add_argument("--shard-count", type=int, required=True)
-    align_parser.add_argument("--parts-dir", type=Path, required=True)
-    align_parser.add_argument("--clip-dir", type=Path, required=True)
-    align_parser.add_argument("--shard-cache", type=Path, required=True)
-    align_parser.add_argument("--look-clip-cache", type=Path)
-    align_parser.add_argument("--worklist", type=Path,
-                              help="the rows `run` wrote for this worker; else select them here")
-    align_parser.add_argument("--budget-seconds", type=float, default=BATCH_SECONDS)
-    add_common(align_parser)
+    def add_worker(command: argparse.ArgumentParser, roles: tuple[str, ...]) -> None:
+        command.add_argument("--role", choices=list(roles), required=True)
+        command.add_argument("--shard-index", type=int, required=True)
+        command.add_argument("--shard-count", type=int, required=True)
+        command.add_argument("--parts-dir", type=Path, required=True)
+        command.add_argument("--clip-dir", type=Path, required=True)
+        command.add_argument("--shard-cache", type=Path, required=True)
+        command.add_argument("--look-clip-cache", type=Path,
+                             help="a clip cache to hardlink from before streaming the shard")
+        command.add_argument("--worklist", type=Path,
+                             help="the rows `run` wrote for this worker; else select them here")
+        command.add_argument("--budget-seconds", type=float, default=BATCH_SECONDS)
+        add_common(command)
+
+    align_parser = commands.add_parser("align", help="phase A: one worker's batch")
+    add_worker(align_parser, PHASE_A_TRANCHES)
     align_parser.set_defaults(handler=align)
+
+    decode_parser = commands.add_parser("decode", help="phase B: one worker's batch")
+    add_worker(decode_parser, PHASE_B_TRANCHES)
+    decode_parser.set_defaults(handler=decode, phase=PHASE_B)
 
     run_parser = commands.add_parser("run", help="the give-way loop")
     run_parser.add_argument("--parts-dir", type=Path, required=True)

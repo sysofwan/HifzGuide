@@ -26,8 +26,9 @@ same units on the same 577 benchmark clips?
   ``checks-w1`` actually feeds the model (first preview, first window, a later warmed window,
   the stop), and the two runtimes' cut decisions must agree. sherpa-onnx exposes a token's first
   frame only, so its run ends somewhere in ``[start, next_start - 1]``; a decision both bounds
-  agree on is exact (:func:`cut_certainty`), and any other is reported as ambiguous rather than
-  guessed. Frame shifts away from a cut are the allowance (astra r1 §3); a shift that changes a
+  agree on is exact (:func:`cut_certainty`), and any other is resolved from the reference front
+  end's own frame outputs (:func:`trace`) -- and refused, never passed, while it stays open.
+  Frame shifts away from a cut are the allowance (astra r1 §3); a shift that changes a
   cut is a mismatch.
 * **The front end is compared, not shared** (rule 6, report only): our torchaudio kaldi fbank and
   sherpa's kaldi-native-fbank are fed the same waveform and tail, and the max-abs difference is
@@ -40,18 +41,20 @@ same units on the same 577 benchmark clips?
   evidence, v3 never appears, and no sealed clip is decoded -- the plan drops those before any
   decode.
 
-The gate runs in three phases, because our decoder needs torch/torchaudio and sherpa-onnx must
+The gate runs in four phases, because our decoder needs torch/torchaudio and sherpa-onnx must
 stay out of the repo's environments (a throwaway venv, never a dependency)::
 
     python -m training.zipformer_parity ours --work-dir /root/scratch/zipformer/data \\
         --out-dir /root/scratch/zipformer/parity --workers 12
     /root/scratch/sherpa-venv/bin/python -m training.zipformer_parity sherpa \\
         --ours-dir /root/scratch/zipformer/parity --model /path/v3.2.onnx --tokens /path/tokens.txt
+    /root/scratch/sherpa-venv/bin/python -m training.zipformer_parity trace \\
+        --ours-dir /root/scratch/zipformer/parity --model /path/v3.2.onnx --tokens /path/tokens.txt
     python -m training.zipformer_parity verdict --ours-dir /root/scratch/zipformer/parity \\
         --work-dir /root/scratch/zipformer/data \\
         --out tools/tadabur/zipformer_screen/parity.json
 
-``scripts/zipformer-screen.sh parity launch`` stages the branch and runs all three detached on
+``scripts/zipformer-screen.sh parity launch`` stages the branch and runs all four detached on
 the run box. Only the pure rule lives here (the tests import this module without torch); the
 phases import their own runtimes inside the functions that need them.
 """
@@ -198,16 +201,22 @@ def cut_decision(start: int, end: int, boundary: int) -> bool:
 
 
 def cut_certainty(start: int, next_start: int | None, boundary: int,
-                  last_step: int | None = None) -> str:
-    """What sherpa's start frames fix about that decision: ``kept``, ``dropped`` or ``ambiguous``.
+                  last_step: int | None = None, end: int | None = None) -> str:
+    """What the reference runtime fixes about that decision: ``kept``, ``dropped`` or
+    ``ambiguous``.
 
-    sherpa exposes a token's first frame only, so its run ends somewhere in
+    sherpa's recognizer exposes a token's first frame only, so its run ends somewhere in
     ``[start, next_start - 1]``. The last token has no next start: its run extends to the crop's
     own last step (``last_step``), which is what ``_probe`` records; without it the run is
     assumed to be one frame, which hides a genuine disagreement at the crop's end. A decision
-    both ends agree on is determined; anything else is ambiguous and reported rather than
-    guessed.
+    both ends agree on is determined; anything else is ambiguous.
+
+    ``end`` is the run's exact last frame, when the gate has traced the reference front end's
+    own frame outputs (:func:`trace`). It settles the decision outright: no bound is needed,
+    and an ambiguous decision is never reported from an exact run.
     """
+    if end is not None:
+        return "kept" if cut_decision(start, end, boundary) else "dropped"
     if next_start is not None:
         end_high = max(start, next_start - 1)
     else:
@@ -224,28 +233,41 @@ def cut_certainty(start: int, next_start: int | None, boundary: int,
 def probe_check(entry: Mapping) -> dict:
     """One sampled check's parity: the same units, and the same side of every cut boundary.
 
-    ``entry`` carries our emissions (``start``/``end`` steps, exact) beside sherpa's
+    ``entry`` carries our emissions (``start``/``end`` steps, exact) beside the reference's
     (``start`` only), the crop-relative ``boundaries`` of the check, its ``last_step`` (where
-    the terminal run ends), and the check's name. A determined sherpa decision that differs
-    from ours is a mismatch; an ambiguous one is counted, not excused.
+    the terminal run ends), the check's name, and -- when the gate traced the reference front
+    end -- ``runs``, the reference runtime's exact runs. A determined decision that differs from
+    ours is a mismatch; an ambiguous one is not a pass: an unresolved cut can hide a different
+    field, so it is refused rather than excused (parity-gate.md rule 5, astra r1 §4.3).
     """
     ours, sherpa = list(entry["ours"]), list(entry["sherpa"])
+    runs = entry.get("runs")
+    trace = "exact runs" if runs is not None else "start-frame bounds only"
+    if runs is not None and (
+            [run["text"] for run in runs] != [emission["text"] for emission in sherpa]
+            or [run["start"] for run in runs] != [emission["start"] for emission in sherpa]):
+        runs, trace = None, "refused: the trace is not the reference runtime's own output"
     tokens_equal = [emission["text"] for emission in ours] == [
         emission["text"] for emission in sherpa]
     starts_equal = [emission["start"] for emission in ours] == [
         emission["start"] for emission in sherpa]
-    ambiguous, mismatches = 0, []
+    ambiguous, resolved, mismatches = 0, 0, []
     if tokens_equal:
         for boundary in entry["boundaries"]:
             for index, (mine, theirs) in enumerate(zip(ours, sherpa)):
                 next_start = (sherpa[index + 1]["start"]
                               if index + 1 < len(sherpa) else None)
+                bounds = cut_certainty(theirs["start"], next_start, boundary,
+                                       entry.get("last_step"))
+                end = runs[index]["end"] if runs is not None else None
                 certainty = cut_certainty(theirs["start"], next_start, boundary,
-                                          entry.get("last_step"))
+                                          entry.get("last_step"), end=end)
                 kept = cut_decision(mine["start"], mine["end"], boundary)
                 if certainty == "ambiguous":
                     ambiguous += 1
-                elif (certainty == "kept") != kept:
+                    continue
+                resolved += bounds == "ambiguous"
+                if (certainty == "kept") != kept:
                     mismatches.append({
                         "boundary": boundary, "index": index, "unit": mine["text"],
                         "sherpa": certainty, "ours": "kept" if kept else "dropped",
@@ -254,9 +276,11 @@ def probe_check(entry: Mapping) -> dict:
         **entry,
         "tokens_equal": tokens_equal,
         "starts_equal": starts_equal,
+        "trace": trace,
         "ambiguous": ambiguous,
+        "resolved": resolved,
         "mismatches": mismatches,
-        "passes": tokens_equal and not mismatches,
+        "passes": tokens_equal and not mismatches and not ambiguous,
     }
 
 
@@ -265,9 +289,22 @@ def require_parity(record: Mapping, expected: Mapping[str, int]) -> None:
 
     ``expected`` is the plan's clip count per source: a record that decoded fewer (a ``--limit``
     smoke run, a crash-resumed phase) fails even where every clip it did decode is identical,
-    so ``passed`` is never a function of a subset.
+    so ``passed`` is never a function of a subset. The structural facts a pass rests on -- the
+    plan's own size, both runtimes' call counts, the probe's unresolved cuts -- are re-read
+    here, never taken from a copied ``passed``.
     """
     failures: list[str] = []
+    plan = record.get("plan") or {}
+    if plan:
+        if plan.get("partial") or plan.get("decoded") != plan.get("clips"):
+            failures.append(
+                f"plan: {plan.get('decoded')} of {plan.get('clips')} clips were decoded")
+        if sum(plan.get("sources", {}).values()) != plan.get("clips"):
+            failures.append(
+                f"plan: its per-source counts sum to {sum(plan['sources'].values())}, not its "
+                f"{plan.get('clips')} clips")
+    else:
+        failures.append("plan: the record does not carry the plan it decoded")
     for source, count in sorted(expected.items()):
         entry = record["sources"].get(source)
         clips = 0 if entry is None else entry["clips"]
@@ -281,6 +318,10 @@ def require_parity(record: Mapping, expected: Mapping[str, int]) -> None:
             f"({entry['identical_percent']:.2f}%, need {IDENTICAL_PERCENT}%), "
             f"{entry['unit_edits']}/{entry['units_ours']} unit edits "
             f"({entry['edits_per_mille']:.3f} per mille, limit {EDITS_PER_MILLE})")
+    calls = record.get("calls") or {}
+    if not calls.get("agree"):
+        failures.append(f"calls: {len(calls.get('mismatched', []))} clips made a different "
+                        "number of calls")
     rates = record["audio"]["sample_rates"]
     off_rate = {rate: count for rate, count in rates.items() if int(rate) != SHERPA_SAMPLE_RATE}
     if off_rate:
@@ -307,9 +348,40 @@ def require_parity(record: Mapping, expected: Mapping[str, int]) -> None:
             f"probe {check['key']} {check['check']}: "
             + ("the runtimes emitted different units"
                if not check["tokens_equal"]
-               else f"{len(check['mismatches'])} cut decisions differ"))
+               else f"{len(check['mismatches'])} cut decisions differ"
+               if check["mismatches"]
+               else f"{check['ambiguous']} cut decisions are unresolved"))
     if failures:
         raise ParityStop("; ".join(failures))
+
+
+def require_valid_record(record: Mapping) -> None:
+    """Re-establish a committed record's pass from its own evidence, not from ``passed``.
+
+    The readout reads this before it scores anything: a record whose verdict was copied rather
+    than re-derived, whose plan is short or partial, whose calls disagree, whose probe left a
+    cut undecided, or whose weights are not the identity's pinned ONNX cannot carry a
+    comparison. Historical failures stay reportable through the gate table; this is only the
+    question "may the comparison decodes proceed?".
+    """
+    if record.get("gate") != "sherpa-parity":
+        raise ParityStop(f"the record's gate is {record.get('gate')!r}, not 'sherpa-parity'")
+    if record.get("passed") is not True:
+        raise ParityStop(f"the record did not pass: {record.get('stop') or 'no reason given'}")
+    plan = record.get("plan") or {}
+    expected = plan.get("sources") or {}
+    if not expected:
+        raise ParityStop("the record carries no plan's per-source counts")
+    require_parity(record, expected)
+    from training.zipformer_decode import IDENTITY_PATH, ONNX_FILE
+
+    identity = json.loads(IDENTITY_PATH.read_text(encoding="utf-8"))["identity"]
+    if record["ours"].get("model_sha256") != identity["files"][ONNX_FILE]:
+        raise ParityStop(
+            f"the record decoded {record['ours'].get('model_sha256')!r}, not the identity's "
+            f"pinned {identity['files'][ONNX_FILE]!r}")
+    if record["ours"].get("identity_sha256") != _sha256_file(IDENTITY_PATH):
+        raise ParityStop("the record's identity is not the committed identity.json")
 
 
 # --- the shared record plumbing --------------------------------------------------------------
@@ -401,12 +473,13 @@ def _probe(decoder, samples, name: str, span) -> dict:
     import numpy as np
 
     from training.decoding import PREVIEW, STOP
-    from training.zipformer_decode import (HOP_STEPS, STEP_SAMPLES, featurize, scan_units,
+    from training.zipformer_decode import (HOP_STEPS, STEP_SAMPLES, scan_units,
                                            warmup_start)
 
     begin = warmup_start(span)
     crop = samples[begin:span.end]
-    emissions = scan_units(np.concatenate(decoder.stream_calls(crop)), decoder.tokens)
+    calls = decoder.stream_calls(crop)
+    emissions = scan_units(np.concatenate(calls), decoder.tokens)
     offset = begin // STEP_SAMPLES
     start = span.start // STEP_SAMPLES - offset
     boundaries = ([start] if span.kind in (PREVIEW, STOP)
@@ -417,8 +490,9 @@ def _probe(decoder, samples, name: str, span) -> dict:
         "span": [begin, span.end],
         "boundaries": boundaries,
         #: The crop's last step: where the terminal token's run ends (sherpa exposes only its
-        #: start), so the last cut decision is checked on its true extent.
-        "last_step": len(featurize(crop, decoder.fbank, scale=decoder.scale)) - 1,
+        #: start), so the last cut decision is checked on its true extent. Steps, never the
+        #: 10 ms feature frames the encoder consumes four of.
+        "last_step": sum(len(call) for call in calls) - 1,
         "ours": [{"text": emission.text, "start": emission.start_step,
                   "end": emission.end_step} for emission in emissions],
     }
@@ -788,6 +862,89 @@ def sherpa(ours_dir: Path, model: Path, tokens: Path, workers: int) -> None:
     print(f"parity sherpa: {len(items)} clips decoded -> {ours_dir}", flush=True)
 
 
+# --- phase 2b: the reference front end's exact run ends --------------------------------------
+
+
+def trace(ours_dir: Path, model: Path, tokens: Path, out: Path) -> dict:
+    """Resolve each sampled cut from the reference front end's own frame outputs.
+
+    sherpa's recognizer exposes a token's first frame only, and ``checks-w1`` cuts on the run's
+    midpoint, so a start frame and the next token's start leave some decisions open
+    (:func:`cut_certainty`). This phase closes them the way astra r1 §4.3 proposes: the exact
+    features sherpa computed (kaldi-native-fbank with the pinned options, over the crop plus
+    the flush tail) go through the same ONNX and the same streaming loop our decoder runs
+    (:func:`training.zipformer_stream.stream_frame_ids`), whose per-frame argmax
+    :func:`training.zipformer_stream.scan_units` collapses into runs with exact ends.
+
+    The trace is only evidence if it is the reference runtime's own output: each probe's runs
+    must repeat sherpa's recorded tokens and start frames, or the probe is listed in
+    ``refused`` and the verdict cannot resolve that check.
+    """
+    import numpy as np
+    import onnxruntime
+    import soundfile
+
+    from training.zipformer_stream import (read_tokens, scan_units, state_specs,
+                                           stream_frame_ids)
+
+    ours_dir = Path(ours_dir)
+    rows = _read_jsonl(ours_dir / "ours.jsonl")
+    sherpa_rows = {row["key"]: row for row in _read_jsonl(ours_dir / "sherpa.jsonl")}
+    table = read_tokens(Path(tokens))
+    options = _fbank_options()
+    session = onnxruntime.InferenceSession(str(model), providers=["CPUExecutionProvider"])
+    specs = state_specs(session)
+    probes, refused = [], []
+    for row in rows:
+        if not row.get("probes"):
+            continue
+        theirs = {tuple(probe["span"]): probe for probe in sherpa_rows[row["key"]]["probes"]}
+        waveform, rate = soundfile.read(row["audio"], dtype="float32")
+        if waveform.ndim > 1:
+            waveform = waveform.mean(axis=1)
+        if rate != SHERPA_SAMPLE_RATE:
+            raise ValueError(f"{row['key']}: {rate} Hz; the parity plan is 16 kHz only")
+        for probe in row["probes"]:
+            begin, end = probe["span"]
+            crop = np.ascontiguousarray(waveform[begin:end], dtype=np.float32)
+            frames = np.concatenate(
+                stream_frame_ids(session, _knf_features(crop, options), specs))
+            runs = [{"text": emission.text, "start": emission.start_step,
+                     "end": emission.end_step}
+                    for emission in scan_units(frames, table)]
+            reference = theirs[tuple(probe["span"])]["sherpa"]
+            matches = ([run["text"] for run in runs] == [item["text"] for item in reference]
+                       and [run["start"] for run in runs] == [item["start"]
+                                                             for item in reference])
+            if not matches:
+                refused.append(f"{row['key']} {probe['check']}")
+            probes.append({"key": row["key"], "source": row["source"],
+                           "check": probe["check"], "span": list(probe["span"]),
+                           "last_step": len(frames) - 1, "runs": runs,
+                           "matches_sherpa": matches})
+    record = {
+        "schema_version": 1,
+        "issue": 245,
+        "gate": "sherpa-parity-trace",
+        "rule": "the reference front end's own frame outputs: kaldi-native-fbank with sherpa's "
+                "pinned options over the crop plus the flush tail, the same ONNX, and the same "
+                "streaming loop and run collapse as our decoder "
+                "(training.zipformer_stream.stream_frame_ids / scan_units); a probe whose runs "
+                "are not sherpa's recorded tokens and start frames is refused",
+        "model": {"path": str(model), "sha256": _sha256_file(Path(model))},
+        "onnxruntime": onnxruntime.__version__,
+        "front_end": {"library": "kaldi-native-fbank", "feature_config": dict(FEATURE_CONFIG),
+                      "tail_samples": SHERPA_TAIL_SAMPLES,
+                      "frame_options": options.frame_opts.as_dict(),
+                      "mel_options": options.mel_opts.as_dict()},
+        "probes": probes,
+        "refused": refused,
+    }
+    _write_json(record, Path(out))
+    print(f"parity trace: {len(probes)} probes, {len(refused)} refused -> {out}", flush=True)
+    return record
+
+
 # --- phase 3: the verdict --------------------------------------------------------------------
 
 
@@ -846,6 +1003,8 @@ def _phone_table_hits(plan: Mapping[str, str], manifest: Mapping[str, Mapping], 
     before any decode and cannot shrink to a one-clip bound. ``missing`` names a cohort clip one
     runtime never decoded; ``require_parity`` fails on it.
     """
+    from training.zipformer_run import card_inventory
+
     table = card_table(json.loads(files.text2phoneme.read_text(encoding="utf-8")))
     units = card_inventory()
     hits: list[tuple[str, list[str]]] = []
@@ -936,6 +1095,19 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
             f"e.g. {waveform_mismatches[:3]}")
 
     checks: list[dict] = []
+    trace_path = ours_dir / "trace.json"
+    reference_trace = _read_json(trace_path) if trace_path.is_file() else None
+    if reference_trace is not None:
+        if reference_trace["model"]["sha256"] != ours_protocol["ours"].get("model_sha256"):
+            problems.append("trace: it traced a different ONNX than ours decoded")
+            reference_trace = None
+        elif reference_trace["refused"]:
+            problems.append(
+                f"trace: {len(reference_trace['refused'])} probes are not the reference "
+                f"runtime's own output, e.g. {reference_trace['refused'][:3]}")
+    traced = ({} if reference_trace is None else
+              {(probe["key"], probe["check"]): probe
+               for probe in reference_trace["probes"]})
     for row in paired:
         if not row.get("probes"):
             continue
@@ -945,12 +1117,24 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
             if tuple(probe["span"]) not in theirs:
                 problems.append(f"{row['key']}: sherpa did not decode the {probe['check']} probe")
                 continue
-            checks.append(probe_check({**probe, "key": row["key"], "source": row["source"],
-                                       "sherpa": theirs[tuple(probe["span"])]["sherpa"]}))
+            entry = {**probe, "key": row["key"], "source": row["source"],
+                     "sherpa": theirs[tuple(probe["span"])]["sherpa"]}
+            carried = traced.get((row["key"], probe["check"]))
+            if carried is not None:
+                entry["runs"] = carried["runs"]
+            checks.append(probe_check(entry))
     probe = {
         "canaries": sorted({row["key"] for row in paired if row.get("probes")}),
         "checks": checks,
         "ambiguous_decisions": sum(check["ambiguous"] for check in checks),
+        "resolved_decisions": sum(check["resolved"] for check in checks),
+        "trace": None if reference_trace is None else {
+            "gate": reference_trace["gate"],
+            "model_sha256": reference_trace["model"]["sha256"],
+            "onnxruntime": reference_trace["onnxruntime"],
+            "probes": len(reference_trace["probes"]),
+            "refused": list(reference_trace["refused"]),
+        },
         "passes": bool(checks) and all(check["passes"] for check in checks),
     }
 
@@ -980,6 +1164,10 @@ def verdict(ours_dir: Path, work_dir: Path, out: Path, decodes: Path) -> dict:
                                   "incomplete chunk and their call counts must agree on every "
                                   "clip (rule 4, repaired in the diagnosis round)",
             "probe_checks": list(PROBE_CHECKS),
+            "cut_decisions": "each check's units and every cut decision must agree; a decision "
+                             "sherpa's start frames alone leave open is resolved from the "
+                             "reference front end's own frame outputs (the trace phase), and "
+                             "stays a refusal, never a pass, while it is open",
             "frame_allowance": "a start frame may shift only where no sampled cut changes "
                                "(astra r1 §3)",
             "same_weights": "ours and sherpa must decode the same ONNX: the identity's pinned "
@@ -1066,6 +1254,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     theirs.add_argument("--tokens", type=Path, required=True)
     theirs.add_argument("--workers", type=int, default=default_workers)
 
+    sampled = phases.add_parser("trace", help="the reference front end's exact run ends")
+    sampled.add_argument("--ours-dir", type=Path, required=True)
+    sampled.add_argument("--model", type=Path, required=True)
+    sampled.add_argument("--tokens", type=Path, required=True)
+    sampled.add_argument("--out", type=Path, default=None,
+                         help="the trace record (default: <ours-dir>/trace.json)")
+
     judged = phases.add_parser("verdict", help="apply the rule and write the record")
     judged.add_argument("--ours-dir", type=Path, required=True)
     judged.add_argument("--work-dir", type=Path, required=True)
@@ -1078,6 +1273,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.phase == "sherpa":
         sherpa(args.ours_dir, args.model, args.tokens, args.workers)
+        return 0
+    if args.phase == "trace":
+        out = args.out if args.out is not None else Path(args.ours_dir) / "trace.json"
+        trace(args.ours_dir, args.model, args.tokens, out)
         return 0
     try:
         record = verdict(args.ours_dir, args.work_dir, args.out, args.decodes)

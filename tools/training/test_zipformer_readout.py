@@ -57,6 +57,8 @@ def _record(*, qdat=20.0, consonant=2.0, haraka=2.0, heard=35.0, decoy=96.0, shi
         "ship_a": {"mistakes_flagged": {"models": {"zipformer-checks-w1": {"point": ship},
                                                    "r2_candidate_ema": {"point": 35.0},
                                                    "base": {"point": 33.0}}}},
+        "gates": {"parity": {"validated": True, "stop": None}},
+        "probe": {"stop": False, "projected_hours": 3.6, "horizon_hours": 12.0},
     }
 
 
@@ -90,6 +92,47 @@ def test_the_ship_a_bar_is_the_candidate_minus_five_points():
     assert bar["bar"] == pytest.approx(30.0)
     assert bar["passed"] is True
     assert readout.verdict(_record(ship=29.0))["verdict"] == "PRIOR"
+
+
+# --- the stop gates: no verdict from a gated-out run --------------------------------------
+
+
+def test_a_failed_or_unvalidated_parity_gate_refuses_the_verdict():
+    record = _record()
+    record["gates"]["parity"] = {"validated": False,
+                                 "stop": "probe a first-window: 1 cut decisions are unresolved"}
+    with pytest.raises(readout.GateStop, match="parity gate: probe a first-window"):
+        readout.verdict(record)
+
+
+def test_a_stopped_timing_probe_refuses_the_verdict():
+    record = _record()
+    record["probe"] = {"stop": True, "projected_hours": 13.4, "horizon_hours": 12.0}
+    with pytest.raises(readout.GateStop, match="13.4 h projected"):
+        readout.verdict(record)
+
+
+def test_the_report_refuses_before_scoring_anything_when_a_gate_failed(tmp_path, monkeypatch):
+    probe = tmp_path / "probe.json"
+    probe.write_text(json.dumps({"decoded_audio_unit": "seconds",
+                                 "decoded_audio_per_second": 50.0,
+                                 "probe": {"wall_seconds": 60.0},
+                                 "projected_seconds": 12960.0, "stop": False}),
+                     encoding="utf-8")
+    monkeypatch.setattr(readout, "PROBE_PATH", probe)
+    monkeypatch.setattr(readout, "gates",
+                        lambda: {"parity": {"validated": False, "stop": "a source failed"}})
+    # the harness, the sections and the verdict are never reached: no comparison report from a
+    # record whose decoder gate did not pass
+    with pytest.raises(readout.GateStop, match="parity gate: a source failed"):
+        readout.report()
+
+
+def test_the_committed_parity_record_validates_and_names_its_resolved_cuts():
+    parity = readout.gates()["parity"]
+    assert parity["passed"] is True and parity["validated"] is True
+    assert parity["plan"]["decoded"] == parity["plan"]["clips"]
+    assert parity["probe"]["ambiguous_decisions"] == 0
 
 
 # --- the committed page --------------------------------------------------------------------

@@ -98,6 +98,8 @@ parity_phases() {
       --workers '$WORKERS' || return \$?
   '$SHERPA' -u -m training.zipformer_parity sherpa --ours-dir '$PARITY' \
       --model '$PARITY_MODEL' --tokens '$PARITY_TOKENS' --workers '$WORKERS' || return \$?
+  '$SHERPA' -u -m training.zipformer_parity trace --ours-dir '$PARITY' \
+      --model '$PARITY_MODEL' --tokens '$PARITY_TOKENS' || return \$?
   python -u -m training.zipformer_parity verdict --ours-dir '$PARITY' --work-dir '$WORK' \
       --out '$REPO/$OUT/parity.json' --decodes '$REPO/$OUT/parity_decodes.jsonl.gz'
 }

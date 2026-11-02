@@ -425,3 +425,21 @@ def test_a_zipformer_decode_is_not_comparable_with_one_of_ours():
 def test_there_is_no_stream_b0_fingerprint_for_zipformer():
     with pytest.raises(ValueError):
         zipformer_fingerprint("z", "stream_b0")
+
+
+def test_the_stream_protocol_imports_without_the_corpus_readers():
+    # the parity gate's trace drives this protocol inside the reference runtime's throwaway
+    # venv, which has numpy and onnxruntime but no librosa, torch or torchaudio: importing
+    # training.zipformer_decode there pulls the corpus readers in, so the protocol lives apart
+    code = (
+        "import sys\n"
+        "class Block:\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name.split('.')[0] in ('librosa', 'torch', 'torchaudio', 'soundfile'):\n"
+        "            raise ImportError(f'{name} is not in the trace venv')\n"
+        "        return None\n"
+        "sys.meta_path.insert(0, Block())\n"
+        "import training.zipformer_stream as stream\n"
+        "assert stream.BLANK_ID == 250 and stream.INPUT_FRAMES == 61\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True, cwd=TOOLS)

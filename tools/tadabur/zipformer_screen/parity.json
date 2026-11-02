@@ -15,7 +15,8 @@
  },
  "calls": {
   "agree": true,
-  "note": "both runtimes stop before an incomplete chunk (the diagnosis round), so no call is padded and no padded-call emission can exist; the counts agreeing on every clip is what upholds rule 4"
+  "mismatched": [],
+  "note": "both runtimes stop before an incomplete chunk (the diagnosis round), so no call is padded; a differing count on any clip is a structural failure, and the record names the clips"
  },
  "explanatory": {
   "v1_0_reference_check": "not run here and not gated: the card-explanation check is explanatory only (parity-gate.md rule 8) and is recorded by the readout"
@@ -55,6 +56,8 @@
   "identity": "tools/tadabur/zipformer_screen/identity.json",
   "identity_sha256": "674ccb6ea43aa01c2b8b299dbcfdbabfc42e18b64b771234a5b24b13aee91842",
   "input_frames": 61,
+  "model_sha256": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa",
+  "model_sha256_backfilled": "the ours phase predates this field; reconstructed from identity.json's pinned zipformer_p_arabic_v3.2.onnx, whose sha256 equals the sherpa phase's recorded model, as the reviewer r1 provenance check verified",
   "sample_rate": 16000,
   "sample_scale": 1.0,
   "step_samples": 640,
@@ -65,6 +68,7 @@
  "phone_table_hits": {
   "character_distance": 0,
   "clips": 105,
+  "missing": [],
   "ours": {
    "clips": 105,
    "misses": 0,
@@ -79,6 +83,16 @@
    "per": 4.139433551198257
   }
  },
+ "plan": {
+  "clips": 577,
+  "decoded": 577,
+  "partial": false,
+  "sources": {
+   "phone": 177,
+   "studio": 200,
+   "unseen": 200
+  }
+ },
  "pooled": {
   "clips": 577,
   "identical": 577,
@@ -88,7 +102,7 @@
   "units_sherpa": 25281
  },
  "probe": {
-  "ambiguous_decisions": 11,
+  "ambiguous_decisions": 0,
   "canaries": [
    "everyayah_heldout/test-00003-of-00013_919",
    "everyayah_heldout/test-00008-of-00013_1683",
@@ -158,6 +172,54 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "م"
+     }
+    ],
     "sherpa": [
      {
       "start": 12,
@@ -202,10 +264,11 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      0,
      25
@@ -322,6 +385,114 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "حُ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ررِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "ت"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "عَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "لَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "ي"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "كُ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "م"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ءُ"
+     },
+     {
+      "end": 71,
+      "start": 71,
+      "text": "ممممَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "اا"
+     },
+     {
+      "end": 88,
+      "start": 88,
+      "text": "تُ"
+     },
+     {
+      "end": 94,
+      "start": 94,
+      "text": "كُ"
+     },
+     {
+      "end": 99,
+      "start": 99,
+      "text": "م"
+     },
+     {
+      "end": 103,
+      "start": 103,
+      "text": "وَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "بَ"
+     },
+     {
+      "end": 114,
+      "start": 114,
+      "text": "نَ"
+     },
+     {
+      "end": 120,
+      "start": 120,
+      "text": "اا"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "تُ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "م"
+     }
+    ],
     "sherpa": [
      {
       "start": 12,
@@ -414,10 +585,11 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 2,
+    "ambiguous": 0,
     "boundaries": [
      25,
      50
@@ -549,6 +721,129 @@
      }
     ],
     "passes": true,
+    "resolved": 2,
+    "runs": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "لَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "اا"
+     },
+     {
+      "end": 16,
+      "start": 16,
+      "text": "مَ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "اا"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "قَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "د"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "سَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "لَ"
+     },
+     {
+      "end": 61,
+      "start": 61,
+      "text": "ءِ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ننننَ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "للَ"
+     },
+     {
+      "end": 90,
+      "start": 90,
+      "text": "اا"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "هَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "كَ"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "اا"
+     },
+     {
+      "end": 109,
+      "start": 109,
+      "text": "نَ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "غَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "فُ"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "رَ"
+     },
+     {
+      "end": 141,
+      "start": 141,
+      "text": "ررَ"
+     },
+     {
+      "end": 147,
+      "start": 147,
+      "text": "حِ"
+     },
+     {
+      "end": 161,
+      "start": 161,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 163,
+      "start": 163,
+      "text": "م"
+     }
+    ],
     "sherpa": [
      {
       "start": 7,
@@ -653,10 +948,11 @@
      976000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25
     ],
@@ -772,6 +1068,114 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 5,
+      "start": 5,
+      "text": "يَ"
+     },
+     {
+      "end": 7,
+      "start": 7,
+      "text": "اا"
+     },
+     {
+      "end": 11,
+      "start": 11,
+      "text": "سَ"
+     },
+     {
+      "end": 16,
+      "start": 16,
+      "text": "رَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ءِ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "ننننَ"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "للَ"
+     },
+     {
+      "end": 65,
+      "start": 65,
+      "text": "اا"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "هَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "كَ"
+     },
+     {
+      "end": 80,
+      "start": 80,
+      "text": "اا"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "نَ"
+     },
+     {
+      "end": 90,
+      "start": 90,
+      "text": "غَ"
+     },
+     {
+      "end": 96,
+      "start": 96,
+      "text": "فُ"
+     },
+     {
+      "end": 101,
+      "start": 101,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "رَ"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ررَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "حِ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 134,
+      "start": 134,
+      "text": "مَ"
+     },
+     {
+      "end": 142,
+      "start": 142,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 5,
@@ -864,7 +1268,8 @@
      989309
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -923,6 +1328,54 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "لَ"
+     }
+    ],
     "sherpa": [
      {
       "start": 7,
@@ -967,10 +1420,11 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      0,
      25
@@ -1087,6 +1541,114 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "وَ"
+     },
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "قَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "دڇ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "صَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ددَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "قَ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "عَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "لَ"
+     },
+     {
+      "end": 58,
+      "start": 58,
+      "text": "ي"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "هِ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "م"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ءِ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "بڇ"
+     },
+     {
+      "end": 81,
+      "start": 81,
+      "text": "لِ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 91,
+      "start": 91,
+      "text": "سُ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "ظَ"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ننننَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "هُ"
+     },
+     {
+      "end": 130,
+      "start": 130,
+      "text": "ۥۥ"
+     }
+    ],
     "sherpa": [
      {
       "start": 7,
@@ -1179,10 +1741,11 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25,
      50
@@ -1304,6 +1867,119 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 7,
+      "start": 7,
+      "text": "فَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "تتَ"
+     },
+     {
+      "end": 23,
+      "start": 23,
+      "text": "بَ"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "عُ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "هُ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ءِ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "للَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "اا"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "فَ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "رِ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "قَ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "ممممِ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "نَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ل"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "مُ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "ء"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "مِ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "نِ"
+     },
+     {
+      "end": 150,
+      "start": 150,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 152,
+      "start": 152,
+      "text": "ن"
+     }
+    ],
     "sherpa": [
      {
       "start": 7,
@@ -1400,7 +2076,8 @@
      176000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1494,6 +2171,89 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءِ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "للَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "اا"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "فَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "رِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ممممِ"
+     },
+     {
+      "end": 77,
+      "start": 77,
+      "text": "نَ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "ل"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مُ"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "ء"
+     },
+     {
+      "end": 95,
+      "start": 95,
+      "text": "مِ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "نِ"
+     },
+     {
+      "end": 124,
+      "start": 124,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 126,
+      "start": 126,
+      "text": "ن"
+     }
+    ],
     "sherpa": [
      {
       "start": 20,
@@ -1566,7 +2326,8 @@
      177633
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1605,6 +2366,34 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 9,
+      "start": 9,
+      "text": "وَ"
+     },
+     {
+      "end": 15,
+      "start": 14,
+      "text": "ل"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "فَ"
+     },
+     {
+      "end": 23,
+      "start": 23,
+      "text": "جڇ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ر"
+     }
+    ],
     "sherpa": [
      {
       "start": 9,
@@ -1633,7 +2422,8 @@
      20480
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1657,6 +2447,19 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "ييِ"
+     }
+    ],
     "sherpa": [
      {
       "start": 48,
@@ -1673,7 +2476,8 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1738,6 +2542,59 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 54,
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "end": 128,
+      "start": 128,
+      "text": "خ"
+     },
+     {
+      "end": 134,
+      "start": 134,
+      "text": "شَ"
+     },
+     {
+      "end": 140,
+      "start": 140,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 48,
@@ -1786,7 +2643,8 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1850,6 +2708,59 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 48,
+      "start": 48,
+      "text": "سَ"
+     },
+     {
+      "end": 54,
+      "start": 54,
+      "text": "يَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "ذذَ"
+     },
+     {
+      "end": 76,
+      "start": 76,
+      "text": "ككَ"
+     },
+     {
+      "end": 82,
+      "start": 82,
+      "text": "رُ"
+     },
+     {
+      "end": 87,
+      "start": 87,
+      "text": "مَ"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "يييَ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "خ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "شَ"
+     },
+     {
+      "end": 139,
+      "start": 139,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 48,
@@ -1898,7 +2809,8 @@
      90650
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -1957,6 +2869,54 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 16,
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "نَ"
+     }
+    ],
     "sherpa": [
      {
       "start": 16,
@@ -2001,7 +2961,8 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -2151,6 +3112,144 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 16,
+      "start": 16,
+      "text": "سَ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "يَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "قُ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "لُ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "نَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ءَ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "ش"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "رَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "كُ"
+     },
+     {
+      "end": 70,
+      "start": 70,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 73,
+      "start": 73,
+      "text": "لَ"
+     },
+     {
+      "end": 77,
+      "start": 77,
+      "text": "و"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "شَ"
+     },
+     {
+      "end": 89,
+      "start": 89,
+      "text": "اااا"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "ءَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "للَ"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "اا"
+     },
+     {
+      "end": 105,
+      "start": 105,
+      "text": "هُ"
+     },
+     {
+      "end": 110,
+      "start": 110,
+      "text": "مَ"
+     },
+     {
+      "end": 114,
+      "start": 114,
+      "text": "اااا"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "ءَ"
+     },
+     {
+      "end": 123,
+      "start": 123,
+      "text": "ش"
+     },
+     {
+      "end": 125,
+      "start": 124,
+      "text": "رَ"
+     }
+    ],
     "sherpa": [
      {
       "start": 16,
@@ -2267,10 +3366,11 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25,
      50
@@ -2452,6 +3552,179 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 3,
+      "start": 3,
+      "text": "ءَ"
+     },
+     {
+      "end": 5,
+      "start": 5,
+      "text": "خ"
+     },
+     {
+      "end": 9,
+      "start": 9,
+      "text": "رِ"
+     },
+     {
+      "end": 14,
+      "start": 14,
+      "text": "جُ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "هُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "لَ"
+     },
+     {
+      "end": 28,
+      "start": 28,
+      "text": "نَ"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "اا"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "ءِ"
+     },
+     {
+      "end": 50,
+      "start": 50,
+      "text": "ںںں"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "تَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "تتَ"
+     },
+     {
+      "end": 64,
+      "start": 64,
+      "text": "بِ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "عُ"
+     },
+     {
+      "end": 72,
+      "start": 72,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 73,
+      "start": 73,
+      "text": "نَ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "ءِ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "للَ"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "ظظَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "ننننَ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "وَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "ن"
+     },
+     {
+      "end": 116,
+      "start": 116,
+      "text": "ءَ"
+     },
+     {
+      "end": 122,
+      "start": 122,
+      "text": "ںںں"
+     },
+     {
+      "end": 126,
+      "start": 126,
+      "text": "تُ"
+     },
+     {
+      "end": 129,
+      "start": 129,
+      "text": "م"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ءِ"
+     },
+     {
+      "end": 139,
+      "start": 139,
+      "text": "للَ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "اا"
+     },
+     {
+      "end": 147,
+      "start": 147,
+      "text": "تَ"
+     },
+     {
+      "end": 150,
+      "start": 150,
+      "text": "خ"
+     },
+     {
+      "end": 154,
+      "start": 154,
+      "text": "رُ"
+     }
+    ],
     "sherpa": [
      {
       "start": 3,
@@ -2596,7 +3869,8 @@
      384000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -2750,6 +4024,149 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ءِ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ںںں"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "تَ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "تتَ"
+     },
+     {
+      "end": 39,
+      "start": 39,
+      "text": "بِ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "عُ"
+     },
+     {
+      "end": 46,
+      "start": 46,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "نَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "ءِ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "للَ"
+     },
+     {
+      "end": 68,
+      "start": 68,
+      "text": "ظظَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "ننننَ"
+     },
+     {
+      "end": 79,
+      "start": 79,
+      "text": "وَ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "ءِ"
+     },
+     {
+      "end": 88,
+      "start": 88,
+      "text": "ن"
+     },
+     {
+      "end": 91,
+      "start": 91,
+      "text": "ءَ"
+     },
+     {
+      "end": 97,
+      "start": 97,
+      "text": "ںںں"
+     },
+     {
+      "end": 101,
+      "start": 101,
+      "text": "تُ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "م"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ءِ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "للَ"
+     },
+     {
+      "end": 118,
+      "start": 118,
+      "text": "اا"
+     },
+     {
+      "end": 122,
+      "start": 122,
+      "text": "تَ"
+     },
+     {
+      "end": 125,
+      "start": 125,
+      "text": "خ"
+     },
+     {
+      "end": 129,
+      "start": 129,
+      "text": "رُ"
+     },
+     {
+      "end": 135,
+      "start": 135,
+      "text": "صُ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 145,
+      "start": 145,
+      "text": "ن"
+     }
+    ],
     "sherpa": [
      {
       "start": 24,
@@ -2870,7 +4287,8 @@
      394553
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -2954,6 +4372,79 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "end": 13,
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "end": 45,
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "وَ"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 8,
@@ -3018,7 +4509,8 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -3107,6 +4599,84 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "تَ"
+     },
+     {
+      "end": 13,
+      "start": 13,
+      "text": "دڇ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عُ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "مَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "ن"
+     },
+     {
+      "end": 30,
+      "start": 30,
+      "text": "ءَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "دڇ"
+     },
+     {
+      "end": 38,
+      "start": 38,
+      "text": "بَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "رَ"
+     },
+     {
+      "end": 45,
+      "start": 45,
+      "text": "وَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "تَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "وَ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "للَ"
+     },
+     {
+      "end": 63,
+      "start": 63,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 8,
@@ -3175,7 +4745,8 @@
      35665
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -3234,6 +4805,54 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 14,
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 41,
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "قَ"
+     },
+     {
+      "end": 57,
+      "start": 57,
+      "text": "ر"
+     }
+    ],
     "sherpa": [
      {
       "start": 14,
@@ -3278,7 +4897,8 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -3337,6 +4957,54 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 14,
+      "start": 14,
+      "text": "سَ"
+     },
+     {
+      "end": 19,
+      "start": 19,
+      "text": "ءُ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ص"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "لِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 41,
+      "start": 41,
+      "text": "هِ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "سَ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "قَ"
+     },
+     {
+      "end": 60,
+      "start": 60,
+      "text": "ر"
+     }
+    ],
     "sherpa": [
      {
       "start": 14,
@@ -3381,7 +5049,8 @@
      42649
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -3450,6 +5119,64 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "end": 31,
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "نَ"
+     },
+     {
+      "end": 57,
+      "start": 57,
+      "text": "اا"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "مَ"
+     }
+    ],
     "sherpa": [
      {
       "start": 12,
@@ -3502,7 +5229,8 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -3637,6 +5365,129 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "يَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "اااا"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "ءَ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ييُ"
+     },
+     {
+      "end": 31,
+      "start": 31,
+      "text": "هَ"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "للَ"
+     },
+     {
+      "end": 44,
+      "start": 44,
+      "text": "ذِ"
+     },
+     {
+      "end": 48,
+      "start": 48,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 52,
+      "start": 52,
+      "text": "نَ"
+     },
+     {
+      "end": 58,
+      "start": 58,
+      "text": "ءَ"
+     },
+     {
+      "end": 62,
+      "start": 62,
+      "text": "اا"
+     },
+     {
+      "end": 65,
+      "start": 65,
+      "text": "مَ"
+     },
+     {
+      "end": 70,
+      "start": 70,
+      "text": "نُ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "لَ"
+     },
+     {
+      "end": 81,
+      "start": 81,
+      "text": "اا"
+     },
+     {
+      "end": 85,
+      "start": 85,
+      "text": "تَ"
+     },
+     {
+      "end": 93,
+      "start": 93,
+      "text": "تتَ"
+     },
+     {
+      "end": 98,
+      "start": 98,
+      "text": "خِ"
+     },
+     {
+      "end": 104,
+      "start": 104,
+      "text": "ذُ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 112,
+      "start": 112,
+      "text": "عَ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "دُ"
+     },
+     {
+      "end": 124,
+      "start": 124,
+      "text": "ووِ"
+     }
+    ],
     "sherpa": [
      {
       "start": 12,
@@ -3741,10 +5592,11 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25,
      50
@@ -3821,6 +5673,74 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 8,
+      "start": 8,
+      "text": "فَ"
+     },
+     {
+      "end": 14,
+      "start": 14,
+      "text": "قَ"
+     },
+     {
+      "end": 20,
+      "start": 20,
+      "text": "دڇ"
+     },
+     {
+      "end": 26,
+      "start": 26,
+      "text": "ضَ"
+     },
+     {
+      "end": 34,
+      "start": 34,
+      "text": "للَ"
+     },
+     {
+      "end": 43,
+      "start": 43,
+      "text": "سَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "وَ"
+     },
+     {
+      "end": 100,
+      "start": 100,
+      "text": "اااا"
+     },
+     {
+      "end": 102,
+      "start": 102,
+      "text": "ءَ"
+     },
+     {
+      "end": 111,
+      "start": 111,
+      "text": "سسَ"
+     },
+     {
+      "end": 117,
+      "start": 117,
+      "text": "بِ"
+     },
+     {
+      "end": 153,
+      "start": 153,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "end": 155,
+      "start": 155,
+      "text": "ل"
+     }
+    ],
     "sherpa": [
      {
       "start": 8,
@@ -3881,10 +5801,11 @@
      1024000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25
     ],
@@ -3940,6 +5861,54 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 12,
+      "start": 12,
+      "text": "لَ"
+     },
+     {
+      "end": 18,
+      "start": 18,
+      "text": "سَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "وَ"
+     },
+     {
+      "end": 75,
+      "start": 75,
+      "text": "اااا"
+     },
+     {
+      "end": 78,
+      "start": 78,
+      "text": "ءَ"
+     },
+     {
+      "end": 86,
+      "start": 86,
+      "text": "سسَ"
+     },
+     {
+      "end": 92,
+      "start": 92,
+      "text": "بِ"
+     },
+     {
+      "end": 128,
+      "start": 128,
+      "text": "ۦۦۦۦ"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "ل"
+     }
+    ],
     "sherpa": [
      {
       "start": 12,
@@ -3984,7 +5953,8 @@
      1034467
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -4033,6 +6003,44 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 13,
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "end": 53,
+      "start": 53,
+      "text": "اا"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "هُ"
+     }
+    ],
     "sherpa": [
      {
       "start": 13,
@@ -4069,10 +6077,11 @@
      32000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      0,
      25
@@ -4119,6 +6128,44 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 13,
+      "start": 13,
+      "text": "لَ"
+     },
+     {
+      "end": 17,
+      "start": 17,
+      "text": "عَ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "نَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "هُ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "للَ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "اا"
+     },
+     {
+      "end": 132,
+      "start": 132,
+      "text": "ه"
+     }
+    ],
     "sherpa": [
      {
       "start": 13,
@@ -4155,10 +6202,11 @@
      80000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
-    "ambiguous": 1,
+    "ambiguous": 0,
     "boundaries": [
      25,
      50
@@ -4255,6 +6303,94 @@
      }
     ],
     "passes": true,
+    "resolved": 1,
+    "runs": [
+     {
+      "end": 18,
+      "start": 18,
+      "text": "ءِ"
+     },
+     {
+      "end": 24,
+      "start": 24,
+      "text": "ننننَ"
+     },
+     {
+      "end": 29,
+      "start": 29,
+      "text": "مِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "ن"
+     },
+     {
+      "end": 40,
+      "start": 40,
+      "text": "عِ"
+     },
+     {
+      "end": 47,
+      "start": 47,
+      "text": "بَ"
+     },
+     {
+      "end": 51,
+      "start": 51,
+      "text": "اا"
+     },
+     {
+      "end": 56,
+      "start": 56,
+      "text": "دِ"
+     },
+     {
+      "end": 61,
+      "start": 61,
+      "text": "كَ"
+     },
+     {
+      "end": 66,
+      "start": 66,
+      "text": "نَ"
+     },
+     {
+      "end": 74,
+      "start": 74,
+      "text": "صِ"
+     },
+     {
+      "end": 80,
+      "start": 80,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 84,
+      "start": 84,
+      "text": "بَ"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ممممَ"
+     },
+     {
+      "end": 140,
+      "start": 140,
+      "text": "ف"
+     },
+     {
+      "end": 153,
+      "start": 153,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 155,
+      "start": 155,
+      "text": "م"
+     }
+    ],
     "sherpa": [
      {
       "start": 18,
@@ -4331,7 +6467,8 @@
      224000
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    },
    {
     "ambiguous": 0,
@@ -4420,6 +6557,84 @@
      }
     ],
     "passes": true,
+    "resolved": 0,
+    "runs": [
+     {
+      "end": 15,
+      "start": 15,
+      "text": "عِ"
+     },
+     {
+      "end": 21,
+      "start": 21,
+      "text": "بَ"
+     },
+     {
+      "end": 27,
+      "start": 27,
+      "text": "اا"
+     },
+     {
+      "end": 32,
+      "start": 32,
+      "text": "دِ"
+     },
+     {
+      "end": 36,
+      "start": 36,
+      "text": "كَ"
+     },
+     {
+      "end": 42,
+      "start": 42,
+      "text": "نَ"
+     },
+     {
+      "end": 49,
+      "start": 49,
+      "text": "صِ"
+     },
+     {
+      "end": 55,
+      "start": 55,
+      "text": "ۦۦ"
+     },
+     {
+      "end": 59,
+      "start": 59,
+      "text": "بَ"
+     },
+     {
+      "end": 108,
+      "start": 108,
+      "text": "مَ"
+     },
+     {
+      "end": 115,
+      "start": 115,
+      "text": "ف"
+     },
+     {
+      "end": 121,
+      "start": 121,
+      "text": "رُ"
+     },
+     {
+      "end": 127,
+      "start": 127,
+      "text": "ۥۥ"
+     },
+     {
+      "end": 133,
+      "start": 133,
+      "text": "ضَ"
+     },
+     {
+      "end": 144,
+      "start": 144,
+      "text": "اا"
+     }
+    ],
     "sherpa": [
      {
       "start": 15,
@@ -4488,12 +6703,23 @@
      238254
     ],
     "starts_equal": true,
-    "tokens_equal": true
+    "tokens_equal": true,
+    "trace": "exact runs"
    }
   ],
-  "passes": true
+  "passes": true,
+  "resolved_decisions": 11,
+  "trace": {
+   "gate": "sherpa-parity-trace",
+   "model_sha256": "ba30604ed9a8432ddba81b7274a75e74aa1135757a19d053e9b79bdd8f21a3aa",
+   "onnxruntime": "1.28.0",
+   "probes": 28,
+   "refused": []
+  }
  },
  "rule": {
+  "cut_decisions": "each check's units and every cut decision must agree; a decision sherpa's start frames alone leave open is resolved from the reference front end's own frame outputs (the trace phase), and stays a refusal, never a pass, while it is open",
+  "every_planned_clip": "the record covers the committed plan's clips, at the plan's own per-source counts; a partial run never passes",
   "frame_allowance": "a start frame may shift only where no sampled cut changes (astra r1 §3)",
   "identical_percent": 99,
   "padded_final_chunk": "no call may be padded: both runtimes stop before an incomplete chunk and their call counts must agree on every clip (rule 4, repaired in the diagnosis round)",
@@ -4505,6 +6731,7 @@
    "later-window",
    "stop"
   ],
+  "same_weights": "ours and sherpa must decode the same ONNX: the identity's pinned sha256 is compared with sherpa's model record",
   "unit_edits_per_mille": 1
  },
  "schema_version": 1,

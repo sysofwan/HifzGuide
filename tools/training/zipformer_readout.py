@@ -770,7 +770,14 @@ def exposure() -> dict:
 
 
 def gates() -> dict:
-    """The three gates in the order they ran, from their committed records."""
+    """The three gates in the order they ran, from their committed records.
+
+    The two card-number checks are historical: the first ran on v3.2 (the wrong model for the
+    card's table), the second on v3 as a decoder check, and both failed. The parity gate is the
+    one that decides whether the comparison decodes may be scored, so its pass is re-derived
+    from the record's own evidence (:func:`training.zipformer_parity.require_valid_record`)
+    rather than copied from ``passed``.
+    """
     out = {}
     for name, filename in (("card_gate_v3_2_baseline", "card_gate.json"),
                            ("card_gate_v3_decoder_check", "card_gate.v3.json")):
@@ -793,8 +800,31 @@ def gates() -> dict:
                      "character_per": {scale: {source: row["character_per"][source]["per"]
                                                for source in sorted(row["character_per"])}
                                        for scale, row in record["scales"].items()}}
+    from training.zipformer_parity import ParityStop, require_valid_record
+
     parity = json.loads((ZIPFORMER_DIR / "parity.json").read_text(encoding="utf-8"))
-    out["parity"] = {"passed": parity["passed"], "rule": parity["rule"]}
+    try:
+        require_valid_record(parity)
+    except ParityStop as stop:
+        validated, reason = False, str(stop)
+    else:
+        validated, reason = True, None
+    out["parity"] = {
+        "passed": parity["passed"], "validated": validated, "stop": reason,
+        "rule": parity["rule"], "plan": parity.get("plan"),
+        "sources": {source: {"clips": entry["clips"], "identical": entry["identical"],
+                             "units_ours": entry["units_ours"],
+                             "unit_edits": entry["unit_edits"], "passes": entry["passes"]}
+                    for source, entry in sorted(parity["sources"].items())},
+        "calls_agree": parity["calls"]["agree"],
+        "phone_table_hits": {"clips": parity["phone_table_hits"]["clips"],
+                             "per_mille": parity["phone_table_hits"]["per_mille"],
+                             "passes": parity["phone_table_hits"]["passes"]},
+        "probe": {"checks": len(parity["probe"]["checks"]),
+                  "ambiguous_decisions": parity["probe"]["ambiguous_decisions"],
+                  "resolved_decisions": parity["probe"].get("resolved_decisions"),
+                  "trace": parity["probe"].get("trace")},
+    }
     return out
 
 
@@ -822,6 +852,28 @@ def arm_map() -> dict:
 # --- the verdict ----------------------------------------------------------------------------
 
 
+class GateStop(RuntimeError):
+    """A stop gate did not pass: the record cannot carry a comparison verdict."""
+
+
+def require_gates(record: Mapping) -> None:
+    """Refuse to render a verdict when a stop gate did not pass.
+
+    The gates run in order (parity-gate.md, as amended): the parity gate decides whether the
+    comparison decodes may be scored at all, and the timing probe stops a batch projected past
+    its 12 h horizon before any set is decoded. A failed gate is recorded and reportable as
+    superseded context, but copying it into the record and then computing GO/PRIOR/STOP from
+    the metrics alone would present a decoder-unverified comparison as a screening result.
+    """
+    parity = record["gates"]["parity"]
+    if not parity.get("validated"):
+        raise GateStop(f"parity gate: {parity.get('stop') or 'not validated'}")
+    probe = record.get("probe") or {}
+    if probe.get("stop"):
+        raise GateStop(f"timing probe: {probe.get('projected_hours')} h projected, past the "
+                       f"{probe.get('horizon_hours')} h horizon")
+
+
 def closure(teacher: float, candidate: float, arm: float) -> dict:
     """Whether ``arm`` closes at least half the candidate−teacher gap on a lower-is-better
     metric: it must reach ``teacher + 0.5 × (candidate − teacher)``. A gap at or below zero (the
@@ -835,6 +887,7 @@ def closure(teacher: float, candidate: float, arm: float) -> dict:
 
 def verdict(record: Mapping) -> dict:
     """The pre-registered rule over the record's numbers (issue #245, ``checks-w1`` arm)."""
+    require_gates(record)
     qdat = record["qdat"]["models"]
     tlog = record["benchmark"]["sources"]["tlog_holdout"]
     correct = {
@@ -937,26 +990,31 @@ def _qdat_per_class() -> dict:
 
 def report() -> dict:
     """Every section of the committed record."""
-    harness = _harness()
     plan = json.loads((ZIPFORMER_DIR / "disjointness.json").read_text(encoding="utf-8"))["plan"]
     probe = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
     if probe.get("decoded_audio_unit") != "seconds":
         raise ValueError(f"{PROBE_PATH}: no decoded_audio_unit: seconds")
+    gate_table = gates()
+    probe_section = {"measured_rate": round(probe["decoded_audio_per_second"], 2),
+                     "measured_unit": probe["decoded_audio_unit"],
+                     "measured_wall_seconds": probe["probe"]["wall_seconds"],
+                     "projected_hours": round(probe["projected_seconds"] / 3600.0, 2),
+                     "horizon_hours": HORIZON_HOURS, "stop": bool(probe["stop"]),
+                     "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat "
+                             "items, projected over every job; the batch stops past 12 h "
+                             "(architect r2, AC 6)"}
+    # the stop gates' facts, before a single section is scored: a gated-out run has no normal
+    # comparison report (R1.9; parity-gate.md's ordered gates)
+    require_gates({"gates": gate_table, "probe": probe_section})
+    harness = _harness()
     record = {
         "issue": 245,
         "schema": 1,
-        "gates": gates(),
+        "gates": gate_table,
         "disjointness": disjointness(),
         "arm_map": arm_map(),
         "exposure": exposure(),
-        "probe": {"measured_rate": round(probe["decoded_audio_per_second"], 2),
-                  "measured_unit": probe["decoded_audio_unit"],
-                  "measured_wall_seconds": probe["probe"]["wall_seconds"],
-                  "projected_hours": round(probe["projected_seconds"] / 3600.0, 2),
-                  "horizon_hours": HORIZON_HOURS, "stop": bool(probe["stop"]),
-                  "rule": "the checks-w1 store's audio-seconds per wall-second on 20 qdat "
-                          "items, projected over every job; the batch stops past 12 h "
-                          "(architect r2, AC 6)"},
+        "probe": probe_section,
         "compute": compute_table(),
         "benchmark": benchmark_rates(set(plan["verdict"]), set(plan["same_group"])),
         "qdat": qdat_false_flags(harness),

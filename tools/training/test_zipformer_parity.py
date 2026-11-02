@@ -48,8 +48,11 @@ def _record(*, sources=None, phone=None, checks=None) -> dict:
                  "reference_characters": 10, "per_mille": 0.0}
     if checks is None:
         checks = [{"passes": True, "key": "a", "check": "first-window", "tokens_equal": True,
-                   "mismatches": []}]
-    return {"sources": sources, "phone_table_hits": phone,
+                   "ambiguous": 0, "mismatches": []}]
+    return {"gate": "sherpa-parity", "passed": True,
+            "plan": {"clips": 1, "decoded": 1, "sources": {"phone": 1}, "partial": False},
+            "sources": sources, "phone_table_hits": phone,
+            "calls": {"agree": True, "mismatched": []},
             "audio": {"sample_rates": {16000: 1}}, "probe": {"checks": checks}}
 
 
@@ -149,20 +152,29 @@ def test_the_terminal_run_ends_at_the_crop_not_at_its_start():
     assert cut_certainty(40, None, 50) == "dropped"
 
 
-def _probe(ours, sherpa, boundaries, check="first-window", last_step=None) -> dict:
-    return {"check": check, "boundaries": boundaries, "ours": ours, "sherpa": sherpa,
-            "last_step": last_step}
+def _probe(ours, sherpa, boundaries, check="first-window", last_step=None,
+           runs=None) -> dict:
+    entry = {"check": check, "boundaries": boundaries, "ours": ours, "sherpa": sherpa,
+             "last_step": last_step}
+    if runs is not None:
+        entry["runs"] = runs
+    return entry
 
 
 def test_a_terminal_cut_is_checked_on_the_crop_s_end():
     ours = [{"text": "ب", "start": 40, "end": 64}]
     sherpa = [{"text": "ب", "start": 40}]
-    checked = probe_check(_probe(ours, sherpa, [50], last_step=64))
-    assert checked["passes"] and checked["ambiguous"] == 1
-    # the same agreeing run, read as a one-frame token, is a mismatch at that boundary
+    # with the crop's last step the run spans [40, 64], straddling 50: the cut is open, and an
+    # open cut is refused rather than passed
+    bounded = probe_check(_probe(ours, sherpa, [50], last_step=64))
+    assert bounded["ambiguous"] == 1 and bounded["passes"] is False
+    # without it the run is read as one frame, a determined drop: a mismatch at that boundary
     unread = probe_check(_probe(ours, sherpa, [50]))
-    assert unread["passes"] is False
     assert unread["mismatches"][0]["sherpa"] == "dropped"
+    # the reference's own frame output ends the run at 64, which keeps it at 50
+    traced = probe_check(_probe(ours, sherpa, [50], last_step=64,
+                                runs=[{"text": "ب", "start": 40, "end": 64}]))
+    assert traced["passes"] and traced["ambiguous"] == 0 and traced["resolved"] == 1
 
 
 def test_a_probe_check_passes_when_the_units_and_cut_decisions_agree():
@@ -180,13 +192,40 @@ def test_a_probe_check_fails_when_a_determined_cut_differs():
         {"boundary": 5, "index": 0, "unit": "ب", "sherpa": "dropped", "ours": "kept"}]
 
 
-def test_a_probe_check_reports_an_ambiguous_cut_instead_of_failing_on_it():
+def test_an_unresolved_cut_is_refused_not_passed():
+    # ours keeps `ب` over [5, 5]; sherpa starts at 5 and its next token starts at 8, so its run
+    # ends at 5, 6 or 7: ending at 6 or later changes the field at boundary 6
+    entry = _probe(
+        [{"text": "ب", "start": 5, "end": 5}, {"text": "ت", "start": 8, "end": 9}],
+        [{"text": "ب", "start": 5}, {"text": "ت", "start": 8}], [6])
+    refused = probe_check(entry)
+    assert refused["ambiguous"] == 1
+    assert refused["mismatches"] == []
+    assert refused["passes"] is False
+
+
+def test_a_traced_run_end_resolves_the_open_cut_either_way():
+    ours = [{"text": "ب", "start": 5, "end": 5}, {"text": "ت", "start": 8, "end": 9}]
+    sherpa = [{"text": "ب", "start": 5}, {"text": "ت", "start": 8}]
+    keeps = probe_check(_probe(ours, sherpa, [6], runs=[
+        {"text": "ب", "start": 5, "end": 7}, {"text": "ت", "start": 8, "end": 9}]))
+    assert keeps["mismatches"] == [{"boundary": 6, "index": 0, "unit": "ب",
+                                    "sherpa": "kept", "ours": "dropped"}]
+    assert keeps["passes"] is False and keeps["ambiguous"] == 0
+    drops = probe_check(_probe(ours, sherpa, [6], runs=[
+        {"text": "ب", "start": 5, "end": 5}, {"text": "ت", "start": 8, "end": 9}]))
+    assert drops["passes"] and drops["resolved"] == 1 and drops["ambiguous"] == 0
+
+
+def test_a_trace_that_is_not_the_reference_runtimes_output_is_refused():
+    # the trace dropped a unit sherpa emitted: its runs are not that runtime's own output, so
+    # the open cut stays open rather than being resolved from a different decoding pass
     result = probe_check(_probe(
-        [{"text": "ب", "start": 5, "end": 7}, {"text": "ت", "start": 8, "end": 9}],
-        [{"text": "ب", "start": 5}, {"text": "ت", "start": 8}], [6]))
-    assert result["passes"] is True
-    assert result["ambiguous"] == 1
-    assert result["mismatches"] == []
+        [{"text": "ب", "start": 5, "end": 5}, {"text": "ت", "start": 8, "end": 9}],
+        [{"text": "ب", "start": 5}, {"text": "ت", "start": 8}], [6],
+        runs=[{"text": "ب", "start": 5, "end": 5}]))
+    assert result["ambiguous"] == 1 and result["passes"] is False
+    assert result["trace"] == "refused: the trace is not the reference runtime's own output"
 
 
 def test_a_probe_check_fails_when_the_runtimes_emit_different_units():
@@ -265,3 +304,51 @@ def test_every_failing_rule_is_named_in_one_stop():
 def test_a_probe_with_no_checks_cannot_pass():
     with pytest.raises(ParityStop):
         require_parity(_record(checks=[]), {"phone": 1})
+
+
+def test_a_record_without_its_plan_cannot_pass():
+    record = _record()
+    record.pop("plan")
+    with pytest.raises(ParityStop, match="does not carry the plan"):
+        require_parity(record, {"phone": 1})
+
+
+def test_a_partial_plan_cannot_pass_even_when_every_decoded_clip_is_identical():
+    record = _record()
+    record["plan"] = {"clips": 577, "decoded": 200, "sources": {"phone": 200},
+                      "partial": True}
+    with pytest.raises(ParityStop, match="plan: 200 of 577"):
+        require_parity(record, {"phone": 200})
+
+
+def test_a_plan_whose_per_source_counts_do_not_sum_to_its_size_cannot_pass():
+    record = _record()
+    record["plan"] = {"clips": 577, "decoded": 577, "sources": {"phone": 200},
+                      "partial": False}
+    with pytest.raises(ParityStop, match="per-source counts sum to 200"):
+        require_parity(record, {"phone": 200})
+
+
+def test_clips_that_made_a_different_number_of_calls_cannot_pass():
+    record = _record()
+    record["calls"] = {"agree": False, "mismatched": ["a"]}
+    with pytest.raises(ParityStop, match="different number of calls"):
+        require_parity(record, {"phone": 1})
+
+
+def test_an_unresolved_probe_cut_is_named_in_the_stop():
+    with pytest.raises(ParityStop, match="1 cut decisions are unresolved"):
+        require_parity(_record(checks=[{
+            "passes": False, "key": "a", "check": "first-window", "tokens_equal": True,
+            "ambiguous": 1, "resolved": 0, "mismatches": []}]), {"phone": 1})
+
+
+def test_the_committed_record_is_validated_not_trusted():
+    from training.zipformer_parity import require_valid_record
+
+    failed = {**_record(), "passed": False, "stop": "a source failed"}
+    with pytest.raises(ParityStop, match="did not pass: a source failed"):
+        require_valid_record(failed)
+    unplanned = {**_record(), "plan": {}}
+    with pytest.raises(ParityStop, match="no plan's per-source counts"):
+        require_valid_record(unplanned)

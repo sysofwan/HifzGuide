@@ -13,12 +13,13 @@ this module is zipformer's, through the arms :mod:`training.zipformer_decode` de
   single stream.
 
 Each set's items come from the set's own source, exactly as our models' decode reads it
-(:func:`training.zip_screen_decode.recordings` for the benchmark, the edits and qdat;
-:func:`training.truth_baseline.items_of` and the staged registry for Ship A;
-:func:`training.qud_decode.recordings` for QUD's unread half). Every line is the shared
-provenance plus its arms, one item per line, resumable by key. The identity the decodes rest
-on is the gate-pinned one (:data:`training.zipformer_decode.IDENTITY_PATH`), written beside
-each set's decodes by the shared loader.
+(:func:`training.zip_screen_decode.recordings` for the benchmark and the edits,
+:func:`qdat_recordings` for qdat's own shards; :func:`training.truth_baseline.items_of` and the
+staged registry for Ship A; :func:`training.qud_decode.recordings` for QUD's unread half). Every
+line is the shared provenance plus its arms, one item per line, resumable by key. The identity
+the decodes rest on is the gate-pinned one (:data:`training.zipformer_decode.IDENTITY_PATH`),
+written beside each set's decodes by the shared loader, and the batch refuses to run until that
+gate's committed record validates.
 
 Whole items are independent, so the batch decodes them in worker processes, one ONNX session
 and one thread each, while the parent streams the audio (a QUD or qdat shard is downloaded,
@@ -174,6 +175,21 @@ def qud_recordings(cache_dir: Path) -> Iterator[Recording]:
             yield from recordings(slug, shard, cache_dir)
 
 
+def qdat_recordings(cache_dir: Path) -> Iterator[Recording]:
+    """Every qdat clip of every shard, as the clip's own #156 decode reads it.
+
+    qdat is streamed from the canonical source (:func:`training.nonpro_decode.recordings`)
+    shard by shard, so this batch reads the same clips, provenance and sample spans the
+    students' committed decodes do; a shard is downloaded, read and deleted once, never
+    staged.
+    """
+    from tadabur.nonpro_sources import QDAT as QDAT_DATASET
+    from training.nonpro_decode import recordings as dataset_recordings
+
+    for shard in QDAT_DATASET.shards:
+        yield from dataset_recordings(QDAT_DATASET, shard, cache_dir)
+
+
 def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
     """The set's items, from its own source directory."""
     from training import zip_screen_decode
@@ -183,7 +199,7 @@ def recordings(set_name: str, directory: Path) -> Iterator[Recording]:
     if set_name == EDITS:
         return zip_screen_decode.edit_recordings(directory)
     if set_name == QDAT:
-        return zip_screen_decode.qdat_recordings(directory)
+        return qdat_recordings(directory)
     if set_name == SHIP_A:
         return ship_a_recordings(directory)
     return qud_recordings(directory)
@@ -337,10 +353,28 @@ def _decode_item(record: dict, span: np.ndarray) -> dict:
     return line
 
 
+def require_parity_gate(path: Path | None = None) -> None:
+    """Refuse to decode until the committed parity gate's record validates.
+
+    The gate decides whether this comparison may run at all (parity-gate.md's ordered gates);
+    a failed or unverifiable record stops the batch before the model is loaded, not after the
+    decodes it would not be allowed to score. Historical card checks are not consulted.
+    """
+    from training.zipformer_parity import require_valid_record
+
+    record = json.loads(Path(path or ZIPFORMER_DIR / "parity.json").read_text(encoding="utf-8"))
+    require_valid_record(record)
+
+
 def pinned(work_dir: Path):
-    """The fetched files at the identity's pinned scale, refusing weights it did not pin."""
+    """The fetched files at the identity's pinned scale, refusing weights it did not pin.
+
+    The parity gate's committed pass is required here as well: a checkout that cannot
+    re-establish it must not decode a comparison set.
+    """
     from training.zipformer_run import files_from_record, load_fetch
 
+    require_parity_gate()
     files = files_from_record(work_dir, load_fetch(work_dir))
     identity = json.loads(IDENTITY_PATH.read_text(encoding="utf-8"))["identity"]
     scale = identity["sample_scale"]

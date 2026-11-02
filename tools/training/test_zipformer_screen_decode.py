@@ -12,6 +12,7 @@ probe's throughput. Torch-free: no ONNX file, no audio, no download.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -157,3 +158,37 @@ def test_the_probe_decodes_in_a_scratch_directory_and_records_seconds(tmp_path, 
     assert scratch.exists() is False
     assert record["decoded_audio_unit"] == "seconds"
     assert record["probe"]["decoded_audio_seconds"] == 191.0
+
+
+# --- qdat's source, and the gate before any decode -----------------------------------------
+
+
+def test_qdat_is_read_from_the_dataset_source_shard_by_shard(monkeypatch):
+    import training.nonpro_decode as nonpro
+    from tadabur.nonpro_sources import QDAT
+
+    calls = []
+
+    def fake_recordings(dataset, shard, cache_dir):
+        calls.append((dataset, shard, cache_dir))
+        yield screen.Recording((f"{shard}#0",), lambda: (np.arange(2), []))
+
+    # only the leaf dataset reader is replaced: the set's own adapter and its dispatch run
+    monkeypatch.setattr(nonpro, "recordings", fake_recordings)
+    source = screen.recordings("qdat", Path("/cache"))
+    keys = [list(recording.keys) for recording in source]
+    assert calls == [(QDAT, shard, Path("/cache")) for shard in QDAT.shards]
+    assert keys == [[f"{shard}#0"] for shard in QDAT.shards]
+
+
+def test_a_failed_parity_record_stops_the_decode_before_the_model_is_loaded(tmp_path):
+    from training.zipformer_parity import ParityStop
+
+    screen.require_parity_gate()  # the committed record re-establishes its own pass
+    broken = json.loads((screen.ZIPFORMER_DIR / "parity.json").read_text(encoding="utf-8"))
+    broken["passed"] = False
+    broken["stop"] = "studio: 190/200 identical"
+    path = tmp_path / "parity.json"
+    path.write_text(json.dumps(broken), encoding="utf-8")
+    with pytest.raises(ParityStop, match="did not pass: studio"):
+        screen.require_parity_gate(path)

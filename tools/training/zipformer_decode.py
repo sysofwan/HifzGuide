@@ -72,6 +72,9 @@ from training.decoding import DecodeFingerprint
 from training.distill_data import SAMPLE_RATE
 from training.external_decode import record_identity
 from training.truth_baseline import Store, file_sha256
+from training.zipformer_stream import (BLANK_ID, CHUNK_FRAMES, INPUT_FRAMES, STEP_SAMPLES,
+                                       TAIL_SAMPLES, Emission, detokenise, featurize,
+                                       read_tokens, scan_units, state_specs, stream_frame_ids)
 
 #: The card's committed symbol table, unit inventory and licence, beside the decodes they back.
 ZIPFORMER_DIR = Path(__file__).resolve().parent.parent / "tadabur" / "zipformer_screen"
@@ -93,19 +96,8 @@ CHUNK_SIZE = 24
 #: The identity the decodes, and the gate's pinned scale, rest on.
 IDENTITY_PATH = ZIPFORMER_DIR / "identity.json"
 
-#: ``tokens.txt``'s blank. Ours is 0, so no zipformer id is ever one of ours.
-BLANK_ID = 250
-
-#: The card's analysis frame hop: 10 ms, so one encoder output step is four of them.
-FRAME_SHIFT_SAMPLES = 160
-#: One encoder output step, 40 ms at 16 kHz; the timeline :class:`Emission` indexes.
-STEP_SAMPLES = 4 * FRAME_SHIFT_SAMPLES
-#: The card's chunk 24 export: 48 frames advance, 12 log-prob frames per call, 61 input frames.
-CHUNK_FRAMES = 48
-INPUT_FRAMES = 61
-#: The card's "1.05 s of silence at the end of an utterance", 16,800 samples at 16 kHz.
-TAIL_SAMPLES = 16_800
-
+#: The protocol's constants and its run collapse are :mod:`training.zipformer_stream`'s,
+#: imported below: the parity gate's trace drives the same ONNX with that module alone.
 #: The warm-up a fresh per-check inference keeps before the check's start: one hop, 1 s.
 WARMUP_SAMPLES = decoding.HOP_SAMPLES
 #: The hop's width in output steps, the first second a window commits.
@@ -165,115 +157,6 @@ SCORING_ARMS = {
 }
 
 
-@dataclass(frozen=True)
-class Emission:
-    """One non-blank CTC run: the unit's ``tokens.txt`` string and its frame span (inclusive)."""
-
-    text: str
-    start_step: int
-    end_step: int
-
-    @property
-    def midpoint(self) -> float:
-        """The mean of the run's first and last frame, as ``Segment.midpoint`` is ours."""
-        return (self.start_step + self.end_step) / 2.0
-
-
-def read_tokens(path: Path) -> dict[int, str]:
-    """``tokens.txt`` as id -> unit string, refusing a table whose blank is not :data:`BLANK_ID`.
-
-    Every line is ``<unit> <id>``; the unit may itself be a merged multi-character string.
-    """
-    text = Path(path).read_text(encoding="utf-8")
-    tokens = {}
-    for number, line in enumerate(text.splitlines(), 1):
-        if not line.strip():
-            continue
-        unit, _, id_text = line.rpartition(" ")
-        try:
-            token_id = int(id_text)
-        except ValueError as error:
-            raise ValueError(f"{path}:{number} is not '<unit> <id>': {line!r}") from error
-        tokens[token_id] = unit
-    if tokens.get(BLANK_ID) != "<blank>":
-        raise ValueError(
-            f"{path} does not put <blank> at id {BLANK_ID} (found {tokens.get(BLANK_ID)!r}); "
-            "the ids are not this model's CTC output classes"
-        )
-    return tokens
-
-
-def scan_units(frames: Iterable[int], tokens: Mapping[int, str]) -> list[Emission]:
-    """Collapse per-frame argmax into non-blank runs, each carrying its ``tokens.txt`` string.
-
-    A run ends when the id changes; the blank breaks runs of one id and is never emitted. An id
-    the table does not hold is refused rather than dropped: dropping it would silently shorten
-    the transcript where the model said something the table cannot name.
-    """
-    units: list[Emission] = []
-    previous: int | None = None
-    for step, frame in enumerate(frames):
-        token = int(frame)
-        if token == BLANK_ID:
-            previous = None
-            continue
-        if token not in tokens:
-            raise ValueError(f"tokens.txt has no unit for id {token}")
-        if token == previous:
-            last = units[-1]
-            units[-1] = Emission(last.text, last.start_step, step)
-        else:
-            units.append(Emission(tokens[token], step, step))
-        previous = token
-    return units
-
-
-def detokenise(frames: Iterable[int], tokens: Mapping[int, str]) -> str:
-    """The transcript of one frame sequence, by ``tokens.txt`` strings."""
-    return "".join(emission.text for emission in scan_units(frames, tokens))
-
-
-def featurize(samples: np.ndarray, fbank, *, scale: float) -> np.ndarray:
-    """The card's front end: scale the samples, append the 1.05 s silence, one kaldi fbank pass.
-
-    ``fbank`` receives the 1-D float32 waveform and :data:`FBANK_OPTIONS` as keywords and
-    returns one 80-bin frame per 10 ms. ``scale`` is required: the card does not pin whether
-    kaldi expects [-1, 1] or int16-scaled samples, and the gate decides it from PER.
-    """
-    waveform = np.asarray(samples, dtype=np.float32).reshape(-1) * scale
-    waveform = np.concatenate([waveform, np.zeros(TAIL_SAMPLES, dtype=np.float32)])
-    features = fbank(waveform, **FBANK_OPTIONS)
-    return np.asarray(features, dtype=np.float32)
-
-
-_NUMPY_DTYPES = {
-    "tensor(float)": np.float32,
-    "tensor(double)": np.float64,
-    "tensor(int64)": np.int64,
-    "tensor(int32)": np.int32,
-}
-
-
-def _state_spec(spec) -> tuple[str, tuple[int, ...], type]:
-    """One cache input's name, concrete shape and numpy dtype, from the ONNX session.
-
-    The export leaves its batch axis symbolic (``"N"``); this decoder runs one stream at a
-    time, so that axis is 1. Any other symbolic axis is refused: its size would not be known
-    before the first call.
-    """
-    try:
-        dtype = _NUMPY_DTYPES[spec.type]
-    except KeyError as error:
-        raise ValueError(f"the ONNX input {spec.name!r} has the type {spec.type!r}") from error
-    shape = tuple(1 if dim == "N" else dim for dim in spec.shape)
-    if any(not isinstance(dim, int) or dim <= 0 for dim in shape):
-        raise ValueError(
-            f"the ONNX input {spec.name!r} has the non-constant shape {spec.shape}; the "
-            "streaming export's cache shapes must be known before the first call"
-        )
-    return spec.name, shape, dtype
-
-
 class ZipformerDecoder:
     """The card's streaming CTC decoder behind our arms: one stream, and one per check.
 
@@ -295,7 +178,7 @@ class ZipformerDecoder:
         inputs = session.get_inputs()
         if not any(spec.name == "x" for spec in inputs):
             raise ValueError("the ONNX session has no 'x' feature input")
-        self._state_specs = [_state_spec(spec) for spec in inputs if spec.name != "x"]
+        self._state_specs = state_specs(session)
         self._item_source: np.ndarray | None = None
         self._item_audio: np.ndarray | None = None
         self._item_emissions: list[Emission] | None = None
@@ -332,34 +215,14 @@ class ZipformerDecoder:
     def stream_calls(self, samples: np.ndarray) -> list[np.ndarray]:
         """Every call's argmax frame ids over one stream, in call order, from a zero cache.
 
-        A call is made only while a whole :data:`INPUT_FRAMES` window is available --
-        sherpa-onnx's readiness rule, ``processed + input_frames < num_frames`` -- so no call
-        is ever padded with zero feature rows. The zero-padded final call this decoder used to
-        make emitted tokens the reference runtime never produces; the parity gate caught that
-        on the phone source and the one diagnosis round removed it (parity r1, 2026-11-01).
-        The card's 1.05 s tail still gives the last complete chunk the silence a delayed word
-        needs to reach it.
+        The loop is :func:`stream_frame_ids`, sherpa-onnx's readiness rule included, so the
+        parity gate's own trace of the reference front end drives the model exactly as the
+        arms do (see that function's rule and its one diagnosis round).
         """
         features = featurize(samples, self.fbank, scale=self.scale)
         if not len(features):
             raise ValueError("the front end produced no frames")
-        state = {name: np.zeros(shape, dtype=dtype)
-                 for name, shape, dtype in self._state_specs}
-        calls: list[np.ndarray] = []
-        cursor = 0
-        while cursor + INPUT_FRAMES < len(features):
-            window = features[cursor:cursor + INPUT_FRAMES][None]
-            outputs = self.session.run(None, {"x": window, **state})
-            if len(outputs) != len(self._state_specs) + 1:
-                raise ValueError(
-                    f"the ONNX session returned {len(outputs)} outputs for "
-                    f"{len(self._state_specs)} cache inputs and log_probs"
-                )
-            calls.append(np.argmax(np.asarray(outputs[0])[0], axis=-1))
-            state = {name: np.asarray(value)
-                     for (name, _, _), value in zip(self._state_specs, outputs[1:])}
-            cursor += CHUNK_FRAMES
-        return calls
+        return stream_frame_ids(self.session, features, self._state_specs)
 
     def _stream(self, samples: np.ndarray, offset_steps: int) -> list[Emission]:
         """One stream over ``samples``, its steps reported ``offset_steps`` later.

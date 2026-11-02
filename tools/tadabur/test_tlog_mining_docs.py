@@ -95,9 +95,12 @@ def _strata_rows(text: str) -> dict[str, int]:
     return rows
 
 
-def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap: int) -> list[str]:
-    """Walk a rank order under a per-clip cap, taking words until the quota."""
-    per_clip, drawn = {}, []
+def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap: int,
+              taken: dict[str, int] | None = None) -> list[str]:
+    """Walk a rank order under a per-clip cap, taking words until the quota.
+
+    ``taken`` seeds the counters, so a test can model a clip shared across strata."""
+    per_clip, drawn = dict(taken or {}), []
     for word in order:
         if len(drawn) == quota:
             break
@@ -264,6 +267,18 @@ def test_cap_aware_weights_guard_the_unequal_clip_example():
     assert sample == ["a", "b", "d"]
     assert sum(1 / frequency[word] for word in sample if word != "d") == pytest.approx(3)
     _expect(_text(PREREG), r"π_a = π_b = π_c = 2/3", r"not 3/4", r"R = 10,000", r"replay")
+
+
+def test_each_stratum_draws_on_its_own_so_a_shared_clip_cannot_starve_one():
+    """A shared cap counter would skip the second stratum's word forever; per-stratum ones do not."""
+    filled = _cap_draw(("a", "b"), {"a": "A", "b": "A"}, quota=2, cap=2)
+    assert filled == ["a", "b"]
+    # The first stratum's two words exhaust clip A for every later stratum under one counter.
+    assert _cap_draw(("x",), {"x": "A"}, quota=3, cap=2, taken={"A": 2}) == []
+    # Drawn on its own, the second stratum's word is always taken: π_x = 1.
+    assert _cap_draw(("x",), {"x": "A"}, quota=1, cap=2) == ["x"]
+    _expect(_text(PREREG), r"each stratum is drawn on its own", r"independent draws",
+            r"positive inclusion probability", r"`c_w = 0`", r"unresolved")
 
 
 def test_presentation_is_the_reference_aligned_snip_with_a_whole_clip_fallback():

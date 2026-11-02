@@ -120,35 +120,39 @@ derived from a power rule.
   teacher and share its blind spots: a disagreement census alone cannot find a mistake every
   model misses.
 - **Take all of a smaller stratum.** A short stratum's shortfall goes to "all 3", then to
-  "exactly 2", then to "none". If the whole population is under 240 words, take all of it. The
+  "exactly 2", then to "none"; if the whole population is under 240 words, take all of it. The
   **actual sizes** per stratum are reported after the draw.
-- At most 2 words per clip and at most 4 per `group_key`, so one reciter's single clip cannot
-  dominate a stratum.
+- At most 2 words per clip and at most 4 per `group_key` — **within a stratum** — so one
+  reciter's single clip cannot dominate a stratum.
 - **Ranking within a stratum:** a **salted hash**, ascending —
   `sha256(f"{SEED}:{stratum}:{clip key}:{position}").hexdigest()`, the
   `catch_loss_audit._rank` form — with seed `tlog-mining-pilot-2026-11`. Nothing about a model
   enters the order.
-- **The caps make the draw cap-aware, not a simple random sample of words.** Strata are filled
-  in the fixed order of the table above ("all 3", "exactly 2", "only teacher", "only C95",
-  "only round-2 EMA", "none flag"), each by its own hash ranking ascending; a word is skipped
-  when its clip already holds 2 drawn words or its `group_key` already holds 4. Shortfall is
-  absorbed in the same order ("all 3", then "exactly 2", then "none") by continuing the
-  receiving stratum's ranking. The caps count **across strata**, so a word's chance of inclusion
-  depends on the words it shares a clip or `group_key` with, and on the strata drawn before it.
-- **Inclusion probabilities are estimated by replaying the design, not assumed.** `n / N` is
-  only the nominal sampling fraction: the caps break it, and so does shortfall reallocation.
-  Every word's realised first-order inclusion probability `π_w` is estimated by replaying this
-  entire frozen draw — strata, order, hash seed family, caps and shortfall rule included —
-  `R = 10,000` times, replicate `r` seeded `sha256(f"{SEED}:replicate:{r}")`, recording the
-  count `c_w` of replays that draw the word, and reporting the smoothed frequency
-  `π̂_w = (c_w + 1) / (R + 1)`, so no weight is infinite. `c_w` and `π̂_w` are committed with
-  the worklist for every word; the nominal `n / N` and each stratum's drawn `n` are recorded
-  beside them and are **not** used as weights. The readout's Horvitz–Thompson weights are
-  `1 / π̂_w`.
-- **Worked example of the bias the caps cause.** One clip holds three words a, b and c; another
-  holds the single word d; the quota is 3 and the clip cap is 2. Every rank order draws d and
-  two of a, b, c, so `π_a = π_b = π_c = 2/3` and `π_d = 1` — not 3/4. With a, b and c the only
-  mistakes, a draw shows 2 mistakes raw, and the cap-aware weights estimate
+- **Each stratum is drawn on its own.** Six independent draws: no stratum's words can consume
+  another stratum's capacity. Within its stratum a word is taken by its hash rank; a word is
+  skipped when its clip already holds 2 drawn words **in that stratum** or its `group_key`
+  already holds 4 **in that stratum**, and the scan continues until the quota is met or no
+  remaining word fits. A clip drawn by two strata can therefore contribute at most 2 words to
+  each. A shortfall is absorbed by continuing the receiving stratum's own ranking under its own
+  caps, in the order above; if the receivers cannot absorb it either, the pilot runs short and
+  the actual sizes are reported.
+- **Every population word has positive inclusion probability.** Within its stratum any word can
+  rank first, and a first-ranked word always fits the caps, so no word is structurally
+  unreachable — no smoothing and no re-plan are needed for a starved stratum.
+- **Inclusion probabilities are estimated by replaying the design, never assumed.** `n / N` is
+  only the nominal sampling fraction: within-stratum caps and shortfall break it. Every word's
+  realised first-order inclusion probability `π_w` is estimated by replaying this entire frozen
+  design — the six independent draws, hash seed family, caps and shortfall rule — `R = 10,000`
+  times, replicate `r` seeded `sha256(f"{SEED}:replicate:{r}")`, recording the count `c_w` of
+  replays that draw the word, and reporting `π̂_w = c_w / R` **with no smoothing**. A word with
+  `c_w = 0` is below the replay's resolution, not of zero probability: it is listed with its
+  `c_w`, reported as unresolved, and carries no Horvitz–Thompson weight. `c_w` and `π̂_w` are
+  committed with the worklist for every word; the nominal `n / N` and each stratum's drawn `n`
+  are recorded beside them and are **not** used as weights.
+- **Worked example of the bias the caps cause.** In one stratum, one clip holds three words a,
+  b and c; another holds the single word d; the quota is 3 and the clip cap is 2. Every rank
+  order draws d and two of a, b, c, so `π_a = π_b = π_c = 2/3` and `π_d = 1` — not 3/4. With a,
+  b and c the only mistakes, a draw shows 2 mistakes raw, and the cap-aware weights estimate
   `1/(2/3) + 1/(2/3) = 3`, the population's true count.
 
 ## 5. Presentation
@@ -181,8 +185,8 @@ A **verified mistake** is a **decisive** "no" with at least one kind other than 
 - **Yield per stratum**, with a **Wilson** interval.
 - **Per detector**: the **Horvitz–Thompson**-weighted catch rate and precision, with a
   `group_key`-clustered **bootstrap** — each word weighted by `1 / π̂_w`, the inverse of its
-  estimated inclusion probability (§4) — reporting the Monte Carlo error of the weights beside
-  each figure.
+  estimated inclusion probability (§4); words unresolved at `R` carry no weight and are counted
+  — reporting the Monte Carlo error of the weights beside each figure.
 - The breakdown **by kind**, and the **unclear** rate.
 - Words whose flag involves **س**, **ص** or **ث**, reported apart: the owner's ear is noisier
   there.

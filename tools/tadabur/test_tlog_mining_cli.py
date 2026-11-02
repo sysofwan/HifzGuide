@@ -23,6 +23,7 @@ import pytest
 
 from tadabur.phoneme_vocab import NUM_PHONEME_CLASSES, PHONEME_CHAR_TO_ID
 from tadabur.tlog_mining import __main__ as cli
+from tadabur.tlog_mining.give_way import GiveWayResult
 from training.ctc_paths import ctc_best_path
 
 SHARD = "clean-00001-of-00411"
@@ -244,6 +245,37 @@ def test_the_parent_stops_a_worker_that_overruns_the_batch(tmp_path, monkeypatch
     started = time.monotonic()
     cli._run_workers("look", [0], 0.1, _worker_args(tmp_path))
     assert time.monotonic() - started < 10
+
+
+# --- the card sizes the workers -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("requested, free_mib, expected", [
+    (2, 15_852, 1),   # the box's 15.5 GiB card with nothing else running: two do not fit
+    (2, 19_000, 2),
+    (2, 40_000, 2),
+    (3, 40_000, 3),
+    (1, 100, 1),      # a card below one worker's budget still runs one
+])
+def test_the_worker_count_is_what_the_free_memory_holds(requested, free_mib, expected):
+    assert cli._worker_count(requested, free_mib) == expected
+
+
+def test_the_driver_caps_parallel_before_writing_the_worklists(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "gpu_memory_mib", lambda field: 15_852)
+    monkeypatch.setattr(cli, "phase_a_rows", lambda role, **kwargs: [])
+    monkeypatch.setattr(cli, "_available_ram_gb", lambda: 64.0)
+    monkeypatch.setattr(cli, "run_give_way",
+                        lambda batch, **kwargs: GiveWayResult("done", 0, 0.0, 0.0))
+    args = Namespace(phase="A", resume=True, parallel=2, parts_dir=tmp_path,
+                     clip_dir=tmp_path, shard_cache=tmp_path, tranches_dir=tmp_path,
+                     split_dir=tmp_path, pause_file=tmp_path / "PAUSE",
+                     lock=tmp_path / "gpu.lock", batch_seconds=300, yield_seconds=30,
+                     disk_reserve_gb=0.0, ram_floor_gb=0.0, look_clip_cache=None)
+    assert cli.run(args) == 0
+    assert args.parallel == 1
+    assert sorted(path.name for path in tmp_path.glob("worklist.*.jsonl")) == sorted(
+        f"worklist.{role}.0.jsonl" for role in cli.PHASE_A_TRANCHES)
 
 
 def test_a_spawn_failure_reaps_the_worker_already_started(tmp_path, monkeypatch):

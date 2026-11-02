@@ -122,33 +122,40 @@ derived from a power rule.
 - **Take all of a smaller stratum.** A short stratum's shortfall goes to "all 3", then to
   "exactly 2", then to "none"; if the whole population is under 240 words, take all of it. The
   **actual sizes** per stratum are reported after the draw.
-- At most 2 words per clip and at most 4 per `group_key` — **within a stratum** — so one
-  reciter's single clip cannot dominate a stratum.
+- At most 2 words per clip and at most 4 per `group_key` — **across the whole pilot**, counted
+  over every stratum together, so one reciter's clip or group cannot dominate a stratum.
 - **Ranking within a stratum:** a **salted hash**, ascending —
   `sha256(f"{SEED}:{stratum}:{clip key}:{position}").hexdigest()`, the
   `catch_loss_audit._rank` form — with seed `tlog-mining-pilot-2026-11`. Nothing about a model
   enters the order.
-- **Each stratum is drawn on its own.** Six independent draws: no stratum's words can consume
-  another stratum's capacity. Within its stratum a word is taken by its hash rank; a word is
-  skipped when its clip already holds 2 drawn words **in that stratum** or its `group_key`
-  already holds 4 **in that stratum**, and the scan continues until the quota is met or no
-  remaining word fits. A clip drawn by two strata can therefore contribute at most 2 words to
-  each. A shortfall is absorbed by continuing the receiving stratum's own ranking under its own
-  caps, in the order above; if the receivers cannot absorb it either, the pilot runs short and
-  the actual sizes are reported.
-- **Every population word has positive inclusion probability.** Within its stratum any word can
-  rank first, and a first-ranked word always fits the caps, so no word is structurally
-  unreachable — no smoothing and no re-plan are needed for a starved stratum.
+- **The fill order is a seeded permutation of the six strata**, not the table order: the draw
+  shuffles the table's labels with
+  `random.Random(sha256(f"{SEED}:strata").hexdigest())` and fills them in that order, each by
+  its own hash ranking. A word is skipped when its clip already holds 2
+  drawn words **in the pilot** or its `group_key` already holds 4 **in the pilot**, and the scan
+  continues through the rank order of the stratum being filled. Shortfall goes to "all 3", then
+  "exactly 2", then "none", continuing each receiver's ranking under the same global counters;
+  if the receivers cannot absorb it either, the pilot runs short and the actual sizes are
+  reported.
+- **Every population word has positive inclusion probability.** Some stratum order puts a
+  word's own stratum first, and within it the word can rank first, where both global counters
+  are empty — so it is drawn. No word is structurally unreachable, and the design needs no
+  smoothing and no per-stratum counters.
 - **Inclusion probabilities are estimated by replaying the design, never assumed.** `n / N` is
-  only the nominal sampling fraction: within-stratum caps and shortfall break it. Every word's
-  realised first-order inclusion probability `π_w` is estimated by replaying this entire frozen
-  design — the six independent draws, hash seed family, caps and shortfall rule — `R = 10,000`
-  times, replicate `r` seeded `sha256(f"{SEED}:replicate:{r}")`, recording the count `c_w` of
-  replays that draw the word, and reporting `π̂_w = c_w / R` **with no smoothing**. A word with
-  `c_w = 0` is below the replay's resolution, not of zero probability: it is listed with its
-  `c_w`, reported as unresolved, and carries no Horvitz–Thompson weight. `c_w` and `π̂_w` are
-  committed with the worklist for every word; the nominal `n / N` and each stratum's drawn `n`
-  are recorded beside them and are **not** used as weights.
+  only the nominal sampling fraction: the global caps, the random fill order and the shortfall
+  rule break it. Every word's realised first-order inclusion probability `π_w` is estimated by
+  replaying this entire frozen design — a freshly shuffled stratum order and fresh hash ranks
+  per replay, the same caps and shortfall rule — starting at `R = 10,000`, replicate `r`
+  seeded from `sha256(f"{SEED}:replicate:{r}").hexdigest()`, recording the count `c_w` of
+  replays that draw the word, and reporting `π̂_w = c_w / R` **with no smoothing**.
+- **Adequacy rule (fixed now).** If any **sampled** word has `c_w = 0`, the replay doubles `R`
+  deterministically along the same seed chain — 20,000, 40,000, … up to `R = 1,280,000` — and
+  recounts. If a sampled word still has `c_w = 0` at that cap, the **weighted population
+  figures are not released**: the result is **"unresolved"**, and the readout publishes the
+  human verdicts and the unweighted per-stratum counts only. A sampled word with `c_w = 0` is
+  never treated as a zero-contribution observation, and no weight is invented for it. `c_w` and
+  `π̂_w` are committed with the worklist; the nominal `n / N` and each stratum's drawn `n` are
+  recorded beside them and are **not** used as weights.
 - **Worked example of the bias the caps cause.** In one stratum, one clip holds three words a,
   b and c; another holds the single word d; the quota is 3 and the clip cap is 2. Every rank
   order draws d and two of a, b, c, so `π_a = π_b = π_c = 2/3` and `π_d = 1` — not 3/4. With a,
@@ -184,9 +191,11 @@ A **verified mistake** is a **decisive** "no" with at least one kind other than 
 
 - **Yield per stratum**, with a **Wilson** interval.
 - **Per detector**: the **Horvitz–Thompson**-weighted catch rate and precision, with a
-  `group_key`-clustered **bootstrap** — each word weighted by `1 / π̂_w`, the inverse of its
-  estimated inclusion probability (§4); words unresolved at `R` carry no weight and are counted
-  — reporting the Monte Carlo error of the weights beside each figure.
+  `group_key`-clustered **bootstrap** — each word weighted by `1 / π̂_w` (§4). These two
+  weighted figures are **released only if every sampled word has `c_w > 0`** after the adequacy
+  ladder; otherwise the result is **"unresolved"** and they are withheld, while the human
+  verdicts and the unweighted per-stratum counts are always reported. The Monte Carlo error of
+  the weights is reported beside each released figure.
 - The breakdown **by kind**, and the **unclear** rate.
 - Words whose flag involves **س**, **ص** or **ث**, reported apart: the owner's ear is noisier
   there.

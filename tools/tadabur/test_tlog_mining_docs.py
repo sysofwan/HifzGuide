@@ -95,12 +95,9 @@ def _strata_rows(text: str) -> dict[str, int]:
     return rows
 
 
-def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap: int,
-              taken: dict[str, int] | None = None) -> list[str]:
-    """Walk a rank order under a per-clip cap, taking words until the quota.
-
-    ``taken`` seeds the counters, so a test can model a clip shared across strata."""
-    per_clip, drawn = dict(taken or {}), []
+def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap: int) -> list[str]:
+    """Walk a rank order under a per-clip cap, taking words until the quota."""
+    per_clip, drawn = {}, []
     for word in order:
         if len(drawn) == quota:
             break
@@ -108,6 +105,32 @@ def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap:
             per_clip[clips[word]] = per_clip.get(clips[word], 0) + 1
             drawn.append(word)
     return drawn
+
+
+def _fill(order: tuple[str, ...], ranks: dict[str, list[str]], quotas: dict[str, int],
+          clips: dict[str, str], groups: dict[str, str],
+          *, clip_cap: int = 2, group_cap: int = 4) -> list[str]:
+    """Fill strata in ``order`` under the pilot's global clip and group caps."""
+    used, drawn = {}, []
+    for stratum in order:
+        quota = quotas[stratum]
+        for word in ranks[stratum]:
+            if quota == 0:
+                break
+            if used.get(("clip", clips[word]), 0) >= clip_cap:
+                continue
+            if used.get(("group", groups[word]), 0) >= group_cap:
+                continue
+            for counter in (("clip", clips[word]), ("group", groups[word])):
+                used[counter] = used.get(counter, 0) + 1
+            drawn.append(word)
+            quota -= 1
+    return drawn
+
+
+def _releasable(counts: dict[str, int], sampled: set[str]) -> bool:
+    """The weighted readout is released only when every sampled word has ``c_w > 0``."""
+    return all(counts.get(word, 0) > 0 for word in sampled)
 
 
 # --- the frozen documents stay frozen -------------------------------------------------------------
@@ -269,16 +292,32 @@ def test_cap_aware_weights_guard_the_unequal_clip_example():
     _expect(_text(PREREG), r"π_a = π_b = π_c = 2/3", r"not 3/4", r"R = 10,000", r"replay")
 
 
-def test_each_stratum_draws_on_its_own_so_a_shared_clip_cannot_starve_one():
-    """A shared cap counter would skip the second stratum's word forever; per-stratum ones do not."""
-    filled = _cap_draw(("a", "b"), {"a": "A", "b": "A"}, quota=2, cap=2)
-    assert filled == ["a", "b"]
-    # The first stratum's two words exhaust clip A for every later stratum under one counter.
-    assert _cap_draw(("x",), {"x": "A"}, quota=3, cap=2, taken={"A": 2}) == []
-    # Drawn on its own, the second stratum's word is always taken: π_x = 1.
-    assert _cap_draw(("x",), {"x": "A"}, quota=1, cap=2) == ["x"]
-    _expect(_text(PREREG), r"each stratum is drawn on its own", r"independent draws",
-            r"positive inclusion probability", r"`c_w = 0`", r"unresolved")
+def test_global_caps_hold_and_a_shared_clip_word_stays_reachable():
+    """Two orders: the caps are never exceeded, and x is reachable in one of them."""
+    clips = {"a": "A", "b": "A", "x": "A", "c": "C", "d": "D"}
+    groups = {word: word.upper() for word in clips}
+    ranks = {"all 3": ["a", "b", "c", "d"], "only teacher": ["x"]}
+    quotas = {"all 3": 2, "only teacher": 1}
+    orders = [("all 3", "only teacher"), ("only teacher", "all 3")]
+    draws = [_fill(order, ranks, quotas, clips, groups) for order in orders]
+    assert all(sum(1 for word in draw if clips[word] == "A") <= 2 for draw in draws)
+    assert draws == [["a", "b"], ["x", "a", "c"]]
+    # The five words of one group, in separate clips, are capped at four across the pilot.
+    group = {word: word for word in "efghi"}
+    assert _fill(("all 3",), {"all 3": list("efghi")}, {"all 3": 5},
+                 group, {word: "G" for word in group}) == ["e", "f", "g", "h"]
+    _expect(_text(PREREG), r"across the whole pilot", r"seeded permutation",
+            r"positive inclusion probability", r"seed")
+
+
+def test_unresolved_sampled_word_withholds_the_weighted_readout():
+    """A sampled word with c_w = 0 blocks the weighted figures, never counts as zero."""
+    assert not _releasable({"a": 3, "b": 0}, {"a", "b"})
+    assert _releasable({"a": 3, "b": 1}, {"a", "b"})
+    assert _releasable({"a": 3, "b": 0}, {"a"})  # unsampled words never block it
+    assert [10_000 * 2 ** k for k in range(8)][-1] == 1_280_000
+    _expect(_text(PREREG), r"1,280,000", r"20,000", r"`c_w = 0`", r"not released",
+            r'"unresolved"', r"human verdicts", r"unweighted per-stratum")
 
 
 def test_presentation_is_the_reference_aligned_snip_with_a_whole_clip_fallback():

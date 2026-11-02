@@ -149,6 +149,11 @@ class RoundSpec:
     #: claim must stop ``confirm.3`` too (#256 review R1.1). Round 2 opened each tranche on its
     #: own claim and its predecessor's.
     confirm_needs_all_claims: bool = False
+    #: The pre-registration's required disclosure, quoted verbatim in the readout beside the
+    #: bars it qualifies: round 3's G4 margin of +3.5 (amendment A1) is not a test of a tashkeel
+    #: regression under +2.0 (#248 part 1 item 5). Empty for a round whose doc has no such
+    #: section, so round 2's doc renders unchanged.
+    readout_disclosure: tuple[str, ...] = ()
 
 
 AUG95 = RoundSpec(
@@ -269,6 +274,27 @@ R2 = "r2"
 #: committed EMA decodes of them, never a copy.
 R2_NON_TLOG_SETS = ("qdat", "qud_other", "tadabur_dev_unseen")
 
+#: Round 3's pre-registration, "What G4 at +3.5 does and does not protect (required
+#: disclosure)", quoted verbatim: the readout prints it beside G4 and never paraphrases it
+#: (``docs/consonant-round3-preregistration.md``; the tests compare every quoted line with the
+#: committed file). The final paragraph is this repo's own, labelled as such.
+CONSONANT3_DISCLOSURE = (
+    "### G4 at +3.5 (amendment A1): what it does and does not protect",
+    "",
+    "**What G4 at +3.5 does and does not protect (required disclosure).** +3.5 is 28% of C95's "
+    "tlog tashkeel rate (12.46 per 1,000 on look gating). At the projected paired SE of 1.07:",
+    "- a candidate with **no true change passes about 91%** of the time;",
+    "- a candidate with a **true +1.0 regression passes about two thirds of the time** (0.65);",
+    "- a candidate with a true +2.0 regression passes about 29% of the time.",
+    "",
+    "**This guard vetoes gross tashkeel regressions only.** The real tashkeel protection is "
+    "Ship B's powered guard against C95, which Ship B must carry.",
+    "",
+    "**Readout note, not the pre-registration's words.** G4's effective margin is +3.5 — "
+    "amendment A1, 2026-11-01, owner-approved pre-training — after the mechanical power rule "
+    "rejected the registered +2.5.",
+)
+
 CONSONANT3 = replace(
     CONSONANT2,
     name="consonant3", issue=251, root=CONSONANT3_ROOT,
@@ -302,6 +328,7 @@ CONSONANT3 = replace(
     #: decodes neither until both are claimed.
     confirm_tranches=("confirm.3", "confirm.4"),
     confirm_needs_all_claims=True,
+    readout_disclosure=CONSONANT3_DISCLOSURE,
     look_roles=(CANDIDATE,),
     arm_prefix=R3_ARM_PREFIX,
     #: #253 fills the pre-registration's pin, as #229 did for round 2.

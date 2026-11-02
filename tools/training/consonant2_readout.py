@@ -36,7 +36,7 @@ from training.aug_readout_gate import (
     require_preregistration,
 )
 from training.aug_readout_metrics import BASE, CANDIDATE
-from training.aug_readout_spec import C178, C95, TLOG_CONFIRM, RoundSpec
+from training.aug_readout_spec import C178, C95, R2, TLOG_CONFIRM, TLOG_LOOK, RoundSpec
 from training.consonant2_freeze_doc import render
 from training.muraja_policy import SHIPPED_DEFAULT
 
@@ -194,6 +194,11 @@ def write_models(spec: RoundSpec, path: Path | None = None) -> dict:
 
 #: The pre-claim sitting's phase name, beside the ``look`` and ``confirm`` the claims use.
 PRECLAIM = "preclaim"
+#: The report-only look line's three lines, by cause (#255 item 4): the chosen candidate −
+#: round 2's readout model on the look gating rows, per 1,000 graded words.
+LOOK_LINE_NAMES = {"all_cause": "look.vs_r2.all_cause",
+                   "consonant_cause": "look.vs_r2.consonant_cause",
+                   "tashkeel_cause": "look.vs_r2.tashkeel_cause"}
 #: The sets each sitting reads, in the pre-registration's order: the pre-claim's non-tlog
 #: guards, and the confirm read's pooled tranches with the Tarteel v1 confirm half and the
 #: Tadabur dev grid its dose-response reads.
@@ -201,6 +206,13 @@ SITTING_SETS = {
     PRECLAIM: (QDAT_SET, QUD_OTHER_SET, TADABUR_SET),
     CONFIRM: (TLOG_CONFIRM, TARTEEL_CONFIRM, TADABUR_SET),
 }
+
+
+def reports_look_line(spec: RoundSpec) -> bool:
+    """Whether the round reports the look sitting's candidate − round 2's model line: a round
+    that reads round 2's model as a context column on its look set (#255 item 4). Round 2 reads
+    its own arms there, so it has no such column and reports no line."""
+    return (spec.look_set, R2) in spec.decode_sources
 
 
 def sitting_roster(spec: RoundSpec, phase: str, weights) -> dict[str, tuple[str, ...]]:
@@ -229,8 +241,9 @@ def input_files(sources, phase: str, weights=None) -> list[Path]:
 def sitting_inputs(sources, phase: str, weights) -> list[Path]:
     """Every file the ``preclaim`` or ``confirm`` sitting of the round opens, and only those:
     the readout decodes of :func:`sitting_roster`, the committed baseline decodes each reader
-    binds, the metadata those readers open, and then G6's sites and caches (pre-claim) or the
-    round's freeze and its confirmed tranches' manifests (confirm)."""
+    binds, the metadata those readers open, and then G6's sites and caches plus the report-only
+    look line's decodes and manifest when the round reports one (pre-claim) or the round's
+    freeze and its confirmed tranches' manifests (confirm)."""
     from tadabur.exposure import EVALSET_MANIFEST_PATH
     from tadabur.nonpro_sources import QDAT, TARTEEL_V1
     from tadabur.qud_overlap import PILOT
@@ -260,6 +273,12 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
         chosen = chosen_weights(spec, {"weights": weights})
         candidate = arm_model(CANDIDATE, chosen[CANDIDATE], spec)
         files += [G6_SITES_PATH, *catch_required((candidate, spec.baseline))]
+        if reports_look_line(spec):
+            # The report-only look line's read: the candidate at its chosen weights, round 2's
+            # model and the teacher on the look gating rows (#255 item 4).
+            files += [sources.tranches_dir / f"{LOOK}.jsonl",
+                      *(sources.decode_path(TLOG_LOOK, model)
+                        for model in (candidate, R2, BASE))]
     else:
         from training.aug_readout_spec import C178
 

@@ -10,7 +10,10 @@ pre-registration's order:
   G3's consonant and haraka readings, G6, bars 4a.qdat, 4b.qdat and 5, G1 and G2. A gate whose
   table was not read cannot certify; G3's shaddah part is reported only (owner, #173).
   :func:`run_preclaim` writes ``preclaim.json`` and, on anything but an overall pass, the
-  round's final verdict and doc: no claim is then possible.
+  round's final verdict and doc: no claim is then possible. A round that pins round 2's model
+  as a look context column also reports, beside the gates and never folded into them, its
+  candidate − round 2's model false flags on the look gating rows (:func:`_look_lines`, #255
+  item 4): a report-only line, so it is never read on confirm and decides nothing.
 * :func:`claim` opens the round's tranches in claim order through
   :mod:`tadabur.tlog_tranches` — round 2's ``confirm.1`` then ``confirm.2``, round 3's
   ``confirm.3`` then ``confirm.4`` — only when ``preclaim.json`` is committed in HEAD with an
@@ -41,7 +44,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from tadabur.tarteel_split import CONFIRM
+from tadabur.tarteel_split import CONFIRM, LOOK
 from tadabur.tlog_tranches import TRANCHES_DIR, claim_tranche
 from training import aug_readout as ar
 from training.acceptance_stats import CANNOT_CERTIFY, PASS, aggregate
@@ -82,7 +85,14 @@ from training.aug_readout_metrics import (
     teacher_agreement_terms,
     word_agreement_terms,
 )
-from training.aug_readout_spec import CONSONANT2, TLOG_CONFIRM, RoundSpec, check_pins
+from training.aug_readout_spec import (
+    CONSONANT2,
+    R2,
+    TLOG_CONFIRM,
+    TLOG_LOOK,
+    RoundSpec,
+    check_pins,
+)
 from training.aug_readout_verdict import (
     CONSONANT_BAR_TEXT,
     bound_condition,
@@ -92,7 +102,12 @@ from training.aug_readout_verdict import (
     reduction_condition,
     veto_conditions,
 )
-from training.consonant2_readout import PRECLAIM, sitting_roster
+from training.consonant2_readout import (
+    LOOK_LINE_NAMES,
+    PRECLAIM,
+    reports_look_line,
+    sitting_roster,
+)
 from training.consonant_readout import frozen_substitutions
 from training.muraja_policy import SHIPPED_DEFAULT
 from training.tashkeel_eval import write_text_atomically
@@ -318,6 +333,40 @@ def _control_point(table: Mapping | None):
     return None if table is None else table["models"][CONTROL]["point"]
 
 
+def _look_lines(sources, spec: RoundSpec, choice: Mapping) -> dict[str, dict]:
+    """The round's report-only look line (#255 item 4): the chosen candidate − round 2's model,
+    per 1,000 graded words, on the look gating rows — all-cause, consonant-caused and
+    tashkeel-caused false flags. There is no bar, so the lines are reported beside the
+    pre-claim gates and never enter one, and the confirm sitting never reads round 2's model.
+
+    The candidate's chosen weights, round 2's model and the teacher's look decodes are declared
+    inputs of this sitting; an absent one records ``not read`` for each line and blocks nothing.
+    """
+    candidate = ar.choice_models(spec, choice["weights"])[CANDIDATE]
+    models = (candidate, R2)
+    absent = [path.name for path in (sources.decode_path(TLOG_LOOK, model)
+                                     for model in (*models, BASE)) if not path.exists()]
+    if absent:
+        reason = f"declared input absent: {', '.join(absent)}"
+        return {name: {"name": name, "status": "not read", "reason": reason}
+                for name in LOOK_LINE_NAMES.values()}
+    data = sources.tlog(LOOK, models)
+    roles = {candidate: CANDIDATE, R2: R2}
+    grades = sources.grade(data.items, {roles[model]: lines
+                                        for model, lines in data.decodes.items()},
+                           (CANDIDATE, R2))
+    shipped = SHIPPED_DEFAULT.name
+    versus = comparison_name(CANDIDATE, R2)
+    out = {}
+    for key, cause in (("all_cause", None), ("consonant_cause", CONSONANT),
+                       ("tashkeel_cause", TASHKEEL_CAUSE)):
+        table = compare(false_flag_terms(grades, (CANDIDATE, R2), shipped, cause=cause),
+                        PER_1000, ((CANDIDATE, R2),))
+        name = LOOK_LINE_NAMES[key]
+        out[name] = {"name": name, "point": table["comparisons"][versus]["point"]}
+    return out
+
+
 def _catch_loss_result(layout: Layout) -> Path:
     from tadabur.catch_loss_audit import RESULT
 
@@ -442,7 +491,12 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     on anything but a pass. Refused without the committed choice, the committed audit result
     and the round's pinned harness and pre-registration, before anything is read, and once its
     own record exists. A declared input that is absent writes the record — the audit it did
-    read beside every gate that cannot certify — instead of reading nothing's file."""
+    read beside every gate that cannot certify — instead of reading nothing's file.
+
+    A round that reports the look line (:func:`reports_look_line`) reads the look gating rows for
+    its chosen candidate and round 2's model once, after the pre-claim report, and appends the
+    three cause lines to ``reported``; an absent look decode is recorded ``not read`` there and
+    changes no gate."""
     layout = layout or Layout(spec.root)
     choice = committed_choice(layout, spec=spec)
     result_path = _catch_loss_result(layout)
@@ -465,6 +519,8 @@ def run_preclaim(sources, spec: RoundSpec, layout: Layout | None = None,
     else:
         conditions = [audit_condition(result), *preclaim_conditions(_nothing_read(), spec)]
         reported, control = {}, {}
+    if reports_look_line(spec):
+        reported = {**reported, **_look_lines(sources, spec, choice.choice)}
     preclaim = {
         "issue": spec.issue,
         "phase": "preclaim",
@@ -923,9 +979,15 @@ def render(preclaim: Mapping, report: Mapping | None = None,
     if preclaim.get("unreadable"):
         lines += ["", "Nothing was read: " + preclaim["unreadable"]["reason"],
                   *[f"- missing input: {name}" for name in preclaim["missing_inputs"]]]
-    if preclaim.get("reported"):
+    reported = list((preclaim.get("reported") or {}).values())
+    gated = [condition for condition in reported if "verdict" in condition]
+    look = [condition for condition in reported if "verdict" not in condition]
+    if gated:
         lines += ["", "Reported beside the gates, never folded into them:", ""]
-        lines += _condition_lines(list(preclaim["reported"].values()))
+        lines += _condition_lines(gated)
+    if look:
+        lines += ["", "The look sitting, candidate − round 2's model (reported, not a bar):", ""]
+        lines += [_look_line_text(condition) for condition in look]
     if preclaim.get("control"):
         lines += ["", "## The control's columns", "",
                   json.dumps(preclaim["control"], ensure_ascii=False, sort_keys=True)]
@@ -1016,6 +1078,14 @@ def _reproduction_lines(record: Mapping) -> list[str]:
     if record.get("note"):
         out.append(str(record["note"]))
     return out
+
+
+def _look_line_text(condition: Mapping) -> str:
+    """One report-only look line: its point to three decimals, or why it was not read."""
+    if "point" in condition:
+        return (f"- {condition['name']}: {_number(condition['point'])} per 1,000 graded words "
+                "(candidate − round 2's model)")
+    return f"- {condition['name']}: {condition['status']} — {condition['reason']}"
 
 
 def _excluded_lines(record: Mapping) -> list[str]:

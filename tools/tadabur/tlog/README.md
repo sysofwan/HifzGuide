@@ -495,6 +495,13 @@ pre-registration's gating rule) plus the S6 amendment's decode mode
 - **Sealed discipline:** logs, failure messages and the PR carry aggregate counts and row keys
   only — never a label, a decode or audio. Nobody listens to or inspects a tranche's items.
 
+**Mining (#262, 2026-11-02).** `docs/tlog-mining-amendment.md` opens confirm.1 and confirm.2 to
+mining — decoded by any model, listened to and audited at word level — once their claims and
+round 2's verdict are committed; `docs/tlog-mining-preregistration.md` freezes the pilot's
+design. A mined tranche is never again a sealed tranche, never enters `tlog.training` and is
+never a later round's gating set. A teacher-only timing pass on look or a spent tranche is not a
+student read and needs no claim.
+
 Trees follow S6's layout (`ident/decodes/confirm.k/` and `ident/confirm.k/`); this is a
 deliberate deviation from the issue's `tlog/decodes/`, so one tree layout serves both slices.
 `ident/confirm/` (S5b's Common Voice and Freesound) is a different population: a tree is read by

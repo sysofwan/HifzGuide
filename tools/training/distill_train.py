@@ -169,6 +169,12 @@ class TrainConfig:
     tlog_schedule_sha256: str = ""
     frame_manifest: str = ""
     frame_manifest_sha256: str = ""
+    # The round-3 offset (#250): the consumed-keys log the tlog walk starts after, so a run
+    # trains on the frozen schedule's next rows rather than round 2's again. The log's bytes
+    # are what define the stream's start, so its digest is resume-critical; the path is
+    # operational, and names the committed copy the run reads.
+    tlog_after: str = ""
+    tlog_after_sha256: str = ""
 
     def loss_config(self) -> DistillLossConfig:
         return DistillLossConfig(
@@ -222,6 +228,9 @@ RESUME_CRITICAL_FIELDS = (
     "mix",
     "tlog_schedule_sha256",
     "frame_manifest_sha256",
+    # Where the tlog walk starts: a resume that read the rows round 2 already saw, or started
+    # from row one, would splice a second pass onto one optimiser.
+    "tlog_after_sha256",
 )
 
 
@@ -240,6 +249,8 @@ LEGACY_FIELD_VALUES = {
     "mix": "",
     "tlog_schedule_sha256": "",
     "frame_manifest_sha256": "",
+    # Every run before #250 started the tlog walk at row one.
+    "tlog_after_sha256": "",
 }
 
 
@@ -387,6 +398,10 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
     (:class:`training.distill_mixed.MixedWindowDataset`) around the same Tadabur dataset the
     control streams, plus the committed tlog schedule. Its tlog shards cache and consumed-keys
     log live under the run's out dir, so the run keeps its own prefix evidence.
+
+    A run with ``config.tlog_after`` starts past a consumed prefix: it is verified here, in the
+    main process, before any worker reads a shard, and a keys file that is not the frozen
+    walk's first rows refuses rather than training on rows an earlier round already read.
     """
     audio_root = Path(config.audio_root)
     if not audio_root.is_dir():
@@ -431,12 +446,16 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
         if mix is not None:
             from tadabur.tlog_schedule import read_schedule
 
+            schedule = read_schedule(Path(config.tlog_schedule))
+            after = (None if not config.tlog_after
+                     else distill_mixed.verified_tlog_after(Path(config.tlog_after), schedule))
             dataset = distill_mixed.MixedWindowDataset(
                 dataset,
                 mix=mix,
-                schedule=read_schedule(Path(config.tlog_schedule)),
+                schedule=schedule,
                 cache_dir=Path(config.out_dir) / distill_mixed.TLOG_CACHE_DIRNAME,
                 run_log=Path(config.out_dir) / distill_mixed.TLOG_RUN_LOG_NAME,
+                after=after,
             )
         train_loader = DataLoader(
             dataset,
@@ -1061,6 +1080,14 @@ def build_parser() -> argparse.ArgumentParser:
         "mixed stream's tlog side follows; its SHA-256 is recorded in the run config",
     )
     parser.add_argument(
+        "--tlog-after",
+        default="",
+        help="the consumed-keys log the mixed stream's tlog side starts after, e.g. "
+        "tadabur/tlog/consumed/consonant2.jsonl.gz for round 3 (#250). The run reads the "
+        "committed copy of that name, which must be the frozen walk's first rows; its "
+        "SHA-256 is recorded in the run config. Needs --mix.",
+    )
+    parser.add_argument(
         "--frame-manifest",
         default="",
         help="the frame manifest (training.frame_manifest) the mixed stream's Tadabur side "
@@ -1209,9 +1236,11 @@ def main() -> None:
 
     tlog_schedule = frame_manifest = ""
     tlog_schedule_sha256 = frame_manifest_sha256 = ""
+    tlog_after = tlog_after_sha256 = ""
     if args.mix:
         from tadabur.shard_reader import parse_shard_spec
         from tadabur.tlog_index import sha256_file
+        from tadabur.tlog_schedule import consumed_keys_path
         from training import distill_mixed
 
         if not args.stream_shards:
@@ -1233,6 +1262,18 @@ def main() -> None:
         tlog_schedule_sha256 = sha256_file(Path(tlog_schedule))
         frame_manifest_sha256 = require_frame_manifest(
             Path(frame_manifest), parse_shard_spec(args.stream_shards), args.seed
+        )
+        if args.tlog_after:
+            try:
+                consumed = consumed_keys_path(Path(args.tlog_after))
+            except ValueError as error:
+                raise SystemExit(str(error)) from None
+            tlog_after = str(consumed)
+            tlog_after_sha256 = sha256_file(consumed)
+    elif args.tlog_after:
+        raise SystemExit(
+            "--tlog-after needs --mix: a Tadabur-only run reads no tlog rows, so recording "
+            "one would certify an input it never streamed"
         )
 
     config = TrainConfig(
@@ -1271,6 +1312,8 @@ def main() -> None:
         tlog_schedule_sha256=tlog_schedule_sha256,
         frame_manifest=frame_manifest,
         frame_manifest_sha256=frame_manifest_sha256,
+        tlog_after=tlog_after,
+        tlog_after_sha256=tlog_after_sha256,
     )
 
     device = torch.device("cuda")

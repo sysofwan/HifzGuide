@@ -30,9 +30,11 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 
+from tadabur import tlog_schedule
 from tadabur.tlog_pool import iter_training_rows
 from training.distill_loss import agreement_stats, frame_weights, weighted_kl
 from training.distill_stream import (
@@ -58,6 +60,25 @@ TLOG_CACHE_DIRNAME = "tlog_cache"
 TLOG_RUN_LOG_NAME = "tlog_consumed.jsonl.gz"
 
 _PART_NAMES = frozenset(SOURCE_NAMES.values())
+
+
+def verified_tlog_after(path: Path, schedule: tlog_schedule.Schedule
+                        ) -> tlog_schedule.ConsumedPrefix:
+    """The consumed prefix a run starts after, verified against the committed pool.
+
+    ``path`` names a consumed-keys file; the run reads the committed copy of that name, because
+    a box's scratch copies are disposable while the prefix a run continues from is committed
+    (``tadabur.tlog_schedule.consumed_keys_path``). The keys must be the first rows of
+    ``schedule``'s walk over ``tlog.training``, so this refuses before the trainer allocates
+    anything. Build it in the main process: a worker would fail after GPU time.
+    """
+    from tadabur.tlog_pool import load_training_rows
+
+    return tlog_schedule.require_walk_prefix(
+        tlog_schedule.read_consumed_keys(tlog_schedule.consumed_keys_path(path)),
+        load_training_rows(),
+        schedule,
+    )
 
 
 @dataclass(frozen=True)
@@ -154,6 +175,7 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
         rows=None,
         stream=None,
         load_audio=None,
+        after: tlog_schedule.ConsumedPrefix | None = None,
     ) -> None:
         self.tadabur = tadabur
         self.mix = mix
@@ -163,6 +185,7 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
         self.rows = rows
         self.stream = stream
         self.load_audio = load_audio
+        self.after = after
 
     def _tlog_pairs(self):
         """``(clean, augmented)`` waveform pairs for every tlog window, in schedule order.
@@ -171,7 +194,8 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
         ``(f"{split}:{shard_file}", row)``, and the two clips are cut at the same starts, so a
         teacher window and the student window it is compared against cover the same audio.
         The reader is consumed lazily, one clip at a time, so a run that stops early leaves
-        most of its shards unread and unlogged.
+        most of its shards unread and unlogged. ``after`` is a verified consumed prefix, handed
+        to the reader unchanged, so the stream starts past the rows an earlier round read.
         """
         augment: Augment | None = self.tadabur.augment
         reader = iter_training_rows(
@@ -181,6 +205,7 @@ class MixedWindowDataset(torch.utils.data.IterableDataset):
             stream=self.stream,
             load_audio=self.load_audio,
             run_log=self.run_log,
+            after=self.after,
         )
         for (split, shard_file, row), samples in reader:
             # A clean draw returns ``samples`` itself (:meth:`Augmenter.__call__`), so the

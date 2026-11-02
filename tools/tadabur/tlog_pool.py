@@ -20,6 +20,9 @@ rule, so nothing decodes the pool to select it.
 #224 gives the reader its order: :mod:`tadabur.tlog_schedule` freezes a seeded, 8-way
 interleaved shuffle of both splits' shards, and :func:`iter_training_rows` requires it, so a
 prefix of the stream is representative of ``tlog.training`` and the sorted walk cannot return.
+#250 lets a later round start past the rows an earlier one consumed: ``after`` is a verified
+:class:`tadabur.tlog_schedule.ConsumedPrefix`, the walk continues from its first row past the
+prefix, and the shards open at that cut keep their place mid-shard.
 
 Every tree is written by :func:`tadabur.tlog_index.write_shard` (sorted keys, ``mtime`` 0) and
 every meta by :func:`tree_provenance`, so the cited commit survives the squash merge under

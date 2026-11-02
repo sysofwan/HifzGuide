@@ -125,15 +125,23 @@ def test_amendment_names_the_claims_and_the_verdict_it_requires():
     assert _sha256(READOUT / "verdict.json") in text
 
 
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)
+
+
 def test_verdict_and_claims_were_committed_together_at_the_pinned_commit():
-    added = subprocess.run(
-        ["git", "log", "--diff-filter=A", "--format=%H", "--",
-         str(TRANCHES / "confirm.1.claim.json"), str(TRANCHES / "confirm.2.claim.json"),
-         str(READOUT / "verdict.json")],
-        cwd=ROOT, capture_output=True, text=True, check=False)
-    if added.returncode or not added.stdout.strip():
-        pytest.skip("no git history to read the claim and verdict commits from")
+    added = _git("log", "--diff-filter=A", "--format=%H", "--",
+                 str(TRANCHES / "confirm.1.claim.json"), str(TRANCHES / "confirm.2.claim.json"),
+                 str(READOUT / "verdict.json"))
+    if added.returncode:
+        # Only a checkout without this history may skip: not a repository, or a shallow clone.
+        shallow = _git("rev-parse", "--is-shallow-repository")
+        if "not a git repository" in shallow.stderr.lower():
+            pytest.skip("not a git checkout: the claim and verdict commits cannot be read")
+        assert shallow.stdout.strip() == "true", added.stderr
+        pytest.skip("shallow clone: the claim and verdict commits are not reachable")
     commits = added.stdout.split()
+    assert commits, "no commit added the claims and the verdict"
     assert len(commits) == 1 and commits[0].startswith(VERDICT_COMMIT_PREFIX)
 
 
@@ -172,6 +180,9 @@ def test_population_counts_match_the_tranche_manifests():
     for count in (len(confirm1), len(confirm2), len(confirm1 | confirm2), len(kept)):
         assert f"{count:,}" in text, f"{count:,}"
     _expect(text, r"clean", r"gating", r"clip key", r"0-based", r"catch_loss_audit")
+    # The draw keys a word by ``graded_words``' own pair, not by the canonical word index.
+    assert "(`clip key`, `position`)" in text
+    _expect(text, r"`position`", r"`word_index`", r"graded_words")
 
 
 def test_exclusions_are_the_round_two_excluded_clips_pinned_by_sha256():
@@ -204,9 +215,13 @@ def test_flag_is_the_harness_word_grade_with_every_allowance_off():
             allowances_off.shaddah_suppression) == ("balanced", False, False)
     text = _text(PREREG)
     assert muraja_policy.MURAJA_COMMIT in text
+    assert allowances_off.tashkeel_shown is True
+    sent = muraja_policy.engine_runs([allowances_off])[0]
+    assert set(sent) == {"name", "mode", "soft_pairs_enabled", "shaddah_suppression"}, sent
     _expect(text, r"allowances_off", r"softPairsEnabled\W{0,8}false",
             r"shaddahSuppression\W{0,8}false", r"ADR-0012", r"`?flagged`?",
-            r"shipped_default", r"never used for selection")
+            r"shipped_default", r"never used for selection",
+            r"displayed\(\)", r"not sent to the binary")
 
 
 def test_strata_table_has_the_pilot_sizes_and_sums_to_240():

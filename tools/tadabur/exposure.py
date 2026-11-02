@@ -184,6 +184,11 @@ CONSONANT2_CONTROL = "consonant2.control.training"
 #: added. A shard use over the same frame as the control, membership `exact`, written before
 #: launch.
 CONSONANT2_TRAINING = "consonant2.training"
+#: The round-3 candidate (#252): round 2's 211-shard frame minus the first 17 shards of its
+#: seed-2026 permutation -- round 2 completed 16 and stopped inside the 17th, shard 378 -- so no
+#: round-3 step replays audio round 2 already streamed. The same 3-to-1 tlog mix, warm-started
+#: from round 2's averaged weights. A shard use, membership `exact`, written before launch.
+CONSONANT3_TRAINING = "consonant3.training"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -193,7 +198,7 @@ USES = frozenset({
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING, CONSONANT3_TRAINING,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -1026,14 +1031,14 @@ PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
-    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING,
+    CONSONANT_TRAINING, CONSONANT2_CONTROL, CONSONANT2_TRAINING, CONSONANT3_TRAINING,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
     SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL, CONSONANT_TRAINING,
-    CONSONANT2_CONTROL, CONSONANT2_TRAINING,
+    CONSONANT2_CONTROL, CONSONANT2_TRAINING, CONSONANT3_TRAINING,
 })
 
 

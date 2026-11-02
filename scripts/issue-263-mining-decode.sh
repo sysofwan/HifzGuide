@@ -44,7 +44,9 @@ DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
 RAM_FLOOR_GB=${RAM_FLOOR_GB:-16}
 #: The look gating clips round 2 already retained (#212): hardlinked, never re-downloaded.
 LOOK_CLIP_CACHE=${LOOK_CLIP_CACHE:-/root/scratch/tlog/r2/clips}
-PR=${PR:-263}
+#: The pull request that will carry the merge, when one exists; empty records no ref. The issue
+#: number is not a PR: `refs/pull/263/head` would 404, and the branch SHA is the ref until then.
+PR=${PR:-}
 CHOICE=$ROUND_DIR/choice.json
 #: The three phase A tranches, in the order the launcher aligns them.
 ROLES=(look confirm.1 confirm.2)
@@ -268,8 +270,11 @@ run() {  # [--resume]
     --disk-reserve-gb "$DISK_RESERVE_GB" --ram-floor-gb "$RAM_FLOOR_GB" \
     --look-clip-cache "$LOOK_CLIP_CACHE" $flags || status=$?
   if [ "$status" -eq 0 ]; then
+    # Only a real PR gets a ref; an issue-only run records the branch SHA and no pull request.
+    local merge_pr=""
+    if [ -n "$PR" ]; then merge_pr="--pull-request $PR"; fi
     python -m tadabur.tlog_mining merge --parts-dir "$PARTS" --out-dir "$OUT" \
-      --pull-request "$PR" || status=$?
+      $merge_pr || status=$?
   fi
   trap - EXIT TERM INT
   record_run_result "$status"

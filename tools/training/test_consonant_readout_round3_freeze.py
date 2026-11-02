@@ -378,13 +378,12 @@ def test_the_freeze_reads_look_gating_only(run):
     assert not run.record_path.exists()
 
 
-def test_the_real_round_3_spec_refuses_until_its_pre_registration_is_committed_and_pinned():
-    """The merge-before-freeze state: the document is absent and the pin empty."""
-    sources = Round3Sources.__new__(Round3Sources)
-    sources.read, sources.grade_calls, sources.spec = [], 0, asp.CONSONANT3
-    with pytest.raises(SystemExit, match="committed|pin"):
-        cr.run_freeze(asp.CONSONANT3, sources, "look")
-    assert sources.read == [] and sources.grade_calls == 0
+def test_the_real_round_3_spec_pins_the_pre_registration_committed_in_head():
+    """#253's merge state: the document is committed and its pin holds, so the freeze may
+    grade. The scratch ``committed=False`` run above keeps the pre-merge refusal covered."""
+    from training.aug_readout_gate import require_preregistration_text
+
+    assert require_preregistration_text(asp.CONSONANT3) == asp.CONSONANT3.pins.prereg_sha256
 
 
 # --- the doc and the command -----------------------------------------------------------------------

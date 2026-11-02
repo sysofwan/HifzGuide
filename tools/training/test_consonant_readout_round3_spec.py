@@ -58,20 +58,19 @@ def test_the_round_reads_round_2_s_sets_and_has_no_control_arm():
         asp.CONSONANT2.g3_kinds, asp.CONSONANT2.g3_reported_kinds)
 
 
-def test_the_round_pins_round_2_s_muraja_and_harness_but_not_yet_a_pre_registration():
+def test_the_round_pins_round_2_s_muraja_and_harness_and_its_pre_registration():
     pins = asp.CONSONANT3.pins
     assert (pins.muraja_commit, pins.harness_sha256) == (asp.MURAJA_COMMIT, asp.HARNESS_SHA256)
-    assert pins.prereg_sha256 == ""  # the freeze issue fills it, as #229 did for round 2
+    assert pins.prereg_sha256 == asp.CONSONANT3_PREREG_SHA256
 
 
-def test_check_pins_refuses_until_the_pre_registration_pin_is_filled():
+def test_the_pre_registration_pin_is_the_committed_document_s_sha256():
+    """#253 fills it: the pin is the committed doc's bytes, so an edited doc refuses."""
+    pinned = asp.CONSONANT3.pins.prereg_sha256
+    assert pinned == ag.sha256_file(asp.CONSONANT3.prereg_path)
+    asp.check_pins(asp.CONSONANT3, HARNESS, pinned)  # every pin matches: no refusal
     with pytest.raises(SystemExit, match="pre-registration pin"):
-        asp.check_pins(asp.CONSONANT3, HARNESS, "a" * 64)
-    filled = dataclasses.replace(
-        asp.CONSONANT3, pins=dataclasses.replace(asp.CONSONANT3.pins, prereg_sha256="a" * 64))
-    asp.check_pins(filled, HARNESS, "a" * 64)  # every pin matches: no refusal
-    with pytest.raises(SystemExit, match="pre-registration pin"):
-        asp.check_pins(filled, HARNESS, "b" * 64)
+        asp.check_pins(asp.CONSONANT3, HARNESS, "b" * 64)
 
 
 # --- the bars and the amendment --------------------------------------------------------------------

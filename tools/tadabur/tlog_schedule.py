@@ -60,8 +60,6 @@ SCHEDULE_PATH = Path(__file__).parent / "tlog" / "training_schedule.json"
 PREFIX_PATH = Path(__file__).parent / "tlog" / "training_prefix.json"
 #: The committed consumed-keys sets (#250): one file per round, beside a ``meta.json``.
 CONSUMED_DIR = Path(__file__).parent / "tlog" / "consumed"
-#: Round 2's consumed keys, the frozen schedule's first 73,990 walk rows.
-CONSONANT2_CONSUMED = CONSUMED_DIR / "consonant2.jsonl.gz"
 
 _FIELDS = frozenset({"seed", "interleave_width", "overlay_commit", "rows_sha256", "count",
                      "shards"})

@@ -62,8 +62,8 @@ TLOG_RUN_LOG_NAME = "tlog_consumed.jsonl.gz"
 _PART_NAMES = frozenset(SOURCE_NAMES.values())
 
 
-def verified_tlog_after(path: Path, schedule: tlog_schedule.Schedule
-                        ) -> tlog_schedule.ConsumedPrefix:
+def verified_tlog_after(path: Path,
+                        schedule: tlog_schedule.Schedule) -> tlog_schedule.ConsumedPrefix:
     """The consumed prefix a run starts after, verified against the committed pool.
 
     ``path`` names a consumed-keys file; the run reads the committed copy of that name, because

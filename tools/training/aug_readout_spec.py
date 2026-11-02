@@ -62,6 +62,11 @@ R2_CONTROL_SHA256 = "da5fb5bf02c7b078efbfb781855c44f171bc24a2d709cd71eefc7d2443c
 R2_ARM_PREFIX = "r2_"
 #: Round 3's own prefix: ``r3_<arm>_<weights>`` (#251).
 R3_ARM_PREFIX = "r3_"
+#: Round 3's candidate (#254): round 2's averaged weights continued for 10,000 steps under
+#: ``aug94-mixture-v2``. One file holds both weight selectors, so the look sitting decodes both
+#: and chooses one; the SHA-256 is the file's bytes on cuda-dev after its exit file reached 0.
+R3_CANDIDATE_REF = "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt"
+R3_CANDIDATE_SHA256 = "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
 
 
 @dataclass(frozen=True)
@@ -310,10 +315,15 @@ CONSONANT3 = replace(
     registered_margins={"tashkeel_upper_at_most": (2.5, "A1")},
     models={
         C95: CONSONANT2.models[C95],
-        # Round 2's EMA is the context column; round 3's own arms are unfilled until its run
-        # issue pins them, and are refused by name until then (round 2's pattern).
+        # Round 2's EMA is the context column.
         R2: ModelIdentity(R2_CANDIDATE_REF, EMA, 10_000, CANDIDATE_RECIPE,
                           R2_CANDIDATE_SHA256),
+        # #254's run: the round's one arm at both weight selectors, the look sitting choosing
+        # one. Round 3 has no control, so no role is ever left unfilled.
+        f"{R3_ARM_PREFIX}candidate_{LIVE}": ModelIdentity(
+            R3_CANDIDATE_REF, LIVE, 10_000, CANDIDATE_RECIPE, R3_CANDIDATE_SHA256),
+        f"{R3_ARM_PREFIX}candidate_{EMA}": ModelIdentity(
+            R3_CANDIDATE_REF, EMA, 10_000, CANDIDATE_RECIPE, R3_CANDIDATE_SHA256),
     },
     #: Round 2's committed look gating and non-tlog decodes are read in place, never copied:
     #: round 3's own decodes land in its own root.

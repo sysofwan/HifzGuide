@@ -68,6 +68,14 @@ def _filled() -> asp.RoundSpec:
     return dataclasses.replace(ROUND3, models={**ROUND3.models, **_r3_identities()})
 
 
+def _unfilled() -> asp.RoundSpec:
+    """``CONSONANT3`` as it stood before #254 pinned the candidate: every ``r3_*`` arm is
+    refused by name, never resolved to another round's checkpoint."""
+    return dataclasses.replace(
+        ROUND3, models={name: identity for name, identity in ROUND3.models.items()
+                        if name not in R3_ARMS})
+
+
 class _Choice:
     def __init__(self, weights) -> None:
         self.choice = {"weights": weights}
@@ -108,7 +116,7 @@ def test_round_3_s_arms_resolve_from_a_spec_that_pins_them():
 
 def test_round_3_s_arms_are_refused_by_name_until_the_spec_pins_them():
     with pytest.raises(ValueError, match="r3_"):
-        ted.round_model_specs(ROUND3)
+        ted.round_model_specs(_unfilled())
 
 
 def test_round_2_s_arms_still_resolve_through_the_generic_helper():
@@ -194,7 +202,7 @@ def test_load_models_refuses_an_arm_the_round_has_not_pinned_yet(tmp_path, monke
     seen: dict = {}
     _fake_loader(monkeypatch, seen)
     with pytest.raises(ValueError, match="r3_"):
-        ted.load_models(tmp_path, ("r3_candidate_ema",), spec=ROUND3)
+        ted.load_models(tmp_path, ("r3_candidate_ema",), spec=_unfilled())
     assert seen == {}
 
 

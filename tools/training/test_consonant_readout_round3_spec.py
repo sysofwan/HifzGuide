@@ -5,7 +5,7 @@ The interface these tests pin (names the implementation must provide):
 * ``aug_readout_spec.CONSONANT3`` (registered as ``"consonant3"``) and a ``RoundSpec`` field
   ``registered_margins: Mapping[str, tuple[float, str]]`` (empty for every other round);
 * the round-3 candidate's decode roles ``r3_candidate_{live,ema}`` (``arm_prefix="r3_"``), which
-  the spec refuses by name until the run issue fills its ``models``;
+  #254's run fills with one checkpoint; a spec without them still refuses each role by name;
 * ``models["r2"]``: round 2's candidate at its averaged weights, the round's context column,
   whose look decodes are read from round 2's committed files, never copied.
 
@@ -103,7 +103,7 @@ def test_round_2_and_round_1_are_untouched_by_the_amendment():
 
 def test_c95_and_the_round_2_ema_are_the_pinned_models():
     models = asp.CONSONANT3.models
-    assert set(models) == {asp.C95, "r2"}
+    assert set(models) == {asp.C95, "r2", *R3_MODELS}
     assert models[asp.C95] == asp.CONSONANT1.models[asp.C95]
     assert models["r2"] == asp.ModelIdentity(
         asp.R2_CANDIDATE_REF, asp.EMA, 10_000, asp.CANDIDATE_RECIPE, asp.R2_CANDIDATE_SHA256)
@@ -119,13 +119,36 @@ def test_the_round_s_candidate_decodes_at_both_weights_under_its_own_prefix():
     assert ar.look_graded_models(asp.CONSONANT3) == (*R3_MODELS, asp.C95)
 
 
+def unfilled_spec() -> asp.RoundSpec:
+    """``CONSONANT3`` as it stood before #254 pinned the candidate: every ``r3_*`` role is
+    refused by name, never resolved to round 2's or #94's checkpoint."""
+    return dataclasses.replace(
+        asp.CONSONANT3,
+        models={name: identity for name, identity in asp.CONSONANT3.models.items()
+                if not name.startswith(asp.R3_ARM_PREFIX)})
+
+
 @pytest.mark.parametrize("model", R3_MODELS)
 def test_an_unfilled_round_3_role_is_refused_by_name(model):
-    """The run issue fills the candidate; until then no manifest names it and nothing resolves
-    it to round 2's or #94's checkpoint."""
-    assert model not in asp.CONSONANT3.models
+    """A spec that does not pin the candidate refuses the role by name and never resolves it
+    to another round's checkpoint."""
+    unfilled = unfilled_spec()
+    assert model not in unfilled.models
     with pytest.raises(REFUSED, match=model):
-        ag.model_spec(model, spec=asp.CONSONANT3)
+        ag.model_spec(model, spec=unfilled)
+
+
+def test_the_candidate_is_pinned_to_the_run_checkpoint_at_both_weights():
+    """#254's run fills the two look roles: one checkpoint at step 10,000 under the round's
+    recipe, read at the live and the averaged weights, so the look sitting decodes these files
+    and no other."""
+    for model, weights in ((f"r3_candidate_{asp.LIVE}", False),
+                           (f"r3_candidate_{asp.EMA}", True)):
+        identity = asp.CONSONANT3.models[model]
+        resolved = ag.model_spec(model, spec=asp.CONSONANT3)
+        assert (resolved.ref, resolved.use_ema, resolved.step, resolved.recipe) == (
+            asp.R3_CANDIDATE_REF, weights, 10_000, asp.CANDIDATE_RECIPE)
+        assert identity.checkpoint_sha256 == asp.R3_CANDIDATE_SHA256
 
 
 # --- where the decodes are read from ---------------------------------------------------------------

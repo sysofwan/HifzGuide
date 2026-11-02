@@ -181,7 +181,6 @@ def test_the_freeze_writes_its_record_and_its_doc_and_returns_the_record(run):
 
 
 def test_the_freeze_needs_no_round_3_candidate_identity(run):
-    assert set(run.spec.models) == {"c95", "r2"}
     run.write()
     assert run.sources.models_read == ("c95", "r2", "base")
 

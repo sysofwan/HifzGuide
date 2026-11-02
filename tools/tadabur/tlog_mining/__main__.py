@@ -91,6 +91,12 @@ TEACHER_RECORD = "teacher.json"
 #: gating clip (85.9 s) alone reserves ~9.1 GiB. Whole-clip phase A therefore gives each
 #: worker this budget and caps the process count to what the card's free memory holds.
 WORKER_VRAM_MIB = 9500
+#: Phase B's worker count, whatever the card offers. ``WORKER_VRAM_MIB`` is **one** teacher's
+#: whole-clip peak; a phase B worker holds the teacher, C95 and the candidate at once and takes a
+#: whole-clip ``spans`` pass per model (that store declares no shared decode), so its peak is not
+#: derivable from the phase A figure and no phase B run has measured it. One worker until a run
+#: reports its peak (the phase B run note is where it lands); a second is a deliberate increase.
+MINED_WORKERS = 1
 
 
 def align(args: argparse.Namespace) -> int:
@@ -239,7 +245,7 @@ def run(args: argparse.Namespace) -> int:
     """The give-way loop: one lock-held batch at a time, the gates checked at every boundary."""
     require_phase(args.phase)
     requested = args.parallel
-    args.parallel = _worker_count(requested, gpu_memory_mib("memory.free"))
+    args.parallel = _worker_count(requested, gpu_memory_mib("memory.free"), args.phase)
     # A stop signal unwinds through `_run_workers`'s finally, so its workers are reaped before
     # the lock is released; a hard kill leaves the parts intact and the next run resumes.
     for signal_number in (signal.SIGTERM, signal.SIGINT):
@@ -248,8 +254,10 @@ def run(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.parts_dir} already holds records: pass --resume to continue "
                          f"that run, or use a fresh --parts-dir")
     if args.parallel != requested:
-        print(f"parallel capped to {args.parallel}: whole-clip workers need "
-              f"{WORKER_VRAM_MIB} MiB each", flush=True)
+        reason = ("phase B holds three decoders and its peak is unmeasured"
+                  if args.phase == PHASE_B
+                  else f"whole-clip workers need {WORKER_VRAM_MIB} MiB each")
+        print(f"parallel capped to {args.parallel}: {reason}", flush=True)
     for directory in (args.parts_dir, args.clip_dir, args.shard_cache):
         Path(directory).mkdir(parents=True, exist_ok=True)
     rows_by_role = _launch_rows(args)
@@ -333,12 +341,16 @@ def _parts_glob(phase: str) -> str:
     return "tlog.*.jsonl" if phase == PHASE_B else "word_times.*.jsonl"
 
 
-def _worker_count(requested: int, free_mib: int) -> int:
-    """The whole-clip workers the card's free memory can hold, at most ``requested``.
+def _worker_count(requested: int, free_mib: int, phase: str = PHASE) -> int:
+    """The whole-clip workers this phase may run, at most ``requested``.
 
-    One worker is always run: a card with less free memory than one worker's budget cannot
-    finish a clip either way, and the caller's floor must not turn into a refusal to start.
+    Phase A sizes the count from the card's free memory against one teacher's whole-clip budget.
+    Phase B does not: its worker's peak is unmeasured, so it runs :data:`MINED_WORKERS`. One
+    worker is always run: a card with less free memory than a worker's budget cannot finish a
+    clip either way, and the caller's floor must not turn into a refusal to start.
     """
+    if phase == PHASE_B:
+        return max(1, min(requested, MINED_WORKERS))
     return max(1, min(requested, free_mib // WORKER_VRAM_MIB))
 
 

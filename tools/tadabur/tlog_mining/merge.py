@@ -87,6 +87,11 @@ def merge_mined_decodes(parts_dir: Path, out_dir: Path, *,
     ``meta.json`` carries the provenance, the per-model row counts, the row count per
     ``label_source``, the un-phonetizable listing and the producers' identity records — the
     weights that actually decoded, keyed as ``tlog.mined/<model>``.
+
+    Phase B consumes none of phase A's committed ``word_times``: phase A reads the gating rows
+    and phase B the reported rows, and a clip belongs to exactly one stratum, so the two sets
+    share no key and no join exists. Phase A's timing is therefore never recomputed here — there
+    is nothing here to recompute it for (brief Q2 read literally; the row sets are disjoint).
     """
     if set(rows) != set(PHASE_B_TRANCHES):
         raise ValueError(f"the mined merge takes exactly the phase B tranches "

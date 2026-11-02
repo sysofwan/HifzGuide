@@ -21,6 +21,7 @@ Phase A's contract is ``test_tlog_mining_launcher.py``; this file adds phase B's
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from pathlib import Path
@@ -120,3 +121,30 @@ def test_the_phase_b_resume_clears_the_pause_and_restarts_a_resumed_phase_b_run(
     line = _nohup_line(tmp_path)
     assert "--resume" in line and re.search(r"decode\.sh'? run\b[^\n]*\bB\b", line), line
     assert log.index("PAUSE") < log.index("--resume")
+
+
+def test_plan_b_refuses_a_committed_choice_that_names_another_candidate(tmp_path):
+    """Phase B's producer set is frozen at round 2's EMA: the dry run must catch it, not a worker."""
+    round_ = _with_amendment(tmp_path)
+    choice = json.loads(round_.layout.choice.read_text(encoding="utf-8"))
+    choice["models"]["candidate"] = "r2_candidate_live"
+    round_.write_commit(round_.layout.choice, json.dumps(choice), message="another candidate")
+    done = _run("plan", round_, tmp_path, "B")
+    assert done.returncode != 0 and done.stdout == ""
+    assert "candidate" in done.stderr and "r2_candidate_ema" in done.stderr
+
+
+def test_launch_refuses_while_the_other_phases_loop_is_live(tmp_path):
+    """The clone is shared: staging under a live phase A loop breaks that loop's next batch."""
+    round_ = _with_amendment(tmp_path)
+    env = _box(tmp_path)
+    ssh = Path(env["PATH"].split(":")[0]) / "ssh"
+    ssh.write_text('#!/bin/sh\nprintf "%s\\n" "$2" >> "$SSH_LOG"\n'
+                   'case "$2" in\n'
+                   '  *"/B/"*) ;;\n'
+                   '  *logs/run.pid*) echo 4242 ;;\n'
+                   'esac\n'
+                   'cat >/dev/null\n', encoding="utf-8")
+    done = _run("launch", round_, tmp_path, "B", **env)
+    assert done.returncode != 0 and "still live" in done.stderr and "4242" in done.stderr
+    assert "bundle" not in _ssh_log(tmp_path)

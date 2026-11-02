@@ -38,8 +38,9 @@ Contract this file pins
   share_features, load_audio=None, clip_cache=None, stores=MINED_STORES) -> BatchResult``: one
   tranche's rows, shard by shard in sorted order, through ``tlog_eval_decode.run_shard`` (parts
   at ``tlog_eval_decode.decodes_path(parts_dir, shard, model, role)``, resume by key). The budget
-  is checked before each shard, so a started shard is never cut off; ``done`` is true when every
-  row holds every model.
+  is checked **before each row**, and a row is atomic across models and stores (every model's
+  line lands together), so a started row is never cut off and a resumed batch repeats no row;
+  ``done`` is true when every row holds every model.
 
 ``tadabur.tlog_mining.merge.merge_mined_decodes(parts_dir, out_dir, *, rows, unphonetizable,
 provenance, models) -> {model: line count}``: ``rows`` and ``unphonetizable`` map a tranche to
@@ -348,7 +349,7 @@ def test_a_batch_writes_every_model_a_record_with_both_stores_and_the_reference_
         assert first["assigned_label"] == "2:1" and first["stratum"] == "reported:below_bar"
 
 
-def test_the_budget_stops_between_shards_and_never_inside_a_row(tmp_path):
+def test_the_budget_stops_between_rows_and_never_inside_one(tmp_path):
     rows, clips = _batch_rows(tmp_path)
     clock = Clock()
     result = _decode(rows, clips, tmp_path / "parts", _decoders(clock), clock, budget=1.0)
@@ -526,3 +527,106 @@ def test_the_driver_refuses_phase_c_before_it_touches_the_card(tmp_path, monkeyp
     monkeypatch.setattr(cli, "gpu_memory_mib", card)
     with pytest.raises(ValueError, match="phase C"):
         cli.run(_driver_args(tmp_path, "C"))
+
+
+def test_the_driver_runs_one_phase_b_worker_whatever_the_card_offers(tmp_path, monkeypatch):
+    """Phase B's worker peak is unmeasured: its cap is fixed, not read off a phase A figure."""
+    _quiet_box(monkeypatch)
+    monkeypatch.setattr(cli, "phase_b_rows", lambda role, **kwargs: ([], []))
+    args = _driver_args(tmp_path, "B")
+    assert cli.run(args) == 0
+    assert args.parallel == 1
+    assert cli._worker_count(4, 40_000, "B") == 1
+    assert cli._worker_count(4, 40_000) == 4
+
+
+# --- the real phonetizer, and the decode worker's wiring ---------------------------------------
+
+
+def test_the_real_phonetizer_refuses_exactly_the_committed_fallback_ayat():
+    """The fake above names #248's ayat from a literal; this is the code the box runs."""
+    readable = selection._phonetizer()
+    assert sorted(label for label in UNPHONETIZABLE_AYAT if not readable(label)) == sorted(
+        UNPHONETIZABLE_AYAT)
+    assert readable("2:1") and readable("1:1")
+    from training.tlog_eval import KNOWN_UNPHONETIZABLE
+
+    assert set(UNPHONETIZABLE_AYAT) == set(KNOWN_UNPHONETIZABLE)
+
+
+def _decode_args(tmp_path, *, budget=60.0):
+    return SimpleNamespace(
+        phase="B", role="confirm.1", shard_index=0, shard_count=1,
+        parts_dir=tmp_path / "parts", clip_dir=tmp_path / "clips",
+        shard_cache=tmp_path / "shards", tranches_dir=tmp_path, split_dir=tmp_path,
+        look_clip_cache=None, worklist=None, budget_seconds=budget)
+
+
+def _listing(tmp_path) -> None:
+    (tmp_path / "parts").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "parts" / "unphonetizable.confirm.1.json").write_text(
+        json.dumps({"tranche": "confirm.1", "labels": []}), encoding="utf-8")
+
+
+def test_the_decode_worker_refuses_before_the_models_without_the_launch_listing(tmp_path):
+    with pytest.raises(ValueError, match="unphonetizable"):
+        cli.decode(_decode_args(tmp_path))
+
+
+def test_the_decode_worker_checks_the_producer_set_then_decodes_and_skips_held_shards(
+        tmp_path, monkeypatch):
+    rows, _ = _batch_rows(tmp_path)
+    _listing(tmp_path)
+    args = _decode_args(tmp_path)
+    order, fetched, batches = [], [], []
+
+    def confirm(models):
+        order.append("confirm")
+
+    def load(parts_dir, models=None, spec=None):
+        order.append("load")
+        return {}
+
+    def batch(shard_rows, parts, *, role, **kwargs):
+        batches.append([row["row"] for row in shard_rows])
+        for model in MODELS:
+            path = ted.decodes_path(parts, shard_rows[0]["shard_file"], model, role=role)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("".join(
+                json.dumps({"key": item_key(row["audio_path"])}) + "\n"
+                for row in shard_rows), encoding="utf-8")
+        return BatchResult(done=True, written=len(shard_rows))
+
+    monkeypatch.setattr(cli, "phase_b_rows", lambda role, **kwargs: (rows, []))
+    monkeypatch.setattr(cli.ted, "require_confirm_models", confirm)
+    monkeypatch.setattr(cli.ted, "load_models", load)
+    monkeypatch.setattr(cli.ted, "ayah_word_counts", lambda: (lambda label: 3))
+    monkeypatch.setattr(cli.ted, "shard_stream", lambda cache: _no_stream)
+    monkeypatch.setattr(cli, "_fetch_shard",
+                        lambda shard, shard_rows, a: fetched.append(shard))
+    monkeypatch.setattr(cli, "decode_batch", batch)
+
+    assert cli.decode(args) == 0
+    assert order == ["confirm", "load"]
+    assert fetched == ["clean-00101-of-00411", "clean-00102-of-00411"]
+    assert batches == [[1, 2], [3, 4]]
+    assert cli.decode(args) == 0
+    assert fetched == ["clean-00101-of-00411", "clean-00102-of-00411"] and len(batches) == 2
+
+
+def test_the_decode_worker_fetches_no_shard_once_its_budget_is_spent(tmp_path, monkeypatch):
+    rows, _ = _batch_rows(tmp_path)
+    _listing(tmp_path)
+    args = _decode_args(tmp_path, budget=0.0)
+    fetched, batches = [], []
+    monkeypatch.setattr(cli, "phase_b_rows", lambda role, **kwargs: (rows, []))
+    monkeypatch.setattr(cli.ted, "require_confirm_models", lambda models: None)
+    monkeypatch.setattr(cli.ted, "load_models", lambda parts_dir, models=None: {})
+    monkeypatch.setattr(cli.ted, "ayah_word_counts", lambda: (lambda label: 3))
+    monkeypatch.setattr(cli.ted, "shard_stream", lambda cache: _no_stream)
+    monkeypatch.setattr(cli, "_fetch_shard",
+                        lambda shard, shard_rows, a: fetched.append(shard))
+    monkeypatch.setattr(cli, "decode_batch",
+                        lambda rows, parts, **kwargs: batches.append(rows))
+    assert cli.decode(args) == 0
+    assert fetched == [] and batches == []

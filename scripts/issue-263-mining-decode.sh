@@ -35,7 +35,16 @@
 # run's line. `fetch [A|B]` copies a complete merge into the phase's committed directory.
 #
 # Each phase has its own parts, clips, logs and output directory under $ROOT (A) and $ROOT/B
-# (phase B), so no part, done or exit file of one phase is ever read as the other's.
+# (phase B), so no part, done or exit file of one phase is ever read as the other's. The staged
+# clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse while either phase's loop is
+# still live.
+#
+# Two interpreters, two requirements. Mac side: `plan`/`launch`/`resume` read the committed
+# choice and the pinned amendment through `python`, which must be a `python` from the checkout's
+# requirements (it imports `tadabur.tlog_mining.selection`, i.e. numpy) — the same interpreter
+# `scripts/test.sh` resolves. Box side: `run` is a non-interactive ssh shell, so it activates the
+# conda env (`$CONDA`) before it reads anything through `git` or `python`; a refusal there writes
+# the phase's `run.exit`/`run.done`, so `status` reports it as a failed run, not as pending.
 #
 # Mac side, from the worktree root:
 #   scripts/issue-263-mining-decode.sh plan B
@@ -67,6 +76,9 @@ CHOICE=$ROUND_DIR/choice.json
 AMENDMENT=docs/tlog-mining-amendment.md
 #: The frozen producer prefix phase B's choice extends: the teacher and the baseline.
 PREFIX_MODELS=base,c95
+#: The candidate phase B decodes at — `MINED_MODELS` in `tadabur.tlog_mining.mined_decode`.
+#: Another choice's candidate is a different run: the merged files are named for these weights.
+MINED_CANDIDATE=r2_candidate_ema
 #: This script's own checkout, for the pinned amendment. The committed inputs are read from the
 #: current repository (the caller's worktree); the pin is the one this code carries.
 CODE_TOOLS=$(cd "$(dirname "${BASH_SOURCE[0]}")/../tools" && pwd)
@@ -159,6 +171,7 @@ plan() {  # [phase]
       printf 'merge word_times\n'
       ;;
     B)
+      require_candidate
       MODELS=$(chosen_models)
       for role in "${ROLES[@]}"; do
         printf 'decode %s %s at %s processes\n' "$role" "$MODELS" "$PARALLEL"
@@ -175,6 +188,18 @@ import json, sys
 candidate = json.load(sys.stdin)["models"]["candidate"]
 print(",".join([*sys.argv[1].split(","), candidate]))
 ' "$PREFIX_MODELS"
+}
+
+require_candidate() {
+  # Phase B's decode set is frozen at round 2's EMA candidate. A choice that names another one
+  # is a different run (other weights, other file names), and the decoder refuses it inside the
+  # first worker — after the clone, the model loads and a lock-held batch. Refuse it here.
+  local candidate
+  candidate=$(git show "HEAD:$CHOICE" | python -c \
+    'import json, sys; print(json.load(sys.stdin)["models"]["candidate"])')
+  [ "$candidate" = "$MINED_CANDIDATE" ] \
+    || die "the committed choice's candidate is $candidate, not phase B's $MINED_CANDIDATE: \
+phase B decodes round 2's EMA weights only"
 }
 
 bundle_ref() {  # <repo_root>
@@ -216,17 +241,23 @@ start_run() {  # <phase> <run flags>
     >> '$LOGS/run.out' 2>&1 < /dev/null & echo 'started: '\$!"
 }
 
-live_pid() {
-  # The box's loop pid, when that process is still alive (a pause lands at its next boundary).
-  ssh "$HOST" "if [ -f '$LOGS/run.pid' ]; then pid=\$(cat '$LOGS/run.pid' 2>/dev/null); \
+live_pid() {  # <logs dir>
+  # The box's loop pid for that phase's logs, when the process is still alive (a pause lands at
+  # its next boundary).
+  ssh "$HOST" "if [ -f '$1/run.pid' ]; then pid=\$(cat '$1/run.pid' 2>/dev/null); \
     if [ -n \"\$pid\" ] && kill -0 \"\$pid\" 2>/dev/null; then echo \"\$pid\"; fi; fi"
 }
 
 require_stopped() {
-  local pid
-  pid=$(live_pid)
-  [ -z "$pid" ] || die "the previous run is still live (pid $pid): pause it and wait for \
-    run.exit, then resume"
+  # The clone is shared by both phases (`stage_repo` replaces `$ROOT/repo`), so a live run of
+  # *either* phase must block a restage: deleting the tree under a running loop breaks its next
+  # batch.
+  local dir pid
+  for dir in "$ROOT/logs" "$ROOT/B/logs"; do
+    pid=$(live_pid "$dir")
+    [ -z "$pid" ] || die "a mining run is still live (pid $pid, logs in $dir): pause it and \
+      wait for run.exit, then resume"
+  done
 }
 
 launch() {  # [phase]
@@ -353,7 +384,7 @@ record_run_result() {  # <status>
 }
 
 run() {  # [--resume] [--phase A|B]
-  local resume=0 phase=A
+  local resume=0 phase=A status=0 flags="" merge_pr=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --resume) resume=1 ;;
@@ -362,22 +393,29 @@ run() {  # [--resume] [--phase A|B]
     esac
     shift
   done
-  # Phase B's amendment check reads HEAD of the *staged* clone on the box (and of the caller's
-  # worktree on the Mac side), so the phase is read from inside the repository, not the ssh
-  # session's home directory.
   phase_dirs "$phase"
-  cd "$ROOT/repo" || die "the box's clone $ROOT/repo is missing: stage the repository first"
-  require_phase "$phase"
-  # A signal's EXIT trap reads the last command's status, so translate TERM and INT here.
+  # A signal's EXIT trap reads the last command's status, so translate TERM and INT here. The
+  # trap, the pid and the log directory come before *any* check: a refusal (the conda env, the
+  # clone, the phase, the choice) is a failed run, and `status` must see its exit file instead of
+  # "pending" forever.
   trap 'exit 143' TERM
   trap 'exit 130' INT
   trap 'record_run_result "$?"' EXIT
   mkdir -p "$PARTS" "$OUT" "$CLIPS" "$SHARDS" "$LOGS"
   printf '%s\n' "$$" > "$LOGS/run.pid"
   rm -f "$LOGS/run.done" "$LOGS/run.exit"
-  cd "$ROOT/repo/tools"
+  # The box's interpreter comes before anything read through `python`: this shell is
+  # non-interactive (setsid from ssh), so a bare `python` is whatever sshd's PATH holds. The
+  # phase check reads the pinned amendment through the tools (numpy included) and must not
+  # decide on that PATH.
   activate
-  local status=0 flags="" merge_pr=""
+  # Phase B's amendment check reads HEAD of the *staged* clone on the box (and of the caller's
+  # worktree on the Mac side), so the phase is read from inside the repository, not the ssh
+  # session's home directory.
+  cd "$ROOT/repo" || die "the box's clone $ROOT/repo is missing: stage the repository first"
+  require_phase "$phase"
+  if [ "$phase" = B ]; then require_candidate; fi
+  cd "$ROOT/repo/tools"
   if [ "$resume" -eq 1 ]; then flags="--resume"; fi
   python -m tadabur.tlog_mining run --phase "$phase" --parts-dir "$PARTS" --clip-dir "$CLIPS" \
     --shard-cache "$SHARDS" --pause-file "$PAUSE_FILE" --lock /root/scratch/gpu.lock \

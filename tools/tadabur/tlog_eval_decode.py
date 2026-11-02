@@ -33,12 +33,12 @@ featurised once and every model still pending on it runs on those features
 (``--no-share-features`` reproduces the per-model path, which is a benchmark's control). The
 records are unchanged by sharing -- ``parity`` re-decodes the first :data:`PARITY_SHARDS`
 gating shards and compares its parts with the committed decodes of exactly those shards,
-line for line, writing ``tools/tadabur/consonant2_readout/decodes/shared_parity.json``. It
-compares decode text only: nothing here grades.
+line for line, writing ``<spec root>/decodes/shared_parity.json``. It compares decode text
+only: nothing here grades.
 
 Model identities are the round's pins, checked here rather than through
-``training.aug_readout_decode``'s #95 gate: C95 and the #178 candidate by their checkpoint
-SHA-256, the teacher by the hub revision its loaded config resolved to.
+``training.aug_readout_decode``'s #95 gate: the teacher by the hub revision its loaded config
+resolved to, every other model by the SHA-256 of its checkpoint the round's spec pins.
 
 Parts go to ``<parts-dir>/tlog.<role>.<shard_file>.<model>.jsonl``, one file per shard and
 model, so a killed run resumes by key. ``merge`` gathers them into
@@ -61,6 +61,15 @@ Usage, from ``tools/`` on the GPU box (``decode`` and ``merge`` under
     python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
         --models base c95 candidate_ema --processes 6 --threads 1 --pr 213
     python -m tadabur.tlog_eval_decode parity --parts-dir DIR --out shared_parity.json
+
+``--spec`` selects the round for every subcommand (default ``consonant2``); round 3's
+look and confirm decodes read its own arms and tranches::
+
+    OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --spec consonant3 \\
+        --parts-dir DIR --cache-dir DIR --role look --models r3_candidate_live \\
+        r3_candidate_ema --shard-index 0 --shard-count 4
+    python -m tadabur.tlog_eval_decode merge-confirm --spec consonant3 --parts-dir DIR \\
+        --models base c95 r3_candidate_ema
 """
 
 from __future__ import annotations

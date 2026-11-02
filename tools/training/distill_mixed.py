@@ -62,23 +62,27 @@ TLOG_RUN_LOG_NAME = "tlog_consumed.jsonl.gz"
 _PART_NAMES = frozenset(SOURCE_NAMES.values())
 
 
-def verified_tlog_after(path: Path,
-                        schedule: tlog_schedule.Schedule) -> tlog_schedule.ConsumedPrefix:
-    """The consumed prefix a run starts after, verified against the committed pool.
+def verified_tlog_after(path: Path, schedule: tlog_schedule.Schedule, *,
+                        sha256: str) -> tlog_schedule.ConsumedPrefix:
+    """The consumed prefix a run starts after, read from the file it is given.
 
-    ``path`` names a consumed-keys file; the run reads the committed copy of that name, because
-    a box's scratch copies are disposable while the prefix a run continues from is committed
-    (``tadabur.tlog_schedule.consumed_keys_path``). The keys must be the first rows of
-    ``schedule``'s walk over ``tlog.training``, so this refuses before the trainer allocates
-    anything. Build it in the main process: a worker would fail after GPU time.
+    ``path`` is the run's consumed-keys log, and ``sha256`` its digest as ``run_config.json``
+    records it: the bytes at ``path`` must be that file's, so the prefix the run starts after is
+    the one the config names, not a copy elsewhere on the machine. Its keys must be the first
+    rows of ``schedule``'s walk over ``tlog.training``, so a corrupt prefix, a truncated one, or
+    one from another schedule refuses before the trainer allocates anything. Build it in the
+    main process: a worker would fail after GPU time.
     """
+    from tadabur.tlog_index import sha256_file
     from tadabur.tlog_pool import load_training_rows
 
+    path = Path(path)
+    if not path.is_file():
+        raise ValueError(f"the tlog after file is not a file: {path}")
+    if (digest := sha256_file(path)) != sha256:
+        raise ValueError(f"{path} is {digest}, not the run config's tlog_after_sha256 {sha256}")
     return tlog_schedule.require_walk_prefix(
-        tlog_schedule.read_consumed_keys(tlog_schedule.consumed_keys_path(path)),
-        load_training_rows(),
-        schedule,
-    )
+        tlog_schedule.read_consumed_keys(path), load_training_rows(), schedule)
 
 
 @dataclass(frozen=True)

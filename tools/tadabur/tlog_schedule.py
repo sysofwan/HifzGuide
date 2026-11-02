@@ -58,8 +58,6 @@ INTERLEAVE_WIDTH = 8
 DEFAULT_PREFIX_WINDOWS = 240_000
 SCHEDULE_PATH = Path(__file__).parent / "tlog" / "training_schedule.json"
 PREFIX_PATH = Path(__file__).parent / "tlog" / "training_prefix.json"
-#: The committed consumed-keys sets (#250): one file per round, beside a ``meta.json``.
-CONSUMED_DIR = Path(__file__).parent / "tlog" / "consumed"
 
 _FIELDS = frozenset({"seed", "interleave_width", "overlay_commit", "rows_sha256", "count",
                      "shards"})
@@ -283,20 +281,6 @@ def read_consumed_keys(path: Path) -> list[Key]:
                 raise ValueError(f"{path}:{number} is not a consumed key: {record!r}")
             keys.append((split, shard, row))
     return keys
-
-
-def consumed_keys_path(path: Path) -> Path:
-    """The committed copy of the consumed-keys file ``path`` names.
-
-    Round 2's keys lived on the box's scratch disk, which is disposable; the repo commits the
-    set a later round continues from (#250), so a training run reads what the repo holds, not
-    what a machine happens to keep. A name the repo does not commit refuses.
-    """
-    committed = CONSUMED_DIR / Path(path).name
-    if not committed.is_file():
-        raise ValueError(f"{path} names no committed consumed-keys file: {committed} is not "
-                         f"in the repo -- copy it there and commit it (#250)")
-    return committed
 
 
 def _walk_head(by_shard: Mapping[tuple[str, str], Sequence[Mapping[str, Any]]],

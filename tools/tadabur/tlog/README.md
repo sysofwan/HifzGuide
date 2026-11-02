@@ -578,11 +578,13 @@ rows** over **138 shards** (clean 49,609 rows / 151,326 windows, unclean 25,749 
 **35.0% of the pool cumulatively**, with the surahs new to round 3 and the cumulative list. The
 plan output is not committed here — the freeze commits it.
 
-`distill_train --mix … --tlog-after tadabur/tlog/consumed/consonant2.jsonl.gz` reads the
-committed copy of that name, verifies it against the run's schedule and pool before any worker
-reads a shard, and records the path and SHA-256 in `run_config.json`. The digest is
-resume-critical (a checkpoint cannot resume onto a different starting row); the flag is refused
-without `--mix`, since a Tadabur-only run reads no tlog rows.
+`distill_train --mix … --tlog-after tadabur/tlog/consumed/consonant2.jsonl.gz` reads the file it
+names, checks its bytes against the recorded SHA-256, and verifies its keys against the run's
+schedule and pool before any worker reads a shard; the path and digest are recorded in
+`run_config.json`. The planner and the trainer therefore start from the same file: neither
+substitutes a same-named copy from elsewhere on the machine. The digest is resume-critical (a
+checkpoint cannot resume onto a different starting row); the flag is refused without `--mix`,
+since a Tadabur-only run reads no tlog rows.
 
 ```bash
 python -m tadabur.tlog_schedule plan --after tadabur/tlog/consumed/consonant2.jsonl.gz \

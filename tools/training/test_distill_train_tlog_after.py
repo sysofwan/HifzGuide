@@ -20,6 +20,7 @@ Contract this file pins
 
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 from pathlib import Path
@@ -165,11 +166,43 @@ def test_without_an_after_file_the_mixed_dataset_starts_at_the_top(tmp_path):
 
 
 def test_with_an_after_file_the_mixed_dataset_holds_its_verified_prefix(tmp_path):
-    train_loader, _ = dt.build_dataloaders(_after_config(tmp_path))
+    train_loader, _ = dt.build_dataloaders(
+        _config(tmp_path, tlog_after=str(CONSUMED), tlog_after_sha256=sha256_file(CONSUMED)))
     after = train_loader.dataset.after
     assert isinstance(after, tlog_schedule.ConsumedPrefix)
     assert after.keys == frozenset(tlog_schedule.read_consumed_keys(CONSUMED))
     assert after.length == len(after.keys) == 73_990
+
+
+def test_a_missing_after_file_refuses(tmp_path):
+    with pytest.raises(ValueError, match="not a file"):
+        dt.build_dataloaders(_config(tmp_path, tlog_after=str(tmp_path / "absent.jsonl.gz"),
+                                     tlog_after_sha256="a" * 64))
+
+
+def test_a_file_whose_bytes_are_not_the_recorded_digest_refuses(tmp_path):
+    copy = tmp_path / "consonant2.jsonl.gz"
+    copy.write_bytes(CONSUMED.read_bytes())
+    with pytest.raises(ValueError, match="tlog_after_sha256"):
+        dt.build_dataloaders(_config(tmp_path, tlog_after=str(copy),
+                                     tlog_after_sha256="a" * 64))
+
+
+def test_a_same_named_snapshot_elsewhere_is_the_file_the_run_reads(tmp_path):
+    """The path the config names is read, not a same-named copy: a shorter prefix stays shorter.
+
+    Substituting a copy by basename would start round 3 at the repository's 73,990 rows instead
+    of the operator's snapshot, so a run could silently replay keys it was told to skip.
+    """
+    keys = tlog_schedule.read_consumed_keys(CONSUMED)[:2]  # a valid two-row walk prefix
+    other = tmp_path / "consonant2.jsonl.gz"
+    with gzip.open(other, "wt", encoding="utf-8") as handle:
+        handle.writelines(json.dumps({"split": s, "shard_file": f, "row": r}) + "\n"
+                          for s, f, r in keys)
+    train_loader, _ = dt.build_dataloaders(
+        _config(tmp_path, tlog_after=str(other), tlog_after_sha256=sha256_file(other)))
+    after = train_loader.dataset.after
+    assert (after.keys, after.length) == (frozenset(keys), 2)
 
 
 class _Rows:

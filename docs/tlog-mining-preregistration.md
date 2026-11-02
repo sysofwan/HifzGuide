@@ -128,9 +128,28 @@ derived from a power rule.
   `sha256(f"{SEED}:{stratum}:{clip key}:{position}").hexdigest()`, the
   `catch_loss_audit._rank` form — with seed `tlog-mining-pilot-2026-11`. Nothing about a model
   enters the order.
-- The **realised inclusion probability** is recorded for every word: `n / N`, where `n` is the
-  stratum's drawn size — the planned size plus any shortfall it absorbs — over the stratum's
-  population `N`; and 1 in a take-all stratum.
+- **The caps make the draw cap-aware, not a simple random sample of words.** Strata are filled
+  in the fixed order of the table above ("all 3", "exactly 2", "only teacher", "only C95",
+  "only round-2 EMA", "none flag"), each by its own hash ranking ascending; a word is skipped
+  when its clip already holds 2 drawn words or its `group_key` already holds 4. Shortfall is
+  absorbed in the same order ("all 3", then "exactly 2", then "none") by continuing the
+  receiving stratum's ranking. The caps count **across strata**, so a word's chance of inclusion
+  depends on the words it shares a clip or `group_key` with, and on the strata drawn before it.
+- **Inclusion probabilities are estimated by replaying the design, not assumed.** `n / N` is
+  only the nominal sampling fraction: the caps break it, and so does shortfall reallocation.
+  Every word's realised first-order inclusion probability `π_w` is estimated by replaying this
+  entire frozen draw — strata, order, hash seed family, caps and shortfall rule included —
+  `R = 10,000` times, replicate `r` seeded `sha256(f"{SEED}:replicate:{r}")`, recording the
+  count `c_w` of replays that draw the word, and reporting the smoothed frequency
+  `π̂_w = (c_w + 1) / (R + 1)`, so no weight is infinite. `c_w` and `π̂_w` are committed with
+  the worklist for every word; the nominal `n / N` and each stratum's drawn `n` are recorded
+  beside them and are **not** used as weights. The readout's Horvitz–Thompson weights are
+  `1 / π̂_w`.
+- **Worked example of the bias the caps cause.** One clip holds three words a, b and c; another
+  holds the single word d; the quota is 3 and the clip cap is 2. Every rank order draws d and
+  two of a, b, c, so `π_a = π_b = π_c = 2/3` and `π_d = 1` — not 3/4. With a, b and c the only
+  mistakes, a draw shows 2 mistakes raw, and the cap-aware weights estimate
+  `1/(2/3) + 1/(2/3) = 3`, the population's true count.
 
 ## 5. Presentation
 
@@ -161,8 +180,9 @@ A **verified mistake** is a **decisive** "no" with at least one kind other than 
 
 - **Yield per stratum**, with a **Wilson** interval.
 - **Per detector**: the **Horvitz–Thompson**-weighted catch rate and precision, with a
-  `group_key`-clustered **bootstrap** (each word weighted by the inverse of its realised
-  inclusion probability, §4).
+  `group_key`-clustered **bootstrap** — each word weighted by `1 / π̂_w`, the inverse of its
+  estimated inclusion probability (§4) — reporting the Monte Carlo error of the weights beside
+  each figure.
 - The breakdown **by kind**, and the **unclear** rate.
 - Words whose flag involves **س**, **ص** or **ث**, reported apart: the owner's ear is noisier
   there.

@@ -20,6 +20,7 @@ Contract this file pins
 """
 
 import hashlib
+import itertools
 import json
 import re
 import subprocess
@@ -92,6 +93,18 @@ def _strata_rows(text: str) -> dict[str, int]:
         if line.lstrip().startswith("|") and len(cells) >= 2 and cells[-1].isdigit():
             rows[cells[0]] = int(cells[-1])
     return rows
+
+
+def _cap_draw(order: tuple[str, ...], clips: dict[str, str], *, quota: int, cap: int) -> list[str]:
+    """Walk a rank order under a per-clip cap, taking words until the quota."""
+    per_clip, drawn = {}, []
+    for word in order:
+        if len(drawn) == quota:
+            break
+        if per_clip.get(clips[word], 0) < cap:
+            per_clip[clips[word]] = per_clip.get(clips[word], 0) + 1
+            drawn.append(word)
+    return drawn
 
 
 # --- the frozen documents stay frozen -------------------------------------------------------------
@@ -239,6 +252,18 @@ def test_draw_rules_are_stated_with_the_seed_and_inclusion_probability():
             r"at most 2 words per clip", r"4 per `?group_key`?",
             r"shortfall", r"all 3", r"exactly 2", r"none", r"inclusion probabilit",
             r"actual sizes")
+
+
+def test_cap_aware_weights_guard_the_unequal_clip_example():
+    """Three words in one clip, quota 3, clip cap 2: marginals are 2/3 and 1, not 3/4."""
+    clips = {"a": "A", "b": "A", "c": "A", "d": "B"}
+    draws = [_cap_draw(order, clips, quota=3, cap=2) for order in itertools.permutations("abcd")]
+    frequency = {word: sum(word in draw for draw in draws) / len(draws) for word in "abcd"}
+    assert frequency == {"a": 2 / 3, "b": 2 / 3, "c": 2 / 3, "d": 1.0}
+    sample = _cap_draw(("a", "b", "c", "d"), clips, quota=3, cap=2)
+    assert sample == ["a", "b", "d"]
+    assert sum(1 / frequency[word] for word in sample if word != "d") == pytest.approx(3)
+    _expect(_text(PREREG), r"π_a = π_b = π_c = 2/3", r"not 3/4", r"R = 10,000", r"replay")
 
 
 def test_presentation_is_the_reference_aligned_snip_with_a_whole_clip_fallback():

@@ -172,8 +172,9 @@ def _ready(tmp_path: Path, *, init_digest: str = INIT_SHA, **overrides: str):
     _python_shim(tmp_path)
     init, pool = _stand_in_files(tmp_path)
     _sha_shim(tmp_path, **{str(init): init_digest, str(pool): POOL_SHA})
-    env = _env(tmp_path, INIT=str(init), POOL=str(pool), TLOG_AFTER=str(CONSUMED),
-               INDEX=str(tmp_path / "index.jsonl"), **overrides)
+    env = _env(tmp_path, INIT=str(init), POOL=str(pool), INDEX=str(tmp_path / "index.jsonl"),
+               **overrides)
+    env.setdefault("TLOG_AFTER", str(CONSUMED))
     return _run(env, "ready")
 
 

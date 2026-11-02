@@ -327,6 +327,26 @@ def require_walk_prefix(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
     return ConsumedPrefix(frozenset(keys), len(keys), walked == keys)
 
 
+def next_walk_key(keys: Iterable[Key], rows: Iterable[Mapping[str, Any]],
+                  schedule: Schedule) -> Key:
+    """The walk row a resumed run reads first after ``keys``: the smoke gate's offset
+    assertion (#252).
+
+    ``keys`` are re-checked as the walk's first rows, exactly as :func:`require_walk_prefix`
+    does, so a log that names rows the walk does not hold -- or a duplicate -- refuses here
+    rather than shifting the offset silently.
+    """
+    keys = list(keys)
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"the consumed keys repeat a key: {len(keys)} lines, "
+                         f"{len(set(keys))} distinct")
+    head = _walk_head(rows_by_shard(rows, schedule), schedule, len(keys) + 1)
+    _require_walk_keys(keys, head[:-1], where="the consumed keys")
+    from .tlog_pool import row_key
+
+    return row_key(head[-1])
+
+
 def require_prefix_by_shard(after: ConsumedPrefix,
                             by_shard: Mapping[tuple[str, str], Sequence[Mapping[str, Any]]],
                             schedule: Schedule) -> dict[tuple[str, str], int]:

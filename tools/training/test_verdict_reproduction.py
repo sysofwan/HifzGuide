@@ -20,8 +20,12 @@ from training import aug_readout as ar
 from training import aug_readout_spec as asp
 from training.test_consonant2_verdict import ConfirmSources, MissingInput, _opened, _verdict
 
-#: #95's four-model Tarteel-confirm and qdat decodes, and the database its harness grades with.
-DECODE_NAMES = tuple(f"{name}.{model}.jsonl.gz" for name in ("tarteel_v1.confirm", "qdat")
+#: #95's four-model Tarteel-confirm and qdat decodes, and the database its harness grades with:
+#: the committed baselines (``decodes.<model>.jsonl.gz`` in each dataset's directory) for h448 and
+#: base, the readout directory's ``<set>.<model>.jsonl.gz`` for the two EMA arms.
+DECODE_NAMES = tuple(f"decodes.{model}.jsonl.gz" if model in ("h448", "base")
+                     else f"{name}.{model}.jsonl.gz"
+                     for name in ("tarteel_v1.confirm", "qdat")
                      for model in ar.REPRODUCTION_MODELS)
 INPUT_NAMES = (*DECODE_NAMES, "quran.db")
 
@@ -62,10 +66,10 @@ class PlantedCheck:
         self.events: list[str] = []
         self.sources: list = []
         self.counts = ar.REPRODUCTION if counts is None else counts
-        directory = tmp_path / "reproduction_inputs"
-        directory.mkdir()
         self.files = []
-        for name in INPUT_NAMES:
+        for number, name in enumerate(INPUT_NAMES):  # a directory each: baseline names repeat
+            directory = tmp_path / "reproduction_inputs" / str(number)
+            directory.mkdir(parents=True)
             path = directory / name
             path.write_bytes(f"the bytes of {name}".encode())
             self.files.append(path)

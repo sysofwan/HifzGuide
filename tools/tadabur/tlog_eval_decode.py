@@ -547,6 +547,13 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
     return counts
 
 
+def _pooled_clip(row: Mapping, spec: RoundSpec) -> str | tuple[str, str, int]:
+    """The clip a pooled confirm row is. Round 2's tranches are one clip population (#230), so a
+    clip listed in both is a planted row; round 3's decode different shards, where the same clip
+    name is another clip, so the row key is the identity there (#256)."""
+    return item_key(row["audio_path"]) if spec.name == CONSONANT2.name else row_key(row)
+
+
 def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, Sequence],
                           provenance: Mapping, models: Sequence[str],
                           claims: Mapping[str, Mapping] | None = None,
@@ -570,16 +577,12 @@ def merge_confirm_decodes(parts_dir: Path, out_dir: Path, *, manifests: Mapping[
                          f"not {missing[0] if missing else extra[0]}")
     owner: dict[object, str] = {}
     expected = {}
-    #: Round 2's tranches are one clip population (#230): a clip listed in both is a planted
-    #: row. Round 3's tranches decode different shards, where the same clip name is another
-    #: clip, so its rows are identified by their row key (#256).
-    clip_of = ((lambda row: item_key(row["audio_path"])) if spec.name == CONSONANT2.name
-               else row_key)
     for role in tranches:
         rows = gating_rows(manifests[role])
         expected[role] = {item_key(row["audio_path"]) for row in rows}
         for row in rows:
-            key, other = clip_of(row), owner.setdefault(clip_of(row), role)
+            key = _pooled_clip(row, spec)
+            other = owner.setdefault(key, role)
             if other != role:
                 raise ValueError(f"{key} is in both {other} and {role}: a clip is pooled once")
     parts_dir = Path(parts_dir)

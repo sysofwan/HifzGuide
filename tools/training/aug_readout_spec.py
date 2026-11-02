@@ -49,6 +49,8 @@ LIVE = "live"
 EMA = "ema"
 #: Round 2's pre-registration, frozen by #229 on 2026-10-28 (owner-approved).
 CONSONANT2_PREREG_SHA256 = "1860c66d4dc1c8ece0fc81fc84e4e5021783a138ba1445ae790df4172e0b6c3a"
+#: Round 3's pre-registration, frozen by #253 on 2026-11-02 (owner-approved 2026-11-01).
+CONSONANT3_PREREG_SHA256 = "5e574aa653e439649999c85975f3d341a33d8ea0b557d2c3aea22686f882c118"
 #: Round 2's two arms, one checkpoint each, at step 10,000 under ``aug94-mixture-v2``: the
 #: candidate's (#228) and the control's (#223). Each file holds both weight selectors; the
 #: look sitting decodes all four and chooses one per arm (#227).
@@ -290,8 +292,8 @@ CONSONANT3 = replace(
     },
     look_roles=(CANDIDATE,),
     arm_prefix=R3_ARM_PREFIX,
-    #: The freeze issue fills the pre-registration's pin, as #229 did for round 2.
-    pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, ""),
+    #: #253 fills the pre-registration's pin, as #229 did for round 2.
+    pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, CONSONANT3_PREREG_SHA256),
 )
 
 SPECS = {AUG95.name: AUG95, CONSONANT1.name: CONSONANT1, CONSONANT2.name: CONSONANT2,

@@ -182,6 +182,17 @@ def test_a_sealed_tranche_is_not_a_role_the_worker_accepts(box, monkeypatch):
     assert _part(box) == []
 
 
+# --- the phase ------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("phase", ["B", "C"])
+def test_a_phase_other_than_a_is_refused_with_a_message(box, monkeypatch, capsys, phase):
+    """Phases B and C are not runnable here: refused before the teacher, with no record."""
+    assert _align(box, monkeypatch, "--phase", phase) == 1
+    assert f"phase {phase}" in capsys.readouterr().err
+    assert _part(box) == []
+
+
 # --- the teacher record binds a resumed run -------------------------------------------------------
 
 

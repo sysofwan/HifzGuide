@@ -20,6 +20,9 @@ rule, so nothing decodes the pool to select it.
 #224 gives the reader its order: :mod:`tadabur.tlog_schedule` freezes a seeded, 8-way
 interleaved shuffle of both splits' shards, and :func:`iter_training_rows` requires it, so a
 prefix of the stream is representative of ``tlog.training`` and the sorted walk cannot return.
+#250 lets a later round start past the rows an earlier one consumed: ``after`` is a verified
+:class:`tadabur.tlog_schedule.ConsumedPrefix`, the walk continues from its first row past the
+prefix, and the shards open at that cut keep their place mid-shard.
 
 Every tree is written by :func:`tadabur.tlog_index.write_shard` (sorted keys, ``mtime`` 0) and
 every meta by :func:`tree_provenance`, so the cited commit survives the squash merge under
@@ -36,6 +39,7 @@ import subprocess
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from itertools import islice, repeat
 from pathlib import Path
 from typing import Any
 
@@ -603,7 +607,8 @@ def read_run_log(path: Path) -> list[dict]:
 
 def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
                        cache_dir: Path, schedule: tlog_schedule.Schedule, stream=None,
-                       load_audio=None, run_log: Path | None = None
+                       load_audio=None, run_log: Path | None = None,
+                       after: tlog_schedule.ConsumedPrefix | None = None
                        ) -> Iterator[tuple[tuple[str, str, int], Any]]:
     """Stream the training rows' audio in the frozen shard schedule (#224).
 
@@ -624,6 +629,15 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     exactly theirs (a missing, duplicated or extra shard refuses). Injected ``rows`` are the
     synthetic seam -- they are checked against the count, hash and coverage, not against the
     registry.
+
+    ``after`` starts the walk past a prefix a run already consumed, so a later round trains on
+    the frozen schedule's next rows rather than round 2's again (#250). Its keys must be this
+    walk's first ``after.length`` rows: they are re-checked here against the rows the reader was
+    given, so a prefix verified against other rows, or one whose key count is not its walk
+    length, refuses before a shard is opened. Each shard's stream then starts past the prefix's
+    rows of it, so the shards open at the cut continue mid-shard inside the same
+    ``interleave_width`` slots -- a shard the prefix finished is never opened, and the stream
+    refuses if a consumed key ever surfaces.
 
     Each shard is read once and dropped -- the disk budget is at most ``interleave_width``
     shards -- and every open shard is closed, and so deleted, when the reader is exhausted, when
@@ -661,6 +675,8 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
         raise ValueError(f"{row_key(outside)} is not a training row: "
                          f"{TRAINING_PREDICATE['text']}")
     by_shard = tlog_schedule.require_schedule(schedule, rows, use=use)
+    consumed = ({} if after is None
+                else tlog_schedule.require_prefix_by_shard(after, by_shard, schedule))
     windows = [_windows_per_clip(row) for row in rows]
     print(f"[training] {len(rows)} rows, windows per clip: "
           f"{sum(windows) / len(windows) if windows else 0.0:.1f} at a 5.0 s window and a "
@@ -669,14 +685,23 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     load = default_audio if load_audio is None else load_audio
 
     def shard_stream(shard: tuple[str, str]):
-        yield from _training_shard_rows(f"data/{shard[1]}.parquet", by_shard[shard],
-                                        open_shard=open_shard, load=load)
+        start = consumed.get(shard, 0)
+        # The prefix's rows of this shard are counted but not read. Keeping them as no-op items
+        # makes the interleave's slots and refills exactly the walk's, so a shard the prefix
+        # finished is never opened and the ones open at the cut continue mid-shard.
+        yield from repeat(None, start)
+        if wanted := by_shard[shard][start:]:
+            yield from _training_shard_rows(f"data/{shard[1]}.parquet", wanted,
+                                            open_shard=open_shard, load=load)
 
     # The shard generators are created up front but start nothing until their first ``next()``,
     # so the downloads happen in slot order and at most ``interleave_width`` are open.
     shard_streams = {shard: shard_stream(shard) for shard in schedule.shards}
     log_path = Path(cache_dir) / RUN_LOG_NAME if run_log is None else Path(run_log)
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    walk = tlog_schedule.interleave_streams(shard_streams, schedule)
+    if after is not None:
+        walk = islice(walk, after.length, None)
     # Every close is registered on the stack, so one failing close (a full disk flushing the
     # log, a strict deletion error) still attempts the rest before its error surfaces.
     with contextlib.ExitStack() as stack:
@@ -686,7 +711,10 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
             stack.callback(stream_.close)
         totals: dict[str, dict[str, int | float]] = {}
         try:
-            for row, audio in tlog_schedule.interleave_streams(shard_streams, schedule):
+            for row, audio in walk:
+                if after is not None and row_key(row) in after.keys:
+                    raise ValueError(f"{row_key(row)} is in the consumed prefix: this run "
+                                     f"starts after its {after.length} walk rows")
                 log.write(json.dumps({"split": row["split"], "shard_file": row["shard_file"],
                                       "row": row["row"]}) + "\n")
                 tlog_schedule.add_split_row(totals, row)

@@ -351,7 +351,10 @@ number this work is accountable for. See ADR-0010.
   `per_source_stats` reports KL, blank ratios and the collapse margin per source from the same
   weighted KL the step optimised. `distill_train --mix tlog=24,tadabur=8` builds it; a mixed
   run refuses `--resume`, because its consumed-keys log cannot be replayed without duplicating
-  rows.
+  rows. `--tlog-after <committed keys>` starts the tlog walk past a prefix a later round
+  continues from (round 3: `tadabur/tlog/consumed/consonant2.jsonl.gz`, the frozen schedule's
+  first 73,990 rows), verified against the run's schedule and pool and recorded with its
+  SHA-256 in `run_config.json`.
 
 - **`distill_train`** — frozen bf16 teacher online, the `whole_clip_phoneme` VRAM preflight,
   and a resume guard that refuses a config differing from the checkpoint's. Defaults are

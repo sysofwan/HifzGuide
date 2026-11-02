@@ -108,6 +108,7 @@ import numpy as np
 
 from tadabur.exclusions import NONE, REASONS, Exclusions
 from tadabur.truth_sites import (
+    EXTERNAL_SOURCES,
     GEMINATION_STATES,
     HARAKA_CHARS,
     NEW_AUDIT,
@@ -163,6 +164,10 @@ _POPULATION_OF_SOURCE = {
     WAQF_BOUNDARY: PAUSE,
     P35_FIXTURE: SAFEGUARD,
     SYNTHETIC_EDIT: SYNTHETIC,
+    # The external corpora (#156's non-professional sets, QUD) are read beside the gate as
+    # diagnostics: their sites carry no §1 design weight, and their non-competent-reciter sites
+    # are the corpus's own mistakes, read on the mistake side like every other site.
+    **{source: DIAGNOSTIC for source in EXTERNAL_SOURCES},
 }
 
 #: The pooled family / heard value of a population's ``all`` cell.

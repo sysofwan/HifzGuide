@@ -1041,7 +1041,7 @@ def synthetic_recall_control(index: EvalIndex, fp_dir: Path) -> dict:
 # --- the tlog side -----------------------------------------------------------------------------
 
 
-def _load_tlog_prints(path: Path) -> dict[str, np.ndarray]:
+def load_tlog_prints(path: Path) -> dict[str, np.ndarray]:
     """One tlog shard's ``audio_path -> fingerprint`` (the store's ``<path>|<sha>`` keys)."""
     with np.load(path) as data:
         return {name.rsplit("|", 1)[0]: data[name] for name in data.files}
@@ -1055,7 +1055,7 @@ def _eval_index(store_dir: Path, split_dir: Path) -> EvalIndex:
         if not any(row["role"] != TRAIN for row in rows):
             continue
         stem = split_path.name[: -len(".jsonl.gz")]
-        store = _load_tlog_prints(Path(store_dir) / f"{stem}.npz")
+        store = load_tlog_prints(Path(store_dir) / f"{stem}.npz")
         for row in rows:
             if row["role"] == TRAIN:
                 continue
@@ -1161,7 +1161,7 @@ def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
     for (split, stem), shard_rows in groupby(rows, key=lambda row: (row["split"],
                                                                     row["shard_file"])):
         shard = list(shard_rows)
-        prints = _load_tlog_prints(Path(store_dir) / f"{stem}.npz")
+        prints = load_tlog_prints(Path(store_dir) / f"{stem}.npz")
         decodable = sum(1 for row in shard if row["codec_ok"])
         if len(prints) != decodable:
             raise ValueError(f"{store_dir}/{stem}.npz holds {len(prints)} fingerprints; "

@@ -145,6 +145,24 @@ def checkpoint_facts(path: Path) -> tuple[int, str]:
     return int(state["step"]), version
 
 
+def record_identity(path: Path, record: Mapping, *, label: str) -> None:
+    """Write one model's identity record at ``path`` once, or refuse a run that differs.
+
+    A record already there must equal this run's exactly (keys and values), so a resumed run
+    cannot decode under settings another run's outputs were not made with. Runs go side by
+    side, so each writes through its own temporary file and then renames it into place.
+    """
+    path = Path(path)
+    if path.exists():
+        if json.loads(path.read_text(encoding="utf-8")) != record:
+            raise ValueError(f"{path} records other weights or settings than {label} has now")
+        return
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n",
+                         encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def load_decoders(identity_path: Callable[[str], Path],
                   models: Mapping[str, ModelSpec] = DEFAULT_SPECS) -> dict:
     """Each model of ``models`` (both truth-baseline models by default), checked against the
@@ -175,14 +193,7 @@ def load_decoders(identity_path: Callable[[str], Path],
             if record["fingerprints"][arm] != expected_fingerprint(spec.ref, mode):
                 raise ValueError(f"{name} decodes {arm} as {record['fingerprints'][arm]}")
         path = identity_path(name)
-        if path.exists():
-            if json.loads(path.read_text(encoding="utf-8")) != record:
-                raise ValueError(f"{path} records other weights or settings than {name} has now")
-        else:  # runs go side by side: each writes through its own temporary file
-            temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-            temporary.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n",
-                                 encoding="utf-8")
-            os.replace(temporary, path)
+        record_identity(path, record, label=name)
         decoders[name] = decoder
     return decoders
 

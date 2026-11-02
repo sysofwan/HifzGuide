@@ -560,6 +560,27 @@ def test_the_run_log_defaults_to_a_file_in_the_cache_dir(tmp_path):
     assert _logged(tmp_path / tlog_pool.RUN_LOG_NAME) == keys
 
 
+def test_the_run_log_reads_back_as_its_rows_and_drops_a_resumed_runs_repeats(tmp_path):
+    rows, payloads = _world(UNEVEN[:2])
+    reader, _ = _read(rows, payloads, _scheduled(rows, width=2), tmp_path)
+    keys = [key for key, _ in reader]
+    log = tmp_path / tlog_pool.RUN_LOG_NAME
+    split, shard_file, row = keys[0]  # a resumed run re-reads its first row
+    with gzip.open(log, "at", encoding="utf-8") as handle:
+        handle.write(json.dumps({"split": split, "shard_file": shard_file, "row": row}) + "\n")
+    assert [tlog_pool.row_key(record) for record in tlog_pool.read_run_log(log)] == keys
+
+
+def test_a_missing_or_empty_run_log_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="missing"):
+        tlog_pool.read_run_log(tmp_path / "absent.jsonl.gz")
+    empty = tmp_path / "empty.jsonl.gz"
+    with gzip.open(empty, "wt", encoding="utf-8"):
+        pass
+    with pytest.raises(ValueError, match="no rows"):
+        tlog_pool.read_run_log(empty)
+
+
 def test_the_run_log_appends_across_readers_and_stops_with_the_consumer(tmp_path):
     rows, payloads = _world(UNEVEN)
     log = tmp_path / "consumed.jsonl.gz"

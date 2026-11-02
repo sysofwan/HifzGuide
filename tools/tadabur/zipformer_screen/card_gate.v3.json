@@ -1,0 +1,221 @@
+{
+ "card": {
+  "phone": 3.65,
+  "studio": 1.43,
+  "unseen": 9.1
+ },
+ "clips": {
+  "decoded": 577,
+  "manifest": 599,
+  "sealed_dropped": 22,
+  "trained": 30
+ },
+ "issue": 245,
+ "limit_points": 0.5,
+ "model": {
+  "bytes": 262977606,
+  "name": "v3",
+  "path": "model/zipformer_p_arabic_v3.onnx",
+  "sha256": "65e5077932160ba9b5e4f418cf315d31dddf42210db4fea3113bf64359462cf2"
+ },
+ "passed": false,
+ "pinned_scale": 1.0,
+ "role": "card",
+ "scales": {
+  "1.0": {
+   "character_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 4.33749257278669
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 1.2841005967604433
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 4.4041024515987495
+    }
+   },
+   "roundtrip": {
+    "accepted": false,
+    "clips": 577,
+    "failures": [
+     {
+      "characters": "مممممَ",
+      "classification": "rule",
+      "clip": "everyayah_heldout/test-00003-of-00013_662",
+      "emitted": [
+       "م",
+       "ممممَ"
+      ],
+      "offset": 101,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ"
+      ]
+     },
+     {
+      "characters": "مممممَ",
+      "classification": "rule",
+      "clip": "everyayah_heldout/test-00003-of-00013_982",
+      "emitted": [
+       "م",
+       "ممممَ"
+      ],
+      "offset": 96,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ"
+      ]
+     },
+     {
+      "characters": "ۥۥۥۥ",
+      "classification": "quirk",
+      "clip": "everyayah_heldout/test-00003-of-00013_802",
+      "emitted": [
+       "ۥۥ",
+       "ۥۥ"
+      ],
+      "offset": 72,
+      "standin": [
+       "ۥۥۥۥ"
+      ]
+     },
+     {
+      "characters": "ۦۦۦۦ",
+      "classification": "quirk",
+      "clip": "tlog_holdout/36_22_2749424179",
+      "emitted": [
+       "ۦۦ",
+       "ۦۦ"
+      ],
+      "offset": 44,
+      "standin": [
+       "ۦۦۦۦ"
+      ]
+     },
+     {
+      "characters": "للِ",
+      "classification": "quirk",
+      "clip": "tlog_holdout/48_9_2871003400",
+      "emitted": [
+       "ل",
+       "لِ"
+      ],
+      "offset": 13,
+      "standin": [
+       "للِ"
+      ]
+     },
+     {
+      "characters": "ۦۦۦۦۦۦۦۦ",
+      "classification": "rule",
+      "clip": "qul_alnufais/37_83",
+      "emitted": [
+       "ۦۦۦۦ",
+       "ۦۦۦۦ"
+      ],
+      "offset": 79,
+      "standin": [
+       "ۦۦۦۦۦۦ",
+       "ۦۦ"
+      ]
+     },
+     {
+      "characters": "مممممَسسسَ",
+      "classification": "rule",
+      "clip": "qul_alnufais/2_214",
+      "emitted": [
+       "م",
+       "ممممَ",
+       "س",
+       "سسَ"
+      ],
+      "offset": 89,
+      "standin": [
+       "ممم",
+       "م",
+       "مَ",
+       "سس",
+       "سَ"
+      ]
+     }
+    ],
+    "identical": 570,
+    "minimum": 0.99,
+    "share": 0.9878682842287695
+   },
+   "unit_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 4.754230459307011
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 1.541489012791079
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 4.534147444595206
+    }
+   }
+  },
+  "32768.0": {
+   "character_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 68.38978015448603
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 97.42647058823529
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 99.29249163604453
+    }
+   },
+   "roundtrip": {
+    "clips": 577,
+    "identical": 569,
+    "share": 0.9861351819757366
+   },
+   "unit_per": {
+    "phone": {
+     "clips": 105,
+     "misses": 72,
+     "per": 72.48186946011282
+    },
+    "studio": {
+     "clips": 196,
+     "misses": 4,
+     "per": 98.31638788673882
+    },
+    "unseen": {
+     "clips": 189,
+     "misses": 11,
+     "per": 99.71732247851651
+    }
+   }
+  }
+ },
+ "schema_version": 2,
+ "sources": {
+  "everyayah_heldout": "studio",
+  "qul_alnufais": "unseen",
+  "tlog_holdout": "phone"
+ },
+ "stop": "only 570 of 577 clips (0.9879) re-tokenise to their emitted units, below 0.9900, and 4 of 7 failures register a segmentation the model never emits: the longest-match stand-in is not the card's tokenizer, so no PER against it can be trusted"
+}

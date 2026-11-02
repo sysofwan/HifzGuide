@@ -761,3 +761,70 @@ def test_exposure_rows_have_the_registry_shape_and_cover_every_edit_reciter():
     assert {r["reciter_id"] for use in rows.values() for r in use} == edit_reciters(items)
     assert all(r["start_sample"] is None for r in rows["synthetic_edit.source"])
     assert all(r["start_sample"] < r["end_sample"] for r in rows["synthetic_edit.donor"])
+
+
+# --- a regenerated render against the committed manifest -----------------------------------
+
+
+def _render(tmp_path, items, name="out"):
+    """A manifest and audio for ``items``, as one ``generate`` run writes them."""
+    from tadabur.truth_sites import audio_sha256
+
+    out = tmp_path / name
+    (out / "audio").mkdir(parents=True)
+    lines = []
+    for item in items:
+        path = out / "audio" / item["output"]["audio_filename"]
+        path.write_bytes(item["item_id"].encode("utf-8"))
+        lines.append({**item, "output": {**item["output"],
+                                         "audio_sha256": audio_sha256(path)}})
+    (out / "edits.jsonl").write_text(
+        "".join(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n" for line in lines),
+        encoding="utf-8")
+    return out, lines
+
+
+def _committed(tmp_path, lines):
+    path = tmp_path / "committed.jsonl"
+    path.write_text(
+        "".join(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n" for line in lines),
+        encoding="utf-8")
+    return path
+
+
+def _pair(index=0):
+    from tadabur.synthetic_edits import read_items
+
+    items = read_items()
+    pair_id = items[2 * index]["pair_id"]
+    return [item for item in items if item["pair_id"] == pair_id]
+
+
+def test_a_regenerated_render_that_matches_the_manifest_verifies(tmp_path):
+    from tadabur.synthetic_edits import verify_render
+
+    out, lines = _render(tmp_path, _pair())
+    assert verify_render(out / "edits.jsonl", out / "audio",
+                         _committed(tmp_path, lines)) == {
+        "items": 2, "audio_matched": 2, "manifest": str(out / "edits.jsonl"),
+        "audio_dir": str(out / "audio")}
+
+
+def test_audio_that_is_not_the_manifests_bytes_is_refused(tmp_path):
+    from tadabur.synthetic_edits import verify_render
+
+    out, lines = _render(tmp_path, _pair())
+    path = out / "audio" / lines[0]["output"]["audio_filename"]
+    path.write_bytes(b"regenerated differently")
+    with pytest.raises(ValueError, match="not the committed"):
+        verify_render(out / "edits.jsonl", out / "audio", _committed(tmp_path, lines))
+
+
+def test_a_render_of_other_items_is_refused(tmp_path):
+    from tadabur.synthetic_edits import verify_render
+
+    _, committed = _render(tmp_path, _pair(0), name="a")
+    other, _ = _render(tmp_path, _pair(1), name="b")
+    with pytest.raises(ValueError, match="not the committed"):
+        verify_render(other / "edits.jsonl", other / "audio",
+                      _committed(tmp_path, committed))

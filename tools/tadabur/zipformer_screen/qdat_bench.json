@@ -1,0 +1,198 @@
+{
+ "agreement": {
+  "base": {
+   "consonant": {
+    "agree": 2998,
+    "agreement": 0.9174,
+    "agreement_committed": 0.9852,
+    "none": 225,
+    "other": 45
+   },
+   "haraka": {
+    "agree": 2453,
+    "agreement": 0.9078,
+    "agreement_committed": 0.9988,
+    "none": 246,
+    "other": 3
+   },
+   "shaddah": {
+    "agree": 342,
+    "agreement": 0.937,
+    "agreement_committed": 0.9396,
+    "none": 1,
+    "other": 22
+   }
+  },
+  "c95": {
+   "consonant": {
+    "agree": 2895,
+    "agreement": 0.8859,
+    "agreement_committed": 0.9656,
+    "none": 270,
+    "other": 103
+   },
+   "haraka": {
+    "agree": 2419,
+    "agreement": 0.8953,
+    "agreement_committed": 0.9882,
+    "none": 254,
+    "other": 29
+   },
+   "shaddah": {
+    "agree": 341,
+    "agreement": 0.9342,
+    "agreement_committed": 0.9394,
+    "none": 2,
+    "other": 22
+   }
+  },
+  "r2_candidate_ema": {
+   "consonant": {
+    "agree": 2994,
+    "agreement": 0.9162,
+    "agreement_committed": 0.9868,
+    "none": 234,
+    "other": 40
+   },
+   "haraka": {
+    "agree": 2480,
+    "agreement": 0.9178,
+    "agreement_committed": 0.9924,
+    "none": 203,
+    "other": 19
+   },
+   "shaddah": {
+    "agree": 345,
+    "agreement": 0.9452,
+    "agreement_committed": 0.9452,
+    "none": 0,
+    "other": 20
+   }
+  },
+  "zipformer-checks": {
+   "consonant": {
+    "agree": 3224,
+    "agreement": 0.9865,
+    "agreement_committed": 0.9923,
+    "none": 19,
+    "other": 25
+   },
+   "haraka": {
+    "agree": 2667,
+    "agreement": 0.987,
+    "agreement_committed": 0.9985,
+    "none": 31,
+    "other": 4
+   },
+   "shaddah": {
+    "agree": 357,
+    "agreement": 0.9781,
+    "agreement_committed": 0.9781,
+    "none": 0,
+    "other": 8
+   }
+  }
+ },
+ "arms": {
+  "base": {
+   "arm": "stream_b0",
+   "source": "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz"
+  },
+  "c95": {
+   "arm": "stream_b0",
+   "source": "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz"
+  },
+  "r2_candidate_ema": {
+   "arm": "stream_b0",
+   "source": "tadabur/consonant2_readout/decodes/qdat.r2_candidate_ema.jsonl.gz"
+  },
+  "zipformer-checks": {
+   "arm": "spans",
+   "source": "tadabur/zipformer_screen/decodes/qdat.zipformer.jsonl.gz"
+  }
+ },
+ "clips": 159,
+ "departures": {
+  "clips": 23,
+  "per_clip": {
+   "09e7c2b4": [
+    14
+   ],
+   "0b4be2ed": [
+    14
+   ],
+   "1ba76914": [
+    7
+   ],
+   "21e96207": [
+    14
+   ],
+   "289cbb94": [
+    7,
+    11
+   ],
+   "314b7874": [
+    9,
+    13
+   ],
+   "3f674993": [
+    9
+   ],
+   "48c11a6d": [
+    7
+   ],
+   "5c311296": [
+    9,
+    12
+   ],
+   "63422cd3": [
+    9
+   ],
+   "666dc367": [
+    7
+   ],
+   "68e6cefa": [
+    7
+   ],
+   "74f9140e": [
+    9,
+    14
+   ],
+   "84c41cec": [
+    14
+   ],
+   "a298aab2": [
+    14
+   ],
+   "a5e98d69": [
+    13
+   ],
+   "b206222f": [
+    7
+   ],
+   "cb842f61": [
+    14
+   ],
+   "cc2ae77e": [
+    7
+   ],
+   "ce67772a": [
+    7,
+    14
+   ],
+   "d2c7345d": [
+    9
+   ],
+   "e2c30c9b": [
+    9
+   ],
+   "ffcafe76": [
+    14
+   ]
+  },
+  "words": 28
+ },
+ "issue": 245,
+ "rule": "the experts' phonetic_transcript, read on the Hub and never committed: each model's whole-item text in the arm the arm map prescribes for qdat_bench (ours stream_b0, zipformer spans) on the clip's own audio, letter by letter over the transcript's slots, per class; and where the transcript leaves the mushaf (the departure words), which no model is scored on here",
+ "set": "qdat_bench"
+}

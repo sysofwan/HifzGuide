@@ -17,8 +17,9 @@ their arguments.
 
   It refuses (non-zero exit, nothing on stdout, ``not committed`` on stderr) when one of them is
   not committed and unchanged at HEAD. ``PARALLEL`` (default 2) sets the processes; ``ROUND_DIR``
-  and ``TRANCHES_DIR`` are as in the confirm launcher. Phase ``B`` and ``C`` are refused by every
-  command that takes a phase (``plan``, ``launch``): ``phase B`` on stderr, nothing staged.
+  and ``TRANCHES_DIR`` are as in the confirm launcher. Phase ``C`` is refused by every command
+  that takes a phase (``plan``, ``launch``): ``phase C`` on stderr, nothing staged. Phase ``B``
+  is in ``test_tlog_mining_phase_b.py``.
 * ``launch [PHASE]``: the same refusals, then stages the repository and starts ``run`` detached
   with ``setsid nohup`` (never under a blocking ``flock`` of the GPU lock: the Python loop takes
   the lock non-blocking for one batch at a time), printing ``started: <pid>``.
@@ -104,9 +105,9 @@ def test_the_plan_lists_phase_a(tmp_path):
     assert _run("plan", round_, tmp_path, "A").stdout.splitlines() == PLAN
 
 
-@pytest.mark.parametrize("phase", ["B", "C"])
+@pytest.mark.parametrize("phase", ["C", "D"])
 @pytest.mark.parametrize("command", ["plan", "launch"])
-def test_phases_b_and_c_are_refused_before_anything_is_staged(tmp_path, command, phase):
+def test_phase_c_is_refused_before_anything_is_staged(tmp_path, command, phase):
     round_ = _round(tmp_path)
     done = _run(command, round_, tmp_path, phase, **_box(tmp_path))
     assert done.returncode != 0 and done.stdout == ""

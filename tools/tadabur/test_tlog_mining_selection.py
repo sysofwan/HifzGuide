@@ -2,9 +2,9 @@
 
 The interface, in ``tadabur.tlog_mining.selection``:
 
-* ``require_phase(phase)``: ``"A"`` passes; any other phase (``"B"``, ``"C"``, anything) is a
-  ``ValueError`` naming the phase. Phase B waits for #262's amendment and phase C for round 3's
-  verdict, so the launcher does not run them.
+* ``require_phase(phase)``: ``"A"`` passes; ``"B"`` passes only under its pinned amendment (see
+  ``test_tlog_mining_phase_b.py``); ``"C"`` and anything else is a ``ValueError`` naming the
+  phase. Phase C waits for round 3's verdict, so the launcher does not run it.
 * ``phase_a_rows(tranche, *, tranches_dir=TRANCHES_DIR, split_dir=SPLIT_DIR, layout=None,
   spec=CONSONANT2) -> list[dict]``: the **gating** rows of ``look``, ``confirm.1`` or
   ``confirm.2`` and nothing else. It goes through ``tlog_eval_decode``'s own readers, so the
@@ -65,9 +65,10 @@ def _select(round_, tranche, tmp_path, **tree):
                         layout=round_.layout, spec=round_.spec)
 
 
-def test_only_phase_a_is_runnable():
+def test_only_phases_a_and_b_are_runnable_and_c_waits_for_round_3():
+    """B is runnable only under its pinned amendment (``test_tlog_mining_phase_b``)."""
     require_phase("A")
-    for phase in ("B", "C", "D", "", "a b"):
+    for phase in ("C", "D", "", "a b"):
         with pytest.raises(ValueError, match="phase"):
             require_phase(phase)
 

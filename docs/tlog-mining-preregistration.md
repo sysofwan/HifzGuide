@@ -13,9 +13,10 @@ this document and slice 3's snip code to be committed.
 ## 1. Population
 
 The **clean-split gating** clips of confirm.1 ∪ confirm.2: **2,843 + 2,919 = 5,762** clips.
-Every gating row of both tranches is on the `clean` split, and all 5,762 were decoded whole-clip
-by each of the three detectors (§2), so the words they carry are the same population in all
-three decodes.
+Every gating row of both tranches is on the `clean` split, and each of the three detectors
+decoded all 5,762 at the `checks` arm (§2) — no whole-clip student decode of these rows exists.
+Words are paired across models as `catch_loss_audit.graded_words` pairs them: a word enters the
+population only when all three graded it.
 
 **Minus the known exclusions.** The 20 clips in
 `tools/tadabur/consonant2_readout/report.json` under `coverage.graded.excluded_clips.keys`
@@ -27,11 +28,14 @@ outside the gating population either way. Eight of the 20 excluded clips are in 
 in confirm.2. After them the pilot's population is **5,742
 clips in 5,657 `group_key`s** — the same count round 2's report grades.
 
-A **word** is (clip key, 0-based Uthmani word index), exactly as in
-`tools/tadabur/catch_loss_audit.graded_words`: the clip's `key` (`audio_path`, plus the segment
-index the export carries) and the word's position in the filename ayah's Uthmani text. The word
-population is every word of those 5,742 clips that all three detectors graded; its size is
-recorded with the draw.
+A **word** is the pair `tools/tadabur/catch_loss_audit.graded_words` keys a grade by:
+(`clip key`, `position`) — the clip's `key` (`audio_path`, plus the segment index the export
+carries) and the 0-based `position` of the Muraja word in the item's word list. The canonical
+0-based Uthmani `word_index` the Muraja word starts on is recorded alongside and used only to
+fetch the word text; it can differ from `position` (50 of the 58,764 committed look rows do).
+The draw's rank and the pairing both use `position`, exactly as `graded_words` and
+`catch_loss_audit._rank` do. The word population is every word of those 5,742 clips that all
+three detectors graded; its size is recorded with the draw.
 
 **Phase B's rows are a later population, not this pilot's.** The `reported:*` rows this
 amendment makes mineable, the other tranches and the round-3 tranches are out of scope here.
@@ -76,9 +80,13 @@ it on the mined set comes before round 3's verdict is committed.
 A word's flag is the **Muraja harness word grade** at
 `99c326f3fb7c6c53ff525568976c7e2442ccde3c` (`MURAJA_COMMIT`, protocol 3) under **every allowance
 off** (ADR-0012): the `allowances_off` scoring of `tools/training/muraja_policy.py`
-(`all_off(ALLOWANCES_ON)`) — mode `balanced`, `softPairsEnabled`: false,
-`shaddahSuppression`: false, `tashkeelShown`: true. Its exact scoring key is pinned here by
-those fields, not by prose.
+(`all_off(ALLOWANCES_ON)`). Its exact harness scoring key is pinned here, as the fields
+`engine_runs()` sends and `muraja_harness/scoring.swift` declares: mode `balanced`,
+`softPairsEnabled`: false, `shaddahSuppression`: false, and no `softPairsDisabled`. The
+scoring's third allowance — `tashkeelShown`: true, i.e. tashkeel detection on — is **not sent to the binary**:
+it is the client-side display flag `displayed()` applies while reading the grade, and the
+binary's declared key set has no such field. Sending it would be refused by `Harness.check()`;
+it is an allowance off regardless.
 
 A word is a **flag** when the grade's export `flagged` boolean is true — the grades `flagged`,
 `flagged_elsewhere` and `flagged_unattributed` (`WORD_FLAGGED`). The `outcome` string is not the
@@ -120,8 +128,9 @@ derived from a power rule.
   `sha256(f"{SEED}:{stratum}:{clip key}:{position}").hexdigest()`, the
   `catch_loss_audit._rank` form — with seed `tlog-mining-pilot-2026-11`. Nothing about a model
   enters the order.
-- The **realised inclusion probability** is recorded for every word: `n / N` in a sampled
-  stratum (the planned size over the stratum's population), and 1 in a take-all stratum.
+- The **realised inclusion probability** is recorded for every word: `n / N`, where `n` is the
+  stratum's drawn size — the planned size plus any shortfall it absorbs — over the stratum's
+  population `N`; and 1 in a take-all stratum.
 
 ## 5. Presentation
 

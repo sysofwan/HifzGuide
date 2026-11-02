@@ -13,6 +13,10 @@ Issue: [#262](https://github.com/sysofwan/HifzGuide/issues/262). Parent: #261 (e
 #173). The pilot this amendment opens is frozen separately in
 [`docs/tlog-mining-preregistration.md`](tlog-mining-preregistration.md).
 
+**Pending:** the principal architect's cross-check of this amendment (Fable), required by #262's
+acceptance criteria before merge. It is recorded on #262 and, when it lands, replaces this line —
+not §1–§6.
+
 ## 1. The mining rule
 
 A confirm tranche may be **mined** — decoded by any of our models, listened to and audited at
@@ -60,9 +64,10 @@ A mined tranche is:
   (`role == train`) excludes it; a mined `confirm.k` row is not a training row. Training on mined
   rows needs a further dated split ([`docs/tlog-mining-preregistration.md`](tlog-mining-preregistration.md),
   "Later training use").
-- **never a gating set of a later round.** Its rows may be reported beside a later round's
-  result, never counted in it. This is the same rule the gating amendment applies to a gating
-  set once it is spent.
+- **never a gating set of a later round.** This is this amendment's own rule: the frozen text
+  only seals a tranche before its round and says nothing about reuse after, so the ban on
+  replaying a mined tranche as a later round's gating set is stated here. Its rows may be
+  reported beside a later round's result, never counted in it.
 
 ## 4. Scope
 

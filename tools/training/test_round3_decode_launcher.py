@@ -637,6 +637,16 @@ def test_the_look_decode_is_merged_once_for_round_3(tmp_path):
     assert (tmp_path / "issue" / "look" / "out" / "meta.json").exists()
 
 
+@pytest.mark.parametrize("parallel", ["4", "2"])  # a full run, and #230's resume count
+def test_the_look_merge_cites_the_workers_the_run_used(tmp_path, parallel):
+    assert _decode(_decode_env(tmp_path, "look", _TLOG_STUB,
+                               PARALLEL=parallel)).returncode == 0
+    merge = next(args for args in _python_log(tmp_path)
+                 if any("tlog_eval_decode" in a for a in args) and "merge" in args)
+    assert (merge[merge.index("--processes") + 1], merge[merge.index("--threads") + 1]) == (
+        parallel, "1")
+
+
 @pytest.mark.parametrize("phase, failing", [("look", "look 1"), ("confirm", "confirm.4 1")])
 def test_a_failed_worker_stops_the_run_before_the_merge(tmp_path, phase, failing):
     done = _decode(_decode_env(tmp_path, phase, _TLOG_STUB, FAIL_WORKER=failing))

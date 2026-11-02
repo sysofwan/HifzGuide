@@ -11,8 +11,9 @@
 #            tarteel_v1.confirm, qdat, qud_other and tadabur_dev_unseen, then Ship A's held-out
 #            cache. The choice's control, if it still names one, is never decoded.
 #   confirm  the teacher, C95 and the chosen round-3 weights on confirm.3 then confirm.4, then
-#            `merge-confirm`. Both tranches' claims must be committed first: the decoder refuses
-#            an unclaimed tranche itself, and this script refuses before it stages anything.
+#            `merge-confirm`. Both tranches' claims must be in HEAD first: the round's sitting
+#            reads once, so the decoder refuses either tranche while either claim is unclaimed,
+#            and this script refuses before it stages anything.
 #
 # `plan` reads the **committed** inputs and prints the jobs; it writes nothing. `launch` stages
 # the repository as a bundle clone on the box (the decoder's `committed_choice` and claim checks
@@ -382,8 +383,10 @@ decode_tlog_role() {  # <role>
 
 decode_look() {
   decode_tlog_role look
+  # The merge cites the workers the run actually used: the decoder's default is 6, not P=4.
   python -m tadabur.tlog_eval_decode merge --spec consonant3 \
-    --parts-dir "$ROOT/$PHASE/parts" --out-dir "$ROOT/$PHASE/out" --models ${MODELS//,/ }
+    --parts-dir "$ROOT/$PHASE/parts" --out-dir "$ROOT/$PHASE/out" --models ${MODELS//,/ } \
+    --processes "$PARALLEL" --threads 1
 }
 
 decode_confirm() {

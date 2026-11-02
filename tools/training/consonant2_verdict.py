@@ -86,8 +86,8 @@ from training.aug_readout_metrics import (
     word_agreement_terms,
 )
 from training.aug_readout_spec import (
-    CONSONANT2,
     R2,
+    SPECS,
     TLOG_CONFIRM,
     TLOG_LOOK,
     RoundSpec,
@@ -344,10 +344,16 @@ def _look_lines(sources, spec: RoundSpec, choice: Mapping) -> dict[str, dict]:
     """
     candidate = ar.choice_models(spec, choice["weights"])[CANDIDATE]
     models = (candidate, R2)
+    manifest = Path(sources.tranches_dir) / f"{LOOK}.jsonl"
     absent = [path.name for path in (sources.decode_path(TLOG_LOOK, model)
                                      for model in (*models, BASE)) if not path.exists()]
     if absent:
         reason = f"declared input absent: {', '.join(absent)}"
+    elif not is_committed(manifest):
+        reason = f"the look manifest is not committed unchanged: {manifest.name}"
+    else:
+        reason = None
+    if reason is not None:
         return {name: {"name": name, "status": "not read", "reason": reason}
                 for name in LOOK_LINE_NAMES.values()}
     data = sources.tlog(LOOK, models)
@@ -438,16 +444,19 @@ class SittingInputs:
 
 def require_own_confirm_arms(roster: Mapping[str, Sequence[str]], spec: RoundSpec,
                              weights) -> None:
-    """The pooled tlog confirm tranches (``confirm.k``) are decoded for the round's own arms at
-    their chosen weights, its paired baseline and the teacher, and nothing else: a context
-    column is never a decode target, so round 2's model — pinned in round 3's spec as ``R2`` and
-    named ``r2_*`` — never sits on a confirm tranche (round 3's pre-registration). Round 2's own
-    arms are ``r2_*`` at the weights it chose, so they pass for round 2."""
-    own = {*ar.choice_models(spec, weights).values(), spec.baseline, BASE}
+    """A round without a control pins its confirm tranches' decode targets to the candidate at
+    its chosen weights, its paired baseline and the teacher — nothing else: no context column is
+    ever a decode target, so round 2's model (pinned in round 3's spec as ``R2``) never sits on
+    confirm.3/4 (round 3's pre-registration). Round 2 decodes its control on the same tranches,
+    so the rule is the no-control round's; the model list is derived from the candidate alone,
+    not from ``spec.students``, so a context model added there is refused rather than admitted."""
+    if has_control(spec):
+        return
+    own = {ar.choice_models(spec, weights)[CANDIDATE], spec.baseline, BASE}
     stray = sorted(set(roster.get(TLOG_CONFIRM, ())) - own)
     if stray:
-        raise SystemExit(f"the confirm tranches are decoded for {stray}, not the round's arms, "
-                         f"its baseline and the teacher: {sorted(own)}")
+        raise SystemExit(f"the confirm tranches are decoded for {stray}, not the round's "
+                         f"candidate, its baseline and the teacher: {sorted(own)}")
 
 
 def read_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping, weights,
@@ -456,10 +465,12 @@ def read_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping, weigh
     ``Sources.input_files`` names — each sitting declares what it opens — and their digests,
     with every producer validated: the sitting's own roster, the teacher included, through the
     canonical :func:`require_manifest`. A set whose decodes are absent is not validated (it
-    cannot certify, and nothing reads it). A confirm sitting's roster is checked against the
-    round's own arms first (:func:`require_own_confirm_arms`)."""
+    cannot certify, and nothing reads it). A file declared only for a report-only line
+    (:meth:`training.aug_readout.Sources.reported_inputs`) is digested when present and never
+    required, so the look line cannot flip a sitting. A confirm sitting's roster is checked
+    against the round's own arms first (:func:`require_own_confirm_arms`)."""
     files = list(sources.input_files(phase, weights))
-    missing = [path for path in files if not path.exists()]
+    missing = list(sources.missing_inputs(phase, weights))
     roster = sitting_roster(spec, phase, weights)
     if phase == CONFIRM:
         require_own_confirm_arms(roster, spec, weights)
@@ -469,7 +480,7 @@ def read_inputs(sources, spec: RoundSpec, layout: Layout, choice: Mapping, weigh
         _manifest_records(layout, spec),
         {name: models for name, models in roster.items() if name not in absent},
         choice, spec=spec)
-    present = [path for path in files if path not in missing]
+    present = [path for path in files if path.exists()]
     return SittingInputs(identities, digests(present),
                          sorted(input_name(path) for path in missing))
 
@@ -962,14 +973,26 @@ def _measure(value) -> str:
     return f"{value:g}" if isinstance(value, int) else _number(value)
 
 
+def round_of(issue: int) -> RoundSpec:
+    """The round whose readout records carry ``issue``; an issue no spec owns is refused rather
+    than guessed (the spec's tranches and disclosure are not in the record)."""
+    found = [known for known in SPECS.values() if known.issue == issue]
+    if len(found) != 1:
+        raise SystemExit(f"#{issue} is not one round's readout issue: "
+                         f"{[spec.issue for spec in SPECS.values()]}")
+    return found[0]
+
+
 def render(preclaim: Mapping, report: Mapping | None = None,
-           spec: RoundSpec = CONSONANT2) -> str:
+           spec: RoundSpec | None = None) -> str:
     """The round's readout doc as text: the verdict, every gate with its frozen bar and the
     numbers it read, the reported tables with their estimates and intervals, and the
     clip-level-split statement. ``report=None`` is a round the pre-claim ended; a report with
     ``unreadable`` renders why. ``spec`` names the round's tranches and, when it has one, the
-    pre-registration's required disclosure; only the parts a round lacks are omitted, so a round
-    with a control renders as it always has."""
+    pre-registration's required disclosure; omitted, it is read from the record's issue
+    (:func:`round_of`), never defaulted to another round. Only the parts a round lacks are
+    omitted, so a round with a control renders as it always has."""
+    spec = spec or round_of(preclaim["issue"])
     confirm = " + ".join(spec.confirm_tranches)
     lines = [f"# The tlog consonant round's readout (#{preclaim['issue']})", "",
              STATEMENT, "",

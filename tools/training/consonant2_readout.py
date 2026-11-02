@@ -32,6 +32,8 @@ from training.aug_readout_gate import (
     TADABUR_SET,
     TARTEEL_CONFIRM,
     allowed_models,
+    arm_model,
+    chosen_weights,
     digests,
     require_preregistration,
 )
@@ -215,6 +217,25 @@ def reports_look_line(spec: RoundSpec) -> bool:
     return (spec.look_set, R2) in spec.decode_sources
 
 
+def look_line_inputs(sources, spec: RoundSpec, weights) -> list[Path]:
+    """The report-only look line's files: the look manifest and the candidate's (at its chosen
+    weights), round 2's and the teacher's look decodes."""
+    chosen = chosen_weights(spec, {"weights": weights})
+    candidate = arm_model(CANDIDATE, chosen[CANDIDATE], spec)
+    return [Path(sources.tranches_dir) / f"{LOOK}.jsonl",
+            *(sources.decode_path(TLOG_LOOK, model) for model in (candidate, R2, BASE))]
+
+
+def reported_inputs(sources, phase: str, weights) -> list[Path]:
+    """The sitting's declared files it reads only for a report-only line: among
+    :func:`input_files`' entries, digested when present but never required — an absent one
+    records the line ``not read`` and cannot stop the sitting or cannot-certify a gate
+    (#255 item 4)."""
+    if phase != PRECLAIM or not reports_look_line(sources.spec):
+        return []
+    return look_line_inputs(sources, sources.spec, weights)
+
+
 def sitting_roster(spec: RoundSpec, phase: str, weights) -> dict[str, tuple[str, ...]]:
     """The sets one of the round's sittings reads, and every model whose readout decodes it
     reads there (:func:`training.aug_readout_gate.allowed_models`: the chosen students, the
@@ -241,13 +262,14 @@ def input_files(sources, phase: str, weights=None) -> list[Path]:
 def sitting_inputs(sources, phase: str, weights) -> list[Path]:
     """Every file the ``preclaim`` or ``confirm`` sitting of the round opens, and only those:
     the readout decodes of :func:`sitting_roster`, the committed baseline decodes each reader
-    binds, the metadata those readers open, and then G6's sites and caches plus the report-only
-    look line's decodes and manifest when the round reports one (pre-claim) or the round's
-    freeze and its confirmed tranches' manifests (confirm)."""
+    binds, the metadata those readers open, and then G6's sites and caches plus, for a round
+    that reports the look line, its decodes and manifest (declared, yet never required:
+    :func:`reported_inputs`) or the round's freeze and its confirmed tranches' manifests
+    (confirm)."""
     from tadabur.exposure import EVALSET_MANIFEST_PATH
     from tadabur.nonpro_sources import QDAT, TARTEEL_V1
     from tadabur.qud_overlap import PILOT
-    from training.aug_readout_gate import BASELINES, Layout, arm_model, chosen_weights
+    from training.aug_readout_gate import BASELINES, Layout
     from training.consonant_readout import (G6_SITES_PATH, QUD_SELECTION_PATH, catch_required)
     from training.nonpro_eval import decodes_file as committed
     from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
@@ -274,11 +296,7 @@ def sitting_inputs(sources, phase: str, weights) -> list[Path]:
         candidate = arm_model(CANDIDATE, chosen[CANDIDATE], spec)
         files += [G6_SITES_PATH, *catch_required((candidate, spec.baseline))]
         if reports_look_line(spec):
-            # The report-only look line's read: the candidate at its chosen weights, round 2's
-            # model and the teacher on the look gating rows (#255 item 4).
-            files += [sources.tranches_dir / f"{LOOK}.jsonl",
-                      *(sources.decode_path(TLOG_LOOK, model)
-                        for model in (candidate, R2, BASE))]
+            files += look_line_inputs(sources, spec, weights)
     else:
         from training.aug_readout_spec import C178
 

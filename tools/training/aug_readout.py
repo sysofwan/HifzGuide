@@ -283,8 +283,22 @@ class Sources:
         return round_decodes_file(self.spec, set_name, model)
 
     def missing_inputs(self, phase: str, weights: str | None) -> tuple[Path, ...]:
-        """Every file this sitting would read which is not committed."""
-        return tuple(path for path in self.input_files(phase, weights) if not path.exists())
+        """Every **required** file this sitting would read which is not committed. A file
+        :meth:`reported_inputs` names is read only for a report-only line, so its absence is
+        never listed here."""
+        optional = set(self.reported_inputs(phase, weights))
+        return tuple(path for path in self.input_files(phase, weights)
+                     if path not in optional and not path.exists())
+
+    def reported_inputs(self, phase: str, weights: str | None) -> list[Path]:
+        """The declared files the sitting reads only for a report-only line: digested when
+        present, never required, and never a reason to refuse or cannot-certify anything
+        (round 3's look line, #255 item 4)."""
+        if tlog_round(self.spec):
+            from training.consonant2_readout import reported_inputs as round_reported
+
+            return round_reported(self, phase, weights)
+        return []
 
     def input_files(self, phase: str, weights: str | None) -> list[Path]:
         """Every file the sitting reads: the readout decodes of each model it needs, the

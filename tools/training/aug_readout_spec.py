@@ -275,9 +275,9 @@ R2 = "r2"
 R2_NON_TLOG_SETS = ("qdat", "qud_other", "tadabur_dev_unseen")
 
 #: Round 3's pre-registration, "What G4 at +3.5 does and does not protect (required
-#: disclosure)" and amendment A1, quoted verbatim: the readout prints them beside G4 and never
-#: paraphrases them (``docs/consonant-round3-preregistration.md``; ``test_consonant3_verdict``
-#: compares the two).
+#: disclosure)", quoted verbatim: the readout prints it beside G4 and never paraphrases it
+#: (``docs/consonant-round3-preregistration.md``; the tests compare every quoted line with the
+#: committed file). The final paragraph is this repo's own, labelled as such.
 CONSONANT3_DISCLOSURE = (
     "### G4 at +3.5 (amendment A1): what it does and does not protect",
     "",
@@ -287,10 +287,12 @@ CONSONANT3_DISCLOSURE = (
     "- a candidate with a **true +1.0 regression passes about two thirds of the time** (0.65);",
     "- a candidate with a true +2.0 regression passes about 29% of the time.",
     "",
-    "**G4 vetoes gross tashkeel regressions only.** The real tashkeel protection is Ship B's "
-    "powered guard against C95. G4's effective margin is +3.5, amendment A1 (2026-11-01, "
-    "owner-approved, pre-training): the registered +2.5 was rejected by the mechanical power "
-    "rule.",
+    "**This guard vetoes gross tashkeel regressions only.** The real tashkeel protection is "
+    "Ship B's powered guard against C95, which Ship B must carry.",
+    "",
+    "**Readout note, not the pre-registration's words.** G4's effective margin is +3.5 — "
+    "amendment A1, 2026-11-01, owner-approved pre-training — after the mechanical power rule "
+    "rejected the registered +2.5.",
 )
 
 CONSONANT3 = replace(

@@ -30,8 +30,8 @@ Round 2 decodes both arms on the look set and chooses each arm's weights on its 
 :func:`look_weights`), and its look sitting exports C95's and the chosen candidate's per-word
 grades (``look_grades.jsonl.gz``) for the catch-loss audit (#225). Round 3's audit compares its
 round-2 reference too, so :func:`write_look_reference_grades` grades that model on the export's
-words and writes ``look_grades_r2.jsonl.gz`` beside it (#257). Round 2's pooled confirm read is
-part 2 (#227): ``confirm --spec consonant2`` refuses.
+words and writes ``look_grades_r2.jsonl.gz`` beside it, with its provenance record (#257). Round
+2's pooled confirm read is part 2 (#227): ``confirm --spec consonant2`` refuses.
 
 **Sets** (:data:`~training.aug_readout_gate.SETS`): Tarteel v1's halves; qdat (and qdat_bench, its
 clips, stream arm); RetaSy (catch side, restricted: aggregates only); QUD's two professional
@@ -55,7 +55,7 @@ Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja har
   python -m training.aug_readout merge --decodes-dir <the GPU box's decodes, copied>
   python -m training.aug_readout look                       # then commit look*.json, choice.json
   python -m training.aug_readout reference-grades --spec consonant3
-                                   # then commit look_grades_r2.jsonl.gz
+                                   # then commit look_grades_r2.jsonl.gz and its provenance
   python -m training.aug_readout confirm
   python -m training.aug_readout coverage                   # then commit coverage.json, doc
   python -m training.aug_readout doc
@@ -100,10 +100,12 @@ from training.aug_readout_gate import (
     canonical,
     choice_models,
     claim,
+    commit_of,
     committed_choice,
     decodes_file,
     digests,
     harness_identity,
+    identity_record,
     input_name,
     is_committed,
     look_models,
@@ -613,11 +615,19 @@ LOOK_GRADES = "look_grades.jsonl.gz"
 #: The reference model's grades of the export's words, beside the export (#257): round 3's
 #: audit compares the round-2 EMA, which the look sitting never grades.
 LOOK_REFERENCE_GRADES = "look_grades_{reference}.jsonl.gz"
+#: What produced the reference grades: the decode they grade, the harness, the counts and the
+#: written file's SHA-256. Committed with the grades, so a regeneration is auditable.
+LOOK_REFERENCE_PROVENANCE = "look_grades_{reference}.provenance.json"
 
 
 def look_reference_path(root: Path, reference: str) -> Path:
     """The reference model's grades file in a round's root."""
     return root / LOOK_REFERENCE_GRADES.format(reference=reference)
+
+
+def look_reference_provenance_path(root: Path, reference: str) -> Path:
+    """The reference grades' provenance record in a round's root."""
+    return root / LOOK_REFERENCE_PROVENANCE.format(reference=reference)
 
 
 def look_grade_rows(grades: Sequence, models: Sequence[str],
@@ -672,17 +682,25 @@ def write_look_reference_grades(sources: Sources, layout: Layout = Layout(),
                                 spec: RoundSpec = AUG95) -> Path:
     """Grade the spec's catch-loss reference model on the look export's words and write it
     beside the export (#257): the reference's rows plus a copy of the export's baseline rows,
-    so the audit can check the two files agree word for word. Grades the reference's committed
-    decodes, so it needs the harness but no audio, and refuses unless the result reproduces the
-    pre-registration's disclosed counts when the spec declares them."""
+    so the audit can check the two files agree word for word, and a provenance record naming
+    the decode, the harness and the counts. Grades the reference's committed decodes, so it
+    needs the harness but no audio, and refuses unless the round's pins hold and the result
+    reproduces the pre-registration's disclosed counts when the spec declares them."""
+    from training.muraja_policy import SHIPPED_DEFAULT
+
     reference = spec.catch_loss_reference
     if reference is None:
         raise SystemExit(f"{spec.name} names no catch-loss reference model: there is nothing "
                          "to grade beside the look export")
+    if reference not in spec.models:
+        raise SystemExit(f"{spec.name} names {reference!r} as its catch-loss reference but "
+                         "does not pin its identity")
     export = layout.root / LOOK_GRADES
     if not is_committed(export):
         raise SystemExit(f"{export.name} is not committed and unedited: the reference grades "
                          "are a second grade of its words")
+    harness = sources.harness_identity()
+    require_preregistration(spec, harness)
     with gzip.open(export, "rt", encoding="utf-8") as stream:
         exported = [json.loads(line) for line in stream]
     baseline = [row for row in exported if row["model"] == spec.baseline]
@@ -694,14 +712,26 @@ def write_look_reference_grades(sources: Sources, layout: Layout = Layout(),
         raise SystemExit(f"{reference} graded other words than {export.name}: the two files "
                          "must carry the same words")
     rows = [*baseline, *rows]
-    if spec.catch_loss_disclosure:
-        found = look_grade_parity(rows, baseline=spec.baseline, reference=reference)
-        if found != dict(spec.catch_loss_disclosure):
-            raise SystemExit(f"the {reference} grades do not reproduce the pre-registration's "
-                             f"disclosed counts: {found} is not "
-                             f"{dict(spec.catch_loss_disclosure)}")
+    counts = look_grade_parity(rows, baseline=spec.baseline, reference=reference)
+    if spec.catch_loss_disclosure and counts != dict(spec.catch_loss_disclosure):
+        raise SystemExit(f"the {reference} grades do not reproduce the pre-registration's "
+                         f"disclosed counts: {counts} is not "
+                         f"{dict(spec.catch_loss_disclosure)}")
     path = look_reference_path(layout.root, reference)
     write_look_grades(path, rows)
+    decode = sources.decode_path(spec.look_set, reference)
+    write_text_atomically(
+        look_reference_provenance_path(layout.root, reference),
+        canonical({"file": path.name, "sha256": sha256_file(path), "rows": len(rows),
+                   "reference": reference,
+                   "identity": identity_record(spec.models[reference]),
+                   "decode": {"file": input_name(decode), "sha256": sha256_file(decode),
+                              "commit": commit_of(decode)},
+                   "export": {"file": export.name, "sha256": sha256_file(export)},
+                   "harness": harness, "scoring": SHIPPED_DEFAULT.name, "counts": counts,
+                   "disclosed": dict(spec.catch_loss_disclosure) or None,
+                   "spec": {"name": spec.name,
+                            "prereg_sha256": spec.pins.prereg_sha256 if spec.pins else None}}))
     return path
 
 

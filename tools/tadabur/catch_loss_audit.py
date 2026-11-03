@@ -381,6 +381,9 @@ def _flagging(stratum: str) -> str:
 
 def score(directory: Path, *, spec: RoundSpec = CONSONANT2) -> dict:
     """Score the sitting in ``directory`` and write its ``result.json``; return it."""
+    if spec.catch_loss_seed is None:
+        raise SystemExit(f"{spec.name} declares no catch-loss audit: there are no bars to "
+                         "score")
     ids = [row["id"] for row in read_jsonl(directory / WORKLIST)]
     if len(set(ids)) != len(ids):
         raise ValueError(f"{directory / WORKLIST} holds a duplicate id")

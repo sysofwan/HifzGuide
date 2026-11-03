@@ -1,0 +1,57 @@
+{
+ "counts": {
+  "both": 1624,
+  "c95": 3505,
+  "reference": 2623
+ },
+ "decode": {
+  "commit": "c436d7a4088256a8e7d0c69f5a5c32decc7bca9c",
+  "file": "tadabur/consonant2_readout/decodes/tlog.look.r2_candidate_ema.jsonl.gz",
+  "sha256": "d3e0844db1e9e71bd2f8931ba81a07440456c03d9a75f65dd1feae9e0ceafb9f"
+ },
+ "disclosed": {
+  "both": 1624,
+  "c95": 3505,
+  "reference": 2623
+ },
+ "export": {
+  "file": "look_grades.jsonl.gz",
+  "sha256": "d97e4796af71edec45d0a19555e1367757398c0b27f73e52a02b33fecb5e5f40"
+ },
+ "file": "look_grades_r2.jsonl.gz",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identity": {
+  "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+  "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+  "recipe": "aug94-mixture-v2",
+  "step": 10000,
+  "weights": "ema"
+ },
+ "reference": "r2",
+ "rows": 58764,
+ "scoring": "shipped_default",
+ "sha256": "4416ec5a740086d32bf611c37f45caddf2bd24ed114f17cbd9a315343f524705",
+ "spec": {
+  "name": "consonant3",
+  "prereg_sha256": "5e574aa653e439649999c85975f3d341a33d8ea0b557d2c3aea22686f882c118"
+ }
+}

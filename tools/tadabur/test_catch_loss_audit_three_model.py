@@ -351,7 +351,8 @@ def test_a_worklist_row_holds_only_what_the_page_may_know(tmp_path):
         assert set(row) == required
         assert not secret & set(row)
         assert row["word"] == WORDS[row["word_index"]]
-    assert not {"removed", "added"} & set(json.dumps(rows))
+    text = json.dumps(rows, ensure_ascii=False)
+    assert "removed" not in text and "added" not in text
 
 
 def test_round_2s_draw_is_unchanged_in_shape(tmp_path):
@@ -579,6 +580,26 @@ def test_the_committed_drawn_set_matches_the_files_it_was_drawn_from():
                  (row["c95"], row["reference"], row["candidate"])]
         assert flags == ([True, True, False] if row["stratum"] == "removed"
                          else [False, False, True])
+
+
+def test_the_committed_key_is_the_seeds_ranked_draw_over_the_committed_files():
+    """The drawn set is not only counted right but is the seed's sample: recompute it."""
+    out = ROOT / "catch_loss"
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    export = read_jsonl_gz(ROOT / EXPORT)
+    reference_rows = [row for row in read_jsonl_gz(ROOT / REFERENCE_EXPORT)
+                      if row["model"] == REFERENCE]
+    words = audit.graded_words([*export, *reference_rows], baseline=asp.C95,
+                               candidate=CANDIDATE, reference=REFERENCE)
+    expected = []
+    for stratum, size in summary["sampled"].items():
+        members, _ = audit._population(words, stratum)
+        expected += [audit._key_row(word, size / len(members), summary["seed"])
+                     for word in audit._sample(members, size, summary["seed"])]
+    key = _jsonl(out / "key.jsonl")
+
+    assert sorted(expected, key=lambda row: row["id"]) == key
+    assert {row["id"] for row in key} == {row["id"] for row in _jsonl(out / "worklist.jsonl")}
 
 
 @pytest.mark.parametrize("name", ["worklist.jsonl", "key.jsonl"])

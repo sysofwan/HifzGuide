@@ -26,6 +26,7 @@ import pytest
 
 from tadabur import catch_loss_audit as audit
 from tadabur.listening_session import Verdict, write_verdicts
+from training import aug_readout_spec as asp
 
 REFUSED = (SystemExit, ValueError)
 CONSONANT = "other_consonant"
@@ -192,4 +193,12 @@ def test_the_scorer_refuses_while_a_worklist_item_has_no_verdict(tmp_path):
 
     with pytest.raises(REFUSED, match="verdict"):
         audit.score(tmp_path)
+    assert not (tmp_path / "result.json").exists()
+
+
+def test_the_scorer_refuses_a_round_whose_spec_declares_no_catch_loss_audit(tmp_path):
+    _plant(tmp_path, _removed(10, 90))
+
+    with pytest.raises(REFUSED, match="catch-loss"):
+        audit.score(tmp_path, spec=asp.CONSONANT1)
     assert not (tmp_path / "result.json").exists()

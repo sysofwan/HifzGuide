@@ -122,8 +122,8 @@ class Round3Audit:
         self.c95_flags = sum(c95_flags(n) for n in range(start))
         self.r2_flags = sum(r2_flags(n) for n in range(start))
         self.both_flags = sum(c95_flags(n) and r2_flags(n) for n in range(start))
-        self.spec = dataclasses.replace(spec, catch_loss_disclosure=disclosure) \
-            if disclosure is not None else spec
+        # the fixture's hand counts are not the pre-registration's: no disclosure unless given
+        self.spec = dataclasses.replace(spec, catch_loss_disclosure=disclosure or {})
         ar.run_look(_Sources(root / "files", items, flags, spec=spec), self.layout, spec=spec)
         self.export = self.layout.root / EXPORT
         rows = _read(self.export)
@@ -523,6 +523,11 @@ def _flagged(rows, model) -> set[tuple[str, int]]:
             and row["flagged"]}
 
 
+def _graded(rows, model) -> set[tuple[str, int]]:
+    return {(row["key"], row["position"]) for row in rows if row["model"] == model
+            and row["graded"]}
+
+
 def test_the_committed_look_export_is_untouched_and_carries_no_r2():
     assert hashlib.sha256((ROOT / EXPORT).read_bytes()).hexdigest() == EXPORT_SHA256
     assert {row["model"] for row in read_jsonl_gz(ROOT / EXPORT)} == {asp.C95, CANDIDATE}
@@ -551,8 +556,13 @@ def test_the_committed_drawn_set_matches_the_files_it_was_drawn_from():
     summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
     worklist, key = _jsonl(out / "worklist.jsonl"), _jsonl(out / "key.jsonl")
     export = read_jsonl_gz(ROOT / EXPORT)
-    c95, r3 = _flagged(export, asp.C95), _flagged(export, CANDIDATE)
-    r2 = _flagged(read_jsonl_gz(ROOT / REFERENCE_EXPORT), REFERENCE)
+    reference_rows = read_jsonl_gz(ROOT / REFERENCE_EXPORT)
+    # the population is the words graded by all three models (prereg: "graded by C95, the
+    # round-2 EMA and the chosen round-3 weights")
+    graded = (_graded(export, asp.C95) & _graded(export, CANDIDATE)
+              & _graded(reference_rows, REFERENCE))
+    c95, r3 = _flagged(export, asp.C95) & graded, _flagged(export, CANDIDATE) & graded
+    r2 = _flagged(reference_rows, REFERENCE) & graded
     removed, added = len(c95 & r2 - r3), len(r3 - c95 - r2)
 
     assert summary["seed"] == SEED

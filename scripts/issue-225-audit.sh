@@ -5,7 +5,7 @@
 # are committed (the draw refuses without them):
 #   scripts/issue-225-audit.sh draw               # build the blind worklist on the box
 #   scripts/issue-225-audit.sh draw fetch DIR     # pull worklist/key/summary back, then commit
-#   scripts/issue-225-audit.sh ui launch          # serve the listening page on 0.0.0.0:8000
+#   scripts/issue-225-audit.sh ui launch          # serve the listening page (SPEC's port)
 #   scripts/issue-225-audit.sh backup launch      # copy verdicts and review every minute
 #   scripts/issue-225-audit.sh ui fetch DIR       # pull verdicts.jsonl and review.jsonl; commit
 #   scripts/issue-225-audit.sh backup fetch DIR   # pull the timestamped copies
@@ -20,7 +20,8 @@
 # worklist that is only in the box's clone (drawn above, not committed) is gone on relaunch.
 # Restarting a running UI needs the owner's OK.
 #
-# Every job stages the current branch as a bundle on the box, writes one log and writes its
+# `draw` and `ui` stage the current branch as a bundle on the box; the backup loop only copies
+# within the scratch root, so its launch never re-clones. Every job writes one log and writes its
 # exit file last, so `check` never reads a log tail. Jobs run under setsid with stdin closed,
 # so they survive the ssh session. The UI reads the look clip cache #212 filled; no audio is
 # copied off the box.
@@ -42,7 +43,7 @@ LOGS=$ROOT/logs
 REPO=$ROOT/repo
 # The owner's verdicts and the sites queued for another listen live in the scratch root, not in
 # the clone: a relaunch re-clones and would drop them. `ui fetch` pulls both; commit them at
-# tools/tadabur/consonant2_readout/catch_loss/{verdicts,review}.jsonl.
+# tools/tadabur/${SPEC}_readout/catch_loss/{verdicts,review}.jsonl.
 VERDICTS=$ROOT/verdicts.jsonl
 REVIEW=$ROOT/review.jsonl
 BACKUP=$ROOT/backup
@@ -113,8 +114,8 @@ command_for() {
       echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port $PORT --host 0.0.0.0" ;;
     backup)
       echo "mkdir -p '$BACKUP'; while true; do
-        cp '$VERDICTS' '$BACKUP/verdicts.\$(date +%s).jsonl' 2>/dev/null || true
-        cp '$REVIEW' '$BACKUP/review.\$(date +%s).jsonl' 2>/dev/null || true
+        cp '$VERDICTS' '$BACKUP/verdicts.'\$(date +%s)'.jsonl' 2>/dev/null || true
+        cp '$REVIEW' '$BACKUP/review.'\$(date +%s)'.jsonl' 2>/dev/null || true
         ls -1t '$BACKUP'/verdicts.*.jsonl 2>/dev/null | tail -n +101 | xargs -r rm -f
         ls -1t '$BACKUP'/review.*.jsonl 2>/dev/null | tail -n +101 | xargs -r rm -f
         sleep 60
@@ -143,6 +144,27 @@ SH
 chmod +x '$ROOT/run-$NAME.sh'"
 }
 
+# The page's first queue item, fetched the way the browser does it: `/api/sites`, then that
+# item's clip. A queue that answers but cannot serve a clip is the failure this page has (a
+# cache miss or a hash mismatch), so the probe reads the clip too and a failed launch says so.
+audio_probe() {
+  remote "python3 - <<'PY'
+import json, time, urllib.request
+base = 'http://127.0.0.1:$PORT'
+for _ in range(20):
+    try:
+        sites = json.load(urllib.request.urlopen(base + '/api/sites', timeout=2))['sites']
+        break
+    except OSError:
+        time.sleep(1)
+else:
+    raise SystemExit('the page never answered /api/sites')
+clip = urllib.request.urlopen(
+    base + '/api/audio?key=' + sites[0]['key'] + '&whole=0', timeout=10).read()
+print(len(sites), 'items;', sites[0]['key'], 'audio', len(clip), 'bytes')
+PY"
+}
+
 launch() {
   # Relaunching `draw` or `ui` re-clones the branch under the scratch root, and the page's html
   # and js are read from disk, so a launch mid-sitting leaves a serving page unable to load its
@@ -156,8 +178,11 @@ launch() {
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
           echo \$! > '$LOGS/$NAME.pid'"
-  local pid
+  local pid probe= status=0
   pid=$(remote "cat '$LOGS/$NAME.pid'")
+  if [ "$job" = ui ]; then
+    probe=$(audio_probe) || status=$?
+  fi
   echo "job started on $HOST"
   echo "  pid:  $pid"
   echo "  log:  $HOST:$LOGS/$NAME.log"
@@ -165,9 +190,13 @@ launch() {
   if [ "$job" = ui ]; then
     echo "  url:  http://${HOST#*@}:$PORT/"
     echo "  stop: kill -- -$pid   # the job's process group (runner and server); ask the owner first"
-    echo "  probe: curl -fsS -o /dev/null -w '%{http_code}\n' http://${HOST#*@}:$PORT/api/sites"
+    echo "  audio: $probe"
   fi
   echo "  check with: scripts/issue-225-audit.sh $job check"
+  if [ "$status" -ne 0 ]; then
+    echo "the page is up but does not serve an item's clip" >&2
+    return "$status"
+  fi
 }
 
 check() {

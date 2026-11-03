@@ -6,9 +6,9 @@ further drop is in false flags or in real mistakes. A failure ends the round bef
 confirm.2 is claimed.
 
 The rules are the pre-registration's (`docs/consonant-round3-preregistration.md`, "Catch-loss
-audit", frozen 2026-10-28), and the round-2 audit's precedent is
-`docs/consonant-round2-catch-loss.md`. This note records the tooling, the committed draw and the
-owner's instructions; the sitting's result belongs here once it has happened.
+audit", FINAL TEXT 2026-11-01, committed at `b2470ff`), and the round-2 audit's precedent
+is `docs/consonant-round2-catch-loss.md`. This note records the tooling, the committed draw
+and the owner's instructions; the sitting's result belongs here once it has happened.
 
 ## The populations
 
@@ -53,12 +53,13 @@ The UI is the #61 listening page unchanged: one seeded queue with the strata int
 whole clip from the box's look clip cache (`/root/scratch/tlog/r2/clips`, #212), each clip
 verified against the worklist's `audio_sha256` before the server starts. The page receives the
 ayah with the target word highlighted and nothing else: no stratum, model output, grade, weight
-or tally. On cuda-dev, `scripts/issue-225-audit.sh` runs `draw`, `ui` and `backup` from a bundle
-clone; `SPEC=consonant3` selects round 3's readout, scratch root
-(`/root/scratch/catch_loss_r3`) and port (`8001`), so round 2's sitting keeps serving on `8000`,
-untouched. Verdicts and the review list live beside the worklist in the scratch root, never
-inside the clone the launcher rebuilds, so a relaunch keeps every answer and every "review
-later" marker. No audio is committed and none leaves cuda-dev beyond playback.
+or tally. On cuda-dev, `scripts/issue-225-audit.sh` runs `draw` and `ui` from a bundle clone and
+`backup` from the scratch root (its loop only copies files, so it never re-clones);
+`SPEC=consonant3` selects round 3's readout, scratch root (`/root/scratch/catch_loss_r3`) and
+port (`8001`), so round 2's listener on `8000` is left untouched. Verdicts and the review
+list live beside the worklist in the scratch root, never inside the clone the launcher
+rebuilds, so a relaunch keeps every answer and every "review later" marker. No audio is
+committed and none leaves cuda-dev beyond playback.
 
 ## The committed draw, 2026-11-02
 
@@ -80,7 +81,9 @@ Not yet listened: 0 of 150 answered.
 ### The served page, 2026-11-02
 
 `SPEC=consonant3 scripts/issue-225-audit.sh ui launch` on cuda-dev, with the backup loop
-(`backup launch`) beside it. Round 2's UI keeps serving on `:8000`, untouched.
+(`backup launch`) beside it. Round 2's listener is still bound on `:8000` and was left
+untouched, but it answers nothing (its clone and verdicts are gone): round 2's page is closed,
+not serving.
 
 * **Page:** `http://10.0.1.195:8001/` — "0 of 150 answered".
 * **Scratch root:** `/root/scratch/catch_loss_r3` (clone, `verdicts.jsonl`, `review.jsonl`,
@@ -88,7 +91,9 @@ Not yet listened: 0 of 150 answered.
   `logs/<job>.exit`, absent while it runs.
 * **Checked before hand-off:** the whole clip cache holds all 141 worklist hashes; over the LAN
   the page renders the ayah with the target word marked, `/api/audio?key=…&whole=0` returns mono
-  16 kHz WAV and plays, and no verdict exists yet.
+  16 kHz WAV and plays, and no verdict exists yet. `ui launch` itself now ends its footer with
+  `audio: 150 items; <key> audio <n> bytes` — the same probe, run at every launch, so a queue
+  that answers but cannot serve a clip fails the launch instead of surfacing mid-sitting.
 * **Stopping:** the `ui launch` output ends with `stop: kill -- -<pid>`, the job's process group
   (the runner and its server). Use it only with the owner's OK.
 

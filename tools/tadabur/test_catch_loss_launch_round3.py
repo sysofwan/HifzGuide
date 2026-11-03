@@ -159,8 +159,12 @@ def test_round_three_backs_up_its_own_verdicts_and_review_list(tmp_path, stage):
 
     assert done.returncode == 0, _text(done)
     remote = _remote(tmp_path)
-    assert f"cp '{R3_ROOT}/verdicts.jsonl' '{R3_ROOT}/backup/verdicts." in remote
-    assert f"cp '{R3_ROOT}/review.jsonl' '{R3_ROOT}/backup/review." in remote
+    # The substitution must sit outside the destination quotes, or the loop writes one file
+    # literally named `verdicts.$(date +%s).jsonl` and the retention never trims anything.
+    assert (f"cp '{R3_ROOT}/verdicts.jsonl' '{R3_ROOT}/backup/verdicts.'$(date +%s)'.jsonl'"
+            in remote)
+    assert (f"cp '{R3_ROOT}/review.jsonl' '{R3_ROOT}/backup/review.'$(date +%s)'.jsonl'"
+            in remote)
 
 
 def test_the_clip_cache_is_still_overridable_for_round_three(tmp_path, stage):

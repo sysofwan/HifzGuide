@@ -28,8 +28,10 @@ tlog consonant round (#227). A round declares its look set and roles, so the sam
 Tarteel v1's look half for #95 and the consonant round and the tlog look gating rows for round 2.
 Round 2 decodes both arms on the look set and chooses each arm's weights on its own (#95's rule,
 :func:`look_weights`), and its look sitting exports C95's and the chosen candidate's per-word
-grades (``look_grades.jsonl.gz``) for the catch-loss audit (#225). Its pooled confirm read is
-part 2 (#227): ``confirm --spec consonant2`` refuses.
+grades (``look_grades.jsonl.gz``) for the catch-loss audit (#225). Round 3's audit compares its
+round-2 reference too, so :func:`write_look_reference_grades` grades that model on the export's
+words and writes ``look_grades_r2.jsonl.gz`` beside it, with its provenance record (#257). Round
+2's pooled confirm read is part 2 (#227): ``confirm --spec consonant2`` refuses.
 
 **Sets** (:data:`~training.aug_readout_gate.SETS`): Tarteel v1's halves; qdat (and qdat_bench, its
 clips, stream arm); RetaSy (catch side, restricted: aggregates only); QUD's two professional
@@ -52,6 +54,8 @@ Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja har
   python -m training.aug_readout select-qud                 # once, before any candidate decode
   python -m training.aug_readout merge --decodes-dir <the GPU box's decodes, copied>
   python -m training.aug_readout look                       # then commit look*.json, choice.json
+  python -m training.aug_readout reference-grades --spec consonant3
+                                   # then commit look_grades_r2.jsonl.gz and its provenance
   python -m training.aug_readout confirm
   python -m training.aug_readout coverage                   # then commit coverage.json, doc
   python -m training.aug_readout doc
@@ -96,11 +100,14 @@ from training.aug_readout_gate import (
     canonical,
     choice_models,
     claim,
+    commit_of,
     committed_choice,
     decodes_file,
     digests,
     harness_identity,
+    identity_record,
     input_name,
+    is_committed,
     look_models,
     make_choice,
     needs,
@@ -605,6 +612,23 @@ def look_weights(spec: RoundSpec, inputs: Mapping[str, dict]) -> str | Mapping[s
 #: candidate's kept grades on the tlog look gating rows.
 LOOK_GRADES = "look_grades.jsonl.gz"
 
+#: The reference model's grades of the export's words, beside the export (#257): round 3's
+#: audit compares the round-2 EMA, which the look sitting never grades.
+LOOK_REFERENCE_GRADES = "look_grades_{reference}.jsonl.gz"
+#: What produced the reference grades: the decode they grade, the harness, the counts and the
+#: written file's SHA-256. Committed with the grades, so a regeneration is auditable.
+LOOK_REFERENCE_PROVENANCE = "look_grades_{reference}.provenance.json"
+
+
+def look_reference_path(root: Path, reference: str) -> Path:
+    """The reference model's grades file in a round's root."""
+    return root / LOOK_REFERENCE_GRADES.format(reference=reference)
+
+
+def look_reference_provenance_path(root: Path, reference: str) -> Path:
+    """The reference grades' provenance record in a round's root."""
+    return root / LOOK_REFERENCE_PROVENANCE.format(reference=reference)
+
 
 def look_grade_rows(grades: Sequence, models: Sequence[str],
                     decodes: Mapping[str, Mapping[str, dict]]) -> list[dict]:
@@ -633,6 +657,17 @@ def look_grade_rows(grades: Sequence, models: Sequence[str],
     return sorted(rows, key=lambda row: (row["model"], row["key"], row["position"]))
 
 
+def look_grade_parity(rows: Sequence[Mapping], *, baseline: str,
+                      reference: str) -> dict[str, int]:
+    """The pre-registration's disclosed counts over look word grades (#257): words ``baseline``
+    flags, words ``reference`` flags, and words both flag."""
+    c95 = {(row["key"], row["position"]) for row in rows
+           if row["model"] == baseline and row["flagged"]}
+    other = {(row["key"], row["position"]) for row in rows
+             if row["model"] == reference and row["flagged"]}
+    return {"c95": len(c95), "reference": len(other), "both": len(c95 & other)}
+
+
 def write_look_grades(path: Path, rows: Sequence[dict]) -> None:
     """The per-word export, gzip-reproducible (one fixed header, no timestamp) and written
     atomically: a resumed look never leaves a torn file behind the claim."""
@@ -641,6 +676,63 @@ def write_look_grades(path: Path, rows: Sequence[dict]) -> None:
     temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     temporary.write_bytes(gzip.compress(body.encode("utf-8"), mtime=0))
     os.replace(temporary, path)
+
+
+def write_look_reference_grades(sources: Sources, layout: Layout = Layout(),
+                                spec: RoundSpec = AUG95) -> Path:
+    """Grade the spec's catch-loss reference model on the look export's words and write it
+    beside the export (#257): the reference's rows plus a copy of the export's baseline rows,
+    so the audit can check the two files agree word for word, and a provenance record naming
+    the decode, the harness and the counts. Grades the reference's committed decodes, so it
+    needs the harness but no audio, and refuses unless the round's pins hold and the result
+    reproduces the pre-registration's disclosed counts when the spec declares them."""
+    from training.muraja_policy import SHIPPED_DEFAULT
+
+    reference = spec.catch_loss_reference
+    if reference is None:
+        raise SystemExit(f"{spec.name} names no catch-loss reference model: there is nothing "
+                         "to grade beside the look export")
+    if reference not in spec.models:
+        raise SystemExit(f"{spec.name} names {reference!r} as its catch-loss reference but "
+                         "does not pin its identity")
+    export = layout.root / LOOK_GRADES
+    if not is_committed(export):
+        raise SystemExit(f"{export.name} is not committed and unedited: the reference grades "
+                         "are a second grade of its words")
+    harness = sources.harness_identity()
+    require_preregistration(spec, harness)
+    with gzip.open(export, "rt", encoding="utf-8") as stream:
+        exported = [json.loads(line) for line in stream]
+    baseline = [row for row in exported if row["model"] == spec.baseline]
+    data = sources.tlog(LOOK, [reference])
+    grades = sources.grade(data.items, data.decodes, [reference])
+    rows = look_grade_rows(grades, [reference], data.decodes)
+    words = {(row["key"], row["position"]) for row in baseline}
+    if {(row["key"], row["position"]) for row in rows} != words:
+        raise SystemExit(f"{reference} graded other words than {export.name}: the two files "
+                         "must carry the same words")
+    rows = [*baseline, *rows]
+    counts = look_grade_parity(rows, baseline=spec.baseline, reference=reference)
+    if spec.catch_loss_disclosure and counts != dict(spec.catch_loss_disclosure):
+        raise SystemExit(f"the {reference} grades do not reproduce the pre-registration's "
+                         f"disclosed counts: {counts} is not "
+                         f"{dict(spec.catch_loss_disclosure)}")
+    path = look_reference_path(layout.root, reference)
+    write_look_grades(path, rows)
+    decode = sources.decode_path(spec.look_set, reference)
+    write_text_atomically(
+        look_reference_provenance_path(layout.root, reference),
+        canonical({"file": path.name, "sha256": sha256_file(path), "rows": len(rows),
+                   "reference": reference,
+                   "identity": identity_record(spec.models[reference]),
+                   "decode": {"file": input_name(decode), "sha256": sha256_file(decode),
+                              "commit": commit_of(decode)},
+                   "export": {"file": export.name, "sha256": sha256_file(export)},
+                   "harness": harness, "scoring": SHIPPED_DEFAULT.name, "counts": counts,
+                   "disclosed": dict(spec.catch_loss_disclosure) or None,
+                   "spec": {"name": spec.name,
+                            "prereg_sha256": spec.pins.prereg_sha256 if spec.pins else None}}))
+    return path
 
 
 def require_look_baseline(manifest: Mapping[str, Mapping], spec: RoundSpec) -> dict:
@@ -1137,8 +1229,11 @@ def main() -> None:
         "coverage", help="record each frozen population's evaluated share")
     doc_command = commands.add_parser(
         "doc", help="render the round's readout document")
+    reference_command = commands.add_parser(
+        "reference-grades",
+        help="grade the spec's catch-loss reference model beside the look export (#257)")
     for command in (*[commands.choices[name] for name in ("look", "confirm")],
-                    coverage_command, doc_command):
+                    coverage_command, doc_command, reference_command):
         command.add_argument("--spec", default=AUG95.name, choices=rounds)
     args = parser.parse_args()
     if args.command == "select-qud":  # #95's frozen half: the one command with no --spec
@@ -1155,6 +1250,8 @@ def main() -> None:
     elif args.command == "look":
         print(f"wrote {layout.choice}: "
               f"{run_look(sources, layout, args.workers, spec=specification)['weights']}")
+    elif args.command == "reference-grades":
+        print(f"wrote {write_look_reference_grades(sources, layout, spec=specification)}")
     elif args.command == "confirm":
         report = run_confirm(sources, layout, args.workers, spec=specification)
         print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")

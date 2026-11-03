@@ -378,6 +378,14 @@ def is_committed(path: Path) -> bool:
         _git(path.parent, "diff", "--quiet", "HEAD", "--", path.name).returncode == 0
 
 
+def commit_of(path: Path) -> str | None:
+    """The commit that last changed ``path``, or ``None`` when git does not track it (a
+    fixture's throwaway file). A provenance record cites it beside the file's SHA-256."""
+    if _git(path.parent, "ls-files", "--error-unmatch", path.name).returncode != 0:
+        return None
+    return _git(path.parent, "log", "-1", "--format=%H", "--", path.name).stdout.strip() or None
+
+
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 

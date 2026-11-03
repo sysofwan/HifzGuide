@@ -67,6 +67,9 @@ R3_ARM_PREFIX = "r3_"
 #: and chooses one; the SHA-256 is the file's bytes on cuda-dev after its exit file reached 0.
 R3_CANDIDATE_REF = "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt"
 R3_CANDIDATE_SHA256 = "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+#: Round 2's catch-loss audit seed (#225), from its pre-registration: the draw and its ids are
+#: reproducible from it.
+CONSONANT2_CATCH_LOSS_SEED = "round2-catch-loss-2026-10"
 
 
 @dataclass(frozen=True)
@@ -159,6 +162,17 @@ class RoundSpec:
     #: regression under +2.0 (#248 part 1 item 5). Empty for a round whose doc has no such
     #: section, so round 2's doc renders unchanged.
     readout_disclosure: tuple[str, ...] = ()
+    #: The catch-loss audit's draw seed, from the round's pre-registration: the draw and its
+    #: ids are reproducible from it. ``None`` for a round with no catch-loss audit.
+    catch_loss_seed: str | None = None
+    #: The role the audit reads beside the baseline and the chosen candidate: round 3's ``r2``,
+    #: so *removed* is a word C95 and the reference flag and the candidate does not. ``None``
+    #: draws round 2's two-model comparison.
+    catch_loss_reference: str | None = None
+    #: The pre-registration's disclosed catch-loss counts over the look gating words — words
+    #: ``c95`` flags, words ``reference`` flags, words ``both`` flag: the draw refuses unless
+    #: the grades reproduce them. Empty for a round whose pre-registration discloses none.
+    catch_loss_disclosure: Mapping[str, int] = field(default_factory=dict)
 
 
 AUG95 = RoundSpec(
@@ -269,6 +283,7 @@ CONSONANT2 = RoundSpec(
     #: computed and shown beside the verdict, never dropped.
     g3_kinds=("consonant", "haraka"),
     g3_reported_kinds=("shaddah",),
+    catch_loss_seed=CONSONANT2_CATCH_LOSS_SEED,
     freeze_doc_path=CONSONANT2_FREEZE_DOC_PATH)
 
 #: Round 2's candidate at its averaged weights: round 3's context column, read from round 2's
@@ -341,6 +356,14 @@ CONSONANT3 = replace(
     readout_disclosure=CONSONANT3_DISCLOSURE,
     look_roles=(CANDIDATE,),
     arm_prefix=R3_ARM_PREFIX,
+    #: Round 3 audits only the **new** removals (#257): C95 flags, the round-2 EMA (the ``r2``
+    #: reference) flags, and the chosen round-3 weights do not. The seed and the disclosed
+    #: counts are the pre-registration's ("Catch-loss audit", ``docs/consonant-round3-
+    #: preregistration.md``): C95 flags 3,505 look gating words, the round-2 EMA 2,623, both
+    #: 1,624.
+    catch_loss_seed="round3-catch-loss-2026-11",
+    catch_loss_reference=R2,
+    catch_loss_disclosure={"c95": 3505, "reference": 2623, "both": 1624},
     #: #253 fills the pre-registration's pin, as #229 did for round 2.
     pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, CONSONANT3_PREREG_SHA256),
 )

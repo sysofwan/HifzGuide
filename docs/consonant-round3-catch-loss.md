@@ -75,25 +75,27 @@ listening.
 
 ## The owner's sitting
 
-Not yet listened.
+Not yet listened: 0 of 150 answered.
 
-### Before it starts
+### The served page, 2026-11-02
 
-```
-SPEC=consonant3 scripts/issue-225-audit.sh ui launch      # serve 0.0.0.0:8001 on cuda-dev
-SPEC=consonant3 scripts/issue-225-audit.sh backup launch  # copy verdicts + review every minute
-```
+`SPEC=consonant3 scripts/issue-225-audit.sh ui launch` on cuda-dev, with the backup loop
+(`backup launch`) beside it. Round 2's UI keeps serving on `:8000`, untouched.
 
-`launch` prints the URL, the pid, the log path, how to stop it and a probe. The page is at
-`http://10.0.1.195:8001/` (round 2's UI keeps serving on `:8000`, untouched). The backup loop
-never stages the clone, so it can start before or after the UI.
+* **Page:** `http://10.0.1.195:8001/` — "0 of 150 answered".
+* **Scratch root:** `/root/scratch/catch_loss_r3` (clone, `verdicts.jsonl`, `review.jsonl`,
+  `backup/`); logs in its `logs/` (`ui.log`, `backup.log`), each job's exit status in
+  `logs/<job>.exit`, absent while it runs.
+* **Checked before hand-off:** the whole clip cache holds all 141 worklist hashes; over the LAN
+  the page renders the ayah with the target word marked, `/api/audio?key=…&whole=0` returns mono
+  16 kHz WAV and plays, and no verdict exists yet.
+* **Stopping:** the `ui launch` output ends with `stop: kill -- -<pid>`, the job's process group
+  (the runner and its server). Use it only with the owner's OK.
 
-Do not launch `ui` or `draw` again mid-sitting: a launch re-clones the branch under the scratch
-root, the page's html and js are read from disk, and the running process holds the port, so the
-sitting goes down rather than restarts. The open page also starts a fresh session while the old
-answers stay in `verdicts.jsonl`. Use the stop command `launch` printed (the job's process group)
-if a restart is ever needed, with the owner's OK; `verdicts.jsonl` and `review.jsonl` survive
-either way.
+Do not launch `ui` or `draw` again while the page is up: a launch re-clones the branch under the
+scratch root, the page's html and js are read from disk, and the running process holds the port,
+so the sitting goes down rather than restarts. The open page also starts a fresh session while
+the old answers stay in `verdicts.jsonl`; `verdicts.jsonl` and `review.jsonl` survive either way.
 
 ### What the owner does
 

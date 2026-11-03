@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# issue-225-audit.sh — the round-2 catch-loss audit on cuda-dev (#225).
+# issue-225-audit.sh — the catch-loss audit on cuda-dev (#225, #257).
 #
 # Mac side, from the worktree root, after the pre-registration freeze and the live/EMA choice
 # are committed (the draw refuses without them):
@@ -9,6 +9,12 @@
 #   scripts/issue-225-audit.sh backup launch      # copy verdicts and review every minute
 #   scripts/issue-225-audit.sh ui fetch DIR       # pull verdicts.jsonl and review.jsonl; commit
 #   scripts/issue-225-audit.sh backup fetch DIR   # pull the timestamped copies
+#
+# SPEC names the round and nothing else changes with it. consonant2 is the default and keeps
+# round 2's paths, port and draw (`/root/scratch/catch_loss`, :8000); consonant3 reads with
+# `--spec consonant3` from `tools/tadabur/consonant3_readout/catch_loss` and keeps its own
+# scratch root `/root/scratch/catch_loss_r3` and port :8001, so round 2's sitting keeps serving
+# untouched. ISSUE_ROOT and PORT override either.
 #
 # The worklist is committed before the UI starts: `ui launch` stages the current branch, so a
 # worklist that is only in the box's clone (drawn above, not committed) is gone on relaunch.
@@ -24,7 +30,14 @@ HOST=${HOST:-root@cuda-dev}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ENV_NAME=${ENV_NAME:-hifzguide}
 REPO_DIR=${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
-ROOT=${ISSUE_ROOT:-/root/scratch/catch_loss}
+SPEC=${SPEC:-consonant2}
+case "$SPEC" in
+  consonant2) SPEC_ROOT=/root/scratch/catch_loss; SPEC_PORT=8000; DRAW_ARG= ;;
+  consonant3) SPEC_ROOT=/root/scratch/catch_loss_r3; SPEC_PORT=8001; DRAW_ARG=" --spec $SPEC" ;;
+  *) echo "unknown SPEC '$SPEC' (consonant2|consonant3)" >&2; exit 2 ;;
+esac
+ROOT=${ISSUE_ROOT:-$SPEC_ROOT}
+PORT=${PORT:-$SPEC_PORT}
 LOGS=$ROOT/logs
 REPO=$ROOT/repo
 # The owner's verdicts and the sites queued for another listen live in the scratch root, not in
@@ -35,7 +48,7 @@ REVIEW=$ROOT/review.jsonl
 BACKUP=$ROOT/backup
 # #212's look clip cache: each clip's source bytes as <audio_sha256>.audio.
 CLIPS=${CLIPS:-/root/scratch/tlog/r2/clips}
-AUDIT=tools/tadabur/consonant2_readout/catch_loss
+AUDIT=tools/tadabur/${SPEC}_readout/catch_loss
 TRANCHE=tools/tadabur/tlog/tranches/look.jsonl
 
 job=${1:-}
@@ -95,9 +108,9 @@ stage_repo() {
 command_for() {
   case "$job" in
     draw)
-      echo "python -u -m tadabur.catch_loss_audit draw --tranche '$REPO/$TRANCHE' && cp '$REPO/$AUDIT/worklist.jsonl' '$REPO/$AUDIT/key.jsonl' '$REPO/$AUDIT/summary.json' '$ROOT/'" ;;
+      echo "python -u -m tadabur.catch_loss_audit draw$DRAW_ARG --tranche '$REPO/$TRANCHE' && cp '$REPO/$AUDIT/worklist.jsonl' '$REPO/$AUDIT/key.jsonl' '$REPO/$AUDIT/summary.json' '$ROOT/'" ;;
     ui)
-      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port 8000 --host 0.0.0.0" ;;
+      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port $PORT --host 0.0.0.0" ;;
     backup)
       echo "mkdir -p '$BACKUP'; while true; do
         cp '$VERDICTS' '$BACKUP/verdicts.\$(date +%s).jsonl' 2>/dev/null || true
@@ -130,10 +143,17 @@ launch() {
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
           echo \$! > '$LOGS/$NAME.pid'"
+  local pid
+  pid=$(remote "cat '$LOGS/$NAME.pid'")
   echo "job started on $HOST"
-  echo "  pid:  $(remote "cat '$LOGS/$NAME.pid'")"
+  echo "  pid:  $pid"
   echo "  log:  $HOST:$LOGS/$NAME.log"
   echo "  exit: $HOST:$LOGS/$NAME.exit (0 = clean; absent while running)"
+  if [ "$job" = ui ]; then
+    echo "  url:  http://${HOST#*@}:$PORT/"
+    echo "  stop: kill $pid   # ask the owner first while a sitting is running"
+    echo "  probe: curl -fsS -o /dev/null -w '%{http_code}\n' http://${HOST#*@}:$PORT/api/sites"
+  fi
   echo "  check with: scripts/issue-225-audit.sh $job check"
 }
 

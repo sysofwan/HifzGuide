@@ -27,10 +27,12 @@
 # copied off the box.
 set -euo pipefail
 
+HOST_GIVEN=${HOST:+1}
 HOST=${HOST:-root@cuda-dev}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ENV_NAME=${ENV_NAME:-hifzguide}
 REPO_DIR=${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
+SPEC_GIVEN=${SPEC:+1}
 SPEC=${SPEC:-consonant2}
 case "$SPEC" in
   consonant2) SPEC_ROOT=/root/scratch/catch_loss; SPEC_PORT=8000; DRAW_ARG= ;;
@@ -38,6 +40,7 @@ case "$SPEC" in
   *) echo "unknown SPEC '$SPEC' (consonant2|consonant3)" >&2; exit 2 ;;
 esac
 ROOT=${ISSUE_ROOT:-$SPEC_ROOT}
+PORT_GIVEN=${PORT:+1}
 PORT=${PORT:-$SPEC_PORT}
 LOGS=$ROOT/logs
 REPO=$ROOT/repo
@@ -48,6 +51,7 @@ VERDICTS=$ROOT/verdicts.jsonl
 REVIEW=$ROOT/review.jsonl
 BACKUP=$ROOT/backup
 # #212's look clip cache: each clip's source bytes as <audio_sha256>.audio.
+CLIPS_GIVEN=${CLIPS:+1}
 CLIPS=${CLIPS:-/root/scratch/tlog/r2/clips}
 AUDIT=tools/tadabur/${SPEC}_readout/catch_loss
 TRANCHE=tools/tadabur/tlog/tranches/look.jsonl
@@ -165,10 +169,44 @@ print(len(sites), 'items;', sites[0]['key'], 'audio', len(clip), 'bytes')
 PY"
 }
 
+# The port's listener, as `ss` names it; empty when nothing is bound. A `ui` launch refuses an
+# occupied port instead of reporting whatever already answers there as the new sitting.
+listener_pid() {
+  remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' | head -1"
+}
+
+# Whether the job just started owns the listener: its runner's child is the pid `ss` reports.
+# The audio probe alone cannot tell this job from an earlier sitting that still answers.
+serves_from() {  # runner pid
+  remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' \
+    | grep -q \"pid=\$(pgrep -P '$1' | head -1)\""
+}
+
+# A copyable check that selects this launch's root and port: a one-command environment
+# assignment does not survive into the next command, so repeat every setting given explicitly.
+launch_hint() {
+  local hint="scripts/issue-225-audit.sh $job check"
+  if [ -n "${SPEC_GIVEN:-}" ]; then hint="SPEC=$SPEC $hint"; fi
+  if [ -n "${ISSUE_ROOT:-}" ]; then hint="ISSUE_ROOT='$ISSUE_ROOT' $hint"; fi
+  if [ -n "${PORT_GIVEN:-}" ]; then hint="PORT=$PORT $hint"; fi
+  if [ -n "${CLIPS_GIVEN:-}" ]; then hint="CLIPS='$CLIPS' $hint"; fi
+  if [ -n "${HOST_GIVEN:-}" ]; then hint="HOST='$HOST' $hint"; fi
+  echo "$hint"
+}
+
 launch() {
   # Relaunching `draw` or `ui` re-clones the branch under the scratch root, and the page's html
   # and js are read from disk, so a launch mid-sitting leaves a serving page unable to load its
   # assets; the backup loop stays safe because it never stages.
+  local pid probe= status=0
+  if [ "$job" = ui ]; then
+    pid=$(listener_pid)
+    if [ -n "$pid" ]; then
+      echo "port $PORT on $HOST is already bound; nothing was staged or started:" >&2
+      echo "  $pid" >&2
+      return 1
+    fi
+  fi
   if [ "$job" = backup ]; then
     remote "mkdir -p '$ROOT' '$LOGS'"
   else
@@ -178,10 +216,20 @@ launch() {
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
           echo \$! > '$LOGS/$NAME.pid'"
-  local pid probe= status=0
   pid=$(remote "cat '$LOGS/$NAME.pid'")
   if [ "$job" = ui ]; then
     probe=$(audio_probe) || status=$?
+    if [ "$status" -eq 0 ] && ! serves_from "$pid"; then
+      echo "port $PORT on $HOST is served by a process other than the job just started" >&2
+      status=1
+    fi
+    if [ "$status" -ne 0 ]; then
+      echo "the ui did not come up: $HOST:$LOGS/$NAME.log" >&2
+      if remote "test -f '$LOGS/$NAME.exit'"; then
+        echo "  exit $(remote "cat '$LOGS/$NAME.exit'")" >&2
+      fi
+      return "$status"
+    fi
   fi
   echo "job started on $HOST"
   echo "  pid:  $pid"
@@ -192,11 +240,7 @@ launch() {
     echo "  stop: kill -- -$pid   # the job's process group (runner and server); ask the owner first"
     echo "  audio: $probe"
   fi
-  echo "  check with: scripts/issue-225-audit.sh $job check"
-  if [ "$status" -ne 0 ]; then
-    echo "the page is up but does not serve an item's clip" >&2
-    return "$status"
-  fi
+  echo "  check with: $(launch_hint)"
 }
 
 check() {

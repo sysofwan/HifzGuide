@@ -99,8 +99,13 @@ not serving.
 
 Do not launch `ui` or `draw` again while the page is up: a launch re-clones the branch under the
 scratch root, the page's html and js are read from disk, and the running process holds the port,
-so the sitting goes down rather than restarts. The open page also starts a fresh session while
-the old answers stay in `verdicts.jsonl`; `verdicts.jsonl` and `review.jsonl` survive either way.
+so the sitting goes down rather than restarts. A `ui launch` refuses an occupied port before it
+stages anything, printing the listener it found, so the accidental relaunch fails loudly instead
+of reporting the running sitting as a new one; a launch that comes up verifies the port's
+listener is its own server before printing the footer, and that footer's `check with:` line
+repeats every setting given explicitly (`SPEC`, `ISSUE_ROOT`, `PORT`, `CLIPS`, `HOST`). The open
+page also starts a fresh session while the old answers stay in `verdicts.jsonl`;
+`verdicts.jsonl` and `review.jsonl` survive either way.
 
 ### What the owner does
 

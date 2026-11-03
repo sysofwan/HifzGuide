@@ -41,14 +41,23 @@ def stage(tmp_path: Path) -> Path:
     return repo
 
 
-def _launch(tmp_path: Path, repo: Path, *args: str, **env: str) -> subprocess.CompletedProcess:
+def _launch(tmp_path: Path, repo: Path, *args: str, listens: str = "", fail: str = "",
+            **env: str) -> subprocess.CompletedProcess:
     """Run the script with ``ssh`` (every remote command appended to ``ssh.log``) and ``rsync``
-    shimmed; ``ISSUE_ROOT`` is left to the script unless a test sets it."""
+    shimmed; ``ISSUE_ROOT`` is left to the script unless a test sets it. ``listens`` is the line
+    ``ss -ltnp`` prints, ``fail`` a pattern whose remote command fails, and both default to a
+    box that answers nothing and succeeds."""
     shim = tmp_path / "bin"
     shim.mkdir(exist_ok=True)
     (shim / "ssh").write_text(f"""#!/usr/bin/env bash
 printf '%s\\n' "$*" >> '{tmp_path}/ssh.log'
 cat > /dev/null
+if [ -n '{listens}' ]; then
+  case "$*" in *'ss -ltnp'*) printf '%s\\n' '{listens}'; exit 0 ;; esac
+fi
+if [ -n '{fail}' ]; then
+  case "$*" in *'{fail}'*) exit 1 ;; esac
+fi
 exit 0
 """, encoding="utf-8")
     (shim / "rsync").write_text(f"""#!/usr/bin/env bash
@@ -204,6 +213,37 @@ def test_a_launch_stops_nothing_and_leaves_the_gpu_alone(tmp_path, stage, spec, 
 
 
 # --- the spec selector --------------------------------------------------------------------------
+
+
+def test_the_launch_footer_checks_the_same_root_it_started(tmp_path, stage):
+    """The printed check is copy-pasted into a fresh shell, so it must repeat the selector and
+    the root; a bare command would report round 2's scratch root as round 3's."""
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", ISSUE_ROOT=R3_ROOT)
+
+    assert done.returncode == 0, _text(done)
+    assert (f"check with: HOST='{HOST}' ISSUE_ROOT='{R3_ROOT}' SPEC=consonant3 "
+            "scripts/issue-225-audit.sh ui check") in done.stdout
+
+
+def test_an_occupied_port_is_refused_before_anything_is_staged(tmp_path, stage):
+    """Whatever answers there would pass the audio probe off as the new sitting."""
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3",
+                   listens="LISTEN 0 5 0.0.0.0:8001 0.0.0.0:* users:((python,pid=4242,fd=3))")
+
+    assert done.returncode != 0, _text(done)
+    assert "already bound" in done.stderr and "pid=4242" in done.stderr
+    assert "job started" not in done.stdout
+    assert "git clone" not in _remote(tmp_path)
+
+
+def test_a_launch_fails_when_another_server_answers_the_port(tmp_path, stage):
+    """The probe succeeds against whatever listens; the launch must still fail unless the
+    listener is the job's own server."""
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", fail="pgrep -P")
+
+    assert done.returncode == 1, _text(done)
+    assert "other than the job just started" in done.stderr
+    assert "job started" not in done.stdout
 
 
 def test_an_unknown_spec_is_refused_before_anything_reaches_the_box(tmp_path, stage):

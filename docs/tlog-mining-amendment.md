@@ -13,9 +13,12 @@ Issue: [#262](https://github.com/sysofwan/HifzGuide/issues/262). Parent: #261 (e
 #173). The pilot this amendment opens is frozen separately in
 [`docs/tlog-mining-preregistration.md`](tlog-mining-preregistration.md).
 
-**Pending:** the principal architect's cross-check of this amendment (Fable), required by #262's
-acceptance criteria before merge. It is recorded on #262 and, when it lands, replaces this line —
-not §1–§6.
+**Cross-check:** the principal architect's cross-check of this amendment (Fable) returned
+**AGREE**, recorded at
+[#262 comment 6588663912](https://github.com/sysofwan/HifzGuide/issues/262#issuecomment-6588663912).
+That comment replaces the pending line this file carried, and amends nothing in §1–§6. Phase B of
+[#263](https://github.com/sysofwan/HifzGuide/issues/263) runs only under this file's SHA-256 as
+pinned by `tadabur.tlog_mining.selection.MINING_AMENDMENT_SHA256`.
 
 ## 1. The mining rule
 

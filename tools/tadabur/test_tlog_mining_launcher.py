@@ -17,8 +17,9 @@ their arguments.
 
   It refuses (non-zero exit, nothing on stdout, ``not committed`` on stderr) when one of them is
   not committed and unchanged at HEAD. ``PARALLEL`` (default 2) sets the processes; ``ROUND_DIR``
-  and ``TRANCHES_DIR`` are as in the confirm launcher. Phase ``B`` and ``C`` are refused by every
-  command that takes a phase (``plan``, ``launch``): ``phase B`` on stderr, nothing staged.
+  and ``TRANCHES_DIR`` are as in the confirm launcher. Phase ``C`` is refused by every command
+  that takes a phase (``plan``, ``launch``): ``phase C`` on stderr, nothing staged. Phase ``B``
+  is in ``test_tlog_mining_phase_b.py``.
 * ``launch [PHASE]``: the same refusals, then stages the repository and starts ``run`` detached
   with ``setsid nohup`` (never under a blocking ``flock`` of the GPU lock: the Python loop takes
   the lock non-blocking for one batch at a time), printing ``started: <pid>``.
@@ -26,6 +27,9 @@ their arguments.
   ``/root/scratch/tlog-mining``. The loop stops at its next batch boundary.
 * ``resume``: removes that file (``rm -f``), restages and starts ``run --resume`` (the loop
   resumes by row key).
+* ``fetch [PHASE]``: refuses unless the box holds a complete merge (``run.exit`` 0,
+  ``meta.json`` and every merged file), then ``rsync`` copies the phase's out dir into the
+  committed directory.
 * ``status`` is read-only on the box (``run.done``/``run.exit`` and the wall and yielded-time
   log); the box's ``run`` flags are ``--pause-file --batch-seconds --yield-seconds
   --disk-reserve-gb --ram-floor-gb``.
@@ -76,6 +80,34 @@ def _ssh_log(tmp_path: Path) -> str:
     return (tmp_path / "ssh.log").read_text(encoding="utf-8")
 
 
+#: Phase A's merged files, as ``fetch`` checks them.
+PHASE_A_NAMES = [f"{role}.jsonl.gz" for role in ("look", "confirm.1", "confirm.2")]
+
+
+def _merge_box(tmp_path: Path, phase: str, names: list[str]) -> dict[str, str]:
+    """A box holding a complete merge for ``phase``: ``ssh`` runs the checks it is handed and
+    ``rsync`` copies what it is pointed at, so the generated remote script is executed, not
+    merely logged."""
+    root = tmp_path / "mining"
+    phase_root = root if phase == "A" else root / "B"
+    out, logs = phase_root / "out", phase_root / "logs"
+    out.mkdir(parents=True)
+    logs.mkdir(parents=True)
+    (logs / "run.exit").write_text("0\n", encoding="utf-8")
+    (out / "meta.json").write_text("{}\n", encoding="utf-8")
+    for name in names:
+        (out / name).write_text("", encoding="utf-8")
+    bindir = tmp_path / "fetch-bin"
+    bindir.mkdir()
+    _mock(bindir / "ssh", '#!/bin/sh\nhost=$1\nshift\nprintf "%s\\n" "$*" >> "$SSH_LOG"\n'
+          'exec "$@"\n')
+    _mock(bindir / "rsync", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$RSYNC_LOG"\n'
+          'cp -a "${2#*:}." "$3"\n')
+    return {"PATH": f"{bindir}:{_env(tmp_path)['PATH']}", "HOST": "box",
+            "ISSUE_ROOT": str(root), "SSH_LOG": str(tmp_path / "ssh.log"),
+            "RSYNC_LOG": str(tmp_path / "rsync.log"), "FETCH_DIR": str(tmp_path / "fetched")}
+
+
 def test_the_script_exists_parses_and_runs_the_mining_package():
     assert SCRIPT.is_file() and os.access(SCRIPT, os.X_OK)
     assert subprocess.run(["bash", "-n", str(SCRIPT)]).returncode == 0
@@ -104,9 +136,9 @@ def test_the_plan_lists_phase_a(tmp_path):
     assert _run("plan", round_, tmp_path, "A").stdout.splitlines() == PLAN
 
 
-@pytest.mark.parametrize("phase", ["B", "C"])
+@pytest.mark.parametrize("phase", ["C", "D"])
 @pytest.mark.parametrize("command", ["plan", "launch"])
-def test_phases_b_and_c_are_refused_before_anything_is_staged(tmp_path, command, phase):
+def test_phase_c_is_refused_before_anything_is_staged(tmp_path, command, phase):
     round_ = _round(tmp_path)
     done = _run(command, round_, tmp_path, phase, **_box(tmp_path))
     assert done.returncode != 0 and done.stdout == ""
@@ -164,3 +196,34 @@ def test_the_resume_clears_the_pause_and_restarts_a_resumed_run(tmp_path):
     assert re.search(rf"rm -f '?{re.escape(env['ISSUE_ROOT'])}/PAUSE", log)
     assert "run --resume" in log and "setsid" in log
     assert log.index("PAUSE") < log.index("run --resume")
+
+
+def test_the_fetch_copies_a_complete_phase_a_merge(tmp_path):
+    """The remote completeness check is real Bash: every name in one ``for`` header."""
+    round_ = _round(tmp_path)
+    env = _merge_box(tmp_path, "A", PHASE_A_NAMES)
+    done = _run("fetch", round_, tmp_path, **env)
+    assert done.returncode == 0, done.stderr
+    copied = Path(env["FETCH_DIR"])
+    assert sorted(path.name for path in copied.iterdir()) == sorted([*PHASE_A_NAMES,
+                                                                    "meta.json"])
+    assert f"box:{env['ISSUE_ROOT']}/out/" in (tmp_path / "rsync.log").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("missing", ["run.exit", "meta.json", PHASE_A_NAMES[0]])
+def test_the_fetch_refuses_a_partial_phase_a_merge(tmp_path, missing):
+    round_ = _round(tmp_path)
+    env = _merge_box(tmp_path, "A", PHASE_A_NAMES)
+    (tmp_path / "mining" / ("logs" if missing == "run.exit" else "out") / missing).unlink()
+    done = _run("fetch", round_, tmp_path, **env)
+    assert done.returncode != 0 and "no complete merge" in done.stderr
+    assert not (tmp_path / "rsync.log").exists()
+
+
+def test_the_fetch_refuses_a_run_that_did_not_exit_zero(tmp_path):
+    round_ = _round(tmp_path)
+    env = _merge_box(tmp_path, "A", PHASE_A_NAMES)
+    (tmp_path / "mining" / "logs" / "run.exit").write_text("3\n", encoding="utf-8")
+    done = _run("fetch", round_, tmp_path, **env)
+    assert done.returncode != 0 and "no complete merge" in done.stderr
+    assert not (tmp_path / "rsync.log").exists()

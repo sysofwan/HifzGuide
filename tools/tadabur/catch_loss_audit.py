@@ -276,23 +276,15 @@ def _reference_rows(export: Path, export_rows: Sequence[Mapping], spec: RoundSpe
 
 def _require_disclosure(spec: RoundSpec, rows: Sequence[Mapping],
                         reference: str | None) -> None:
-    """Refuse unless the grades reproduce the pre-registration's disclosed counts.
-
-    The counts are the pre-registration's facts about the round's own committed look sitting
-    (``docs/consonant-round3-preregistration.md``), so a spec that merely inherits them while
-    reading another root — a fixture, a staging copy — is held only to counts it declares
-    itself. A round that overrides the declaration, or reads its own root, is held to it.
-    """
+    """Refuse unless the grades reproduce the pre-registration's disclosed counts
+    (``docs/consonant-round3-preregistration.md``): words C95 flags, words the reference flags
+    and words both flag, over the look gating grades."""
     declared = spec.catch_loss_disclosure
     if not declared:
         return
     if reference is None:
         raise SystemExit(f"{spec.name} declares disclosed catch-loss counts without a "
                          "reference model: nothing can reproduce them")
-    registered = SPECS.get(spec.name)
-    if (registered is not None and spec.root != registered.root
-            and dict(declared) == dict(registered.catch_loss_disclosure)):
-        return
     found = look_grade_parity(rows, baseline=spec.baseline, reference=reference)
     if found != dict(declared):
         raise SystemExit(f"the look grades do not reproduce the pre-registration's disclosed "

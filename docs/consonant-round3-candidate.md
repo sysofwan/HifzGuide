@@ -269,3 +269,29 @@ coverage is the frozen prefix's, not the pool's.
       passed, and `assert_monitor` passed.
 - [x] `CONSONANT3.models` pins `r3_candidate_{live,ema}` (one checkpoint, step 10,000, recipe
       `aug94-mixture-v2`, SHA above); `docs/consonant-round3-candidate.md` records this run.
+
+## Known wording defect in the look record (#256)
+
+The P2 look sitting's `tools/tadabur/consonant3_readout/look.json` carries the rule line "fewer
+**Tarteel v1 look-half** false flags per 1,000 graded words". The sitting graded **tlog look
+gating**, not Tarteel v1. The numbers, the selector and the EMA choice are unaffected, and the
+population is recoverable from the committed record:
+
+- `tools/tadabur/consonant3_readout/decodes/meta.json` records `selection: look.gating`, the
+  tranche's `manifest_sha256` `7d7df748…` (`tools/tadabur/tlog/tranches/look.jsonl`), and 2,853
+  decoded rows per arm;
+- `look.json`'s `input_sha256` names that tranche and the three reused tlog look decodes (C95,
+  the teacher, round-2's EMA) plus round 3's two; every hash re-checks;
+- `freeze.json`'s `rule` names "tlog look gating" over the same 2,841 graded clips and 12
+  exclusions, and `look.json`'s `items: 2841` matches.
+
+The cause was `training/aug_readout.py:look_wording`: a round with one look role and no control
+fell through to #178's constant, which hardcodes #95's Tarteel v1 look half. Round 2 escaped it by
+decoding two arms. This commit adds `TLOG_NO_CONTROL_CHOICE_RULE`, chosen whenever the round's
+look set is `tlog.look`; #95's and round 2's wording is byte-unchanged, and
+`training/test_consonant_readout_round.py` pins all three.
+
+`look.json` and `look.claim.json` are **not** edited: `choice.json` binds `look.json`'s SHA-256,
+the gates sitting runs from that record, and a sitting reads once. The pre-claim, the readout and
+the verdict must read the choice as taken on tlog look gating (the pre-registration's "Weights"
+line); the rule text in `look.json` is the only defect.

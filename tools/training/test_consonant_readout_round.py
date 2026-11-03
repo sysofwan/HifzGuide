@@ -224,6 +224,17 @@ def test_95_s_look_wording_is_unchanged():
     assert ar.look_wording(asp.AUG95) == (ar.CHOICE_RULE, ar.CONTROL_ON_LOOK)
 
 
+def test_a_tlog_round_without_a_control_names_tlog_look_gating():
+    """Round 3 has one look role and no control, so it takes the no-control wording; that
+    wording must name the set the sitting grades, never #95's Tarteel v1 look half."""
+    rule, control = ar.look_wording(asp.CONSONANT3)
+    assert "fewer tlog look gating false flags" in rule
+    assert "no control arm" in rule and "Tarteel" not in rule
+    assert control == ar.NO_CONTROL_ON_LOOK
+    assert ar.look_wording(asp.CONSONANT2) == (
+        ar.PER_ARM_CHOICE_RULE, ar.PER_ARM_CONTROL_ON_LOOK)
+
+
 # --- the decode run -----------------------------------------------------------------------------
 
 

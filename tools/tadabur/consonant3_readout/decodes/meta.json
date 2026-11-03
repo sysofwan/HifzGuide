@@ -1,0 +1,53 @@
+{
+ "base_revision": null,
+ "checkpoint_sha256": {
+  "r3_candidate_ema": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+  "r3_candidate_live": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+ },
+ "code_sha": "da419d783990ef5ec675046bd5dc50e198adedbf",
+ "elapsed_seconds": null,
+ "gate": null,
+ "manifest_commit": "e11fbf52fef85adcadbad4cd468bdd37e6c4b944",
+ "manifest_rows": 2853,
+ "manifest_sha256": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57",
+ "models": [
+  "r3_candidate_live",
+  "r3_candidate_ema"
+ ],
+ "processes": 4,
+ "pull_request": null,
+ "pull_request_ref": null,
+ "rows": {
+  "r3_candidate_ema": 2853,
+  "r3_candidate_live": 2853
+ },
+ "selection": "look.gating",
+ "stores": [
+  "checks"
+ ],
+ "threads": 1,
+ "timings": {
+  "audio_seconds": 25184.8,
+  "decode_seconds": {
+   "r3_candidate_ema": {
+    "checks": 4336.9
+   },
+   "r3_candidate_live": {
+    "checks": 4320.1
+   }
+  },
+  "items": 2853,
+  "shards": 405,
+  "shared_feature_seconds": {
+   "checks": 983.3
+  },
+  "wall_seconds_summed_over_processes": 12294.2
+ },
+ "tranche_meta_sha256": "a49c75e166f63d6509d783b04b79616035a3b291ae9b09951afff732bd7f0462",
+ "word_spans": {
+  "fallback": 0,
+  "identified": 2853,
+  "rule": "the clip's S6 identified word_from/word_to (tlog/ident/look), joined by the row key",
+  "source": "tlog/ident/look"
+ }
+}

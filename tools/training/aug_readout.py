@@ -213,6 +213,10 @@ NO_CONTROL_CHOICE_RULE = (
     "the candidate's weights with fewer Tarteel v1 look-half false flags per 1,000 graded words "
     "(shipped default); a tie goes to higher word agreement with the teacher, then to live; no "
     "control arm (#178): the choice binds the candidate only")
+TLOG_NO_CONTROL_CHOICE_RULE = (
+    "the candidate's weights with fewer tlog look gating false flags per 1,000 graded words "
+    "(shipped default); a tie goes to higher word agreement with the teacher, then to live; no "
+    "control arm (#178): the choice binds the candidate only")
 PER_ARM_CHOICE_RULE = (
     "each arm's weights with fewer tlog look gating false flags per 1,000 graded words (shipped "
     "default); a tie goes to higher word agreement with the teacher, then to live; the "
@@ -224,12 +228,14 @@ PER_ARM_CONTROL_ON_LOOK = (
 
 def look_wording(spec: RoundSpec) -> tuple[str, str]:
     """The look artifact's rule and control note: #95 binds both arms at one selector, a round
-    that decodes both arms chooses each on its own, and a round with no control (``consonant1``)
-    says so (#179, #227)."""
+    that decodes both arms chooses each on its own, and a round with no control (``consonant1``,
+    or ``consonant3`` on the tlog tranche) says so and names the set it graded (#179, #227)."""
     if len(spec.look_roles) > 1:
         return PER_ARM_CHOICE_RULE, PER_ARM_CONTROL_ON_LOOK
     if CONTROL in spec.students:
         return CHOICE_RULE, CONTROL_ON_LOOK
+    if spec.look_set == TLOG_LOOK:
+        return TLOG_NO_CONTROL_CHOICE_RULE, NO_CONTROL_ON_LOOK
     return NO_CONTROL_CHOICE_RULE, NO_CONTROL_ON_LOOK
 
 

@@ -1,0 +1,25 @@
+{
+ "identities": {
+  "r3_candidate_ema": {
+   "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+   "model_ref": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "r3_candidate_live": {
+   "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+   "model_ref": "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  }
+ },
+ "issue": 251,
+ "look_inputs_sha256": "a26f83922fa78082211b90a76d60bd804e9ccba88a0582d2b06ceedc5e702afd",
+ "look_sha256": "93b9e7399272eb1f2eca934f2049f848365d95b34e2386dcc9717da785d2e57e",
+ "models": {
+  "candidate": "r3_candidate_ema"
+ },
+ "weights": "ema"
+}

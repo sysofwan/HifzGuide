@@ -1,41 +1,59 @@
 #!/usr/bin/env bash
-# issue-225-audit.sh — the round-2 catch-loss audit on cuda-dev (#225).
+# issue-225-audit.sh — the catch-loss audit on cuda-dev (#225, #257).
 #
 # Mac side, from the worktree root, after the pre-registration freeze and the live/EMA choice
 # are committed (the draw refuses without them):
 #   scripts/issue-225-audit.sh draw               # build the blind worklist on the box
 #   scripts/issue-225-audit.sh draw fetch DIR     # pull worklist/key/summary back, then commit
-#   scripts/issue-225-audit.sh ui launch          # serve the listening page on 0.0.0.0:8000
+#   scripts/issue-225-audit.sh ui launch          # serve the listening page (SPEC's port)
 #   scripts/issue-225-audit.sh backup launch      # copy verdicts and review every minute
 #   scripts/issue-225-audit.sh ui fetch DIR       # pull verdicts.jsonl and review.jsonl; commit
 #   scripts/issue-225-audit.sh backup fetch DIR   # pull the timestamped copies
+#
+# SPEC names the round and nothing else changes with it. consonant2 is the default and keeps
+# round 2's paths, port and draw (`/root/scratch/catch_loss`, :8000); consonant3 reads with
+# `--spec consonant3` from `tools/tadabur/consonant3_readout/catch_loss` and keeps its own
+# scratch root `/root/scratch/catch_loss_r3` and port :8001, so round 2's sitting keeps serving
+# untouched. ISSUE_ROOT and PORT override either.
 #
 # The worklist is committed before the UI starts: `ui launch` stages the current branch, so a
 # worklist that is only in the box's clone (drawn above, not committed) is gone on relaunch.
 # Restarting a running UI needs the owner's OK.
 #
-# Every job stages the current branch as a bundle on the box, writes one log and writes its
+# `draw` and `ui` stage the current branch as a bundle on the box; the backup loop only copies
+# within the scratch root, so its launch never re-clones. Every job writes one log and writes its
 # exit file last, so `check` never reads a log tail. Jobs run under setsid with stdin closed,
 # so they survive the ssh session. The UI reads the look clip cache #212 filled; no audio is
 # copied off the box.
 set -euo pipefail
 
+HOST_GIVEN=${HOST:+1}
 HOST=${HOST:-root@cuda-dev}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ENV_NAME=${ENV_NAME:-hifzguide}
 REPO_DIR=${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
-ROOT=${ISSUE_ROOT:-/root/scratch/catch_loss}
+SPEC_GIVEN=${SPEC:+1}
+SPEC=${SPEC:-consonant2}
+case "$SPEC" in
+  consonant2) SPEC_ROOT=/root/scratch/catch_loss; SPEC_PORT=8000; DRAW_ARG= ;;
+  consonant3) SPEC_ROOT=/root/scratch/catch_loss_r3; SPEC_PORT=8001; DRAW_ARG=" --spec $SPEC" ;;
+  *) echo "unknown SPEC '$SPEC' (consonant2|consonant3)" >&2; exit 2 ;;
+esac
+ROOT=${ISSUE_ROOT:-$SPEC_ROOT}
+PORT_GIVEN=${PORT:+1}
+PORT=${PORT:-$SPEC_PORT}
 LOGS=$ROOT/logs
 REPO=$ROOT/repo
 # The owner's verdicts and the sites queued for another listen live in the scratch root, not in
 # the clone: a relaunch re-clones and would drop them. `ui fetch` pulls both; commit them at
-# tools/tadabur/consonant2_readout/catch_loss/{verdicts,review}.jsonl.
+# tools/tadabur/${SPEC}_readout/catch_loss/{verdicts,review}.jsonl.
 VERDICTS=$ROOT/verdicts.jsonl
 REVIEW=$ROOT/review.jsonl
 BACKUP=$ROOT/backup
 # #212's look clip cache: each clip's source bytes as <audio_sha256>.audio.
+CLIPS_GIVEN=${CLIPS:+1}
 CLIPS=${CLIPS:-/root/scratch/tlog/r2/clips}
-AUDIT=tools/tadabur/consonant2_readout/catch_loss
+AUDIT=tools/tadabur/${SPEC}_readout/catch_loss
 TRANCHE=tools/tadabur/tlog/tranches/look.jsonl
 
 job=${1:-}
@@ -95,18 +113,25 @@ stage_repo() {
 command_for() {
   case "$job" in
     draw)
-      echo "python -u -m tadabur.catch_loss_audit draw --tranche '$REPO/$TRANCHE' && cp '$REPO/$AUDIT/worklist.jsonl' '$REPO/$AUDIT/key.jsonl' '$REPO/$AUDIT/summary.json' '$ROOT/'" ;;
+      echo "python -u -m tadabur.catch_loss_audit draw$DRAW_ARG --tranche '$REPO/$TRANCHE' && cp '$REPO/$AUDIT/worklist.jsonl' '$REPO/$AUDIT/key.jsonl' '$REPO/$AUDIT/summary.json' '$ROOT/'" ;;
     ui)
-      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port 8000 --host 0.0.0.0" ;;
+      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port $PORT --host 0.0.0.0" ;;
     backup)
       echo "mkdir -p '$BACKUP'; while true; do
-        cp '$VERDICTS' '$BACKUP/verdicts.\$(date +%s).jsonl' 2>/dev/null || true
-        cp '$REVIEW' '$BACKUP/review.\$(date +%s).jsonl' 2>/dev/null || true
+        cp '$VERDICTS' '$BACKUP/verdicts.'\$(date +%s)'.jsonl' 2>/dev/null || true
+        cp '$REVIEW' '$BACKUP/review.'\$(date +%s)'.jsonl' 2>/dev/null || true
         ls -1t '$BACKUP'/verdicts.*.jsonl 2>/dev/null | tail -n +101 | xargs -r rm -f
         ls -1t '$BACKUP'/review.*.jsonl 2>/dev/null | tail -n +101 | xargs -r rm -f
         sleep 60
       done" ;;
   esac
+}
+
+runner_body() {
+  # `draw` and `ui` run from the staged clone; the backup loop only copies within the scratch
+  # root, so it neither needs nor may re-clone (see `launch`).
+  [ "$job" = backup ] || echo "cd '$REPO/tools' || exit 1"
+  command_for
 }
 
 write_runner() {
@@ -115,8 +140,7 @@ write_runner() {
 set -uo pipefail
 source '$CONDA'
 conda activate $ENV_NAME
-cd '$REPO/tools' || exit 1
-$(command_for)
+$(runner_body)
 code=\$?
 echo \"\$code\" > '$LOGS/$NAME.exit'
 exit \$code
@@ -124,17 +148,110 @@ SH
 chmod +x '$ROOT/run-$NAME.sh'"
 }
 
+# The page's first queue item, fetched the way the browser does it: `/api/sites`, then that
+# item's clip. A queue that answers but cannot serve a clip is the failure this page has (a
+# cache miss or a hash mismatch), so the probe reads the clip too and a failed launch says so.
+audio_probe() {
+  remote "python3 - <<'PY'
+import json, time, urllib.request
+base = 'http://127.0.0.1:$PORT'
+for _ in range(20):
+    try:
+        sites = json.load(urllib.request.urlopen(base + '/api/sites', timeout=2))['sites']
+        break
+    except OSError:
+        time.sleep(1)
+else:
+    raise SystemExit('the page never answered /api/sites')
+clip = urllib.request.urlopen(
+    base + '/api/audio?key=' + sites[0]['key'] + '&whole=0', timeout=10).read()
+print(len(sites), 'items;', sites[0]['key'], 'audio', len(clip), 'bytes')
+PY"
+}
+
+# The port's listener, as `ss` names it; empty when nothing is bound. A `ui` launch refuses an
+# occupied port instead of reporting whatever already answers there as the new sitting.
+listener_pid() {
+  remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' | head -1"
+}
+
+# Whether the job just started owns the listener: its runner's child is the pid `ss` reports.
+# The audio probe alone cannot tell this job from an earlier sitting that still answers, so an
+# absent child is a mismatch (a dead runner must never match), and the pid matches whole — the
+# field's delimiter included, or `pid=424` would claim a listener `pid=4242`.
+serves_from() {  # runner pid
+  local server holder
+  server=$(remote "pgrep -P '$1' | head -1")
+  case "$server" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  holder=$(remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' | head -1")
+  case "$holder" in
+    *"pid=$server,"*|*"pid=$server)"*) return 0 ;;
+  esac
+  return 1
+}
+
+# A copyable check that selects this launch's root and port: a one-command environment
+# assignment does not survive into the next command, so repeat every setting given explicitly.
+launch_hint() {
+  local hint="scripts/issue-225-audit.sh $job check"
+  if [ -n "${SPEC_GIVEN:-}" ]; then hint="SPEC=$SPEC $hint"; fi
+  if [ -n "${ISSUE_ROOT:-}" ]; then hint="ISSUE_ROOT='$ISSUE_ROOT' $hint"; fi
+  if [ -n "${PORT_GIVEN:-}" ]; then hint="PORT=$PORT $hint"; fi
+  if [ -n "${CLIPS_GIVEN:-}" ]; then hint="CLIPS='$CLIPS' $hint"; fi
+  if [ -n "${HOST_GIVEN:-}" ]; then hint="HOST='$HOST' $hint"; fi
+  echo "$hint"
+}
+
 launch() {
-  stage_repo
+  # Relaunching `draw` or `ui` re-clones the branch under the scratch root, and the page's html
+  # and js are read from disk, so a launch mid-sitting leaves a serving page unable to load its
+  # assets; the backup loop stays safe because it never stages.
+  local pid probe= status=0
+  if [ "$job" = ui ]; then
+    pid=$(listener_pid)
+    if [ -n "$pid" ]; then
+      echo "port $PORT on $HOST is already bound; nothing was staged or started:" >&2
+      echo "  $pid" >&2
+      return 1
+    fi
+  fi
+  if [ "$job" = backup ]; then
+    remote "mkdir -p '$ROOT' '$LOGS'"
+  else
+    stage_repo
+  fi
   write_runner
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
           echo \$! > '$LOGS/$NAME.pid'"
+  pid=$(remote "cat '$LOGS/$NAME.pid'")
+  if [ "$job" = ui ]; then
+    if remote "test -f '$LOGS/$NAME.exit'"; then
+      echo "the job exited $(remote "cat '$LOGS/$NAME.exit'") before serving" >&2
+      return 1
+    fi
+    probe=$(audio_probe) || status=$?
+    if [ "$status" -eq 0 ] && ! serves_from "$pid"; then
+      echo "port $PORT on $HOST is not served by the job just started (pid $pid)" >&2
+      status=1
+    fi
+    if [ "$status" -ne 0 ]; then
+      echo "the ui did not come up: $HOST:$LOGS/$NAME.log" >&2
+      return "$status"
+    fi
+  fi
   echo "job started on $HOST"
-  echo "  pid:  $(remote "cat '$LOGS/$NAME.pid'")"
+  echo "  pid:  $pid"
   echo "  log:  $HOST:$LOGS/$NAME.log"
   echo "  exit: $HOST:$LOGS/$NAME.exit (0 = clean; absent while running)"
-  echo "  check with: scripts/issue-225-audit.sh $job check"
+  if [ "$job" = ui ]; then
+    echo "  url:  http://${HOST#*@}:$PORT/"
+    echo "  stop: kill -- -$pid   # the job's process group (runner and server); ask the owner first"
+    echo "  audio: $probe"
+  fi
+  echo "  check with: $(launch_hint)"
 }
 
 check() {

@@ -11,7 +11,8 @@ each site and record **what the reciter said**, one shuffled queue across three 
   rejects come up here and in shaddah, indistinguishable from the mined sites;
 * **word** — was the highlighted word recited correctly: yes, no or unclear. Ship A's random
   word sample (:mod:`tadabur.word_sample`, #126) asks it, given with ``--words``; so does the
-  round-2 catch-loss audit (:mod:`tadabur.catch_loss_audit`, #225), given with
+  catch-loss audit (:mod:`tadabur.catch_loss_audit`, #225 round 2,
+  #257 round 3), given with
   ``--catch-loss`` and its look clip cache with ``--clip-cache``. The word is shown whole,
   since judging it needs its text; it may be a word another row asks about (in another
   recitation), so word rows are asked **after** every other row (:func:`queue`), once those
@@ -56,7 +57,7 @@ Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the
   python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000] \
       [--worklist tadabur/ship_a/worklist.jsonl --words tadabur/ship_a/word_sample.jsonl]
 
-or the round-2 catch-loss audit's worklist alone, playing each look clip whole from the box's
+or the catch-loss audit's worklist alone, playing each look clip whole from the box's
 cache (``scripts/issue-225-audit.sh ui launch`` on cuda-dev)::
 
   python -m tadabur.tashkeel_audit_ui --catch-loss <catch_loss/worklist.jsonl> \
@@ -397,7 +398,7 @@ class SessionState:
         cls, worklist: Path, verdicts: Path, clip_cache: Path,
         uthmani_words, review: Path | None = None,
     ) -> "SessionState":
-        """The round-2 catch-loss audit's worklist (#225) in its one seeded queue, once every
+        """The catch-loss audit's worklist (#225, #257) in its one seeded queue, once every
         look clip is verified against the SHA-256 its row records: the page is asked the
         whole-word question and never sees a stratum, a grade or a weight."""
         rows = read_catch_loss_worklist(worklist, uthmani_words)
@@ -591,7 +592,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--worklist", type=Path, default=None,
                         help=f"the session's worklist (default: {WORKLIST_PATH.name})")
     parser.add_argument("--catch-loss", type=Path, default=None,
-                        help="the round-2 catch-loss audit's worklist (#225): its items are "
+                        help="the catch-loss audit's worklist (#225, #257): its items are "
                              "the queue, not this worklist")
     parser.add_argument("--clip-cache", type=Path, default=None,
                         help="the box's look clip cache (tlog/r2/clips), needed with "

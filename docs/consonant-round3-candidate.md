@@ -295,3 +295,38 @@ look set is `tlog.look`; #95's and round 2's wording is byte-unchanged, and
 the gates sitting runs from that record, and a sitting reads once. The pre-claim, the readout and
 the verdict must read the choice as taken on tlog look gating (the pre-registration's "Weights"
 line); the rule text in `look.json` is the only defect.
+
+## The gates sitting (#256)
+
+`scripts/issue-256-decode.sh gates` decoded the committed choice (`r3_candidate_ema`, EMA) on the
+four non-tlog guard sets and wrote G6's held-out caches. Round 3 has no control arm, so nothing
+else was decoded: the teacher, C95 and round 2's EMA are context columns read from their committed
+decodes.
+
+| item | value |
+|---|---|
+| launched (UTC) / wall time | `2026-11-02T23:22:35Z` → `2026-11-03T01:56:29Z`, **2.57 h** (last shard `01:40:33Z`; G6's caches took the rest) |
+| GPU | cuda-dev, one GPU with `/root/scratch/gpu.lock` held throughout: **2.57 GPU-h**; decode seconds summed over the four concurrent processes 29,305 s (8.14 h) |
+| launch commit | `8a8bcac` (`agent/r3-look`, merged as PR #280), cloned onto the box as `/root/scratch/issue-256/repo` |
+| processes | 4 × 1 thread, shared features (`--share-features`), `BUDGET` 28,800 s |
+| exit | `run.exit` 0; all 21 shard jobs record exit 0 in `logs/events` |
+| clips staged | Ship A held-out 357 of 357; Tadabur dev-unseen 671 of 671 |
+
+| set | shards | decoded rows | real audio |
+|---|---|---|---|
+| `tarteel_v1.confirm` | 8 | 4,413 | 40,739.8 s (11.3 h) |
+| `qdat` | 2 | 1,505 | 13,939.3 s (3.9 h) |
+| `qud_other` | 10 | 10,261 | 86,479.9 s (24.0 h) |
+| `tadabur_dev_unseen` | 1 | 671 | 10,179.0 s (2.8 h) |
+| **total** | **21** | **16,850** | **42.04 h** |
+
+The identities are the choice's: `r3_candidate_ema`, EMA weights, step 10,000, recipe
+`aug94-mixture-v2`, checkpoint SHA-256 `1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9`.
+`training.aug_readout merge --spec consonant3` validated each set/model identity against the
+round's spec and pins, refused repeated items, checked each set's count, and wrote
+`tools/tadabur/consonant3_readout/models.json`; the four `decodes/<set>.r3_candidate_ema.jsonl.gz`
+files and `truth_baseline/{decodes,checks}/r3_candidate_ema.json` (363 held-out span items) are
+committed with them.
+
+No tlog `confirm.3`/`confirm.4` row was read, no tranche is claimed, and no grade was taken: this
+sitting only materialises the guard sets' decodes.

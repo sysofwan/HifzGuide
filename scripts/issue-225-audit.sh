@@ -176,10 +176,20 @@ listener_pid() {
 }
 
 # Whether the job just started owns the listener: its runner's child is the pid `ss` reports.
-# The audio probe alone cannot tell this job from an earlier sitting that still answers.
+# The audio probe alone cannot tell this job from an earlier sitting that still answers, so an
+# absent child is a mismatch (a dead runner must never match), and the pid matches whole — the
+# field's delimiter included, or `pid=424` would claim a listener `pid=4242`.
 serves_from() {  # runner pid
-  remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' \
-    | grep -q \"pid=\$(pgrep -P '$1' | head -1)\""
+  local server holder
+  server=$(remote "pgrep -P '$1' | head -1")
+  case "$server" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  holder=$(remote "ss -ltnp 2>/dev/null | grep -F ':$PORT ' | head -1")
+  case "$holder" in
+    *"pid=$server,"*|*"pid=$server)"*) return 0 ;;
+  esac
+  return 1
 }
 
 # A copyable check that selects this launch's root and port: a one-command environment
@@ -218,16 +228,17 @@ launch() {
           echo \$! > '$LOGS/$NAME.pid'"
   pid=$(remote "cat '$LOGS/$NAME.pid'")
   if [ "$job" = ui ]; then
+    if remote "test -f '$LOGS/$NAME.exit'"; then
+      echo "the job exited $(remote "cat '$LOGS/$NAME.exit'") before serving" >&2
+      return 1
+    fi
     probe=$(audio_probe) || status=$?
     if [ "$status" -eq 0 ] && ! serves_from "$pid"; then
-      echo "port $PORT on $HOST is served by a process other than the job just started" >&2
+      echo "port $PORT on $HOST is not served by the job just started (pid $pid)" >&2
       status=1
     fi
     if [ "$status" -ne 0 ]; then
       echo "the ui did not come up: $HOST:$LOGS/$NAME.log" >&2
-      if remote "test -f '$LOGS/$NAME.exit'"; then
-        echo "  exit $(remote "cat '$LOGS/$NAME.exit'")" >&2
-      fi
       return "$status"
     fi
   fi

@@ -28,6 +28,9 @@ R3_AUDIT = "tools/tadabur/consonant3_readout/catch_loss"
 TRANCHE = "tools/tadabur/tlog/tranches/look.jsonl"
 
 
+LIVE = 'LISTEN 0 5 0.0.0.0:8001 0.0.0.0:* users:(("python",pid=4242,fd=3))'
+
+
 @pytest.fixture
 def stage(tmp_path: Path) -> Path:
     """A one-commit repository for the launcher to bundle (the real one is large and slow)."""
@@ -41,23 +44,34 @@ def stage(tmp_path: Path) -> Path:
     return repo
 
 
-def _launch(tmp_path: Path, repo: Path, *args: str, listens: str = "", fail: str = "",
+def _launch(tmp_path: Path, repo: Path, *args: str, listens: str = "",
+            listens_after: str = LIVE, child: str = "4242",
             **env: str) -> subprocess.CompletedProcess:
     """Run the script with ``ssh`` (every remote command appended to ``ssh.log``) and ``rsync``
-    shimmed; ``ISSUE_ROOT`` is left to the script unless a test sets it. ``listens`` is the line
-    ``ss -ltnp`` prints, ``fail`` a pattern whose remote command fails, and both default to a
-    box that answers nothing and succeeds."""
+    shimmed; ``ISSUE_ROOT`` is left to the script unless a test sets it.
+
+    The box starts with the port free (`listens` empty, no ui exit file); starting the ui
+    creates the marker that makes ``ss -ltnp`` report ``listens_after``, and ``pgrep -P``
+    reports ``child`` (empty: the runner has no server). The launcher's own pipeline runs
+    unchanged against those answers."""
+    marker = tmp_path / "launched"
     shim = tmp_path / "bin"
     shim.mkdir(exist_ok=True)
     (shim / "ssh").write_text(f"""#!/usr/bin/env bash
 printf '%s\\n' "$*" >> '{tmp_path}/ssh.log'
 cat > /dev/null
+case "$*" in *'test -f '*'.exit'*) exit 1 ;; esac
 if [ -n '{listens}' ]; then
   case "$*" in *'ss -ltnp'*) printf '%s\\n' '{listens}'; exit 0 ;; esac
 fi
-if [ -n '{fail}' ]; then
-  case "$*" in *'{fail}'*) exit 1 ;; esac
+if [ -f '{marker}' ] && [ -n '{listens_after}' ]; then
+  case "$*" in *'ss -ltnp'*) printf '%s\\n' '{listens_after}'; exit 0 ;; esac
 fi
+if [ -n '{child}' ]; then
+  case "$*" in *'pgrep -P'*) printf '%s\\n' '{child}'; exit 0 ;; esac
+fi
+case "$*" in *'pgrep -P'*) exit 1 ;; esac
+case "$*" in *'run-ui.sh'*) : > '{marker}' ;; esac
 exit 0
 """, encoding="utf-8")
     (shim / "rsync").write_text(f"""#!/usr/bin/env bash
@@ -236,14 +250,30 @@ def test_an_occupied_port_is_refused_before_anything_is_staged(tmp_path, stage):
     assert "git clone" not in _remote(tmp_path)
 
 
-def test_a_launch_fails_when_another_server_answers_the_port(tmp_path, stage):
-    """The probe succeeds against whatever listens; the launch must still fail unless the
-    listener is the job's own server."""
-    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", fail="pgrep -P")
+def test_a_launch_fails_when_the_runner_left_no_server(tmp_path, stage):
+    """The runner died and another server took the port: the probe succeeds, so only the
+    ownership check can refuse it — and an absent child must never match."""
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", child="")
 
     assert done.returncode == 1, _text(done)
-    assert "other than the job just started" in done.stderr
+    assert "not served by the job just started" in done.stderr
     assert "job started" not in done.stdout
+
+
+def test_a_launch_fails_when_the_child_pid_only_prefixes_the_listener(tmp_path, stage):
+    """`pid=424` is not `pid=4242`: the match includes the field's delimiter."""
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", child="424")
+
+    assert done.returncode == 1, _text(done)
+    assert "not served by the job just started" in done.stderr
+    assert "job started" not in done.stdout
+
+
+def test_a_launch_passes_when_the_listener_is_the_runners_child(tmp_path, stage):
+    done = _launch(tmp_path, stage, "ui", "launch", SPEC="consonant3", child="4242")
+
+    assert done.returncode == 0, _text(done)
+    assert "audio:" in done.stdout
 
 
 def test_an_unknown_spec_is_refused_before_anything_reaches_the_box(tmp_path, stage):

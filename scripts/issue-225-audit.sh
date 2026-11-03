@@ -122,14 +122,20 @@ command_for() {
   esac
 }
 
+runner_body() {
+  # `draw` and `ui` run from the staged clone; the backup loop only copies within the scratch
+  # root, so it neither needs nor may re-clone (see `launch`).
+  [ "$job" = backup ] || echo "cd '$REPO/tools' || exit 1"
+  command_for
+}
+
 write_runner() {
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
 source '$CONDA'
 conda activate $ENV_NAME
-cd '$REPO/tools' || exit 1
-$(command_for)
+$(runner_body)
 code=\$?
 echo \"\$code\" > '$LOGS/$NAME.exit'
 exit \$code
@@ -138,7 +144,14 @@ chmod +x '$ROOT/run-$NAME.sh'"
 }
 
 launch() {
-  stage_repo
+  # Relaunching `draw` or `ui` re-clones the branch under the scratch root, and the page's html
+  # and js are read from disk, so a launch mid-sitting leaves a serving page unable to load its
+  # assets; the backup loop stays safe because it never stages.
+  if [ "$job" = backup ]; then
+    remote "mkdir -p '$ROOT' '$LOGS'"
+  else
+    stage_repo
+  fi
   write_runner
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
@@ -151,7 +164,7 @@ launch() {
   echo "  exit: $HOST:$LOGS/$NAME.exit (0 = clean; absent while running)"
   if [ "$job" = ui ]; then
     echo "  url:  http://${HOST#*@}:$PORT/"
-    echo "  stop: kill $pid   # ask the owner first while a sitting is running"
+    echo "  stop: kill -- -$pid   # the job's process group (runner and server); ask the owner first"
     echo "  probe: curl -fsS -o /dev/null -w '%{http_code}\n' http://${HOST#*@}:$PORT/api/sites"
   fi
   echo "  check with: scripts/issue-225-audit.sh $job check"

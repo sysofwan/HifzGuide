@@ -80,14 +80,20 @@ Not yet listened.
 ### Before it starts
 
 ```
-SPEC=consonant3 scripts/issue-225-audit.sh ui launch    # serve 0.0.0.0:8001 on cuda-dev
+SPEC=consonant3 scripts/issue-225-audit.sh ui launch      # serve 0.0.0.0:8001 on cuda-dev
 SPEC=consonant3 scripts/issue-225-audit.sh backup launch  # copy verdicts + review every minute
 ```
 
 `launch` prints the URL, the pid, the log path, how to stop it and a probe. The page is at
-`http://10.0.1.195:8001/`. Do not relaunch mid-sitting without the owner's OK: a relaunch
-re-clones the branch under the scratch root (`verdicts.jsonl` and `review.jsonl` survive), but an
-owner with the page open sees a dropped session.
+`http://10.0.1.195:8001/` (round 2's UI keeps serving on `:8000`, untouched). The backup loop
+never stages the clone, so it can start before or after the UI.
+
+Do not launch `ui` or `draw` again mid-sitting: a launch re-clones the branch under the scratch
+root, the page's html and js are read from disk, and the running process holds the port, so the
+sitting goes down rather than restarts. The open page also starts a fresh session while the old
+answers stay in `verdicts.jsonl`. Use the stop command `launch` printed (the job's process group)
+if a restart is ever needed, with the owner's OK; `verdicts.jsonl` and `review.jsonl` survive
+either way.
 
 ### What the owner does
 

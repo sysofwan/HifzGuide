@@ -173,23 +173,27 @@ capped to 1: phase B holds three decoders and its peak is unmeasured`. Phase B t
 whole-clip worker at a time — the position the #272 VRAM cap leaves it in until three resident
 decoders' peak is measured.
 
-**GPU time: 80,547 lock-held seconds = 22.37 GPU-h**, over 264 batches (mean 305 s held per
-batch — essentially every batch ran its 300 s `BATCH_SECONDS` budget out). Each row costs 7.57
-s of GPU across the six decodes it needs (two stores × three models); the pre-registration's
-~4–6 GPU-h estimate assumed far less per row and did not survive contact with a `P=1` worker
-decoding `checks` and whole-clip `spans` for three models.
+**GPU time: 80,547 lock-held seconds = 22.37 GPU-h**, over 263 worker batches plus the terminal
+empty iteration `batches=` counts (mean 305 s held per increment — essentially every worker ran
+its 300 s `BATCH_SECONDS` budget out). Each row costs 7.57 s of GPU across the six decodes it
+needs (two stores × three models); the pre-registration's ~4–6 GPU-h estimate assumed far less
+per row and did not survive contact with a `P=1` worker decoding `checks` and whole-clip `spans`
+for three models.
 
 **Time yielded to round 3: 12,900 s = 3.58 h**, 13.8% of the held-plus-yielded 93,447 s. Every
-increment is one 30 s `yield_seconds` sleep: 264 after a batch, and 166 before a lock try whose
-non-blocking acquire found the lock taken — so round 3's jobs held the GPU for at least 4,980 s
-of this run without being waited on. Wall time was 26 h 09 m 10 s (2026-11-03T00:27:29Z →
-2026-11-04T02:36:39Z); the 703 s outside held-plus-yielded is the loop's gates checks, lock
-tries and start-up.
+increment is one 30 s `yield_seconds` sleep: 263 after a worker batch, and 167 before a lock try
+whose non-blocking acquire found the lock taken. `batches=264` is 263 worker invocations plus the
+iteration that finds no row left — it acquires the lock, starts no worker, returns, and does not
+sleep. A failed acquire observes the lock only at that instant: the holder can release it moments
+later, leaving most of the following sleep idle, so the 167 failures are yield attempts, not a
+measure of round 3's occupancy. The measured yield is the 12,900 s itself. Wall time was
+26 h 09 m 10 s (2026-11-03T00:27:29Z → 2026-11-04T02:36:39Z); the 703 s outside held-plus-yielded
+is the loop's gates checks, lock tries and start-up.
 
 **One batch shape worth knowing.** The batch loop raises a fresh worker per batch, so the
 decoders reload from disk each time: the log repeats the 816-tensor `Loading weights` group 263
-times for 264 batches. The loads are fast (≈9,000 tensors/s), so they are not the GPU cost —
-the cost is the six per-row decodes at one worker.
+times — one per worker batch. The loads are fast (≈9,000 tensors/s), so they are not the GPU
+cost — the cost is the six per-row decodes at one worker.
 
 ### Audio
 
@@ -202,9 +206,13 @@ parts are what make a resume possible.
 
 ## Changelog
 
+- 2026-11-04: review correction. The yield decomposition is 263 post-worker and 167
+  failed-acquire sleeps — the 264th `batches=` increment is the terminal empty iteration, which
+  starts no worker and sleeps not at all — and the failed polls are no longer read as a lower
+  bound on round 3's occupancy. The 22.37 lock-held GPU-h and 3.58 yielded hours stand.
 - 2026-11-04: phase B committed. The note records the `P=1` cap, 10,642 decoded rows against
-  10,668 mineable (26 listed, 0.24%), the `label_source` counts, 22.37 GPU-h held over 264
-  batches and the 3.58 h yielded to round 3.
+  10,668 mineable (26 listed, 0.24%), the `label_source` counts, 22.37 GPU-h held over 263
+  worker batches and the 3.58 h yielded to round 3.
 - 2026-11-02: phase A committed; the note records the 15:03:25Z OOM abort, the `P=1` resume
   under #272, the measured and estimated GPU time, and the 60 s yielded to round 3.
 - 2026-11-02: the row split and the GPU reconstruction corrected after review. The earlier

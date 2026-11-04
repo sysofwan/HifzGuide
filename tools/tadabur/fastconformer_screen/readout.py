@@ -164,7 +164,7 @@ def qdat_disagreement(lines: Mapping[str, dict]) -> dict:
     for key, line in sorted(lines.items()):
         passage = passages[key]
         first, last = passage["word_from"], passage["word_to"]
-        words = imlaei_words(line["surah_ayah"], first - 1, last - first + 1)
+        words = imlaei_words(passage["surah_ayah"], first - 1, last - first + 1)
         bad, total = disagree(words, line["ctc"])
         observations.append((passage["reciter"], bad, total))
     view = _rate({"fastconformer": observations}, (), 1000.0)

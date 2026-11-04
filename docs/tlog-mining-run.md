@@ -1,12 +1,12 @@
 # tlog mining: run note
 
-**Status (2026-11-02, 15:29:06Z):** phase A is complete. The box wrote `run.exit = 0` and the
-launcher fetched the merge; this note is committed with the output it describes.
+**Status (2026-11-04, 02:36:39Z):** phases A and B are complete. Each run wrote `run.exit = 0`
+and the launcher fetched its merge; this note is committed with the output it describes.
 
 Issue: [#263](https://github.com/sysofwan/HifzGuide/issues/263) (parent #261). Phase A is the
 teacher-only timing pass [`docs/tlog-mining-amendment.md`](tlog-mining-amendment.md) §5 allows
-without a claim. Phases B and C did not run and are not covered here; their sections are added
-when their own runs finish.
+without a claim. Phase C did not run — it waits for round 3's verdict and its committed
+live/EMA choice — and is not covered here; its section is added when its own run finishes.
 
 ## Phase A: the teacher's word times
 
@@ -53,7 +53,7 @@ read, so the set is reproducible and cannot leak a model's output through a snip
   these ayahs — 106:1–106:4, 55:17, 90:8, 90:9, 90:10 — which is #248's failure, recorded here
   per clip. A re-read of that issue, not a phase-A change, resolves them.
 
-## Compute and give-way
+### Compute and give-way
 
 The run's teacher is `obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5`
 (fingerprint in `word_times/meta.json`: whole-spans, bf16 weights, fp32 features, batch 1), and
@@ -99,7 +99,7 @@ The 15:03:25Z–15:20:38Z window was a dead run, not a yield, and round 3's smok
 (15:05:24Z–15:20:15Z, `/root/scratch/issue-252/logs/events`). Phase A therefore cost round 3 no
 GPU time; the box was idle for round 3's own run.
 
-## Audio
+### Audio
 
 8,615 clips (2.3 GB) were fetched to `/root/scratch/tlog-mining/clips/` by provenance, hardlinked
 from round 2's look clip cache where present, and every clip's SHA-256 was checked before
@@ -110,8 +110,109 @@ committed word-time files: the pin is `TLOG.revision` in `tools/tadabur/nonpro_s
 `split`, `shard_file`, `row`, `audio_path` and `audio_sha256`, so the audio re-downloads at that
 revision and is checked against the row's checksum.
 
+## Phase B: the confirm.1/2 pool extension
+
+`tools/tadabur/tlog_mining/decodes/`, produced by the same launcher (`run --phase B`, then the
+merge) from the staged clone at `94e7ba0b4fc4ae28e71a1045a4eba5fffa948de3`:
+
+| file | SHA-256 |
+|---|---|
+| `tlog.mined.base.jsonl.gz` | `a31c4f0535c0bd3a4cd8ff6e7d1b6578fb03e2757e0530a7263a1b6784e49448` |
+| `tlog.mined.c95.jsonl.gz` | `b9b1e3526a77201a91725943062d3bf4faf15a30bf1b1bc2622321cff0444607` |
+| `tlog.mined.r2_candidate_ema.jsonl.gz` | `4630d0902c96c884f01357432036522d5d64ebc636f7ca85ffe157f6c9c12150` |
+| `meta.json` | `f879be7520ff3c1930a28ab449455a5648037d6c3f5d6def8aa82062b57457d3` |
+
+`meta.json` pins `code_sha`, the producer set (`base`, `c95`, `r2_candidate_ema`), the two
+tranches, the per-model row count, the `label_source` tallies and the 26 listed rows. Its
+`identities` section carries each producer's identity — the teacher at
+`obadx/muaalem-model-v3_2@01a1ef9f…`, C95 and the EMA candidate at their checkpoints — with the
+`checks` and `spans` fingerprints (bf16 weights, fp32 features, batch 1). `pull_request` and
+`pull_request_ref` are null for the same reason as phase A.
+
+**Rows.** `phase_b_rows` selects the labelled `reported:*` rows of confirm.1 and confirm.2:
+10,668. The 26 whose `assigned_label` does not phonetize (#248) are listed in `meta.json` and
+never fetched or decoded, so each file holds **10,642 rows** — the same 10,642 unique keys in
+all three:
+
+| tranche | mineable rows | decoded | listed (#248) |
+|---|---|---|---|
+| confirm.1 | 5,341 | 5,325 | 16 |
+| confirm.2 | 5,327 | 5,317 | 10 |
+| total | 10,668 | 10,642 | 26 |
+
+The listed rows are the failure phase A recorded per clip, the same eight ayat (106:1–106:4,
+55:17, 90:8, 90:9, 90:10): 15 straddles, 6 labelled unclean, 4 below-bar and 1 identified. The
+phase B fallback rate is therefore **0.24%** of the mineable pool.
+
+| stratum | rows | `label_source` |
+|---|---|---|
+| `reported:straddles` | 4,256 | `both` 2,634, `identified` 806, `filename` 816 |
+| `reported:unclean` | 3,840 | `identified` 3,840 |
+| `reported:below_bar` | 1,719 | `filename` 1,719 |
+| `reported:identified` | 827 | `identified` 827 |
+
+Per `label_source`: **identified 5,473, both 2,634, filename 2,535**. The source follows the
+stratum — `both` only on straddles, `filename` on below-bar and straddles, `identified` on
+identified and unclean — because the stratum is where the reference was read.
+
+**Shape.** Each record carries round 2's confirm-decode keys — `key`, `tranche`, `stratum`,
+`split`, `shard_file`, `row`, `audio_filename`, `audio_sha256`, `start_sample`, `end_sample`,
+`surah_ayah`, `word_from`, `word_to`, `assigned_label` — plus the two phase B fields: the
+reference's `label_source`, and `spans`, the whole-clip span decode. `checks` is the app's check
+sequence. Both stores are per model, so the three files differ in `checks` and `spans` and agree
+on everything else.
+
+### Compute and give-way
+
+`run.out`'s line: `stopped=done batches=264 gpu_seconds=80547 yielded_seconds=12900`, and the
+merge's counts (`label sources: {'filename': 2535, 'both': 2634, 'identified': 5473}`,
+`unphonetizable: 26 rows listed (#248)`, 10,642 rows for each model) match the committed files.
+
+**The launcher asked for `P=2` and the code capped it to 1**, its first log line: `parallel
+capped to 1: phase B holds three decoders and its peak is unmeasured`. Phase B therefore ran one
+whole-clip worker at a time — the position the #272 VRAM cap leaves it in until three resident
+decoders' peak is measured.
+
+**GPU time: 80,547 lock-held seconds = 22.37 GPU-h**, over 263 worker batches plus the terminal
+empty iteration `batches=` counts (mean 305 s held per increment — essentially every worker ran
+its 300 s `BATCH_SECONDS` budget out). Each row costs 7.57 s of GPU across the six decodes it
+needs (two stores × three models); the pre-registration's ~4–6 GPU-h estimate assumed far less
+per row and did not survive contact with a `P=1` worker decoding `checks` and whole-clip `spans`
+for three models.
+
+**Time yielded to round 3: 12,900 s = 3.58 h**, 13.8% of the held-plus-yielded 93,447 s. Every
+increment is one 30 s `yield_seconds` sleep: 263 after a worker batch, and 167 before a lock try
+whose non-blocking acquire found the lock taken. `batches=264` is 263 worker invocations plus the
+iteration that finds no row left — it acquires the lock, starts no worker, returns, and does not
+sleep. A failed acquire observes the lock only at that instant: the holder can release it moments
+later, leaving most of the following sleep idle, so the 167 failures are yield attempts, not a
+measure of round 3's occupancy. The measured yield is the 12,900 s itself. Wall time was
+26 h 09 m 10 s (2026-11-03T00:27:29Z → 2026-11-04T02:36:39Z); the 703 s outside held-plus-yielded
+is the loop's gates checks, lock tries and start-up.
+
+**One batch shape worth knowing.** The batch loop raises a fresh worker per batch, so the
+decoders reload from disk each time: the log repeats the 816-tensor `Loading weights` group 263
+times — one per worker batch. The loads are fast (≈9,000 tensors/s), so they are not the GPU
+cost — the cost is the six per-row decodes at one worker.
+
+### Audio
+
+10,642 clips (5.0 GB) were fetched to `/root/scratch/tlog-mining/B/clips/`, hardlinked from
+round 2's clip cache where present. Each is stored under its recorded `audio_sha256` and checked
+before its rows decode: a mismatch raises, and the run exited 0 with a record for every row, so
+all 10,642 matched. The 26 listed rows were never fetched. **No audio is committed.** The clips
+are still on the box (disposable scratch, re-downloadable at the pinned revision); the 162 MB of
+parts are what make a resume possible.
+
 ## Changelog
 
+- 2026-11-04: review correction. The yield decomposition is 263 post-worker and 167
+  failed-acquire sleeps — the 264th `batches=` increment is the terminal empty iteration, which
+  starts no worker and sleeps not at all — and the failed polls are no longer read as a lower
+  bound on round 3's occupancy. The 22.37 lock-held GPU-h and 3.58 yielded hours stand.
+- 2026-11-04: phase B committed. The note records the `P=1` cap, 10,642 decoded rows against
+  10,668 mineable (26 listed, 0.24%), the `label_source` counts, 22.37 GPU-h held over 263
+  worker batches and the 3.58 h yielded to round 3.
 - 2026-11-02: phase A committed; the note records the 15:03:25Z OOM abort, the `P=1` resume
   under #272, the measured and estimated GPU time, and the 60 s yielded to round 3.
 - 2026-11-02: the row split and the GPU reconstruction corrected after review. The earlier

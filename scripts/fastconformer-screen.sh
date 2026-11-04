@@ -130,7 +130,7 @@ cd '$REPO/tools' || exit 1
 set -o pipefail
 for set_name in ship-a edits qdat; do
   case "\$set_name" in
-    ship-a) dir='/root/scratch/issue-126/stage/clips' ;;
+    ship-a) dir='$ROOT/audio/edit_sources' ;;
     edits) dir='$EDITS/audio' ;;
     qdat) dir='$ROOT/qdat_cache' ;;
   esac

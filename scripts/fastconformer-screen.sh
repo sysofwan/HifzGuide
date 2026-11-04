@@ -69,7 +69,10 @@ command_for() {
 test -x '$VENV/bin/python' || /root/miniconda3/envs/hifzguide/bin/python -m venv '$VENV'
 '$VENV/bin/pip' install -q -U pip
 '$VENV/bin/pip' install -q --index-url https://download.pytorch.org/whl/cpu torch torchaudio
+'$VENV/bin/pip' install -q numpy==1.26.4 pyarrow==21.0.0 datasets==4.1.1
+'$VENV/bin/pip' install -q wget antlr4-python3-runtime==4.9.3
 '$VENV/bin/pip' install -q 'nemo_toolkit[asr]==2.0.0'
+'$VENV/bin/pip' install -q pytorch-lightning==2.4.0 hf_transfer
 '$VENV/bin/python' -c "import nemo, torch; print('nemo', nemo.__version__, 'torch', torch.__version__)"
 ENV
       ;;

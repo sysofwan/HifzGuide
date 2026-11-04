@@ -301,3 +301,7 @@ def main(argv: list[str] | None = None) -> None:
     print(_json.dumps(summary), flush=True)
     if summary["stopped"] != "done":
         raise SystemExit(3)  # a gate stopped the run: the plain decodes stay resumable
+
+
+if __name__ == "__main__":
+    main()

@@ -99,25 +99,49 @@ def _edit_texts(set_name: str, lines: Mapping[str, dict]) -> dict[str, str]:
     return {key: line["ctc"] for key, line in lines.items()}
 
 
+def fc_edit_carried(items, lines: Mapping[str, dict]) -> dict[str, str | None]:
+    """FastConformer's carried value at each located edit: its Imlaei letter or shadda state."""
+    carried: dict[str, str | None] = {}
+    for item in items:
+        located = locate_edit(item)
+        if located is None:
+            continue
+        line = lines[item["item_id"]]
+        carried[item["item_id"]] = carried_at(
+            located.letters, located.index, line["ctc"],
+            shaddah=item["operation"].startswith("shaddah"))
+    return carried
+
+
 def edit_scores(items) -> dict:
-    """Each column's heard rate on the edits and unchanged rate on the decoys (#245's rule)."""
+    """Each column's heard rate on the edits and unchanged rate on the decoys.
+
+    FastConformer is read through the Imlaei mapping (its text is Imlaei); the students are
+    read with ``teacher_agrees`` on their phonetic text, the rule the bars were computed with.
+    """
+    from tadabur.fastconformer_screen.outcomes import decoy_unchanged, edit_heard
     from tadabur.synthetic_edits import teacher_agrees
     from training.zipformer_readout import whole_item_texts
 
-    texts = {"fastconformer": _edit_texts("edits", decode_lines("edits"))}
-    for model in STUDENTS:
-        texts[model] = whole_item_texts("edits")[model]
+    lines = decode_lines("edits")
+    fc_carried = fc_edit_carried(items, lines)
+    texts = {model: whole_item_texts("edits")[model] for model in STUDENTS}
     out = {}
     for role in ("edit", "decoy"):
         subset = [item for item in items if item["role"] == role]
 
         def agrees(arm, item):
+            if arm == "fastconformer":
+                if item["item_id"] not in fc_carried:
+                    return False
+                return (edit_heard(fc_carried[item["item_id"]], item["label"])
+                        if role == "edit"
+                        else decoy_unchanged(fc_carried[item["item_id"]], item["prescribed"]))
             return teacher_agrees(item, texts[arm][item["item_id"]])
 
         observations = {arm: [(item["pair_id"], int(agrees(arm, item)), 1) for item in subset]
                         for arm in ("fastconformer", *STUDENTS)}
-        view = _rate(observations, [(arm, "base") for arm in ("fastconformer",)
-                                    if arm != "base"])
+        view = _rate(observations, [("fastconformer", "base")])
         out[role] = {
             "n": len(subset),
             "counts": {arm: sum(agrees(arm, item) for item in subset) for arm in observations},

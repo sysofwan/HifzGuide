@@ -267,6 +267,14 @@ def site_report() -> dict:
         "qdat": qdat,
         "unique_catches": caught,
         "mapping": mapping,
+        "card_sanity": {
+            "measured": False,
+            "reason": "no EveryAyah test sample with the card's own normalisation is staged; "
+                      "the Quran-Lab benchmark's reference is Uthmani and not comparable with "
+                      "an Imlaei transcript, so a WER against it would not be the card's line",
+            "smoke": "the first Ship A item's text is the expected Arabic with diacritics "
+                     "(11:30, the 11:30 site), checked by eye before the batch",
+        },
         "run_note": {"device": "cpu", "gpu_hours": 0, "yielded_seconds": 0},
         "verdict": answer,
     }
@@ -318,6 +326,9 @@ def report_doc(record: Mapping) -> str:
         "- Decoder: greedy CTC head, whole item, 16 kHz mono, on CPU. NeMo ran in its own",
         "  environment behind a 10 GB disk reserve; the environment and the weights were deleted",
         "  after the decodes were committed. No GPU time and no round-3 input.",
+        f"- Card sanity line: not measured. {record['card_sanity']['reason']}. The smoke text",
+        "  at a known site was the expected Arabic with diacritics; the gate's 2x threshold",
+        "  could not be applied without the card's test set and normaliser.",
         "- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, 67 mistakes and",
         "  407 correct sites), the 300 synthetic edit/decoy items and qdat's 1,505 clips.",
         "",

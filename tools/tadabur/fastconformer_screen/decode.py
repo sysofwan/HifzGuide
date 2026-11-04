@@ -230,7 +230,9 @@ def decode_set(set_name: str, *, directory: Path, out_dir: Path, nemo_path: Path
     done = resume_keys(path)
     items = audio_seconds = 0
     started = time.time()
-    source = pending_items(recordings(set_name, Path(directory)), done)
+    # only the plan's items: Ship A's G6 items are never decoded (the test pins it)
+    keep = set(decode_plan(set_name)) if set_name in ("ship-a", "edits") else None
+    source = pending_items(recordings(set_name, Path(directory)), done, keep)
     with open(path, "a", encoding="utf-8") as out:
         try:
             for record, span in source:

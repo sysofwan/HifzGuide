@@ -175,6 +175,8 @@ def transcribe(model, samples) -> str:
 
     out = model.transcribe([np.asarray(samples, dtype=np.float32)], batch_size=1, verbose=False)
     first = out[0]
+    while isinstance(first, (list, tuple)) and len(first) == 1:
+        first = first[0]
     return first.text if hasattr(first, "text") else str(first)
 
 

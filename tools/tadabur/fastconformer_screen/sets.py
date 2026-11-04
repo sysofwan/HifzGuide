@@ -83,8 +83,20 @@ def _percent(numerator: int, denominator: int) -> float:
 
 
 @lru_cache(maxsize=1)
+def located_ship_a_sites() -> tuple:
+    """The Ship A sites step 2's text-only mapping locates, minus G6: the comparison set.
+
+    Every column is scored on these sites, so an unlocated site cannot be a denominator
+    difference between FastConformer and the models it is compared with.
+    """
+    from tadabur.fastconformer_screen.mapping import locate_site
+
+    return tuple(site for site in ship_a_sites() if locate_site(site) is not None)
+
+
+@lru_cache(maxsize=1)
 def teacher_bars() -> Rates:
-    """The teacher's four rates with #267's letter-level rule, Ship A minus G6.
+    """The teacher's four rates with #267's letter-level rule, on the located, non-G6 set.
 
     The Ship A rates read the teacher's committed ``stream_b0`` whole-item text through the
     same carrier rules as every other column; the edit rates are ``teacher_agrees``, which
@@ -93,7 +105,7 @@ def teacher_bars() -> Rates:
     from tadabur.fastconformer_screen.outcomes import is_flagged, student_carried
     from training.zipformer_readout import TEACHER, whole_item_texts
 
-    sites = ship_a_sites()
+    sites = located_ship_a_sites()
     mistakes, correct = split_sides(sites)
     carried = student_carried(TEACHER, sites)
     texts = whole_item_texts("edits")[TEACHER]

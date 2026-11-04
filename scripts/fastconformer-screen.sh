@@ -100,9 +100,9 @@ need |= {item["change"]["donor"]["audio_filename"] for item in items if item["ch
 registry = load_staged_clips()
 missing = {name for name in need if not (AUDIO / name).exists()}
 print(f"{len(need)} edit clips, {len(missing)} to stage", flush=True)
-index = {name: IndexRow(name, row["shard"], row["row_index"], row["reciter_id"],
-                        row["surah_ayah"], 0.0)
-         for name, row in registry.items() if name in missing}
+index = {name: IndexRow(name, clip.shard, clip.row_index, clip.reciter_id,
+                        clip.surah_ayah, 0.0)
+         for name, clip in registry.items() if name in missing}
 requests = {name: frozenset({"synthetic_edit"}) for name in missing}
 
 def shard_rows(shard):
@@ -186,7 +186,7 @@ fetchout() {
 }
 
 case "$action" in
-  check) check "$3" ;;
+  check) check "${3:-}" ;;
   print) command_for ;;
   fetchout) fetchout "${3:-}" ;;
   *) launch ;;

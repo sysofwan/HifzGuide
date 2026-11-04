@@ -1,6 +1,6 @@
 """Tests for #267's gates (steps 1-2): each is a refusal with a message, not a judgement.
 
-* identity: the revision and the full 64-hex ``.nemo`` SHA-256 (``d29d19d7…2e31``) are pinned;
+* identity: the revision and the full 64-hex ``.nemo`` SHA-256 (``d29d19d7…3e31``, the LFS oid at revision ``7f32349d``) are pinned;
   matching only the prefix and suffix the issue quotes is not a match;
 * mapping gate: at least 95% of sites and edits located;
 * parity gate (only if ONNX is used): at least 50 Ship A clips, at least 49 with equal text;
@@ -35,8 +35,9 @@ def test_screen_stop_is_a_runtime_error():
 
 def test_the_pinned_identity_is_complete():
     assert re.fullmatch(r"[0-9a-f]{64}", NEMO_SHA256)
-    assert NEMO_SHA256.startswith("d29d19d7") and NEMO_SHA256.endswith("2e31")
+    assert NEMO_SHA256.startswith("d29d19d7") and NEMO_SHA256.endswith("3e31")
     assert re.fullmatch(r"[0-9a-f]{40}", REVISION)       # a Hub commit, never a branch name
+    assert REVISION.startswith("7f32349d")
 
 
 def test_the_pinned_identity_passes():

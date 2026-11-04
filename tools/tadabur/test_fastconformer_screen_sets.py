@@ -112,6 +112,13 @@ def test_the_teachers_edit_bars_are_the_244_letter_level_ones():
     assert 0.0 <= bars.mistakes_flagged <= 100.0 and 0.0 <= bars.correct_flagged <= 100.0
 
 
+def test_the_teachers_ship_a_bars_use_the_located_set_minus_g6():
+    # architect r5: the bar basis is the located sites minus G6 for every model (correct 259/407)
+    bars = teacher_bars()
+    assert bars.correct_flagged == pytest.approx(100 * 259 / 407)
+    assert bars.mistakes_flagged == pytest.approx(83.6, abs=0.05)
+
+
 def test_the_erratum_lives_in_docs():
     assert ERRATUM_PATH == TOOLS.parent / "docs" / "fastconformer-screen-erratum.md"
 

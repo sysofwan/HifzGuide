@@ -134,9 +134,9 @@ for set_name in ship-a edits qdat; do
     edits) dir='$EDITS/audio' ;;
     qdat) dir='$ROOT/qdat_cache' ;;
   esac
-  HF_HUB_ENABLE_HF_TRANSFER=1 '$VENV/bin/python' -u -m tadabur.fastconformer_screen.decode \\
-      --set "\$set_name" --dir "\$dir" --out-dir '$ROOT/decodes' \\
-      --nemo '$WORK/stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo' \\
+  HF_HUB_ENABLE_HF_TRANSFER=1 '$VENV/bin/python' -u -m tadabur.fastconformer_screen.decode \
+      --set "\$set_name" --dir "\$dir" --out-dir '$ROOT/decodes' \
+      --nemo '$WORK/stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo' \
       --device cpu --pause-file '$PAUSE' || exit \$?
   gzip -9 -f '$ROOT/decodes/'"\$set_name"'.fastconformer.jsonl'
   gzip -9 -f '$ROOT/decodes/'"\$set_name"'.fastconformer.timing.jsonl'

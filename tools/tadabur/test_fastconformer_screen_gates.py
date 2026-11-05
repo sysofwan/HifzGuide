@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from tadabur.fastconformer_screen.card_line import record, sample_rows, wer
+from tadabur.fastconformer_screen.card_line import measure, record, sample_rows, wer
 from tadabur.fastconformer_screen.gates import (
     CARD_CLIPS,
     CARD_WER,
@@ -140,3 +140,71 @@ def test_the_record_fails_the_gate_above_twice_the_cards_wer():
     assert record({**measured, "wer": 2 * CARD_WER}, identity={})["gate_failed"] is False
     assert record({**measured, "wer": 2 * CARD_WER + 0.01}, identity={})["gate_failed"] is True
     assert record({**measured, "clips": CARD_CLIPS - 1}, identity={})["gate_failed"] is True
+
+
+# --- the card sample honours the owner's gates --------------------------------------------------
+
+
+def card_manifest(tmp_path, rows: int = 20):
+    manifest = tmp_path / "benchmark.jsonl"
+    manifest.write_text("".join(
+        json.dumps({"id": f"everyayah_heldout/{n:04d}", "source": "everyayah_heldout",
+                    "reference_text": "نص", "audio": f"audio/{n}.wav"}, ensure_ascii=False) + "\n"
+        for n in range(rows)), encoding="utf-8")
+    return manifest
+
+
+def card_gates(tmp_path, *, ram_gb: float = 64.0, disk_gb: float = 500.0):
+    from tadabur.tlog_mining.give_way import Gates
+
+    return Gates(tmp_path / "PAUSE", free_disk_gb=lambda: disk_gb,
+                 available_ram_gb=lambda: ram_gb)
+
+
+def test_an_existing_pause_file_stops_the_card_line_before_any_decode(tmp_path):
+    manifest = card_manifest(tmp_path)
+    (tmp_path / "PAUSE").touch()
+    seen = []
+    with pytest.raises(ScreenStop, match="pause"):
+        measure(manifest, lambda path: seen.append(path) or "نص", batch_size=8, sample=20,
+                gates=card_gates(tmp_path))
+    assert seen == []
+
+
+def test_a_pause_between_card_batches_stops_before_the_next_batch(tmp_path):
+    manifest = card_manifest(tmp_path)
+    gates = card_gates(tmp_path)
+    seen = []
+
+    def decode(_path):
+        seen.append(_path)
+        if len(seen) == 8:
+            (tmp_path / "PAUSE").touch()
+        return "نص"
+
+    with pytest.raises(ScreenStop, match="8 of 20"):
+        measure(manifest, decode, batch_size=8, sample=20, gates=gates)
+    assert len(seen) == 8
+
+
+def test_a_low_ram_floor_stops_the_card_line(tmp_path):
+    seen = []
+    with pytest.raises(ScreenStop, match="ram"):
+        measure(card_manifest(tmp_path), lambda path: seen.append(path) or "نص", batch_size=8,
+                sample=20, gates=card_gates(tmp_path, ram_gb=1.0))
+    assert seen == []
+
+
+def test_the_card_step_checks_the_gates_before_restoring_the_model(tmp_path, monkeypatch):
+    from tadabur.fastconformer_screen import card_line
+    from tadabur.fastconformer_screen import decode as module
+
+    (tmp_path / "PAUSE").touch()
+    monkeypatch.setattr(module, "load_ctc_model",
+                        lambda *a, **k: pytest.fail("the model must not be restored"))
+    with pytest.raises(SystemExit) as exit_:
+        card_line.main(["--manifest", str(tmp_path / "benchmark.jsonl"),
+                        "--out", str(tmp_path / "card_line.json"),
+                        "--nemo", str(tmp_path / "m.nemo"), "--revision", "abc",
+                        "--pause-file", str(tmp_path / "PAUSE")])
+    assert exit_.value.code == 3

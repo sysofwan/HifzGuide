@@ -175,7 +175,9 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
     ``plan`` is :func:`tadabur.fastconformer_screen.sets.decode_plan`'s answer, and only its
     items are decoded: a G6 item or a round-3 input cannot reach the loop even when the source
     directory holds it. CPU only — the sets are a few hours of audio and the GPU belongs to
-    round 3. The gates stop at an item boundary; the decodes written so far stay resumable.
+    round 3. The gates are checked before the next item is fetched, so a PAUSE or a low floor
+    never triggers the shard read (or the model call) the next batch would need; the decodes
+    written so far stay resumable.
     """
     import json
     import time
@@ -196,7 +198,7 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
     source = pending_items(recordings(set_name, Path(directory)), done, keep)
     with open(path, "a", encoding="utf-8") as out:
         try:
-            for record, span in source:
+            while limit is None or items < limit:
                 if items % batch_size == 0:
                     reason = gates.stop_reason()
                     if reason is not None:
@@ -204,13 +206,15 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
                         # is the set's provenance, so a stop must not be invisible in it
                         return _finish(out_dir, set_name, reason, items, audio_seconds,
                                        started, device)
+                try:
+                    record, span = next(source)
+                except StopIteration:
+                    break
                 line = {**record, "ctc": transcribe(model, span)}
                 out.write(json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n")
                 out.flush()
                 items += 1
                 audio_seconds += len(span) / SAMPLE_RATE
-                if limit is not None and items >= limit:
-                    break
         finally:
             close = getattr(source, "close", None)
             if close is not None:
@@ -246,32 +250,24 @@ def read_bars(path: Path = BARS_PATH) -> Rates:
     return Rates(**record)
 
 
-def _free_disk_gb(path: Path) -> float:
-    import shutil
-
-    return shutil.disk_usage(path).free / 1e9
-
-
-def _available_ram_gb() -> float:
-    """The box's available RAM, or a large constant when it cannot be read."""
-    try:
-        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
-            if line.startswith("MemAvailable:"):
-                return int(line.split()[1]) / 1e6
-    except OSError:
-        pass
-    return 1e6
-
-
 def main(argv: list[str] | None = None) -> None:
     """Decode one set with the pinned model, after the erratum's bars are checked."""
+    from tadabur.fastconformer_screen.gates import available_ram_gb, free_disk_gb
+
     args = parse_args(argv)
     if args.set is None or args.out_dir is None or args.nemo is None or args.dir is None:
         raise SystemExit("--set, --out-dir, --nemo and --dir are required")
     plan = preflight(args.set, read_bars())  # the erratum is the run's first artifact
     require_cpu(args.device)
-    gates = Gates(args.pause_file, free_disk_gb=lambda: _free_disk_gb(args.out_dir),
-                  available_ram_gb=_available_ram_gb)
+    gates = Gates(args.pause_file, free_disk_gb=lambda: free_disk_gb(args.out_dir),
+                  available_ram_gb=available_ram_gb)
+    started = time.time()
+    if (reason := gates.stop_reason()) is not None:
+        # the model is not restored and nothing is read: the stop is still part of the record
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        summary = _finish(args.out_dir, args.set, reason, 0, 0.0, started, args.device)
+        print(json.dumps(summary), flush=True)
+        raise SystemExit(3)
     model = load_ctc_model(args.nemo, args.device)
     summary = decode_set(args.set, plan=plan, directory=args.dir, out_dir=args.out_dir,
                          nemo_path=args.nemo, model=model, gates=gates,

@@ -72,10 +72,27 @@ def sample_rows(manifest: Path, sample: int = SAMPLE) -> list[dict]:
     return chosen
 
 
-def measure(manifest: Path, decode: Callable[[Path], str], *, sample: int = SAMPLE) -> dict:
-    """Decode the sample's clips and score them: the line's numbers, without the gate."""
+def measure(manifest: Path, decode: Callable[[Path], str], *, batch_size: int,
+            sample: int = SAMPLE, gates=None) -> dict:
+    """Decode the sample's clips and score them: the line's numbers, without the gate.
+
+    ``gates`` is the owner's PAUSE/RAM/disk gate (:class:`tadabur.tlog_mining.give_way.Gates`),
+    read before every batch of ``batch_size`` clips. The card is measured in one run, so a stop
+    raises instead of keeping a partial line; nothing is read for the batch after it.
+    """
+    from tadabur.fastconformer_screen.gates import ScreenStop
+
     rows = sample_rows(manifest, sample)
-    texts = {row["id"]: decode(Path(manifest).parent / row["audio"]) for row in rows}
+    texts: dict[str, str] = {}
+    for start in range(0, len(rows), batch_size):
+        if gates is not None:
+            reason = gates.stop_reason()
+            if reason is not None:
+                raise ScreenStop(
+                    f"card sanity: {reason} stopped the line after {len(texts)} of {len(rows)} "
+                    f"clips; measure it again in one run", gate="card sanity")
+        for row in rows[start:start + batch_size]:
+            texts[row["id"]] = decode(Path(manifest).parent / row["audio"])
     record = wer((row["reference_text"], texts[row["id"]]) for row in rows)
     record.update({"source": SOURCE, "sample": sample, "normalisation": NORMALISATION,
                    "clip_keys": [row["id"] for row in rows]})
@@ -93,27 +110,45 @@ def record(measured: dict, *, identity: dict) -> dict:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Measure the line on the box and write its record; a failed gate stops the run."""
+    """Measure the line on the box and write its record; a failed gate stops the run.
+
+    The owner's PAUSE file and the RAM/disk floors are read before the model is restored and
+    before every batch of the sample, as in the decode driver. A stop leaves no record: the
+    step is rerun whole.
+    """
     import argparse
 
-    from tadabur.fastconformer_screen.decode import load_ctc_model, transcribe
-    from tadabur.fastconformer_screen.gates import card_gate
+    from tadabur.fastconformer_screen.decode import BATCH_SIZE, load_ctc_model, transcribe
+    from tadabur.fastconformer_screen.gates import (ScreenStop, available_ram_gb, card_gate,
+                                                    free_disk_gb)
+    from tadabur.tlog_mining.give_way import Gates
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--nemo", type=Path, required=True)
     parser.add_argument("--revision", required=True, help="the benchmark's Hub revision")
+    parser.add_argument("--pause-file", type=Path,
+                        default=Path("/root/scratch/tlog-mining/PAUSE"))
     args = parser.parse_args(argv)
 
     from tadabur.audio import decode_to_mono_16k, read_audio_bytes
 
+    gates = Gates(args.pause_file, free_disk_gb=lambda: free_disk_gb(args.out.parent),
+                  available_ram_gb=available_ram_gb)
+    if (reason := gates.stop_reason()) is not None:
+        print(json.dumps({"stopped": reason}), flush=True)
+        raise SystemExit(3)
     model = load_ctc_model(args.nemo, "cpu")
 
     def decode(path: Path) -> str:
         return transcribe(model, decode_to_mono_16k(read_audio_bytes(path)))
 
-    measured = measure(args.manifest, decode)
+    try:
+        measured = measure(args.manifest, decode, batch_size=BATCH_SIZE, gates=gates)
+    except ScreenStop as stop:
+        print(json.dumps({"stopped": str(stop)}), flush=True)
+        raise SystemExit(3)
     written = record(measured, identity={"nemo": Path(args.nemo).name,
                                          "benchmark": "Quran-Lab/quranic-asr-benchmark",
                                          "benchmark_revision": args.revision})

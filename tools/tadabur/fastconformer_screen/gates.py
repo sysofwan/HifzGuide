@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 #: The pinned Hub revision (``nvidia/stt_ar_fastconformer_hybrid_large_pcd_v1.0``, 2026-11-04).
 REVISION = "7f32349d952f42a28dce979ba73270aa2bbdfa89"
 #: The ``.nemo`` file's SHA-256, full: d29d19d7c054a5fc010ac6815e9cbb0dd1b21a30e0a7f7f2982e1fecaf0c3e31.
@@ -35,6 +37,27 @@ class ScreenStop(RuntimeError):
     def __init__(self, message: str, *, gate: str | None = None) -> None:
         super().__init__(message)
         self.gate = gate
+
+
+def free_disk_gb(path: Path) -> float:
+    """The free space where ``path`` lives, or would be created (the nearest existing parent)."""
+    import shutil
+
+    path = Path(path)
+    while not path.exists() and path != path.parent:
+        path = path.parent
+    return shutil.disk_usage(path).free / 1e9
+
+
+def available_ram_gb() -> float:
+    """The box's available RAM, or a large constant when it cannot be read (not Linux)."""
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 1e6
+    except OSError:
+        pass
+    return 1e6
 
 
 def require_identity(record: dict) -> None:

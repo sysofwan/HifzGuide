@@ -25,8 +25,9 @@ from tadabur.fastconformer_screen.verdict import Rates
 from tadabur.tlog_mining.give_way import Gates
 
 
-def gates(tmp_path, ram_gb: float = 64.0) -> Gates:
-    return Gates(tmp_path / "PAUSE", free_disk_gb=lambda: 500.0, available_ram_gb=lambda: ram_gb)
+def gates(tmp_path, ram_gb: float = 64.0, disk_gb: float = 500.0) -> Gates:
+    return Gates(tmp_path / "PAUSE", free_disk_gb=lambda: disk_gb,
+                 available_ram_gb=lambda: ram_gb)
 
 
 class Spans:
@@ -137,6 +138,84 @@ def test_the_driver_stops_before_starting_below_the_ram_floor(tmp_path, monkeypa
                          nemo_path=tmp_path / "m.nemo", model=object(),
                          gates=gates(tmp_path, ram_gb=1.0), batch_size=2)
     assert (summary["stopped"], spans.recorded) == ("ram", [])
+
+
+class _CountingRecording:
+    """A source recording whose load is the shard read: the tests count it."""
+
+    def __init__(self, keys):
+        self.keys = list(keys)
+        self.loads = 0
+
+    def load(self):
+        self.loads += 1
+        return [None, None, None], [{"key": key, "audio_filename": "a.wav",
+                                     "start_sample": 0, "end_sample": 2} for key in self.keys]
+
+
+def _real_pending(monkeypatch, recordings):
+    """The driver's own pending_items, over counting recordings (no stubbed generator)."""
+    from training import zipformer_screen_decode
+
+    monkeypatch.setattr(zipformer_screen_decode, "recordings", lambda *a: iter(recordings))
+
+
+def test_an_existing_pause_file_stops_before_the_recording_is_loaded(tmp_path, monkeypatch):
+    """The gate is read before advancing the source: no load (and no shard read) happens."""
+    recording = _CountingRecording(["k0"])
+    _real_pending(monkeypatch, [recording])
+    (tmp_path / "PAUSE").touch()
+    summary = decode_set("edits", plan=["k0"], directory=tmp_path, out_dir=tmp_path,
+                         nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path))
+    assert (summary["stopped"], summary["items"], recording.loads) == ("pause", 0, 0)
+
+
+def test_a_low_disk_floor_stops_before_the_recording_is_loaded(tmp_path, monkeypatch):
+    recording = _CountingRecording(["k0"])
+    _real_pending(monkeypatch, [recording])
+    summary = decode_set("edits", plan=["k0"], directory=tmp_path, out_dir=tmp_path,
+                         nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path, disk_gb=1.0))
+    assert (summary["stopped"], recording.loads) == ("disk", 0)
+
+
+def test_a_pause_between_batches_never_loads_the_next_recording(tmp_path, monkeypatch):
+    pause = tmp_path / "PAUSE"
+    first, second = _CountingRecording(["k0"]), _CountingRecording(["k1"])
+    _real_pending(monkeypatch, [first, second])
+    from tadabur.fastconformer_screen import decode as module
+
+    calls = []
+
+    def transcribe(_model, _samples):
+        calls.append(1)
+        if len(calls) == 1:
+            pause.touch()
+        return "text"
+
+    monkeypatch.setattr(module, "transcribe", transcribe)
+    summary = decode_set("edits", plan=["k0", "k1"], directory=tmp_path, out_dir=tmp_path,
+                         nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path), batch_size=1)
+    assert (summary["stopped"], len(calls)) == ("pause", 1)
+    assert (first.loads, second.loads) == (1, 0)
+
+
+def test_main_checks_the_gates_before_restoring_the_model(tmp_path, monkeypatch):
+    from tadabur.fastconformer_screen import decode as module
+
+    pause = tmp_path / "PAUSE"
+    pause.touch()
+    monkeypatch.setattr(module, "load_ctc_model",
+                        lambda *a, **k: pytest.fail("the model must not be restored"))
+    with pytest.raises(SystemExit) as exit_:
+        module.main(["--set", "edits", "--dir", str(tmp_path), "--nemo", str(tmp_path / "m.nemo"),
+                     "--out-dir", str(tmp_path / "out"), "--pause-file", str(pause)])
+    assert exit_.value.code == 3
+    timing = (tmp_path / "out" / "edits.fastconformer.timing.jsonl").read_text(
+        encoding="utf-8").splitlines()
+    assert [json.loads(line)["stopped"] for line in timing] == ["pause"]
 
 
 def test_a_stopped_invocation_still_records_its_timing(tmp_path, monkeypatch):

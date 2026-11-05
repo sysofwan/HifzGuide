@@ -111,3 +111,14 @@ but this full hash.
 #245's harness numbers for the teacher, C95 and EMA, recomputed minus G6, are due at readout as
 context only; no bar above reads them. Ship A holds consonant-pair and shaddah sites only: this
 screen cannot certify haraka.
+
+## G6 decode disclosure (added 2026-11-05)
+
+While staging the edit audio, a Ship A decode launched from the box before the plan filter
+landed (`f2b4bc3`, "decode only the plan's items, never a G6 item") decoded the seven clips
+that hold Ship A's G6 held-out sites, and one of them twice: 512 lines against the 504-item
+plan. Those lines were never read and the screen scored none of them. The committed decodes
+were re-decoded from scratch with the filter in place and hold exactly the plan (504/300/1505
+lines, no G6 clip; `test_no_g6_item_and_no_round_3_input_was_decoded` pins it). The model is
+frozen and is never trained, tuned or ensembled here, so nothing was learned from those
+decodes; the incident is recorded because the pre-registration said G6 would never be decoded.

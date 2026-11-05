@@ -6,9 +6,14 @@
 #
 #   scripts/fastconformer-screen.sh env          # the isolated CPU NeMo venv (never hifzguide's)
 #   scripts/fastconformer-screen.sh fetch        # the pinned .nemo, hash checked locally
+#   scripts/fastconformer-screen.sh stage-ship-a # every clip Ship A's decode plan reads
 #   scripts/fastconformer-screen.sh stage-edits  # every clip the edit render reads (the
 #                                                # source/donors of the candidates it tries,
 #                                                # not only the kept pairs'), then the render
+#
+# Both staging steps fill one directory, $ROOT/audio/clips: the decode reads that for Ship A
+# and the edit render reads it for its sources, so neither depends on a clip left there by an
+# earlier run.
 #   scripts/fastconformer-screen.sh decode       # Ship A, the edits and qdat, CPU, gated
 #   scripts/fastconformer-screen.sh check [label]
 #   scripts/fastconformer-screen.sh fetchout DIR # pull decodes, identities and timings back
@@ -25,6 +30,7 @@ REPO=$ROOT/repo
 LOGS=$ROOT/logs
 WORK=$ROOT/data
 AUDIO=$ROOT/audio
+CLIPS=$ROOT/audio/clips
 EDITS=$ROOT/edits
 VENV=$ROOT/venv
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
@@ -37,8 +43,8 @@ DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
 step=${1:-}
 action=${2:-}
 case "$step" in
-  env|fetch|stage-edits|decode) ;;
-  *) echo "usage: $0 {env|fetch|stage-edits|decode} [launch|print]" >&2; exit 2 ;;
+  env|fetch|stage-ship-a|stage-edits|decode) ;;
+  *) echo "usage: $0 {env|fetch|stage-ship-a|stage-edits|decode} [launch|print]" >&2; exit 2 ;;
 esac
 LABEL=$step
 
@@ -82,7 +88,7 @@ cd '$REPO/tools' || exit 1
 '$VENV/bin/python' -c "from pathlib import Path; from tadabur.fastconformer_screen.decode import fetch_nemo; print(fetch_nemo(Path('$WORK')))"
 FETCH
       ;;
-    stage-edits) cat <<STAGE
+    stage-ship-a|stage-edits) stage_set=${step#stage-}; cat <<STAGE
 source '$CONDA' && conda activate '$ENV_NAME'
 cd '$REPO/tools' || exit 1
 python -u - <<'PY'
@@ -94,20 +100,28 @@ from tadabur.shard_reader import iter_shard_rows
 from tadabur.staged_audio import IndexRow, load_staged_clips, stage_clips, verify_staged
 from tadabur.synthetic_edits import regenerate_clips
 
+stage_set = "$stage_set"
 ROOT = Path("$ROOT")
-AUDIO = ROOT / "audio" / "edit_sources"
+AUDIO = Path("$CLIPS")
 AUDIO.mkdir(parents=True, exist_ok=True)
 items = [json.loads(line) for line in
          (Path("tadabur/synthetic_edits/edits.jsonl")).read_text(encoding="utf-8").splitlines()
          if line.strip()]
-need = regenerate_clips(items)
+def ship_a_clips() -> set[str]:
+    from tadabur.fastconformer_screen.sets import decode_plan
+
+    return {key.split("@", 1)[0] for key in decode_plan("ship-a")}
+
+
+need = ship_a_clips() if "$stage_set" == "ship-a" else regenerate_clips(items)
 registry = load_staged_clips()
 missing = {name for name in need if not (AUDIO / name).exists()}
-print(f"{len(need)} edit clips, {len(missing)} to stage", flush=True)
+print(f"{stage_set}: {len(need)} clips, {len(missing)} to stage", flush=True)
 index = {name: IndexRow(name, clip.shard, clip.row_index, clip.reciter_id,
                         clip.surah_ayah, 0.0)
          for name, clip in registry.items() if name in missing}
-requests = {name: frozenset({"synthetic_edit"}) for name in missing}
+uses = {"ship-a": "ship_a_screen", "edits": "synthetic_edit"}
+requests = {name: frozenset({uses[stage_set]}) for name in missing}
 
 def shard_rows(shard):
     return iter_shard_rows([shard], cache_dir=ROOT / "shard_cache", delete_after=True,
@@ -125,8 +139,10 @@ for name in sorted(need):
     verify_staged(registry[name], AUDIO)
 print("every edit clip verifies against the registry", flush=True)
 PY
-python -u -m tadabur.synthetic_edits generate --audio-dir '$ROOT/audio/edit_sources' --out-dir '$EDITS'
-python -u -m tadabur.synthetic_edits verify --manifest tadabur/synthetic_edits/edits.jsonl --audio-dir '$EDITS/audio'
+if [ "$stage_set" = edits ]; then
+  python -u -m tadabur.synthetic_edits generate --audio-dir '$CLIPS' --out-dir '$EDITS'
+  python -u -m tadabur.synthetic_edits verify --manifest tadabur/synthetic_edits/edits.jsonl --audio-dir '$EDITS/audio'
+fi
 STAGE
       ;;
     decode) cat <<DECODE
@@ -134,7 +150,7 @@ cd '$REPO/tools' || exit 1
 set -o pipefail
 for set_name in ship-a edits qdat; do
   case "\$set_name" in
-    ship-a) dir='$ROOT/audio/edit_sources' ;;
+    ship-a) dir='$CLIPS' ;;
     edits) dir='$EDITS/audio' ;;
     qdat) dir='$ROOT/qdat_cache' ;;
   esac

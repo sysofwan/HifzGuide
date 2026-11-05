@@ -89,6 +89,21 @@ def test_the_notice_attributes_nvidia_under_cc_by_4_0():
         assert needed in text
 
 
+def test_the_doc_is_the_generators_output():
+    """A hand-edited number in the doc would otherwise pass every other doc test."""
+    from tadabur.fastconformer_screen.readout import report_doc
+
+    assert DOC.read_text(encoding="utf-8") == report_doc(report())
+
+
+@pytest.mark.slow
+def test_the_report_is_the_generators_output():
+    """The whole frozen report, re-derived from the committed decodes (the slow tier)."""
+    from tadabur.fastconformer_screen.readout import site_report
+
+    assert json.loads((HERE / "report.json").read_text(encoding="utf-8")) == site_report()
+
+
 def test_the_mapping_gate_refuses_a_report_below_its_bar(monkeypatch):
     """Step 2's gate is a refusal: too few located sites and no report is written at all."""
     from tadabur.fastconformer_screen import readout

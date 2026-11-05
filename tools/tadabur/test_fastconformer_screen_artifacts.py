@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
+import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -328,3 +331,38 @@ def test_a_go_says_only_worth_trying():
         pytest.skip("the verdict is not GO")
     text = DOC.read_text(encoding="utf-8").lower()
     assert "worth trying" in text and "better" not in text
+
+
+# --- the launcher -------------------------------------------------------------------------------
+
+LAUNCHER = Path(__file__).resolve().parents[2] / "scripts" / "fastconformer-screen.sh"
+
+
+def launcher(*args, env=None) -> subprocess.CompletedProcess:
+    return subprocess.run(["bash", str(LAUNCHER), *args], capture_output=True, text=True,
+                          env={**os.environ, **(env or {})}, check=False)
+
+
+def test_the_launcher_fetches_the_run_output_not_the_staged_checkout():
+    """A fetch that read the checkout could silently return the committed decodes."""
+    decode = launcher("decode", "print").stdout
+    out_dir = re.search(r"--out-dir '([^']+)'", decode).group(1)
+    fetch = launcher("fetchout", "print").stdout
+    assert f"rsync -a 'root@cuda-dev:{out_dir}/' DEST/" in fetch
+    assert "root@cuda-dev:/root/scratch/fc-screen/card_line.json" in fetch
+    assert "repo/tools/tadabur/fastconformer_screen/decodes" not in fetch
+
+
+def test_the_launcher_refuses_to_fetch_without_a_run_output(tmp_path):
+    """No run output means a refusal, never the staged checkout's committed decodes."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "ssh"
+    fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    fake.chmod(0o755)
+    destination = tmp_path / "fetched"
+    result = launcher("fetchout", str(destination),
+                      env={"PATH": f"{bin_dir}:{os.environ['PATH']}"})
+    assert result.returncode != 0
+    assert "no run output" in result.stderr
+    assert not destination.exists()

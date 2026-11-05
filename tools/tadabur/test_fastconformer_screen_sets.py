@@ -78,6 +78,12 @@ def test_the_edits_are_all_300_items_and_their_plan_is_their_item_ids():
     assert decode_plan("edits") == sorted(item["item_id"] for item in items)
 
 
+def test_the_qdat_plan_is_its_1505_item_keys():
+    plan = decode_plan("qdat")
+    assert len(plan) == len(set(plan)) == 1505
+    assert plan == sorted(plan)
+
+
 # --- the round-3 refusal ----------------------------------------------------------------------
 
 

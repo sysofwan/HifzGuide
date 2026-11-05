@@ -47,7 +47,7 @@ def decode_plan(name: str) -> list[str]:
         return sorted(item["item_id"] for item in edit_items())
     from training.zipformer_readout import qdat_set
 
-    return sorted(qdat_set()[0])
+    return sorted(item.key for item in qdat_set()[0])
 
 
 @lru_cache(maxsize=1)

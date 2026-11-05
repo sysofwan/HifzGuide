@@ -199,12 +199,27 @@ def qdat_disagreement(lines: Mapping[str, dict]) -> dict:
             "rates": view["models"]}
 
 
+def require_mapping_gate(located_sites: Sequence, located_edits: Sequence) -> None:
+    """Step 2's gate: refuse to report unless at least 95% of the sites and edits locate.
+
+    It reads the text-only mapping, before any decode is scored, so a run that maps too little
+    stops here rather than producing a report and a doc from a partial set.
+    """
+    from tadabur.fastconformer_screen.gates import mapping_gate
+    from tadabur.fastconformer_screen.sets import ship_a_sites
+
+    mapping_gate(len(located_sites), len(ship_a_sites()))
+    mapping_gate(len(located_edits), len(edit_items()))
+
+
 def site_report() -> dict:
     """Every section of #267's step 4, then the frozen rule's verdict."""
     from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
     from training.truth_scorer import item_key
 
     sites = located_ship_a_sites()
+    located_edits = [item for item in edit_items() if locate_edit(item) is not None]
+    require_mapping_gate(sites, located_edits)
     mistakes, correct = split_sides(sites)
     registry = load_staged_clips(REGISTRY_PATH)
     clusters = {site.site_id: registry[site.audio_filename].reciter_id for site in sites}
@@ -244,8 +259,9 @@ def site_report() -> dict:
                                   if site.site_id not in located_ids)
     mapping["unlocated"] = mapping["unlocated"]
     mapping["total"] = len(ship_a_sites())
-    mapping["edits"]["unlocated"] = sorted(
-        item["item_id"] for item in edit_items() if locate_edit(item) is None)
+    located_edit_ids = {item["item_id"] for item in located_edits}
+    mapping["edits"]["unlocated"] = sorted(item["item_id"] for item in edit_items()
+                                           if item["item_id"] not in located_edit_ids)
 
     teacher = teacher_bars()
     fast = Rates(

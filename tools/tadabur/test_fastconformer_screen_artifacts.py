@@ -89,6 +89,16 @@ def test_the_notice_attributes_nvidia_under_cc_by_4_0():
         assert needed in text
 
 
+def test_the_mapping_gate_refuses_a_report_below_its_bar(monkeypatch):
+    """Step 2's gate is a refusal: too few located sites and no report is written at all."""
+    from tadabur.fastconformer_screen import readout
+    from tadabur.fastconformer_screen.gates import ScreenStop
+
+    monkeypatch.setattr(readout, "located_ship_a_sites", lambda: ())
+    with pytest.raises(ScreenStop, match="mapping gate"):
+        readout.site_report()
+
+
 def test_no_audio_or_weights_are_committed():
     assert not [p for p in HERE.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES]
 

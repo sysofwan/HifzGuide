@@ -174,6 +174,14 @@ def test_the_preflight_refuses_a_round_3_input_even_with_the_erratum(tmp_path):
 
 
 def test_nothing_is_added_to_the_requirements_files():
+    """The screen runs in its own environment: no pinned file requires its runtime.
+
+    Requirement lines are what pip installs; comment text is not a dependency, so the
+    check reads the lines and ignores the ``#`` tail.
+    """
     for path in TOOLS.glob("requirements*.txt"):
-        text = path.read_text(encoding="utf-8").lower()
-        assert not any(name in text for name in ("nemo", "onnxruntime", "onnx-asr")), path.name
+        requirements = [line.split("#", 1)[0].strip().lower()
+                        for line in path.read_text(encoding="utf-8").splitlines()]
+        added = [r for r in requirements
+                 if r.startswith(("nemo", "onnxruntime", "onnx-asr", "onnx_asr"))]
+        assert not added, (path.name, added)

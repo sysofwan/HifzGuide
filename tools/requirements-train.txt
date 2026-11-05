@@ -34,7 +34,7 @@ quran-transcript==0.5.2
 recitations-segmenter>=1.0   # obadx/recitation-segmenter-v2 VAD for waqf pause detection
 # tlog S3a's speech measurement (#187): Silero VAD, ONNX on CPU, one clip at a time. Pinned
 # because the pre-registration's silence floors (f_s, d_s) are percentiles of its speech_s;
-# a version bump can move them. The extra installs ONNX Runtime.
+# a version bump can move them. The extra installs onnxruntime.
 silero-vad[onnx-cpu]==6.2.3
 # tlog S3a's container fallback (#187): the unclean split ships MP4/AAC bytes behind `.wav`
 # paths, and libsndfile cannot demux MP4. Pass 1 uses PyAV only when soundfile raises. The wheel

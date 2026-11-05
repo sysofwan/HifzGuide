@@ -33,6 +33,7 @@ from tadabur.fastconformer_screen.sets import (edit_items, located_ship_a_sites,
 from tadabur.fastconformer_screen.verdict import GO, Rates, verdict
 
 DECODES = Path(__file__).parent / "decodes"
+CARD_LINE_PATH = Path(__file__).parent / "card_line.json"
 REPORT_PATH = Path(__file__).parent / "report.json"
 DOC_PATH = Path(__file__).resolve().parents[3] / "docs" / "fastconformer-screen.md"
 STUDENTS = ("base", "c95", "r2_candidate_ema")
@@ -199,17 +200,40 @@ def qdat_disagreement(lines: Mapping[str, dict]) -> dict:
             "rates": view["models"]}
 
 
-def require_mapping_gate(located_sites: Sequence, located_edits: Sequence) -> None:
-    """Step 2's gate: refuse to report unless at least 95% of the sites and edits locate.
+def card_line_record(path: Path = CARD_LINE_PATH) -> dict:
+    """Step 1's card sanity line, measured on the box and committed beside the decodes."""
+    from tadabur.fastconformer_screen.gates import ScreenStop
 
-    It reads the text-only mapping, before any decode is scored, so a run that maps too little
-    stops here rather than producing a report and a doc from a partial set.
+    path = Path(path)
+    if not path.is_file():
+        raise ScreenStop(f"no card sanity line at {path}: step 1 measures it before the "
+                         f"report, and the rule stops if it is above twice the card's WER")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def require_mapping_gate(located_sites: Sequence, located_edits: Sequence) -> dict:
+    """Step 2's gate on both denominators: every site, and the sites with a human side.
+
+    The pre-registration says "sites", so the gate is on all of them (the held-out count
+    included); the scored denominator is reported beside it, because that is the set the table
+    is actually read on. Both are refusals, before any decode is scored.
     """
     from tadabur.fastconformer_screen.gates import mapping_gate
     from tadabur.fastconformer_screen.sets import ship_a_sites
 
-    mapping_gate(len(located_sites), len(ship_a_sites()))
+    sites = ship_a_sites()
+    all_mistakes, all_correct = split_sides(sites)
+    located_mistakes, located_correct = split_sides(located_sites)
+    denominators = {
+        "sites": {"located": len(located_sites), "total": len(sites)},
+        "scored": {"located": len(located_mistakes) + len(located_correct),
+                   "total": len(all_mistakes) + len(all_correct)},
+    }
+    for entry in denominators.values():
+        mapping_gate(entry["located"], entry["total"])
+        entry["share"] = 100.0 * entry["located"] / entry["total"]
     mapping_gate(len(located_edits), len(edit_items()))
+    return denominators
 
 
 def site_report() -> dict:
@@ -219,7 +243,7 @@ def site_report() -> dict:
 
     sites = located_ship_a_sites()
     located_edits = [item for item in edit_items() if locate_edit(item) is not None]
-    require_mapping_gate(sites, located_edits)
+    mapping_gates = require_mapping_gate(sites, located_edits)
     mistakes, correct = split_sides(sites)
     registry = load_staged_clips(REGISTRY_PATH)
     clusters = {site.site_id: registry[site.audio_filename].reciter_id for site in sites}
@@ -263,6 +287,7 @@ def site_report() -> dict:
         "edits": {"located": len(located_edits), "total": len(edit_items()),
                   "unlocated": sorted(item["item_id"] for item in edit_items()
                                       if item["item_id"] not in located_edit_ids)},
+        "gates": mapping_gates,
     }
 
     teacher = teacher_bars()
@@ -272,7 +297,8 @@ def site_report() -> dict:
         edits_heard=100.0 * edits["edit"]["counts"]["fastconformer"] / edits["edit"]["n"],
         decoys_unchanged=100.0 * edits["decoy"]["counts"]["fastconformer"] / edits["decoy"]["n"],
     )
-    answer = verdict(teacher, fast, len(caught))
+    card = card_line_record()
+    answer = STOP if card["gate_failed"] else verdict(teacher, fast, len(caught))
     return {
         "issue": 267,
         "rule": "letter-level at each located site: heard / prescribed / other / none; "
@@ -285,14 +311,8 @@ def site_report() -> dict:
         "qdat": qdat,
         "unique_catches": caught,
         "mapping": mapping,
-        "card_sanity": {
-            "measured": False,
-            "reason": "no EveryAyah test sample with the card's own normalisation is staged; "
-                      "the Quran-Lab benchmark's reference is Uthmani and not comparable with "
-                      "an Imlaei transcript, so a WER against it would not be the card's line",
-            "smoke": "the first Ship A item's text is the expected Arabic with diacritics "
-                     "(11:30, the 11:30 site), checked by eye before the batch",
-        },
+        "card_sanity": card,
+        "stopped_by": "card sanity" if card["gate_failed"] else None,
         "run_note": {"device": "cpu", "gpu_hours": 0, "yielded_seconds": 0},
         "verdict": answer,
     }
@@ -344,9 +364,11 @@ def report_doc(record: Mapping) -> str:
         "- Decoder: greedy CTC head, whole item, 16 kHz mono, on CPU. NeMo ran in its own",
         "  environment behind a 10 GB disk reserve; the environment and the weights were deleted",
         "  after the decodes were committed. No GPU time and no round-3 input.",
-        f"- Card sanity line: not measured. {record['card_sanity']['reason']}. The smoke text",
-        "  at a known site was the expected Arabic with diacritics; the gate's 2x threshold",
-        "  could not be applied without the card's test set and normaliser.",
+        f"- Card sanity line: CTC WER {record['card_sanity']['measured']['wer']:.2f} on "
+        f"{record['card_sanity']['measured']['clips']} benchmark EveryAyah clips, the card's",
+        f"  normalisation (`card_norm`); the card's CTC WER is "
+        f"{record['card_sanity']['card']['wer']:.2f} and the run stops only above twice it.",
+        f"  Measured on the benchmark's studio reciters, not NVIDIA's own test split.",
         f"- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, "
         f"{section['mistakes']['fastconformer']['n']} mistakes and "
         f"{section['correct']['fastconformer']['n']} correct sites), the "
@@ -413,7 +435,9 @@ def report_doc(record: Mapping) -> str:
         "",
         f"{record['mapping']['located']} of {record['mapping']['total']} Ship A sites and "
         f"{record['mapping']['edits']['located']} of {record['mapping']['edits']['total']} edits "
-        "were located from text alone, before any decode (the gate is 95%). The mapping never",
+        f"were located from text alone, before any decode. The gate is 95% of every site and "
+        f"{record['mapping']['gates']['scored']['share']:.1f}% of the sites that have a side; "
+        "the mapping never",
         "reads a decode; an unlocated site is excluded, never counted as a miss.",
         f"The {len(record['mapping']['unlocated'])} sites that did not locate are listed in",
         f"`report.json`. {record['mapping']['undecided']} sites have no human verdict "

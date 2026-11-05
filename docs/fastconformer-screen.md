@@ -25,9 +25,9 @@ above the three detectors, and it does not adopt it.
 - Decoder: greedy CTC head, whole item, 16 kHz mono, on CPU. NeMo ran in its own
   environment behind a 10 GB disk reserve; the environment and the weights were deleted
   after the decodes were committed. No GPU time and no round-3 input.
-- Card sanity line: not measured. no EveryAyah test sample with the card's own normalisation is staged; the Quran-Lab benchmark's reference is Uthmani and not comparable with an Imlaei transcript, so a WER against it would not be the card's line. The smoke text
-  at a known site was the expected Arabic with diacritics; the gate's 2x threshold
-  could not be applied without the card's test set and normaliser.
+- Card sanity line: CTC WER 1.50 on 200 benchmark EveryAyah clips, the card's
+  normalisation (`card_norm`); the card's CTC WER is 7.61 and the run stops only above twice it.
+  Measured on the benchmark's studio reciters, not NVIDIA's own test split.
 - Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, 67 mistakes and 407 correct sites), the 300 synthetic edit/decoy items and qdat's 1,505 clips.
 
 ## Bars
@@ -71,7 +71,7 @@ with nothing aligned is not flagged:
 
 ## Site mapping
 
-516 of 522 Ship A sites and 300 of 300 edits were located from text alone, before any decode (the gate is 95%). The mapping never
+516 of 522 Ship A sites and 300 of 300 edits were located from text alone, before any decode. The gate is 95% of every site and 99.4% of the sites that have a side; the mapping never
 reads a decode; an unlocated site is excluded, never counted as a miss.
 The 6 sites that did not locate are listed in
 `report.json`. 45 sites have no human verdict (42 of them located) and are neither scored nor

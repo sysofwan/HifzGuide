@@ -63,6 +63,17 @@ def test_the_decodes_are_exactly_the_plan(set_name):
     assert sorted(keys) == decode_plan(set_name)
 
 
+@pytest.mark.parametrize("set_name", ["ship-a", "edits", "qdat"])
+def test_the_timing_lines_cover_every_decoded_item(set_name):
+    """A timing line per invocation, and their items sum to the set's lines: a stop is not
+    a gap in the set's provenance."""
+    lines = read_gz_lines(DECODES / f"{set_name}.fastconformer.jsonl.gz")
+    timing = read_gz_lines(DECODES / f"{set_name}.fastconformer.timing.jsonl.gz")
+    assert sum(line["items"] for line in timing) == len(lines)
+    decoded_seconds = sum((line["end_sample"] - line["start_sample"]) / 16_000 for line in lines)
+    assert abs(sum(line["audio_seconds"] for line in timing) - decoded_seconds) < 0.1
+
+
 def test_qdat_is_decoded_whole():
     lines = read_gz_lines(DECODES / "qdat.fastconformer.jsonl.gz")
     assert len(lines) == len({line["key"] for line in lines}) == QDAT_ITEMS
@@ -133,13 +144,42 @@ def test_the_verdict_is_the_frozen_rule_on_the_reports_own_numbers():
     record = report()
     expected = verdict(Rates(**record["teacher"]), Rates(**record["fastconformer"]),
                        len(record["unique_catches"]))
-    assert record["verdict"] == expected and expected in (GO, PRIOR, STOP)
+    if record["card_sanity"]["gate_failed"]:
+        # a step-1 gate failure is the rule's own first STOP, whatever the screen's numbers say
+        assert (record["verdict"], record["stopped_by"]) == (STOP, "card sanity")
+    else:
+        assert record["stopped_by"] is None
+        assert record["verdict"] == expected and expected in (GO, PRIOR, STOP)
+
+
+def test_the_card_line_is_measured_and_gated():
+    """Step 1's line is a measurement, and its gate's outcome follows from its own WER."""
+    from tadabur.fastconformer_screen.gates import CARD_CLIPS, CARD_WER
+
+    card = report()["card_sanity"]
+    measured = card["measured"]
+    assert measured["clips"] == CARD_CLIPS
+    assert measured["source"] == "everyayah_heldout" and len(measured["clip_keys"]) == CARD_CLIPS
+    assert card["gate_failed"] == (measured["wer"] > 2 * CARD_WER)
 
 
 def test_the_teachers_bars_are_the_ones_the_erratum_announced():
     bars = teacher_bars()
     assert Rates(**report()["teacher"]) == bars
     require_erratum(bars, ERRATUM_PATH)
+
+
+def test_the_mapping_gate_is_reported_on_both_denominators():
+    """The gate's denominator is every site (the pre-registered wording); the scored set is
+    reported beside it, and both must clear the bar."""
+    record = report()
+    gates = record["mapping"]["gates"]
+    scored = (record["sections"]["mistakes"]["base"]["n"]
+              + record["sections"]["correct"]["base"]["n"])
+    assert gates["scored"]["located"] == scored              # the sites the table is read on
+    assert gates["scored"]["total"] >= scored                # every site with a side
+    assert gates["sites"]["total"] >= gates["scored"]["total"]
+    assert min(gates["sites"]["share"], gates["scored"]["share"]) >= 95.0
 
 
 def test_the_mapping_gate_is_reported_with_its_unlocated_items():

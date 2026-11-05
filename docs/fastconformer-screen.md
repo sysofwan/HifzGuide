@@ -57,6 +57,19 @@ Measured text prior: at 34 of 67 decisive mistake sites it carries the prescribe
 
 None: no decisive mistake site is carried by FastConformer alone.
 
+## Harness context (#245, context only)
+
+The whole-item harness numbers #245 reported, recomputed on the same located, non-G6
+sites: Muraja's word grade of each model's committed `stream_b0` text (the single-decode
+approximation). They are context, never a bar: the rule above reads the letter-level
+columns, and nothing here moves the verdict.
+
+| column | mistakes flagged (whole item) | correct flagged (whole item) |
+|---|---:|---:|
+| teacher (base) | 21/67 | 179/407 |
+| C95 | 26/67 | 184/407 |
+| r2 EMA | 26/67 | 173/407 |
+
 ## Sensitivity (committed output only; never gates)
 
 A site is flagged here only when an explicit different output is committed, so a site

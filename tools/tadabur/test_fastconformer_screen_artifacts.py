@@ -321,6 +321,27 @@ def test_the_doc_lists_every_unique_catch_by_site():
         assert site_id in text
 
 
+def test_the_harness_context_is_on_the_same_sites_as_the_bars():
+    """The erratum's minus-G6 harness numbers are context beside the letter-level columns."""
+    record = report()
+    context = record["harness_context"]
+    models = {"base", "c95", "r2_candidate_ema"}
+    assert set(context["mistakes"]) == set(context["correct"]) == models
+    for side in ("mistakes", "correct"):
+        for model in models:
+            assert context[side][model]["den"] == record["sections"][side][model]["n"]
+    section = DOC.read_text(encoding="utf-8").split("## Harness context")[1].split("\n## ")[0]
+    assert "context, never a bar" in section
+    for label in ("teacher (base)", "C95", "r2 EMA"):
+        assert label in section
+
+
+def test_the_erratum_no_longer_defers_the_harness_context():
+    text = ERRATUM_PATH.read_text(encoding="utf-8")
+    assert "due at readout" not in text
+    assert "harness_context" in text
+
+
 def test_the_doc_says_what_the_small_catch_sets_cannot_carry():
     text = DOC.read_text(encoding="utf-8").lower()
     assert "interval" in text and "cannot" in text

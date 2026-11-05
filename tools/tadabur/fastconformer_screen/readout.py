@@ -7,7 +7,9 @@ catch sides are never pooled. Intervals are reciter-clustered bootstraps (#245's
 :func:`training.zipformer_readout.rate_view`); the small catch sets cannot carry much.
 
 The frozen GO / PRIOR / STOP rule is applied once, to the report's own rates. The doc it writes
-says what the intervals cannot carry and that a GO means only worth trying.
+says what the intervals cannot carry and that a GO means only worth trying. #245's whole-item
+harness flags for the three models are reported beside, on the same located non-G6 sites, as
+context only: no bar, gate or verdict reads them.
 
 Usage (from ``tools/``, after the decodes are committed)::
 
@@ -301,6 +303,43 @@ def refusal_doc(record: Mapping) -> str:
     return "\n".join(lines)
 
 
+def harness_context() -> dict:
+    """#245's whole-item word-grade flags on this screen's located, non-G6 sites: context only.
+
+    The same single-decode approximation #245's report reads (:func:`training.truth_baseline.
+    app_outcomes` over each model's committed ``stream_b0`` text), recomputed on the same
+    population as the letter-level columns. No bar, gate or verdict reads it.
+    """
+    from training.muraja_policy import SHIPPED_DEFAULT, WORD_FLAGGED, require_harness
+    from training.truth_baseline import DECODE_STORE, app_outcomes, read_cache
+    from training.truth_scorer import item_key
+    from training.zipformer_readout import WHOLE_ITEM
+
+    sites = located_ship_a_sites()
+    mistakes, correct = split_sides(sites)
+    keys = sorted({item_key(site) for site in sites})
+    decodes = {}
+    for model in STUDENTS:
+        items = read_cache(DECODE_STORE.path(model))["items"]
+        missing = [key for key in keys if key not in items]
+        if missing:
+            raise ValueError(f"{model}: {len(missing)} located items have no whole-item decode, "
+                             f"e.g. {missing[:3]}")
+        decodes[model] = {key: items[key][WHOLE_ITEM[model]] for key in keys}
+    _, kept = app_outcomes(sites, [], decodes, {}, require_harness())
+    scoring = SHIPPED_DEFAULT.name
+
+    def count(model: str, subset: Sequence) -> dict:
+        grades = kept.grades[scoring][model]
+        return {"flagged": sum(grades[site.site_id].outcome in WORD_FLAGGED
+                               for site in subset), "den": len(subset)}
+
+    return {"rule": "#245's whole-item word-grade flags, recomputed on the located non-G6 "
+                    "sites: context only, never a bar",
+            "mistakes": {model: count(model, mistakes) for model in STUDENTS},
+            "correct": {model: count(model, correct) for model in STUDENTS}}
+
+
 def site_report() -> dict:
     """Every section of #267's step 4, then the frozen rule's verdict.
 
@@ -369,6 +408,7 @@ def site_report() -> dict:
         "intervals": views,
         "edits": edits_scores,
         "qdat": qdat,
+        "harness_context": harness_context(),
         "unique_catches": caught,
         "mapping": mapping,
         "card_sanity": card,
@@ -476,6 +516,23 @@ def report_doc(record: Mapping) -> str:
         lines += [f"- `{site_id}`" for site_id in caught]
     else:
         lines.append("None: no decisive mistake site is carried by FastConformer alone.")
+    context = record["harness_context"]
+    labels = {"base": "teacher (base)", "c95": "C95", "r2_candidate_ema": "r2 EMA"}
+    lines += [
+        "",
+        "## Harness context (#245, context only)",
+        "",
+        "The whole-item harness numbers #245 reported, recomputed on the same located, non-G6",
+        "sites: Muraja's word grade of each model's committed `stream_b0` text (the single-decode",
+        "approximation). They are context, never a bar: the rule above reads the letter-level",
+        "columns, and nothing here moves the verdict.",
+        "",
+        "| column | mistakes flagged (whole item) | correct flagged (whole item) |",
+        "|---|---:|---:|",
+    ]
+    for model, label in labels.items():
+        m, c = context["mistakes"][model], context["correct"][model]
+        lines.append(f"| {label} | {m['flagged']}/{m['den']} | {c['flagged']}/{c['den']} |")
     lines += [
         "",
         "## Sensitivity (committed output only; never gates)",

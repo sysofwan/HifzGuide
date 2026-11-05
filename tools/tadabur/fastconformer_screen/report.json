@@ -430,6 +430,37 @@
    }
   }
  },
+ "harness_context": {
+  "rule": "#245's whole-item word-grade flags, recomputed on the located non-G6 sites: context only, never a bar",
+  "mistakes": {
+   "base": {
+    "flagged": 21,
+    "den": 67
+   },
+   "c95": {
+    "flagged": 26,
+    "den": 67
+   },
+   "r2_candidate_ema": {
+    "flagged": 26,
+    "den": 67
+   }
+  },
+  "correct": {
+   "base": {
+    "flagged": 179,
+    "den": 407
+   },
+   "c95": {
+    "flagged": 184,
+    "den": 407
+   },
+   "r2_candidate_ema": {
+    "flagged": 173,
+    "den": 407
+   }
+  }
+ },
  "unique_catches": [],
  "mapping": {
   "located": 516,

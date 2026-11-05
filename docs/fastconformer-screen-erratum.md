@@ -108,9 +108,10 @@ but this full hash.
 
 ## Still context-only
 
-#245's harness numbers for the teacher, C95 and EMA, recomputed minus G6, are due at readout as
-context only; no bar above reads them. Ship A holds consonant-pair and shaddah sites only: this
-screen cannot certify haraka.
+#245's harness numbers for the teacher, C95 and EMA, recomputed on the located, non-G6 sites,
+are in the generated doc's "Harness context" section and in `report.json`'s `harness_context`;
+no bar above reads them. Ship A holds consonant-pair and shaddah sites only: this screen cannot
+certify haraka.
 
 ## G6 decode disclosure (added 2026-11-05)
 

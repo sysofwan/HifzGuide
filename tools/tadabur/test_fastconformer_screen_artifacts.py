@@ -99,6 +99,14 @@ def test_the_mapping_gate_refuses_a_report_below_its_bar(monkeypatch):
         readout.site_report()
 
 
+def test_the_edits_are_scored_on_the_located_items_only():
+    """Step 2 excludes an unlocated edit; it is not a FastConformer miss."""
+    record = report()
+    unlocated = len(record["mapping"]["edits"]["unlocated"])
+    scored = record["mapping"]["edits"]["total"] - unlocated
+    assert record["edits"]["edit"]["n"] == record["edits"]["decoy"]["n"] == scored // 2
+
+
 def test_no_audio_or_weights_are_committed():
     assert not [p for p in HERE.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES]
 

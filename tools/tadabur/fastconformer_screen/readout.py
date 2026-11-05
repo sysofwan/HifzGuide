@@ -126,14 +126,14 @@ def edit_scores(items) -> dict:
     lines = decode_lines("edits")
     fc_carried = fc_edit_carried(items, lines)
     texts = {model: whole_item_texts("edits")[model] for model in STUDENTS}
+    # an unlocated edit is excluded, never counted as a miss, and every arm reads the same set
+    located = [item for item in items if locate_edit(item) is not None]
     out = {}
     for role in ("edit", "decoy"):
-        subset = [item for item in items if item["role"] == role]
+        subset = [item for item in located if item["role"] == role]
 
         def agrees(arm, item):
             if arm == "fastconformer":
-                if item["item_id"] not in fc_carried:
-                    return False
                 return (edit_heard(fc_carried[item["item_id"]], item["label"])
                         if role == "edit"
                         else decoy_unchanged(fc_carried[item["item_id"]], item["prescribed"]))

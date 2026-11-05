@@ -6,8 +6,9 @@
 #
 #   scripts/fastconformer-screen.sh env          # the isolated CPU NeMo venv (never hifzguide's)
 #   scripts/fastconformer-screen.sh fetch        # the pinned .nemo, hash checked locally
-#   scripts/fastconformer-screen.sh stage-edits  # the 176 missing edit source/donor clips,
-#                                                # then the deterministic edit render
+#   scripts/fastconformer-screen.sh stage-edits  # every clip the edit render reads (the
+#                                                # source/donors of the candidates it tries,
+#                                                # not only the kept pairs'), then the render
 #   scripts/fastconformer-screen.sh decode       # Ship A, the edits and qdat, CPU, gated
 #   scripts/fastconformer-screen.sh check [label]
 #   scripts/fastconformer-screen.sh fetchout DIR # pull decodes, identities and timings back
@@ -91,6 +92,7 @@ from pathlib import Path
 from tadabur.dataset_source import canonical_surah_ayah
 from tadabur.shard_reader import iter_shard_rows
 from tadabur.staged_audio import IndexRow, load_staged_clips, stage_clips, verify_staged
+from tadabur.synthetic_edits import regenerate_clips
 
 ROOT = Path("$ROOT")
 AUDIO = ROOT / "audio" / "edit_sources"
@@ -98,8 +100,7 @@ AUDIO.mkdir(parents=True, exist_ok=True)
 items = [json.loads(line) for line in
          (Path("tadabur/synthetic_edits/edits.jsonl")).read_text(encoding="utf-8").splitlines()
          if line.strip()]
-need = {item["source"]["audio_filename"] for item in items}
-need |= {item["change"]["donor"]["audio_filename"] for item in items if item["change"].get("donor")}
+need = regenerate_clips(items)
 registry = load_staged_clips()
 missing = {name for name in need if not (AUDIO / name).exists()}
 print(f"{len(need)} edit clips, {len(missing)} to stage", flush=True)

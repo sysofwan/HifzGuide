@@ -37,6 +37,7 @@ from tadabur.synthetic_edit_plan import (
     consonant_swaps,
     labelled_reference,
     plan_pairs,
+    rendered_pairs,
     select_pairs,
     shaddah_added,
     shaddah_removed,
@@ -50,6 +51,7 @@ from tadabur.synthetic_edits import (
     Unusable,
     blind_check,
     check_manifest,
+    edit_clips,
     edit_frame,
     edit_reciters,
     first_role,
@@ -60,6 +62,7 @@ from tadabur.synthetic_edits import (
     output_filename,
     read_frame,
     read_items,
+    regenerate_clips,
     render_pair,
     stage_in_parallel,
     teacher_agrees,
@@ -338,6 +341,24 @@ def test_selection_is_hash_ordered_and_caps_recordings_and_reciters():
         [pairs[0]], [copied])
 
 
+def test_a_regenerate_reads_the_candidates_the_selection_renders_and_rejects():
+    """Staging only the kept pairs' clips leaves a regenerate short: it also renders — and
+    may reject — candidates before a group fills, and a missing clip fails the run."""
+    clips = [_recitation(f"g{n}.wav", GEMINATE_REFERENCE)[0] for n in range(2)]
+    pairs, _ = plan_pairs(clips, SALT)
+    every = rendered_pairs(pairs, quota=5, per_reciter=5, salt=SALT, accepted=set())
+    assert {p.pair_id for p in every} == {p.pair_id for p in pairs}
+    kept = every[0]
+    assert select_pairs(pairs, quota=5, per_reciter=5, salt=SALT,
+                        accept=lambda p: p.pair_id == kept.pair_id) == [kept]
+    tried = rendered_pairs(pairs, quota=5, per_reciter=5, salt=SALT, accepted={kept.pair_id})
+    assert kept in tried and len(tried) > 1
+    # The one candidate never reached is the kept recording's other pair: a recording backs
+    # one pair in all.
+    reached = {p.pair_id for p in tried}
+    assert [p.audio_sha256 for p in pairs if p.pair_id not in reached] == [kept.audio_sha256]
+
+
 def test_a_recording_under_two_file_names_is_planned_once():
     """Tadabur files one recording under two speaker ids: it is one source, not two."""
     first, _ = _recitation("spk1.wav", GEMINATE_REFERENCE, sha=SHA)
@@ -508,6 +529,19 @@ def test_manifest_rows_carry_provenance_and_labels_that_follow_the_edit():
     assert edit["change"]["donor"]["reciter_id"] == edit["source"]["reciter_id"]
     assert edit["output"]["audio_filename"].startswith("se_")
     assert "edit" not in edit["output"]["audio_filename"]
+
+
+def test_regenerate_clips_reaches_past_the_manifests_own_clips():
+    """The manifest's source/donor clips are not all a regenerate reads: the candidates it
+    renders and rejects before each group fills are staged too (#267's box run stopped on
+    exactly such a clip)."""
+    items = read_items(EDITS_PATH)
+    need = regenerate_clips(items)
+    manifest = {item["source"]["audio_filename"] for item in items}
+    manifest |= {item["change"]["donor"]["audio_filename"] for item in items
+                 if item["change"].get("donor")}
+    assert manifest < need
+    assert need <= set(edit_clips())
 
 
 @pytest.mark.parametrize("mutate", [

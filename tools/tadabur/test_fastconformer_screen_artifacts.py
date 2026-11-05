@@ -125,6 +125,63 @@ def test_the_mapping_gate_refuses_a_report_below_its_bar(monkeypatch):
         readout.site_report()
 
 
+def failing_card(monkeypatch, wer: float = 20.0) -> None:
+    from tadabur.fastconformer_screen import readout
+
+    monkeypatch.setattr(readout, "card_line_record", lambda: {
+        "card": {"wer": 7.61, "clips": 200},
+        "measured": {"clips": 200, "wer": wer, "source": "everyayah_heldout"},
+        "gate_failed": True})
+
+
+def test_a_failed_card_gate_is_a_stop_record_and_needs_no_decodes(monkeypatch):
+    """Step 1's gate is evaluated before any decode is read: a failed runtime still reports."""
+    from tadabur.fastconformer_screen import readout
+
+    failing_card(monkeypatch)
+    monkeypatch.setattr(readout, "decode_lines",
+                        lambda *a, **k: pytest.fail("a failed card gate must not read decodes"))
+    record = readout.site_report()
+    assert (record["verdict"], record["stopped_by"]) == (STOP, "card sanity")
+    assert "card sanity" in record["refusal"] and record["card_sanity"]["gate_failed"] is True
+
+
+def test_a_failed_mapping_gate_writes_its_refusal_before_exiting(tmp_path, monkeypatch):
+    """The entry point persists the STOP record and every unlocated item, then re-raises."""
+    from tadabur.fastconformer_screen import readout
+    from tadabur.fastconformer_screen.gates import ScreenStop
+
+    monkeypatch.setattr(readout, "located_ship_a_sites", lambda: ())
+    monkeypatch.setattr(readout, "located_edits", lambda: [])
+    report_path = tmp_path / "report.json"
+    doc_path = tmp_path / "screen.md"
+    with pytest.raises(ScreenStop, match="mapping gate"):
+        readout.write(report_path=report_path, doc_path=doc_path)
+    record = json.loads(report_path.read_text(encoding="utf-8"))
+    assert (record["verdict"], record["stopped_by"]) == (STOP, "mapping gate")
+    assert "mapping gate" in record["refusal"]
+    assert len(record["mapping"]["unlocated"]) == record["mapping"]["total"] > 0
+    assert len(record["mapping"]["edits"]["unlocated"]) == record["mapping"]["edits"]["total"]
+    text = doc_path.read_text(encoding="utf-8")
+    assert "Verdict: STOP" in text and "mapping gate" in text
+    assert record["mapping"]["unlocated"][0] in text
+    assert record["mapping"]["edits"]["unlocated"][0] in text
+
+
+def test_a_failed_card_gate_writes_a_stop_doc_and_exits_unsuccessfully(tmp_path, monkeypatch):
+    from tadabur.fastconformer_screen import readout
+
+    failing_card(monkeypatch)
+    monkeypatch.setattr(readout, "REPORT_PATH", tmp_path / "report.json")
+    monkeypatch.setattr(readout, "DOC_PATH", tmp_path / "screen.md")
+    with pytest.raises(SystemExit) as exit_:
+        readout.main()
+    assert exit_.value.code == 3
+    record = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert (record["verdict"], record["stopped_by"]) == (STOP, "card sanity")
+    assert "Verdict: STOP" in (tmp_path / "screen.md").read_text(encoding="utf-8")
+
+
 def test_the_edits_are_scored_on_the_located_items_only():
     """Step 2 excludes an unlocated edit; it is not a FastConformer miss."""
     record = report()

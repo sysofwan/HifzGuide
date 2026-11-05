@@ -26,36 +26,50 @@ CARD_CLIPS = 200
 
 
 class ScreenStop(RuntimeError):
-    """A pre-registered gate failed: the run stops and reports, it does not judge."""
+    """A pre-registered gate failed: the run stops and reports, it does not judge.
+
+    ``gate`` names the step whose gate refused, so a report entry point can write the refusal
+    down (the message stays the human explanation).
+    """
+
+    def __init__(self, message: str, *, gate: str | None = None) -> None:
+        super().__init__(message)
+        self.gate = gate
 
 
 def require_identity(record: dict) -> None:
     """Refuse a model record that is not the pinned revision and full ``.nemo`` hash."""
     if record.get("revision") != REVISION:
         raise ScreenStop(
-            f"identity: revision {record.get('revision')!r} is not the pinned {REVISION}")
+            f"identity: revision {record.get('revision')!r} is not the pinned {REVISION}",
+            gate="identity")
     if record.get("nemo_sha256") != NEMO_SHA256:
         raise ScreenStop(
             f"identity: nemo_sha256 {record.get('nemo_sha256')!r} is not the pinned "
-            f"{NEMO_SHA256}; the issue's quoted prefix and suffix are not a match")
+            f"{NEMO_SHA256}; the issue's quoted prefix and suffix are not a match",
+            gate="identity")
 
 
 def mapping_gate(located: int, total: int) -> None:
     """Pass at >= 95% located; otherwise stop with the counts."""
     if total <= 0:
-        raise ScreenStop(f"mapping gate: nothing to locate ({located}/{total})")
+        raise ScreenStop(f"mapping gate: nothing to locate ({located}/{total})",
+                         gate="mapping gate")
     share = located / total
     if share < MAPPING_MINIMUM:
         raise ScreenStop(
             f"mapping gate: {located}/{total} located ({100 * share:.1f}%) is below "
-            f"{100 * MAPPING_MINIMUM:.0f}%; the unlocated items are listed and the run stops")
+            f"{100 * MAPPING_MINIMUM:.0f}%; the unlocated items are listed and the run stops",
+            gate="mapping gate")
 
 
 def card_gate(wer: float, clips: int) -> None:
     """Report the card sanity line; stop only above twice the card's WER on its 200 clips."""
     if clips != CARD_CLIPS:
-        raise ScreenStop(f"card sanity: the line is read on {CARD_CLIPS} clips, not {clips}")
+        raise ScreenStop(f"card sanity: the line is read on {CARD_CLIPS} clips, not {clips}",
+                         gate="card sanity")
     if wer > 2 * CARD_WER:
         raise ScreenStop(
             f"card sanity: CTC WER {wer:.2f} is above twice the card's {CARD_WER} "
-            f"({2 * CARD_WER:.2f}); the head, sample rate or normaliser is wrong")
+            f"({2 * CARD_WER:.2f}); the head, sample rate or normaliser is wrong",
+            gate="card sanity")

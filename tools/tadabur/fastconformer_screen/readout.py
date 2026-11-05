@@ -29,7 +29,7 @@ from tadabur.fastconformer_screen.outcomes import (COLUMNS, HEARD, NONE, OUTCOME
                                                    student_carried, unique_catches)
 from tadabur.fastconformer_screen.sets import (edit_items, located_ship_a_sites, split_sides,
                                                teacher_bars)
-from tadabur.fastconformer_screen.verdict import GO, Rates, verdict
+from tadabur.fastconformer_screen.verdict import GO, STOP, Rates, verdict
 
 DECODES = Path(__file__).parent / "decodes"
 CARD_LINE_PATH = Path(__file__).parent / "card_line.json"
@@ -224,14 +224,19 @@ def card_line_record(path: Path = CARD_LINE_PATH) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def require_mapping_gate(located_sites: Sequence, located_edits: Sequence) -> dict:
-    """Step 2's gate on both denominators: every site, and the sites with a human side.
+def located_edits() -> list[dict]:
+    """The edit items step 2 locates: the ones every arm is scored on."""
+    return [item for item in edit_items() if locate_edit(item) is not None]
 
-    The pre-registration says "sites", so the gate is on all of them (the held-out count
+
+def mapping_record(located_sites: Sequence, edits: Sequence) -> dict:
+    """Step 2's counts, its two denominators and every item it could not locate.
+
+    The pre-registration says "sites", so the gate reads all of them (the held-out count
     included); the scored denominator is reported beside it, because that is the set the table
-    is actually read on. Both are refusals, before any decode is scored.
+    is actually read on. Building the record does not gate, so a refusal can still list what
+    it excluded.
     """
-    from tadabur.fastconformer_screen.gates import mapping_gate
     from tadabur.fastconformer_screen.sets import ship_a_sites
 
     sites = ship_a_sites()
@@ -243,20 +248,81 @@ def require_mapping_gate(located_sites: Sequence, located_edits: Sequence) -> di
                    "total": len(all_mistakes) + len(all_correct)},
     }
     for entry in denominators.values():
+        entry["share"] = (100.0 * entry["located"] / entry["total"]) if entry["total"] else 0.0
+    located_ids = {site.site_id for site in located_sites}
+    located_edit_ids = {item["item_id"] for item in edits}
+    items = edit_items()
+    return {
+        "located": len(located_sites),
+        "total": len(sites),
+        # sites with no human verdict, so never scored: all of them, and the located ones
+        "undecided": len(sites) - len(all_mistakes) - len(all_correct),
+        "located_undecided": len(located_sites) - len(located_mistakes) - len(located_correct),
+        "unlocated": sorted(site.site_id for site in sites if site.site_id not in located_ids),
+        "edits": {"located": len(edits), "total": len(items),
+                  "unlocated": sorted(item["item_id"] for item in items
+                                      if item["item_id"] not in located_edit_ids)},
+        "gates": denominators,
+    }
+
+
+def require_mapping_gate(mapping: Mapping) -> None:
+    """Refuse below 95% on either denominator, or on the edits; nothing else gates here."""
+    from tadabur.fastconformer_screen.gates import mapping_gate
+
+    for entry in mapping["gates"].values():
         mapping_gate(entry["located"], entry["total"])
-        entry["share"] = 100.0 * entry["located"] / entry["total"]
-    mapping_gate(len(located_edits), len(edit_items()))
-    return denominators
+    mapping_gate(mapping["edits"]["located"], mapping["edits"]["total"])
+
+
+def refusal_record(gate: str, message: str, **context) -> dict:
+    """A gate's refusal as the report it leaves behind: the reason, and what it excluded."""
+    return {"issue": 267, "verdict": STOP, "stopped_by": gate, "refusal": message, **context}
+
+
+def refusal_doc(record: Mapping) -> str:
+    """The doc of a stopped run: the verdict, the gate's message and the unlocated items."""
+    lines = [
+        "# FastConformer screen: stopped at a gate",
+        "",
+        f"**Verdict: STOP.** {record['refusal']}",
+        "",
+        "The pre-registered rule stops here. This is a refusal with a message, not a judgement",
+        "of the model, and no screen result is reported.",
+        "",
+    ]
+    mapping = record.get("mapping")
+    if mapping is not None:
+        lines += [f"{len(mapping['unlocated'])} Ship A sites and "
+                  f"{len(mapping['edits']['unlocated'])} edits did not locate:", ""]
+        lines += [f"- `{site_id}`" for site_id in mapping["unlocated"]]
+        lines += [f"- `{item_id}`" for item_id in mapping["edits"]["unlocated"]]
+        lines.append("")
+    return "\n".join(lines)
 
 
 def site_report() -> dict:
-    """Every section of #267's step 4, then the frozen rule's verdict."""
+    """Every section of #267's step 4, then the frozen rule's verdict.
+
+    Step 1's card gate is read first: a failed gate is a STOP record, and it must not need
+    decodes that a failed runtime never produced. Step 2's mapping gate refuses with a message
+    (``ScreenStop``); the report entry point writes that refusal down before exiting.
+    """
     from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
     from training.truth_scorer import item_key
 
+    card = card_line_record()
+    if card["gate_failed"]:
+        measured = card["measured"]
+        return refusal_record(
+            "card sanity",
+            f"card sanity: CTC WER {measured['wer']:.2f} is above twice the card's "
+            f"{card['card']['wer']:.2f}; the head, sample rate or normaliser is wrong",
+            card_sanity=card)
     sites = located_ship_a_sites()
-    located_edits = [item for item in edit_items() if locate_edit(item) is not None]
-    mapping_gates = require_mapping_gate(sites, located_edits)
+    edits = located_edits()
+    mapping = mapping_record(sites, edits)
+    require_mapping_gate(mapping)
     mistakes, correct = split_sides(sites)
     registry = load_staged_clips(REGISTRY_PATH)
     clusters = {site.site_id: registry[site.audio_filename].reciter_id for site in sites}
@@ -281,37 +347,18 @@ def site_report() -> dict:
                                for arm in COLUMNS} for site in mistakes}
     caught = unique_catches(outcomes)
 
-    edits = edit_scores(edit_items())
+    edits_scores = edit_scores(edit_items())
     qdat = qdat_disagreement(decode_lines("qdat"))
-    from tadabur.fastconformer_screen.sets import ship_a_sites
-
-    all_sites = ship_a_sites()
-    all_mistakes, all_correct = split_sides(all_sites)
-    located_ids = {site.site_id for site in sites}
-    located_edit_ids = {item["item_id"] for item in located_edits}
-    mapping = {
-        "located": len(sites),
-        "total": len(all_sites),
-        # sites with no human verdict, so never scored: all of them, and the located ones
-        "undecided": len(all_sites) - len(all_mistakes) - len(all_correct),
-        "located_undecided": len(sites) - len(mistakes) - len(correct),
-        "unlocated": sorted(site.site_id for site in all_sites
-                            if site.site_id not in located_ids),
-        "edits": {"located": len(located_edits), "total": len(edit_items()),
-                  "unlocated": sorted(item["item_id"] for item in edit_items()
-                                      if item["item_id"] not in located_edit_ids)},
-        "gates": mapping_gates,
-    }
 
     teacher = teacher_bars()
     fast = Rates(
         mistakes_flagged=sections["mistakes"]["fastconformer"]["rate"],
         correct_flagged=sections["correct"]["fastconformer"]["rate"],
-        edits_heard=100.0 * edits["edit"]["counts"]["fastconformer"] / edits["edit"]["n"],
-        decoys_unchanged=100.0 * edits["decoy"]["counts"]["fastconformer"] / edits["decoy"]["n"],
+        edits_heard=100.0 * edits_scores["edit"]["counts"]["fastconformer"]
+        / edits_scores["edit"]["n"],
+        decoys_unchanged=100.0 * edits_scores["decoy"]["counts"]["fastconformer"]
+        / edits_scores["decoy"]["n"],
     )
-    card = card_line_record()
-    answer = STOP if card["gate_failed"] else verdict(teacher, fast, len(caught))
     return {
         "issue": 267,
         "rule": "letter-level at each located site: heard / prescribed / other / none; "
@@ -320,14 +367,14 @@ def site_report() -> dict:
         "fastconformer": fast.__dict__,
         "sections": sections,
         "intervals": views,
-        "edits": edits,
+        "edits": edits_scores,
         "qdat": qdat,
         "unique_catches": caught,
         "mapping": mapping,
         "card_sanity": card,
-        "stopped_by": "card sanity" if card["gate_failed"] else None,
+        "stopped_by": None,
         "run_note": {"device": "cpu", "gpu_hours": 0, "yielded_seconds": 0},
-        "verdict": answer,
+        "verdict": verdict(teacher, fast, len(caught)),
     }
 
 
@@ -340,6 +387,8 @@ def _pct(row: Mapping) -> str:
 
 def report_doc(record: Mapping) -> str:
     """The plain-language doc: summary and verdict first, then the evidence."""
+    if record.get("refusal"):
+        return refusal_doc(record)
     teacher = Rates(**record["teacher"])
     fast = Rates(**record["fastconformer"])
     section = record["sections"]
@@ -490,18 +539,46 @@ def report_doc(record: Mapping) -> str:
     return "\n".join(lines)
 
 
-def write(readout: Mapping | None = None) -> dict:
-    """Write ``report.json`` and the generated doc from the committed decodes."""
-    record = dict(readout or site_report())
-    REPORT_PATH.write_text(json.dumps(record, ensure_ascii=False, indent=1) + "\n",
-                           encoding="utf-8")
-    DOC_PATH.write_text(report_doc(record), encoding="utf-8")
+def _persist(record: Mapping, report_path: Path, doc_path: Path) -> None:
+    Path(report_path).write_text(json.dumps(record, ensure_ascii=False, indent=1) + "\n",
+                                 encoding="utf-8")
+    Path(doc_path).write_text(report_doc(record), encoding="utf-8")
+
+
+def write(readout: Mapping | None = None, *, report_path: Path | None = None,
+          doc_path: Path | None = None) -> dict:
+    """Write ``report.json`` and the generated doc, a gate's refusal included.
+
+    A refused mapping gate writes its STOP record (with every unlocated item) before the
+    refusal propagates: the refusal is the artifact, not a traceback above a stale report.
+    """
+    from tadabur.fastconformer_screen.gates import ScreenStop
+
+    report_path = REPORT_PATH if report_path is None else report_path
+    doc_path = DOC_PATH if doc_path is None else doc_path
+    try:
+        record = dict(readout or site_report())
+    except ScreenStop as stop:
+        context = ({"mapping": mapping_record(located_ship_a_sites(), located_edits())}
+                   if stop.gate == "mapping gate" else {})
+        _persist(refusal_record(stop.gate or "gate", str(stop), **context),
+                 report_path, doc_path)
+        raise
+    _persist(record, report_path, doc_path)
     return record
 
 
 def main() -> None:
-    """Write the report and the doc; it takes no arguments (they are both the output)."""
-    write()
+    """Write the report and the doc; a gate's refusal exits unsuccessfully after writing."""
+    from tadabur.fastconformer_screen.gates import ScreenStop
+
+    try:
+        record = write()
+    except ScreenStop as stop:
+        print(json.dumps({"stopped": str(stop)}), flush=True)
+        raise SystemExit(3)
+    if record.get("refusal"):
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

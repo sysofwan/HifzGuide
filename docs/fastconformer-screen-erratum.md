@@ -122,3 +122,11 @@ were re-decoded from scratch with the filter in place and hold exactly the plan 
 lines, no G6 clip; `test_no_g6_item_and_no_round_3_input_was_decoded` pins it). The model is
 frozen and is never trained, tuned or ensembled here, so nothing was learned from those
 decodes; the incident is recorded because the pre-registration said G6 would never be decoded.
+
+## ONNX was not used, so the parity gate did not apply (added 2026-11-05)
+
+Step 1's parity gate is conditional on exporting the CTC head to ONNX. The head was not
+exported: NeMo decoded on CPU in its own environment, so there is no second decoder whose text
+could differ and nothing for a parity gate to compare. The gate and its test were removed rather
+than left as code only a test calls. The step-1 card sanity line remains the applicable gate and
+is recorded, unmeasured, in the screen doc.

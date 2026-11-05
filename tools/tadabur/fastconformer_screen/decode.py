@@ -1,14 +1,13 @@
-"""#267's decode driver: CPU by default, and any GPU batch through #263's yield helper.
+"""#267's decode driver: CPU only, with the owner's PAUSE and RAM floors at batch boundaries.
 
-``decode_batches`` is torch- and NeMo-free: the model is a callable the caller supplies, so the
-loop's gate behaviour is testable without the runtime. On a CPU (the default) the two stops
-that still matter on a shared box, the owner's PAUSE file and the RAM floor, are honoured at
-batch boundaries and the GPU lock is never touched. On a GPU a batch runs only under
-``gpu.lock`` taken non-blockingly by :func:`tadabur.tlog_mining.give_way.run_give_way`, never
-waited for; the driver is CPU by default because the sets are a few hours of audio.
+``--device cuda`` is refused: the GPU belongs to round 3 (#263), a GPU batch would have to run
+under its non-blocking yield helper, and this screen never needed one — it decodes a few hours
+of audio and its run note records 0 GPU-hours. The stops that matter on a shared box (PAUSE,
+disk, RAM) are checked before every batch, and a stop leaves the plain decodes resumable.
 
 :func:`preflight` is the refusal the run cannot skip: the set must be decodable, and the dated
-erratum announcing the teacher's letter-level bars must be committed first.
+erratum announcing the teacher's letter-level bars must be committed first. ``main`` takes its
+plan from there, so there is one refusal path and no second one inside the loop.
 """
 
 from __future__ import annotations
@@ -16,34 +15,23 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from collections.abc import Sequence
 from pathlib import Path
 
 from tadabur.fastconformer_screen.gates import ScreenStop
 from tadabur.fastconformer_screen.sets import (ERRATUM_PATH, decode_plan, require_decodable,
                                                require_erratum)
 from tadabur.fastconformer_screen.verdict import Rates
-from tadabur.tlog_mining.give_way import Gates, GpuLock, run_give_way
+from tadabur.tlog_mining.give_way import Gates
 
-#: CPU is the default: the sets are small and the GPU belongs to round 3 (#263).
+#: CPU is the default and the only device this screen decodes on.
 DEFAULT_DEVICE = "cpu"
 BATCH_SIZE = 8
 
 
-@dataclass
-class DecodeRun:
-    """Where the loop stopped (``done``, ``pause``, ``disk`` or ``ram``) and what it decoded."""
-
-    stopped: str
-    lines: list[dict] = field(default_factory=list)
-    batches: int = 0
-    held_seconds: float = 0.0
-    yielded_seconds: float = 0.0
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """The run's command line: a set, a device (CPU unless asked) and an output directory."""
+    """The run's command line: a set, a device (CPU; cuda is refused with a message) and
+    an output directory."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--set", choices=("ship-a", "edits", "qdat"))
     parser.add_argument("--device", choices=("cpu", "cuda"), default=DEFAULT_DEVICE)
@@ -58,41 +46,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def decode_batches(items: Iterable, decode: Callable[[object], dict], *,
-                   device: str, lock: GpuLock, gates: Gates, batch_size: int,
-                   sleep: Callable[[float], None] = time.sleep) -> DecodeRun:
-    """Decode the items in order, one batch at a time, stopping at a batch boundary.
-
-    ``decode`` turns one item into its record. On the CPU the lock is never touched; on CUDA
-    every batch runs under ``run_give_way``'s non-blocking lock and its gates.
-    """
+def require_cpu(device: str) -> None:
+    """Refuse a GPU decode: round 3 owns the GPU and this screen records 0 GPU-hours."""
     if device not in ("cpu", "cuda"):
-        raise ValueError(f"unknown device {device!r}: only cpu and cuda are supported")
-    items = list(items)
-    run = DecodeRun("done")
-
-    if device == "cpu":
-        for start in range(0, len(items), batch_size):
-            reason = gates.stop_reason()
-            if reason is not None:
-                run.stopped = reason
-                return run
-            run.lines.extend(decode(item) for item in items[start:start + batch_size])
-            run.batches += 1
-        return run
-
-    position = 0
-
-    def batch(_seconds: float) -> bool:
-        nonlocal position
-        run.lines.extend(decode(item) for item in items[position:position + batch_size])
-        position += batch_size
-        return position >= len(items)
-
-    result = run_give_way(batch, lock=lock, gates=gates, sleep=sleep)
-    run.stopped, run.batches = result.stopped, result.batches
-    run.held_seconds, run.yielded_seconds = result.held_seconds, result.yielded_seconds
-    return run
+        raise ScreenStop(f"unknown device {device!r}: only cpu and cuda are accepted, "
+                         f"and only cpu is run")
+    if device != DEFAULT_DEVICE:
+        raise ScreenStop(
+            f"--device {device}: this screen decodes on CPU only; the GPU belongs to round 3 "
+            f"and any GPU batch would have to run under #263's yield helper (#267)")
 
 
 def preflight(set_name: str, rates: Rates, *, erratum_path: Path = ERRATUM_PATH) -> list[str]:
@@ -196,8 +158,6 @@ def fingerprint(device: str) -> dict:
 
 
 def _write_identity(out_dir: Path, set_name: str, nemo_path: Path, device: str) -> None:
-    import json
-
     from tadabur.fastconformer_screen.gates import NEMO_SHA256, REVISION
 
     record = {"identity": {"revision": REVISION, "nemo_sha256": NEMO_SHA256,
@@ -207,13 +167,15 @@ def _write_identity(out_dir: Path, set_name: str, nemo_path: Path, device: str) 
         json.dumps(record, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
-def decode_set(set_name: str, *, directory: Path, out_dir: Path, nemo_path: Path, model,
-               gates: Gates, device: str = DEFAULT_DEVICE, limit: int | None = None,
-               batch_size: int = BATCH_SIZE) -> dict:
+def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: Path,
+               nemo_path: Path, model, gates: Gates, device: str = DEFAULT_DEVICE,
+               limit: int | None = None, batch_size: int = BATCH_SIZE) -> dict:
     """Decode every pending item of one set to whole-item CTC text, resuming by key.
 
-    CPU only: the sets are a few hours of audio and the GPU belongs to round 3. The gates stop
-    at an item boundary; the decodes written so far stay resumable.
+    ``plan`` is :func:`tadabur.fastconformer_screen.sets.decode_plan`'s answer, and only its
+    items are decoded: a G6 item or a round-3 input cannot reach the loop even when the source
+    directory holds it. CPU only — the sets are a few hours of audio and the GPU belongs to
+    round 3. The gates stop at an item boundary; the decodes written so far stay resumable.
     """
     import json
     import time
@@ -221,17 +183,16 @@ def decode_set(set_name: str, *, directory: Path, out_dir: Path, nemo_path: Path
     from training.external_decode import append_timing, resume_keys
     from training.zipformer_screen_decode import pending_items, recordings
 
-    require_decodable(set_name)
+    require_cpu(device)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_identity(out_dir, set_name, Path(nemo_path), device)
     # plain while the run is resumable; the launcher gzips it when the set is complete
     path = out_dir / f"{set_name}.fastconformer.jsonl"
-    done = resume_keys(path)
+    keep = set(plan)
+    done = resume_keys(path) & keep
     items = audio_seconds = 0
     started = time.time()
-    # only the plan's items: Ship A's G6 items are never decoded (the test pins it)
-    keep = set(decode_plan(set_name)) if set_name in ("ship-a", "edits") else None
     source = pending_items(recordings(set_name, Path(directory)), done, keep)
     with open(path, "a", encoding="utf-8") as out:
         try:
@@ -290,20 +251,18 @@ def _available_ram_gb() -> float:
 
 def main(argv: list[str] | None = None) -> None:
     """Decode one set with the pinned model, after the erratum's bars are checked."""
-    import json as _json
-
     args = parse_args(argv)
     if args.set is None or args.out_dir is None or args.nemo is None or args.dir is None:
         raise SystemExit("--set, --out-dir, --nemo and --dir are required")
-    bars = read_bars()
-    require_erratum(bars, ERRATUM_PATH)  # the erratum is the run's first artifact
+    plan = preflight(args.set, read_bars())  # the erratum is the run's first artifact
+    require_cpu(args.device)
     gates = Gates(args.pause_file, free_disk_gb=lambda: _free_disk_gb(args.out_dir),
                   available_ram_gb=_available_ram_gb)
     model = load_ctc_model(args.nemo, args.device)
-    summary = decode_set(args.set, directory=args.dir, out_dir=args.out_dir,
+    summary = decode_set(args.set, plan=plan, directory=args.dir, out_dir=args.out_dir,
                          nemo_path=args.nemo, model=model, gates=gates,
                          device=args.device, limit=args.limit, batch_size=args.batch_size)
-    print(_json.dumps(summary), flush=True)
+    print(json.dumps(summary), flush=True)
     if summary["stopped"] != "done":
         raise SystemExit(3)  # a gate stopped the run: the plain decodes stay resumable
 

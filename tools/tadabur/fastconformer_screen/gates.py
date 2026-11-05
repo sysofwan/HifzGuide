@@ -5,8 +5,8 @@
   quote is refused.
 * **Mapping:** at least 95% of the sites and edits are located (step 2); below that the run
   stops and reports the unlocated items.
-* **Parity (only if ONNX is used):** the greedy CTC text from onnxruntime must equal NeMo's on
-  at least 49 of at least 50 Ship A clips. A broken decoder must never reach the comparison.
+* **Parity** was required only if the CTC head went to ONNX. It did not: NeMo decoded on CPU
+  in its own environment, so there is no second decoder to compare with and no parity gate.
 * **Card sanity:** the CTC WER on a 200-clip EveryAyah sample is reported, and the run stops
   only above twice the card's 7.61, which would mean a wrong head, sample rate or normaliser.
 """
@@ -20,9 +20,6 @@ NEMO_SHA256 = "d29d19d7c054a5fc010ac6815e9cbb0dd1b21a30e0a7f7f2982e1fecaf0c3e31"
 
 #: The mapping gate's bar (step 2).
 MAPPING_MINIMUM = 0.95
-#: The parity gate's bars (step 1; ONNX only).
-PARITY_CLIPS = 50
-PARITY_EQUAL = 49
 #: The card's Arabic CTC WER and the sample the sanity line is read on.
 CARD_WER = 7.61
 CARD_CLIPS = 200
@@ -52,14 +49,6 @@ def mapping_gate(located: int, total: int) -> None:
         raise ScreenStop(
             f"mapping gate: {located}/{total} located ({100 * share:.1f}%) is below "
             f"{100 * MAPPING_MINIMUM:.0f}%; the unlocated items are listed and the run stops")
-
-
-def parity_gate(equal: int, clips: int) -> None:
-    """Pass on at least 50 clips with at least 49 equal texts; otherwise stop."""
-    if clips < PARITY_CLIPS or equal < PARITY_EQUAL:
-        raise ScreenStop(
-            f"parity gate: {equal}/{clips} clips equal; the gate needs at least "
-            f"{PARITY_EQUAL}/{PARITY_CLIPS}")
 
 
 def card_gate(wer: float, clips: int) -> None:

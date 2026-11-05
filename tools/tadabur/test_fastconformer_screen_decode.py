@@ -1,119 +1,147 @@
-"""Tests for #267's decode driver: CPU by default, and any GPU use through #263's yield helper.
+"""Tests for #267's decode driver: CPU only, with the gates at batch boundaries.
 
-``decode_batches`` is torch-free: the model is a function the caller supplies. On the CPU
-(the default) the gate stops that still matter on a shared box, PAUSE and the RAM floor, are
-honoured at batch boundaries; on a GPU the batch runs only under ``gpu.lock`` taken
-non-blockingly by :func:`tadabur.tlog_mining.give_way.run_give_way`, never waited for.
+``decode_set`` is torch-free: the model is a function the caller supplies, so the driver's
+refusals and stops are testable without the runtime. The owner's PAUSE file and the RAM floor
+are honoured at batch boundaries; ``--device cuda`` is refused, because the GPU belongs to
+round 3 (#263) and this screen records 0 GPU-hours.
 """
 
 from __future__ import annotations
+
+import json
 
 import pytest
 
 from tadabur.fastconformer_screen.decode import (
     DEFAULT_DEVICE,
-    decode_batches,
+    decode_set,
     parse_args,
+    preflight,
+    require_cpu,
 )
-from tadabur.tlog_mining.give_way import Gates, GpuLock
+from tadabur.fastconformer_screen.gates import ScreenStop
+from tadabur.fastconformer_screen.sets import decode_plan
+from tadabur.fastconformer_screen.verdict import Rates
+from tadabur.tlog_mining.give_way import Gates
 
 
 def gates(tmp_path, ram_gb: float = 64.0) -> Gates:
     return Gates(tmp_path / "PAUSE", free_disk_gb=lambda: 500.0, available_ram_gb=lambda: ram_gb)
 
 
-class Calls:
-    """A decode function that records what it was asked to decode."""
+class Spans:
+    """The spans the driver asked the model for, in order."""
 
-    def __init__(self, on_call=None):
-        self.items, self.on_call = [], on_call
-
-    def __call__(self, item):
-        self.items.append(item)
-        if self.on_call:
-            self.on_call(item)
-        return {"key": item}
-
-
-class ForbiddenLock:
-    """A lock that must never be touched (the CPU path does not use the GPU lock)."""
-
-    def try_acquire(self):
-        raise AssertionError("the CPU path must not take gpu.lock")
-
-    def release(self):
-        raise AssertionError("the CPU path must not touch gpu.lock")
+    def __init__(self, on_transcribe=None):
+        self.recorded, self.on_transcribe = [], on_transcribe
 
 
 def test_cpu_is_the_default_device():
     assert DEFAULT_DEVICE == "cpu"
     assert parse_args([]).device == "cpu"
-    assert parse_args(["--device", "cuda"]).device == "cuda"
 
 
-def test_an_unknown_device_is_refused():
+def test_a_gpu_decode_is_refused_with_a_message():
+    with pytest.raises(ScreenStop, match="yield helper"):
+        require_cpu("cuda")
+    with pytest.raises(ScreenStop, match="unknown device"):
+        require_cpu("tpu")
+    require_cpu("cpu")
+
+
+def test_decode_set_refuses_cuda_before_reading_anything(tmp_path):
+    with pytest.raises(ScreenStop, match="CPU only"):
+        decode_set("edits", plan=[], directory=tmp_path, out_dir=tmp_path, nemo_path=tmp_path,
+                   model=object(), gates=gates(tmp_path), device="cuda")
+
+
+def test_an_unknown_device_is_refused_by_the_command_line():
     with pytest.raises(SystemExit):
         parse_args(["--device", "tpu"])
 
 
-def test_the_cpu_path_decodes_everything_in_order_without_the_gpu_lock(tmp_path):
-    calls = Calls()
-    run = decode_batches(["a", "b", "c"], calls, device="cpu", lock=ForbiddenLock(),
-                         gates=gates(tmp_path), batch_size=2, sleep=lambda _: None)
-    assert run.lines == [{"key": "a"}, {"key": "b"}, {"key": "c"}]
-    assert (run.stopped, calls.items) == ("done", ["a", "b", "c"])
+def test_the_driver_decodes_only_the_plans_items(tmp_path, monkeypatch):
+    """A source that holds more than the plan decodes the plan's keys alone (G6 removal)."""
+    rows = [{"key": key, "audio_filename": "a.wav", "start_sample": 0, "end_sample": 2}
+            for key in ("a@0:2", "b@0:2", "g6@0:2")]
+    spans = _stub_source(monkeypatch, [rows[:1], rows[1:]])
+    summary = decode_set("ship-a", plan=["a@0:2", "b@0:2"], directory=tmp_path,
+                         out_dir=tmp_path, nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path))
+    keys = [json.loads(line)["key"] for line in
+            (tmp_path / "ship-a.fastconformer.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert (summary["stopped"], keys) == ("done", ["a@0:2", "b@0:2"])
 
 
-def test_the_cpu_path_still_stops_at_a_batch_boundary_when_pause_appears(tmp_path):
+class _Recording:
+    """One source recording: the shard reader's shape, without a shard."""
+
+    def __init__(self, rows):
+        self.keys = [row["key"] for row in rows]
+        self._rows = rows
+
+    def load(self):
+        return [None, None, None], self._rows
+
+
+def _stub_source(monkeypatch, groups, on_transcribe=None):
+    """Replace the set's shard reader and the model with fakes: no shard, no audio, no NeMo."""
+    from tadabur.fastconformer_screen import decode as module
+    from training import zipformer_screen_decode
+
+    def recordings(_set, _directory):
+        return iter([_Recording(rows) for rows in groups])
+
+    spans = Spans(on_transcribe)
+
+    def transcribe(_model, samples):
+        spans.recorded.append(len(samples))
+        if spans.on_transcribe is not None:
+            spans.on_transcribe(len(spans.recorded))
+        return f"text-{len(spans.recorded)}"
+
+    monkeypatch.setattr(zipformer_screen_decode, "recordings", recordings)
+    monkeypatch.setattr(zipformer_screen_decode, "pending_items", _pending)
+    monkeypatch.setattr(module, "transcribe", transcribe)
+    return spans
+
+
+def _pending(source, done, keep=None):
+    for recording in source:
+        if not set(recording.keys) - done:
+            continue
+        _, rows = recording.load()
+        for row in rows:
+            if row["key"] in done or (keep is not None and row["key"] not in keep):
+                continue
+            yield row, [0.0, 0.0]
+
+
+def test_the_driver_stops_at_a_batch_boundary_when_pause_appears(tmp_path, monkeypatch):
     pause = tmp_path / "PAUSE"
-    calls = Calls(on_call=lambda item: pause.touch() if item == "a" else None)
-    run = decode_batches(["a", "b", "c", "d"], calls, device="cpu", lock=ForbiddenLock(),
-                         gates=gates(tmp_path), batch_size=2, sleep=lambda _: None)
-    assert run.stopped == "pause"
-    assert calls.items == ["a", "b"]            # the batch in flight finished; the next never began
+    rows = [{"key": f"k{n}", "audio_filename": "a.wav", "start_sample": 0, "end_sample": 2}
+            for n in range(4)]
+    spans = _stub_source(monkeypatch, [rows],
+                         on_transcribe=lambda count: pause.touch() if count == 2 else None)
+    summary = decode_set("edits", plan=[row["key"] for row in rows], directory=tmp_path,
+                         out_dir=tmp_path, nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path), batch_size=2)
+    assert summary["stopped"] == "pause"
+    assert spans.recorded == [2, 2]     # the batch in flight finished; the next never began
 
 
-def test_the_cpu_path_stops_before_starting_below_the_ram_floor(tmp_path):
-    calls = Calls()
-    run = decode_batches(["a"], calls, device="cpu", lock=ForbiddenLock(),
-                         gates=gates(tmp_path, ram_gb=1.0), batch_size=2, sleep=lambda _: None)
-    assert (run.stopped, run.lines, calls.items) == ("ram", [], [])
+def test_the_driver_stops_before_starting_below_the_ram_floor(tmp_path, monkeypatch):
+    spans = _stub_source(monkeypatch, [[{"key": "k0", "audio_filename": "a.wav",
+                                         "start_sample": 0, "end_sample": 2}]])
+    summary = decode_set("edits", plan=["k0"], directory=tmp_path, out_dir=tmp_path,
+                         nemo_path=tmp_path / "m.nemo", model=object(),
+                         gates=gates(tmp_path, ram_gb=1.0), batch_size=2)
+    assert (summary["stopped"], spans.recorded) == ("ram", [])
 
 
-def test_the_gpu_path_decodes_under_the_lock_and_releases_it(tmp_path):
-    lock = GpuLock(tmp_path / "gpu.lock")
-    calls = Calls()
-    run = decode_batches(["a", "b", "c"], calls, device="cuda", lock=lock,
-                         gates=gates(tmp_path), batch_size=2, sleep=lambda _: None)
-    assert run.lines == [{"key": "a"}, {"key": "b"}, {"key": "c"}] and run.stopped == "done"
-    other = GpuLock(tmp_path / "gpu.lock")
-    assert other.try_acquire()                  # released between and after the batches
-    other.release()
-
-
-def test_the_gpu_path_never_waits_for_a_held_lock(tmp_path):
-    holder = GpuLock(tmp_path / "gpu.lock")
-    assert holder.try_acquire()                 # round 3 holds the GPU
-    calls = Calls()
-    # the only way out of the yield sleep is the owner's PAUSE: a blocking acquire would hang here
-    sleeps = []
-    run = decode_batches(["a", "b"], calls, device="cuda", lock=GpuLock(tmp_path / "gpu.lock"),
-                         gates=gates(tmp_path), batch_size=1,
-                         sleep=lambda seconds: (sleeps.append(seconds), (tmp_path / "PAUSE").touch()))
-    holder.release()
-    assert (run.stopped, run.lines, calls.items) == ("pause", [], [])
-    assert len(sleeps) == 1
-
-
-def test_the_gpu_path_stops_when_pause_exists_before_any_batch(tmp_path):
-    (tmp_path / "PAUSE").touch()
-    calls = Calls()
-    run = decode_batches(["a"], calls, device="cuda", lock=GpuLock(tmp_path / "gpu.lock"),
-                         gates=gates(tmp_path), batch_size=1, sleep=lambda _: None)
-    assert (run.stopped, calls.items) == ("pause", [])
-
-
-def test_a_device_other_than_cpu_or_cuda_is_refused(tmp_path):
-    with pytest.raises(ValueError, match="tpu"):
-        decode_batches(["a"], Calls(), device="tpu", lock=ForbiddenLock(),
-                       gates=gates(tmp_path), batch_size=1, sleep=lambda _: None)
+def test_preflight_is_the_one_refusal_path(tmp_path):
+    bars = Rates(mistakes_flagged=1.0, correct_flagged=2.0, edits_heard=3.0,
+                 decoys_unchanged=4.0)
+    erratum = tmp_path / "erratum.md"
+    erratum.write_text("| 1.0% | 2.0% | 3.0% | 4.0% |\n", encoding="utf-8")
+    assert preflight("edits", bars, erratum_path=erratum) == decode_plan("edits")

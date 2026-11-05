@@ -463,12 +463,7 @@ def write(readout: Mapping | None = None) -> dict:
 
 
 def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--report-only", action="store_true",
-                        help="write report.json and the doc (the default; kept explicit)")
-    parser.parse_args()
+    """Write the report and the doc; it takes no arguments (they are both the output)."""
     write()
 
 

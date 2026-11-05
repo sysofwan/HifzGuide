@@ -72,6 +72,7 @@ from .synthetic_edit_plan import (
     labelled_reference,
     plan_pairs,
     rank,
+    rendered_pairs,
     select_pairs,
     unique_recordings,
 )
@@ -756,6 +757,24 @@ def blind_check(
 #: Pairs per operation and mark, and per reciter within one.
 QUOTA_PER_MARK = 60
 PER_RECITER = 3
+
+
+def regenerate_clips(items: Iterable[dict]) -> set[str]:
+    """Every clip a regenerate of ``items`` (a rendered manifest) reads.
+
+    A regenerate re-renders each candidate the selection tries, not only the pairs it
+    keeps, and a clip missing at that point fails the run. Staging only the manifest's own
+    clips is therefore not enough.
+    """
+    accepted = {item["item_id"].rsplit(":", 1)[0] for item in items}
+    candidates, _ = plan_pairs(timed_clips(), SALT)
+    names: set[str] = set()
+    for pair in rendered_pairs(candidates, QUOTA_PER_MARK, PER_RECITER, SALT, accepted):
+        names.add(pair.audio_filename)
+        for change in (pair.edit, pair.decoy):
+            if change.donor is not None:
+                names.add(change.donor.audio_filename)
+    return names
 
 
 def write_item(samples: np.ndarray, path: Path) -> dict:

@@ -1,0 +1,728 @@
+{
+ "issue": 267,
+ "rule": "letter-level at each located site: heard / prescribed / other / none; flagged = not prescribed (none counts); correct and catch sides never pooled",
+ "teacher": {
+  "mistakes_flagged": 83.58208955223881,
+  "correct_flagged": 63.63636363636363,
+  "edits_heard": 22.666666666666668,
+  "decoys_unchanged": 58.666666666666664
+ },
+ "fastconformer": {
+  "mistakes_flagged": 49.25373134328358,
+  "correct_flagged": 13.513513513513514,
+  "edits_heard": 26.0,
+  "decoys_unchanged": 78.0
+ },
+ "sections": {
+  "mistakes": {
+   "fastconformer": {
+    "n": 67,
+    "flagged": 33,
+    "rate": 49.25373134328358,
+    "breakdown": {
+     "heard": 29,
+     "prescribed": 34,
+     "other": 2,
+     "none": 2
+    },
+    "sensitivity_flagged": 31
+   },
+   "base": {
+    "n": 67,
+    "flagged": 56,
+    "rate": 83.58208955223881,
+    "breakdown": {
+     "heard": 54,
+     "prescribed": 11,
+     "other": 1,
+     "none": 1
+    },
+    "sensitivity_flagged": 55
+   },
+   "c95": {
+    "n": 67,
+    "flagged": 55,
+    "rate": 82.08955223880596,
+    "breakdown": {
+     "heard": 53,
+     "prescribed": 12,
+     "other": 2,
+     "none": 0
+    },
+    "sensitivity_flagged": 55
+   },
+   "r2_candidate_ema": {
+    "n": 67,
+    "flagged": 57,
+    "rate": 85.07462686567165,
+    "breakdown": {
+     "heard": 53,
+     "prescribed": 10,
+     "other": 1,
+     "none": 3
+    },
+    "sensitivity_flagged": 54
+   }
+  },
+  "correct": {
+   "fastconformer": {
+    "n": 407,
+    "flagged": 55,
+    "rate": 13.513513513513514,
+    "breakdown": {
+     "heard": 352,
+     "prescribed": 0,
+     "other": 51,
+     "none": 4
+    },
+    "sensitivity_flagged": 51
+   },
+   "base": {
+    "n": 407,
+    "flagged": 259,
+    "rate": 63.63636363636363,
+    "breakdown": {
+     "heard": 148,
+     "prescribed": 0,
+     "other": 198,
+     "none": 61
+    },
+    "sensitivity_flagged": 198
+   },
+   "c95": {
+    "n": 407,
+    "flagged": 261,
+    "rate": 64.12776412776412,
+    "breakdown": {
+     "heard": 146,
+     "prescribed": 0,
+     "other": 199,
+     "none": 62
+    },
+    "sensitivity_flagged": 199
+   },
+   "r2_candidate_ema": {
+    "n": 407,
+    "flagged": 245,
+    "rate": 60.1965601965602,
+    "breakdown": {
+     "heard": 162,
+     "prescribed": 0,
+     "other": 183,
+     "none": 62
+    },
+    "sensitivity_flagged": 183
+   }
+  }
+ },
+ "intervals": {
+  "mistakes": {
+   "observations": 67,
+   "clusters": 46,
+   "scale": 100.0,
+   "models": {
+    "fastconformer": {
+     "num": 33.0,
+     "den": 67.0,
+     "point": 49.25373134328358,
+     "interval": {
+      "lower": 35.483870967741936,
+      "upper": 61.42857142857143,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 56.0,
+     "den": 67.0,
+     "point": 83.5820895522388,
+     "interval": {
+      "lower": 73.52941176470588,
+      "upper": 91.78082191780823,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 55.0,
+     "den": 67.0,
+     "point": 82.08955223880598,
+     "interval": {
+      "lower": 71.01449275362319,
+      "upper": 91.30434782608695,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 57.0,
+     "den": 67.0,
+     "point": 85.07462686567165,
+     "interval": {
+      "lower": 75.38461538461539,
+      "upper": 92.94159072079535,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "comparisons": {
+    "fastconformer−base": {
+     "point": -34.32835820895522,
+     "interval": {
+      "lower": -47.61904761904761,
+      "upper": -22.03099605293712,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95−base": {
+     "point": -1.492537313432829,
+     "interval": {
+      "lower": -11.290322580645162,
+      "upper": 8.21917808219178,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema−base": {
+     "point": 1.4925373134328401,
+     "interval": {
+      "lower": -4.999999999999993,
+      "upper": 8.450704225352112,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  },
+  "correct": {
+   "observations": 407,
+   "clusters": 178,
+   "scale": 100.0,
+   "models": {
+    "fastconformer": {
+     "num": 55.0,
+     "den": 407.0,
+     "point": 13.513513513513514,
+     "interval": {
+      "lower": 10.06420616002047,
+      "upper": 17.24161167394739,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 259.0,
+     "den": 407.0,
+     "point": 63.63636363636363,
+     "interval": {
+      "lower": 58.72641509433962,
+      "upper": 68.42105263157895,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 261.0,
+     "den": 407.0,
+     "point": 64.12776412776412,
+     "interval": {
+      "lower": 59.267835365853664,
+      "upper": 69.0,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 245.0,
+     "den": 407.0,
+     "point": 60.1965601965602,
+     "interval": {
+      "lower": 55.01283775714797,
+      "upper": 65.47314578005115,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "comparisons": {
+    "fastconformer−base": {
+     "point": -50.12285012285012,
+     "interval": {
+      "lower": -55.181347150259064,
+      "upper": -45.049221525205965,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95−base": {
+     "point": 0.49140049140049546,
+     "interval": {
+      "lower": -4.0405175348995614,
+      "upper": 5.167958656330751,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema−base": {
+     "point": -3.439803439803435,
+     "interval": {
+      "lower": -7.868020304568524,
+      "upper": 0.8852032230603213,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  }
+ },
+ "edits": {
+  "edit": {
+   "n": 150,
+   "counts": {
+    "fastconformer": 39,
+    "base": 34,
+    "c95": 54,
+    "r2_candidate_ema": 47
+   },
+   "rates": {
+    "fastconformer": {
+     "num": 39.0,
+     "den": 150.0,
+     "point": 26.0,
+     "interval": {
+      "lower": 20.720559845559844,
+      "upper": 31.0126582278481,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 34.0,
+     "den": 150.0,
+     "point": 22.666666666666664,
+     "interval": {
+      "lower": 16.528745957599714,
+      "upper": 29.10471377290761,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 54.0,
+     "den": 150.0,
+     "point": 36.0,
+     "interval": {
+      "lower": 28.484848484848484,
+      "upper": 43.33381502890173,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 47.0,
+     "den": 150.0,
+     "point": 31.333333333333336,
+     "interval": {
+      "lower": 24.087591240875913,
+      "upper": 38.46153846153847,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "differences": {
+    "fastconformer−base": {
+     "point": 3.3333333333333353,
+     "interval": {
+      "lower": -4.820007301935013,
+      "upper": 10.949155084491547,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  },
+  "decoy": {
+   "n": 150,
+   "counts": {
+    "fastconformer": 117,
+    "base": 88,
+    "c95": 93,
+    "r2_candidate_ema": 90
+   },
+   "rates": {
+    "fastconformer": {
+     "num": 117.0,
+     "den": 150.0,
+     "point": 78.0,
+     "interval": {
+      "lower": 72.84768211920529,
+      "upper": 83.48646120958404,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 88.0,
+     "den": 150.0,
+     "point": 58.666666666666664,
+     "interval": {
+      "lower": 50.73529411764706,
+      "upper": 66.43847108577732,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 93.0,
+     "den": 150.0,
+     "point": 62.0,
+     "interval": {
+      "lower": 53.74149659863946,
+      "upper": 70.00159235668787,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 90.0,
+     "den": 150.0,
+     "point": 60.0,
+     "interval": {
+      "lower": 51.94805194805194,
+      "upper": 68.11594202898551,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "differences": {
+    "fastconformer−base": {
+     "point": 19.333333333333336,
+     "interval": {
+      "lower": 10.48951048951049,
+      "upper": 28.98550724637682,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  }
+ },
+ "qdat": {
+  "clips": 1505,
+  "words": 12040,
+  "disagreeing_words": 2371,
+  "rule": "a reference word disagrees when any of its Imlaei letters is substituted, deleted, inserted into or beside it, or aligned to a different shadda state; harakat are never read",
+  "rates": {
+   "fastconformer": {
+    "num": 2371.0,
+    "den": 12040.0,
+    "point": 196.92691029900334,
+    "interval": {
+     "lower": 182.1690618559867,
+     "upper": 211.31979218419426,
+     "method": "bootstrap",
+     "reason": ""
+    }
+   }
+  }
+ },
+ "harness_context": {
+  "rule": "#245's whole-item word-grade flags, recomputed on the located non-G6 sites: context only, never a bar",
+  "mistakes": {
+   "base": {
+    "flagged": 21,
+    "den": 67
+   },
+   "c95": {
+    "flagged": 26,
+    "den": 67
+   },
+   "r2_candidate_ema": {
+    "flagged": 26,
+    "den": 67
+   }
+  },
+  "correct": {
+   "base": {
+    "flagged": 179,
+    "den": 407
+   },
+   "c95": {
+    "flagged": 184,
+    "den": 407
+   },
+   "r2_candidate_ema": {
+    "flagged": 173,
+    "den": 407
+   }
+  }
+ },
+ "unique_catches": [],
+ "mapping": {
+  "located": 516,
+  "total": 522,
+  "undecided": 45,
+  "located_undecided": 42,
+  "unlocated": [
+   "new_audit:tadabur_spk0002_S17_A18_ede49820_000011.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0016_S17_A18_e1d73e40_000012.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0051_S17_A18_5a3f865e_000018.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0066_S23_A3_33c43374_000002.wav#0@2:shaddah",
+   "new_audit:tadabur_spk0114_S17_A18_0356123b_000011.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0350_S37_A13_fc588788_000000.wav#0@23:ط↔ق"
+  ],
+  "edits": {
+   "located": 300,
+   "total": 300,
+   "unlocated": []
+  },
+  "gates": {
+   "sites": {
+    "located": 516,
+    "total": 522,
+    "share": 98.85057471264368
+   },
+   "scored": {
+    "located": 474,
+    "total": 477,
+    "share": 99.37106918238993
+   }
+  }
+ },
+ "card_sanity": {
+  "issue": 267,
+  "identity": {
+   "nemo": "stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo",
+   "benchmark": "Quran-Lab/quranic-asr-benchmark",
+   "benchmark_revision": "d9fc635276a6a2b770293e6bffbe5b077bfc52b0"
+  },
+  "card": {
+   "wer": 7.61,
+   "clips": 200
+  },
+  "measured": {
+   "clips": 200,
+   "errors": 37,
+   "reference_words": 2462,
+   "wer": 1.5028432168968318,
+   "source": "everyayah_heldout",
+   "sample": 200,
+   "normalisation": "training.zipformer_gate.card_norm: NFC, diacritics and tatweel stripped, hamza/alif/ya/ta-marbuta spellings folded, whitespace collapsed",
+   "clip_keys": [
+    "everyayah_heldout/test-00003-of-00013_1014",
+    "everyayah_heldout/test-00003-of-00013_1016",
+    "everyayah_heldout/test-00003-of-00013_1019",
+    "everyayah_heldout/test-00003-of-00013_1021",
+    "everyayah_heldout/test-00003-of-00013_1067",
+    "everyayah_heldout/test-00003-of-00013_1069",
+    "everyayah_heldout/test-00003-of-00013_1097",
+    "everyayah_heldout/test-00003-of-00013_1127",
+    "everyayah_heldout/test-00003-of-00013_1131",
+    "everyayah_heldout/test-00003-of-00013_1136",
+    "everyayah_heldout/test-00003-of-00013_1139",
+    "everyayah_heldout/test-00003-of-00013_1143",
+    "everyayah_heldout/test-00003-of-00013_1147",
+    "everyayah_heldout/test-00003-of-00013_1155",
+    "everyayah_heldout/test-00003-of-00013_1160",
+    "everyayah_heldout/test-00003-of-00013_1165",
+    "everyayah_heldout/test-00003-of-00013_1166",
+    "everyayah_heldout/test-00003-of-00013_1171",
+    "everyayah_heldout/test-00003-of-00013_1174",
+    "everyayah_heldout/test-00003-of-00013_609",
+    "everyayah_heldout/test-00003-of-00013_610",
+    "everyayah_heldout/test-00003-of-00013_623",
+    "everyayah_heldout/test-00003-of-00013_633",
+    "everyayah_heldout/test-00003-of-00013_638",
+    "everyayah_heldout/test-00003-of-00013_656",
+    "everyayah_heldout/test-00003-of-00013_657",
+    "everyayah_heldout/test-00003-of-00013_662",
+    "everyayah_heldout/test-00003-of-00013_671",
+    "everyayah_heldout/test-00003-of-00013_676",
+    "everyayah_heldout/test-00003-of-00013_686",
+    "everyayah_heldout/test-00003-of-00013_691",
+    "everyayah_heldout/test-00003-of-00013_694",
+    "everyayah_heldout/test-00003-of-00013_697",
+    "everyayah_heldout/test-00003-of-00013_698",
+    "everyayah_heldout/test-00003-of-00013_701",
+    "everyayah_heldout/test-00003-of-00013_705",
+    "everyayah_heldout/test-00003-of-00013_708",
+    "everyayah_heldout/test-00003-of-00013_738",
+    "everyayah_heldout/test-00003-of-00013_741",
+    "everyayah_heldout/test-00003-of-00013_749",
+    "everyayah_heldout/test-00003-of-00013_774",
+    "everyayah_heldout/test-00003-of-00013_775",
+    "everyayah_heldout/test-00003-of-00013_784",
+    "everyayah_heldout/test-00003-of-00013_798",
+    "everyayah_heldout/test-00003-of-00013_802",
+    "everyayah_heldout/test-00003-of-00013_814",
+    "everyayah_heldout/test-00003-of-00013_830",
+    "everyayah_heldout/test-00003-of-00013_836",
+    "everyayah_heldout/test-00003-of-00013_837",
+    "everyayah_heldout/test-00003-of-00013_849",
+    "everyayah_heldout/test-00003-of-00013_860",
+    "everyayah_heldout/test-00003-of-00013_863",
+    "everyayah_heldout/test-00003-of-00013_870",
+    "everyayah_heldout/test-00003-of-00013_897",
+    "everyayah_heldout/test-00003-of-00013_903",
+    "everyayah_heldout/test-00003-of-00013_914",
+    "everyayah_heldout/test-00003-of-00013_919",
+    "everyayah_heldout/test-00003-of-00013_936",
+    "everyayah_heldout/test-00003-of-00013_941",
+    "everyayah_heldout/test-00003-of-00013_942",
+    "everyayah_heldout/test-00003-of-00013_969",
+    "everyayah_heldout/test-00003-of-00013_978",
+    "everyayah_heldout/test-00003-of-00013_980",
+    "everyayah_heldout/test-00003-of-00013_982",
+    "everyayah_heldout/test-00003-of-00013_987",
+    "everyayah_heldout/test-00003-of-00013_988",
+    "everyayah_heldout/test-00008-of-00013_1624",
+    "everyayah_heldout/test-00008-of-00013_1652",
+    "everyayah_heldout/test-00008-of-00013_1678",
+    "everyayah_heldout/test-00008-of-00013_1683",
+    "everyayah_heldout/test-00008-of-00013_1692",
+    "everyayah_heldout/test-00008-of-00013_1699",
+    "everyayah_heldout/test-00008-of-00013_1710",
+    "everyayah_heldout/test-00008-of-00013_1725",
+    "everyayah_heldout/test-00008-of-00013_1749",
+    "everyayah_heldout/test-00008-of-00013_1750",
+    "everyayah_heldout/test-00008-of-00013_1757",
+    "everyayah_heldout/test-00008-of-00013_1763",
+    "everyayah_heldout/test-00008-of-00013_1766",
+    "everyayah_heldout/test-00008-of-00013_1778",
+    "everyayah_heldout/test-00008-of-00013_1786",
+    "everyayah_heldout/test-00008-of-00013_1788",
+    "everyayah_heldout/test-00008-of-00013_1804",
+    "everyayah_heldout/test-00009-of-00013_110",
+    "everyayah_heldout/test-00009-of-00013_112",
+    "everyayah_heldout/test-00009-of-00013_116",
+    "everyayah_heldout/test-00009-of-00013_117",
+    "everyayah_heldout/test-00009-of-00013_12",
+    "everyayah_heldout/test-00009-of-00013_131",
+    "everyayah_heldout/test-00009-of-00013_132",
+    "everyayah_heldout/test-00009-of-00013_142",
+    "everyayah_heldout/test-00009-of-00013_147",
+    "everyayah_heldout/test-00009-of-00013_149",
+    "everyayah_heldout/test-00009-of-00013_150",
+    "everyayah_heldout/test-00009-of-00013_162",
+    "everyayah_heldout/test-00009-of-00013_178",
+    "everyayah_heldout/test-00009-of-00013_1782",
+    "everyayah_heldout/test-00009-of-00013_1797",
+    "everyayah_heldout/test-00009-of-00013_187",
+    "everyayah_heldout/test-00009-of-00013_189",
+    "everyayah_heldout/test-00009-of-00013_19",
+    "everyayah_heldout/test-00009-of-00013_200",
+    "everyayah_heldout/test-00009-of-00013_204",
+    "everyayah_heldout/test-00009-of-00013_206",
+    "everyayah_heldout/test-00009-of-00013_21",
+    "everyayah_heldout/test-00009-of-00013_217",
+    "everyayah_heldout/test-00009-of-00013_229",
+    "everyayah_heldout/test-00009-of-00013_246",
+    "everyayah_heldout/test-00009-of-00013_25",
+    "everyayah_heldout/test-00009-of-00013_251",
+    "everyayah_heldout/test-00009-of-00013_269",
+    "everyayah_heldout/test-00009-of-00013_274",
+    "everyayah_heldout/test-00009-of-00013_293",
+    "everyayah_heldout/test-00009-of-00013_307",
+    "everyayah_heldout/test-00009-of-00013_308",
+    "everyayah_heldout/test-00009-of-00013_319",
+    "everyayah_heldout/test-00009-of-00013_321",
+    "everyayah_heldout/test-00009-of-00013_33",
+    "everyayah_heldout/test-00009-of-00013_332",
+    "everyayah_heldout/test-00009-of-00013_333",
+    "everyayah_heldout/test-00009-of-00013_36",
+    "everyayah_heldout/test-00009-of-00013_363",
+    "everyayah_heldout/test-00009-of-00013_368",
+    "everyayah_heldout/test-00009-of-00013_384",
+    "everyayah_heldout/test-00009-of-00013_393",
+    "everyayah_heldout/test-00009-of-00013_42",
+    "everyayah_heldout/test-00009-of-00013_53",
+    "everyayah_heldout/test-00009-of-00013_60",
+    "everyayah_heldout/test-00009-of-00013_62",
+    "everyayah_heldout/test-00009-of-00013_63",
+    "everyayah_heldout/test-00009-of-00013_68",
+    "everyayah_heldout/test-00009-of-00013_8",
+    "everyayah_heldout/test-00009-of-00013_92",
+    "everyayah_heldout/test-00009-of-00013_93",
+    "everyayah_heldout/test-00010-of-00013_116",
+    "everyayah_heldout/test-00010-of-00013_121",
+    "everyayah_heldout/test-00010-of-00013_124",
+    "everyayah_heldout/test-00010-of-00013_130",
+    "everyayah_heldout/test-00010-of-00013_135",
+    "everyayah_heldout/test-00010-of-00013_138",
+    "everyayah_heldout/test-00010-of-00013_144",
+    "everyayah_heldout/test-00010-of-00013_153",
+    "everyayah_heldout/test-00010-of-00013_174",
+    "everyayah_heldout/test-00010-of-00013_189",
+    "everyayah_heldout/test-00010-of-00013_194",
+    "everyayah_heldout/test-00010-of-00013_20",
+    "everyayah_heldout/test-00010-of-00013_212",
+    "everyayah_heldout/test-00010-of-00013_213",
+    "everyayah_heldout/test-00010-of-00013_237",
+    "everyayah_heldout/test-00010-of-00013_242",
+    "everyayah_heldout/test-00010-of-00013_25",
+    "everyayah_heldout/test-00010-of-00013_260",
+    "everyayah_heldout/test-00010-of-00013_272",
+    "everyayah_heldout/test-00010-of-00013_279",
+    "everyayah_heldout/test-00010-of-00013_295",
+    "everyayah_heldout/test-00010-of-00013_301",
+    "everyayah_heldout/test-00010-of-00013_303",
+    "everyayah_heldout/test-00010-of-00013_314",
+    "everyayah_heldout/test-00010-of-00013_316",
+    "everyayah_heldout/test-00010-of-00013_326",
+    "everyayah_heldout/test-00010-of-00013_337",
+    "everyayah_heldout/test-00010-of-00013_346",
+    "everyayah_heldout/test-00010-of-00013_37",
+    "everyayah_heldout/test-00010-of-00013_371",
+    "everyayah_heldout/test-00010-of-00013_383",
+    "everyayah_heldout/test-00010-of-00013_388",
+    "everyayah_heldout/test-00010-of-00013_398",
+    "everyayah_heldout/test-00010-of-00013_422",
+    "everyayah_heldout/test-00010-of-00013_428",
+    "everyayah_heldout/test-00010-of-00013_434",
+    "everyayah_heldout/test-00010-of-00013_436",
+    "everyayah_heldout/test-00010-of-00013_440",
+    "everyayah_heldout/test-00010-of-00013_45",
+    "everyayah_heldout/test-00010-of-00013_453",
+    "everyayah_heldout/test-00010-of-00013_459",
+    "everyayah_heldout/test-00010-of-00013_471",
+    "everyayah_heldout/test-00010-of-00013_476",
+    "everyayah_heldout/test-00010-of-00013_477",
+    "everyayah_heldout/test-00010-of-00013_478",
+    "everyayah_heldout/test-00010-of-00013_489",
+    "everyayah_heldout/test-00010-of-00013_498",
+    "everyayah_heldout/test-00010-of-00013_506",
+    "everyayah_heldout/test-00010-of-00013_507",
+    "everyayah_heldout/test-00010-of-00013_509",
+    "everyayah_heldout/test-00010-of-00013_511",
+    "everyayah_heldout/test-00010-of-00013_524",
+    "everyayah_heldout/test-00010-of-00013_528",
+    "everyayah_heldout/test-00010-of-00013_537",
+    "everyayah_heldout/test-00010-of-00013_538",
+    "everyayah_heldout/test-00010-of-00013_54",
+    "everyayah_heldout/test-00010-of-00013_55",
+    "everyayah_heldout/test-00010-of-00013_558",
+    "everyayah_heldout/test-00010-of-00013_560",
+    "everyayah_heldout/test-00010-of-00013_562",
+    "everyayah_heldout/test-00010-of-00013_563",
+    "everyayah_heldout/test-00010-of-00013_575",
+    "everyayah_heldout/test-00010-of-00013_62",
+    "everyayah_heldout/test-00010-of-00013_89",
+    "everyayah_heldout/test-00010-of-00013_94",
+    "everyayah_heldout/test-00010-of-00013_95"
+   ]
+  },
+  "gate_failed": false,
+  "rule": "reported; the run stops only above twice the card's CTC WER"
+ },
+ "stopped_by": null,
+ "run_note": {
+  "device": "cpu",
+  "gpu_hours": 0,
+  "yielded_seconds": 0
+ },
+ "verdict": "PRIOR"
+}

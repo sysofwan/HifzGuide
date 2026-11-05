@@ -1,0 +1,17 @@
+{
+ "identity": {
+  "revision": "7f32349d952f42a28dce979ba73270aa2bbdfa89",
+  "nemo_sha256": "d29d19d7c054a5fc010ac6815e9cbb0dd1b21a30e0a7f7f2982e1fecaf0c3e31",
+  "nemo_size": 459233280,
+  "file": "stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo"
+ },
+ "fingerprint": {
+  "device_type": "cpu",
+  "decoder": "ctc-greedy",
+  "sample_rate": 16000,
+  "model": "nvidia/stt_ar_fastconformer_hybrid_large_pcd_v1.0",
+  "nemo": "2.0.0",
+  "torch": "2.15.0+cpu",
+  "numpy": "1.26.4"
+ }
+}

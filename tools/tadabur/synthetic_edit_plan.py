@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import hashlib
 import statistics
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
@@ -525,6 +525,17 @@ def select_pairs(
     with several candidates goes where it is hardest to replace. A pair within the caps is
     taken only if ``accept`` passes it (the renderer's checks on the audio); otherwise the
     next one in hash order is tried."""
+    return sorted(_fill_groups(pairs, quota, per_reciter, salt, accept),
+                  key=lambda p: p.pair_id)
+
+
+def _fill_groups(pairs: list[EditPair], quota: int, per_reciter: int, salt: str,
+                 accept: Callable[[EditPair], bool],
+                 tried: list[EditPair] | None = None) -> list[EditPair]:
+    """:func:`select_pairs`'s walk: the pairs ``accept`` kept, scarcest group first.
+
+    ``tried``, when given, collects every pair ``accept`` was called on, kept or not.
+    """
     chosen: list[EditPair] = []
     groups: dict[tuple[str, str], list[EditPair]] = {}
     for pair in pairs:
@@ -538,10 +549,26 @@ def select_pairs(
                 break
             if pair.audio_sha256 in recordings or reciters.get(pair.reciter_id, 0) >= per_reciter:
                 continue
+            if tried is not None:
+                tried.append(pair)
             if not accept(pair):
                 continue
             recordings.add(pair.audio_sha256)
             reciters[pair.reciter_id] = reciters.get(pair.reciter_id, 0) + 1
             chosen.append(pair)
             taken += 1
-    return sorted(chosen, key=lambda p: p.pair_id)
+    return chosen
+
+
+def rendered_pairs(pairs: list[EditPair], quota: int, per_reciter: int, salt: str,
+                   accepted: Collection[str]) -> list[EditPair]:
+    """Every pair a run of :func:`select_pairs` renders to keep ``accepted`` (pair ids).
+
+    The renderer is what decides acceptance (its checks are on the audio), and it renders
+    each candidate within the caps before rejecting it. Given the ids a previous run kept
+    the walk is fixed, so these are the clips a regenerate reads: the kept pairs' own and
+    the ones tried and rejected before each group filled.
+    """
+    tried: list[EditPair] = []
+    _fill_groups(pairs, quota, per_reciter, salt, lambda p: p.pair_id in accepted, tried)
+    return sorted(tried, key=lambda p: p.pair_id)

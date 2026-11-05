@@ -180,7 +180,7 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
     import json
     import time
 
-    from training.external_decode import append_timing, resume_keys
+    from training.external_decode import resume_keys
     from training.zipformer_screen_decode import pending_items, recordings
 
     require_cpu(device)
@@ -200,9 +200,10 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
                 if items % batch_size == 0:
                     reason = gates.stop_reason()
                     if reason is not None:
-                        return {"stopped": reason, "items": items,
-                                "audio_seconds": round(audio_seconds, 1),
-                                "wall_seconds": round(time.time() - started, 1)}
+                        # a stopped invocation still records what it decoded: the timing file
+                        # is the set's provenance, so a stop must not be invisible in it
+                        return _finish(out_dir, set_name, reason, items, audio_seconds,
+                                       started, device)
                 line = {**record, "ctc": transcribe(model, span)}
                 out.write(json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n")
                 out.flush()
@@ -214,7 +215,20 @@ def decode_set(set_name: str, *, plan: Sequence[str], directory: Path, out_dir: 
             close = getattr(source, "close", None)
             if close is not None:
                 close()  # a stopped stream deletes the shard it was reading
-    summary = {"stopped": "done", "items": items, "audio_seconds": round(audio_seconds, 1),
+    return _finish(out_dir, set_name, "done", items, audio_seconds, started, device)
+
+
+def _finish(out_dir: Path, set_name: str, stopped: str, items: int, audio_seconds: float,
+            started: float, device: str) -> dict:
+    """Record what this invocation decoded, whether it finished or a gate stopped it.
+
+    One line per invocation: their ``items`` sum to the committed set's lines, so a PAUSE or
+    RAM stop is part of the set's provenance instead of a gap in it.
+    """
+    from training.external_decode import append_timing
+
+    summary = {"stopped": stopped, "items": items,
+               "audio_seconds": round(audio_seconds, 1),
                "wall_seconds": round(time.time() - started, 1), "device": device}
     append_timing(out_dir / f"{set_name}.fastconformer.timing.jsonl", summary)
     return summary

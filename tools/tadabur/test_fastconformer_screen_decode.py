@@ -139,6 +139,24 @@ def test_the_driver_stops_before_starting_below_the_ram_floor(tmp_path, monkeypa
     assert (summary["stopped"], spans.recorded) == ("ram", [])
 
 
+def test_a_stopped_invocation_still_records_its_timing(tmp_path, monkeypatch):
+    """A PAUSE stop must not leave the set's timing file claiming more than it holds."""
+    pause = tmp_path / "PAUSE"
+    rows = [{"key": f"k{n}", "audio_filename": "a.wav", "start_sample": 0, "end_sample": 2}
+            for n in range(4)]
+    _stub_source(monkeypatch, [rows],
+                 on_transcribe=lambda count: pause.touch() if count == 2 else None)
+    decode_set("edits", plan=[row["key"] for row in rows], directory=tmp_path,
+               out_dir=tmp_path, nemo_path=tmp_path / "m.nemo", model=object(),
+               gates=gates(tmp_path), batch_size=2)
+    timing = [json.loads(line) for line in
+              (tmp_path / "edits.fastconformer.timing.jsonl").read_text(
+                  encoding="utf-8").splitlines()]
+    assert [(line["stopped"], line["items"]) for line in timing] == [("pause", 2)]
+    assert sum(line["items"] for line in timing) == len(
+        (tmp_path / "edits.fastconformer.jsonl").read_text(encoding="utf-8").splitlines())
+
+
 def test_preflight_is_the_one_refusal_path(tmp_path):
     bars = Rates(mistakes_flagged=1.0, correct_flagged=2.0, edits_heard=3.0,
                  decoys_unchanged=4.0)

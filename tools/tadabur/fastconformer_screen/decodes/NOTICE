@@ -1,0 +1,13 @@
+NVIDIA Arabic FastConformer, used as a detector only (#267).
+
+Model: nvidia/stt_ar_fastconformer_hybrid_large_pcd_v1.0
+File:  stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo (459,233,280 bytes)
+Revision: 7f32349d952f42a28dce979ba73270aa2bbdfa89
+SHA-256: d29d19d7c054a5fc010ac6815e9cbb0dd1b21a30e0a7f7f2982e1fecaf0c3e31
+Licence: CC-BY-4.0 (attribution only). Copyright NVIDIA Corporation.
+
+The decodes in this directory are the model's CTC-greedy whole-item text. They are
+evidence for one screen; the model is never a label, reference, teacher target or
+training signal, and its weights are never fine-tuned or ensembled (ADR-0011 §3).
+The model's training data (EveryAyah, MASC and others) is NVIDIA's; its provenance is
+not redistributed here. No audio and no weights are committed.

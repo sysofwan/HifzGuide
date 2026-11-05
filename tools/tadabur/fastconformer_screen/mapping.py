@@ -362,11 +362,15 @@ def locate_edit(item: dict) -> Located | None:
 
 def carried_at(letters: str, index: int, hypothesis: str, *, shaddah: bool) -> str | None:
     """What the hypothesis carries at Imlaei letter ``index``: its letter, or its gemination
-    state when ``shaddah`` is set. ``None`` when nothing is aligned there."""
+    state when ``shaddah`` is set. ``None`` when nothing is aligned there, and on a shaddah
+    site also when the aligned glyph is not the carrier (a shadda on another consonant is not
+    this site's gemination state; the student rule requires the same consonant)."""
     hypothesis_letters = letters_of(hypothesis)
     aligned = align(letters, hypothesis_letters)[index]
     if aligned is None:
         return None
     if not shaddah:
         return hypothesis_letters[aligned]
+    if hypothesis_letters[aligned] != letters[index]:
+        return None
     return HELD if glyphs(hypothesis)[aligned].shadda else NOT_HELD

@@ -159,6 +159,19 @@ def test_carried_at_reads_the_shadda_of_the_aligned_letter(hypothesis, expected)
     assert carried_at("طردتهم", 3, hypothesis, shaddah=True) == expected
 
 
+def test_a_shadda_on_another_consonant_is_not_the_sites_carrier():
+    """The aligned glyph is a شّ, not the site's د: nothing is carried at this site."""
+    assert carried_at("مدر", 1, "مَرَّرَ", shaddah=True) is None
+    # the substitution stays readable on a consonant-pair site
+    assert carried_at("مدر", 1, "مَرَّرَ", shaddah=False) == "ر"
+
+
+def test_a_shaddaless_substitution_is_not_read_as_the_carriers_state():
+    # the carrier د is unaligned; the aligned ر carries no shadda, but it is not this site
+    assert carried_at("مدر", 1, "مَرَرَ", shaddah=True) is None
+    assert carried_at("مدر", 1, "مَدَرَ", shaddah=True) == "not_held"
+
+
 # --- the committed sites and edits --------------------------------------------------------------
 
 

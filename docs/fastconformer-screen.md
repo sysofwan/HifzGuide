@@ -48,7 +48,7 @@ Outcome breakdown (FastConformer):
 
 | side | heard | prescribed | other | none |
 |---|---:|---:|---:|---:|
-| mistakes | 30 | 34 | 2 | 1 |
+| mistakes | 29 | 34 | 2 | 2 |
 | correct | 352 | 0 | 51 | 4 |
 
 Measured text prior: at 34 of 67 decisive mistake sites it carries the prescribed letter (the teacher does so at 11).
@@ -64,7 +64,7 @@ with nothing aligned is not flagged:
 
 | column | mistakes (sensitivity) | correct (sensitivity) |
 |---|---:|---:|
-| fastconformer | 32/67 | 51/407 |
+| fastconformer | 31/67 | 51/407 |
 | base | 55/67 | 198/407 |
 | c95 | 55/67 | 199/407 |
 | r2_candidate_ema | 54/67 | 183/407 |

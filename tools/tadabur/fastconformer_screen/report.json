@@ -20,12 +20,12 @@
     "flagged": 33,
     "rate": 49.25373134328358,
     "breakdown": {
-     "heard": 30,
+     "heard": 29,
      "prescribed": 34,
      "other": 2,
-     "none": 1
+     "none": 2
     },
-    "sensitivity_flagged": 32
+    "sensitivity_flagged": 31
    },
    "base": {
     "n": 67,

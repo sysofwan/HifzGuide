@@ -28,8 +28,7 @@ above the three detectors, and it does not adopt it.
 - Card sanity line: not measured. no EveryAyah test sample with the card's own normalisation is staged; the Quran-Lab benchmark's reference is Uthmani and not comparable with an Imlaei transcript, so a WER against it would not be the card's line. The smoke text
   at a known site was the expected Arabic with diacritics; the gate's 2x threshold
   could not be applied without the card's test set and normaliser.
-- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, 67 mistakes and
-  407 correct sites), the 300 synthetic edit/decoy items and qdat's 1,505 clips.
+- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, 67 mistakes and 407 correct sites), the 300 synthetic edit/decoy items and qdat's 1,505 clips.
 
 ## Bars
 
@@ -74,6 +73,10 @@ with nothing aligned is not flagged:
 
 516 of 522 Ship A sites and 300 of 300 edits were located from text alone, before any decode (the gate is 95%). The mapping never
 reads a decode; an unlocated site is excluded, never counted as a miss.
+The 6 sites that did not locate are listed in
+`report.json`. 45 sites have no human verdict (42 of them located) and are neither scored nor
+in either denominator, so the mapping count and the scored count differ by exactly
+those two groups.
 
 ## qdat
 
@@ -84,7 +87,7 @@ orthography is not compared with the harness numbers.
 
 The catch sets are small: 67 located mistake sites and 150 edits. Their intervals cannot
 carry a fine difference between detectors, and the correct side is a verified sample
-enriched for hard sites (133 of 407 are sites the teacher gets wrong), not a population
+enriched for hard sites (the base teacher's own committed text is flagged at 198 of 407), not a population
 rate. The verdict is a screen: STOP refuses this model, GO says only worth trying, and
 PRIOR says the correct side passed but the catch side or the unique catches did not.
 

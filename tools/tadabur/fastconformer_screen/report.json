@@ -434,6 +434,8 @@
  "mapping": {
   "located": 516,
   "total": 522,
+  "undecided": 45,
+  "located_undecided": 42,
   "unlocated": [
    "new_audit:tadabur_spk0002_S17_A18_ede49820_000011.wav#0@20:ض↔ظ",
    "new_audit:tadabur_spk0016_S17_A18_e1d73e40_000012.wav#0@20:ض↔ظ",

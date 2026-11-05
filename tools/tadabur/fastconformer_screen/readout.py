@@ -246,22 +246,24 @@ def site_report() -> dict:
 
     edits = edit_scores(edit_items())
     qdat = qdat_disagreement(decode_lines("qdat"))
-    mapping = {
-        "located": len(sites), "total": len(located_ship_a_sites()),
-        "unlocated": [], "edits": {"located": len(edit_items()), "total": len(edit_items()),
-                                   "unlocated": []},
-    }
-    # the unlocated list is the difference between the verified and the located sets
     from tadabur.fastconformer_screen.sets import ship_a_sites
 
+    all_sites = ship_a_sites()
+    all_mistakes, all_correct = split_sides(all_sites)
     located_ids = {site.site_id for site in sites}
-    mapping["unlocated"] = sorted(site.site_id for site in ship_a_sites()
-                                  if site.site_id not in located_ids)
-    mapping["unlocated"] = mapping["unlocated"]
-    mapping["total"] = len(ship_a_sites())
     located_edit_ids = {item["item_id"] for item in located_edits}
-    mapping["edits"]["unlocated"] = sorted(item["item_id"] for item in edit_items()
-                                           if item["item_id"] not in located_edit_ids)
+    mapping = {
+        "located": len(sites),
+        "total": len(all_sites),
+        # sites with no human verdict, so never scored: all of them, and the located ones
+        "undecided": len(all_sites) - len(all_mistakes) - len(all_correct),
+        "located_undecided": len(sites) - len(mistakes) - len(correct),
+        "unlocated": sorted(site.site_id for site in all_sites
+                            if site.site_id not in located_ids),
+        "edits": {"located": len(located_edits), "total": len(edit_items()),
+                  "unlocated": sorted(item["item_id"] for item in edit_items()
+                                      if item["item_id"] not in located_edit_ids)},
+    }
 
     teacher = teacher_bars()
     fast = Rates(
@@ -345,8 +347,11 @@ def report_doc(record: Mapping) -> str:
         f"- Card sanity line: not measured. {record['card_sanity']['reason']}. The smoke text",
         "  at a known site was the expected Arabic with diacritics; the gate's 2x threshold",
         "  could not be applied without the card's test set and normaliser.",
-        "- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, 67 mistakes and",
-        "  407 correct sites), the 300 synthetic edit/decoy items and qdat's 1,505 clips.",
+        f"- Sets: Ship A's verified sites minus the 8 G6 held-out sites (located, "
+        f"{section['mistakes']['fastconformer']['n']} mistakes and "
+        f"{section['correct']['fastconformer']['n']} correct sites), the "
+        f"{record['mapping']['edits']['total']} synthetic edit/decoy items and qdat's "
+        f"{record['qdat']['clips']:,} clips.",
         "",
         "## Bars",
         "",
@@ -410,6 +415,11 @@ def report_doc(record: Mapping) -> str:
         f"{record['mapping']['edits']['located']} of {record['mapping']['edits']['total']} edits "
         "were located from text alone, before any decode (the gate is 95%). The mapping never",
         "reads a decode; an unlocated site is excluded, never counted as a miss.",
+        f"The {len(record['mapping']['unlocated'])} sites that did not locate are listed in",
+        f"`report.json`. {record['mapping']['undecided']} sites have no human verdict "
+        f"({record['mapping']['located_undecided']} of them located) and are neither scored nor",
+        "in either denominator, so the mapping count and the scored count differ by exactly",
+        "those two groups.",
         "",
         "## qdat",
         "",
@@ -421,9 +431,12 @@ def report_doc(record: Mapping) -> str:
         "",
         "## What the intervals cannot carry",
         "",
-        "The catch sets are small: 67 located mistake sites and 150 edits. Their intervals cannot",
+        f"The catch sets are small: {section['mistakes']['fastconformer']['n']} located mistake "
+        f"sites and {record['edits']['edit']['n']} edits. Their intervals cannot",
         "carry a fine difference between detectors, and the correct side is a verified sample",
-        "enriched for hard sites (133 of 407 are sites the teacher gets wrong), not a population",
+        f"enriched for hard sites (the base teacher's own committed text is flagged at "
+        f"{section['correct']['base']['sensitivity_flagged']} of "
+        f"{section['correct']['base']['n']}), not a population",
         "rate. The verdict is a screen: STOP refuses this model, GO says only worth trying, and",
         "PRIOR says the correct side passed but the catch side or the unique catches did not.",
         "",

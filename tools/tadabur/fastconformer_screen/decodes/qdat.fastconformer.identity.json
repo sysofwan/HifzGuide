@@ -12,6 +12,6 @@
   "model": "nvidia/stt_ar_fastconformer_hybrid_large_pcd_v1.0",
   "nemo": "2.0.0",
   "torch": "2.15.0+cpu",
-  "numpy": "1.26.4"
+  "numpy": "2.4.6"
  }
 }

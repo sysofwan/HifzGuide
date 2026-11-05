@@ -17,7 +17,7 @@
 #   scripts/fastconformer-screen.sh card         # step 1's card sanity line: 200 EveryAyah
 #                                                # clips, the card's normalisation, WER
 #   scripts/fastconformer-screen.sh decode       # Ship A, the edits and qdat, CPU, gated
-#   scripts/fastconformer-screen.sh check [label]
+#   scripts/fastconformer-screen.sh check LABEL  # a step's exit code, or its pid and log tail
 #   scripts/fastconformer-screen.sh fetchout DIR   # the run's own $ROOT/decodes and card line
 #   scripts/fastconformer-screen.sh fetchout print # the same transfer, printed
 #
@@ -46,6 +46,8 @@ DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
 step=${1:-}
 action=${2:-}
 
+remote() { ssh -n "$HOST" "$@"; }
+
 fetchout() {
   local destination=${1:-}
   if [ -z "$destination" ]; then
@@ -69,23 +71,18 @@ fetchout() {
 }
 
 check() {
-  if remote "test -f '$LOGS/${1:-$LABEL}.exit'"; then
-    echo "step ${1:-$LABEL} exited $(remote "cat '$LOGS/${1:-$LABEL}.exit'")"
-  else
-    echo "step ${1:-$LABEL} is running (pid $(remote "cat '$LOGS/${1:-$LABEL}.pid' 2>/dev/null || echo unknown"))"
+  local label=${1:-}
+  if [ -z "$label" ]; then
+    echo "check needs a step label: check {env|fetch|card|stage-ship-a|stage-edits|decode}" >&2
+    return 2
   fi
-  remote "tail -n 8 '$LOGS/${1:-$LABEL}.log' 2>/dev/null || true"
+  if remote "test -f '$LOGS/$label.exit'"; then
+    echo "step $label exited $(remote "cat '$LOGS/$label.exit'")"
+  else
+    echo "step $label is running (pid $(remote "cat '$LOGS/$label.pid' 2>/dev/null || echo unknown"))"
+  fi
+  remote "tail -n 8 '$LOGS/$label.log' 2>/dev/null || true"
 }
-
-case "$step" in
-  fetchout) fetchout "$action"; exit $? ;;
-  check) check "$action"; exit 0 ;;
-  env|fetch|card|stage-ship-a|stage-edits|decode) ;;
-  *) echo "usage: $0 {env|fetch|card|stage-ship-a|stage-edits|decode|check|fetchout} [action]" >&2; exit 2 ;;
-esac
-LABEL=$step
-
-remote() { ssh -n "$HOST" "$@"; }
 
 require_disk() {
   local free
@@ -242,7 +239,15 @@ launch() {
   echo "step $LABEL started on $HOST"
 }
 
-case "$action" in
-  print) command_for ;;
-  *) launch ;;
+case "$step" in
+  fetchout) fetchout "$action"; exit $? ;;
+  check) check "$action"; exit $? ;;
+  env|fetch|card|stage-ship-a|stage-edits|decode)
+    LABEL=$step
+    case "$action" in
+      print) command_for ;;
+      *) launch ;;
+    esac
+    ;;
+  *) echo "usage: $0 {env|fetch|card|stage-ship-a|stage-edits|decode|check|fetchout} [action]" >&2; exit 2 ;;
 esac

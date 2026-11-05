@@ -365,6 +365,17 @@ def launcher(*args, env=None) -> subprocess.CompletedProcess:
                           env={**os.environ, **(env or {})}, check=False)
 
 
+def stubbed_path(tmp_path, **scripts) -> str:
+    """A PATH whose first directory holds the named fakes, so no SSH or rsync runs for real."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, body in scripts.items():
+        path = bin_dir / name
+        path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        path.chmod(0o755)
+    return f"{bin_dir}:{os.environ['PATH']}"
+
+
 def test_the_launcher_fetches_the_run_output_not_the_staged_checkout():
     """A fetch that read the checkout could silently return the committed decodes."""
     decode = launcher("decode", "print").stdout
@@ -377,14 +388,49 @@ def test_the_launcher_fetches_the_run_output_not_the_staged_checkout():
 
 def test_the_launcher_refuses_to_fetch_without_a_run_output(tmp_path):
     """No run output means a refusal, never the staged checkout's committed decodes."""
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    fake = bin_dir / "ssh"
-    fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    fake.chmod(0o755)
+    path = stubbed_path(tmp_path, ssh="exit 1")
     destination = tmp_path / "fetched"
-    result = launcher("fetchout", str(destination),
-                      env={"PATH": f"{bin_dir}:{os.environ['PATH']}"})
+    result = launcher("fetchout", str(destination), env={"PATH": path})
     assert result.returncode != 0
     assert "no run output" in result.stderr
     assert not destination.exists()
+
+
+def test_the_launcher_fetches_a_completed_run(tmp_path):
+    """Both remote existence checks run, and both sources transfer from $ROOT, not the repo."""
+    calls = tmp_path / "calls"
+    log = f"echo \"$(basename \"$0\") $*\" >> '{calls}'"
+    path = stubbed_path(tmp_path, ssh=log + "\nexit 0", rsync=log + "\nexit 0")
+    destination = tmp_path / "fetched"
+    result = launcher("fetchout", str(destination), env={"PATH": path})
+    assert result.returncode == 0, result.stderr
+    lines = calls.read_text(encoding="utf-8").splitlines()
+    assert "ssh -n root@cuda-dev test -d '/root/scratch/fc-screen/decodes'" in lines
+    assert "ssh -n root@cuda-dev test -f '/root/scratch/fc-screen/card_line.json'" in lines
+    assert f"rsync -a root@cuda-dev:/root/scratch/fc-screen/decodes/ {destination}/" in lines
+    assert f"rsync -a root@cuda-dev:/root/scratch/fc-screen/card_line.json {destination}/" in lines
+    assert destination.is_dir()
+    assert "fetched the decodes" in result.stdout
+
+
+def test_the_launcher_check_reports_a_labeled_step(tmp_path):
+    """`check LABEL` reaches the remote and reports the step's recorded exit code."""
+    calls = tmp_path / "calls"
+    body = "\n".join([
+        f"echo \"ssh $*\" >> '{calls}'",
+        'case "$*" in *" cat "*) echo 0 ;; esac',
+        "exit 0",
+    ])
+    path = stubbed_path(tmp_path, ssh=body)
+    result = launcher("check", "decode", env={"PATH": path})
+    assert result.returncode == 0, result.stderr
+    assert "step decode exited 0" in result.stdout
+    assert "tail -n 8 '/root/scratch/fc-screen/logs/decode.log'" in calls.read_text(encoding="utf-8")
+
+
+def test_the_launcher_check_needs_a_label():
+    """Without a label there is no step to name, so the script refuses before any SSH."""
+    result = launcher("check")
+    assert result.returncode == 2
+    assert "check needs a step label" in result.stderr
+    assert "command not found" not in result.stderr

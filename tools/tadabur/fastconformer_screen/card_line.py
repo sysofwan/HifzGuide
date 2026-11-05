@@ -78,7 +78,7 @@ def measure(manifest: Path, decode: Callable[[Path], str], *, sample: int = SAMP
     texts = {row["id"]: decode(Path(manifest).parent / row["audio"]) for row in rows}
     record = wer((row["reference_text"], texts[row["id"]]) for row in rows)
     record.update({"source": SOURCE, "sample": sample, "normalisation": NORMALISATION,
-                   "clips": [row["id"] for row in rows]})
+                   "clip_keys": [row["id"] for row in rows]})
     return record
 
 
@@ -122,3 +122,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     print(json.dumps({key: written[key] for key in ("measured", "gate_failed")}, indent=1),
           flush=True)
     card_gate(measured["wer"], measured["clips"])   # raises above twice the card's WER
+
+
+if __name__ == "__main__":
+    main()

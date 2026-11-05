@@ -107,6 +107,7 @@ cd '$REPO/tools' || exit 1
     --manifest '$ROOT/benchmark/benchmark.jsonl' --out '$ROOT/card_line.json' \\
     --nemo '$WORK/stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo' \\
     --revision "\$(cat '$ROOT/benchmark/revision.txt')"
+test -s '$ROOT/card_line.json' || { echo "no card line was written" >&2; exit 1; }
 CARD
       ;;
     stage-ship-a|stage-edits) stage_set=${step#stage-}; cat <<STAGE

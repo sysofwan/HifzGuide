@@ -327,9 +327,10 @@ def test_the_doc_says_what_the_small_catch_sets_cannot_carry():
 
 
 def test_a_go_says_only_worth_trying():
-    if report()["verdict"] != GO:
-        pytest.skip("the verdict is not GO")
-    text = DOC.read_text(encoding="utf-8").lower()
+    """The generator writes the GO caveat for a GO record, whatever the run's own verdict."""
+    from tadabur.fastconformer_screen.readout import report_doc
+
+    text = report_doc({**report(), "verdict": GO}).lower()
     assert "worth trying" in text and "better" not in text
 
 

@@ -1,0 +1,324 @@
+{
+ "code_sha": "94e7ba0b4fc4ae28e71a1045a4eba5fffa948de3",
+ "identities": {
+  "tlog.mined/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "tlog.mined/c95": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+    "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "model": "c95"
+  },
+  "tlog.mined/r2_candidate_ema": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "893523710186cb16854dd62a258331644e2284abbee8b2cb54e8ab9d32dbea58",
+    "model_ref": "/root/scratch/issue-228/runs/consonant2_candidate/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "model": "r2_candidate_ema"
+  }
+ },
+ "label_sources": {
+  "both": 2634,
+  "filename": 2535,
+  "identified": 5473
+ },
+ "models": [
+  "base",
+  "c95",
+  "r2_candidate_ema"
+ ],
+ "pull_request": null,
+ "pull_request_ref": null,
+ "rows": {
+  "base": 10642,
+  "c95": 10642,
+  "r2_candidate_ema": 10642
+ },
+ "tranches": [
+  "confirm.1",
+  "confirm.2"
+ ],
+ "unphonetizable": [
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_1475887113.flac",
+   "key": "106_1_1475887113.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_7596349253.flac",
+   "key": "106_1_7596349253.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "106_2_3381915052.flac",
+   "key": "106_2_3381915052.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "106_3_1855495811.flac",
+   "key": "106_3_1855495811.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_2641355919.flac",
+   "key": "106_3_2641355919.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_8567575022.flac",
+   "key": "106_3_8567575022.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "9_75_1926938503.flac",
+   "key": "9_75_1926938503.flac#0",
+   "stratum": "reported:identified",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:10",
+   "audio_filename": "90_10_3305061080.flac",
+   "key": "90_10_3305061080.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:8",
+   "audio_filename": "90_11_2705788577.flac",
+   "key": "90_11_2705788577.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_2652698480.flac",
+   "key": "90_9_2652698480.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_6113834586.flac",
+   "key": "90_9_6113834586.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "-1_-1_3357225533.wav",
+   "key": "-1_-1_3357225533.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "-1_-1_3714104226.wav",
+   "key": "-1_-1_3714104226.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "-1_-1_5685654105.wav",
+   "key": "-1_-1_5685654105.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "-1_-1_6654222731.wav",
+   "key": "-1_-1_6654222731.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "-1_-1_6939186917.wav",
+   "key": "-1_-1_6939186917.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_5262981751.flac",
+   "key": "106_1_5262981751.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_1942206366.flac",
+   "key": "106_3_1942206366.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "55:17",
+   "audio_filename": "55_17_2560059342.flac",
+   "key": "55_17_2560059342.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "55:17",
+   "audio_filename": "55_17_6407063692.flac",
+   "key": "55_17_6407063692.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "77_12_1024726790.flac",
+   "key": "77_12_1024726790.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:10",
+   "audio_filename": "90_10_4997608475.flac",
+   "key": "90_10_4997608475.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:8",
+   "audio_filename": "90_8_6761761404.flac",
+   "key": "90_8_6761761404.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_4538230635.flac",
+   "key": "90_9_4538230635.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_7057250330.flac",
+   "key": "90_9_7057250330.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "-1_-1_2364875120.wav",
+   "key": "-1_-1_2364875120.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.2"
+  }
+ ]
+}

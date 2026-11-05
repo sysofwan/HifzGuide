@@ -133,6 +133,30 @@ def test_the_edits_are_scored_on_the_located_items_only():
     assert record["edits"]["edit"]["n"] == record["edits"]["decoy"]["n"] == scored // 2
 
 
+def test_the_edit_bootstrap_clusters_the_pairs_by_reciter():
+    """#267 resamples the reciter, so a reciter's pairs move together, not one pair each."""
+    from tadabur.fastconformer_screen.readout import edit_rows
+
+    items = [
+        {"item_id": "a", "source": {"reciter_id": 7}, "pair_id": "p1", "role": "edit"},
+        {"item_id": "b", "source": {"reciter_id": 7}, "pair_id": "p2", "role": "edit"},
+        {"item_id": "c", "source": {"reciter_id": 8}, "pair_id": "p3", "role": "edit"},
+    ]
+    rows = edit_rows(items, lambda arm, item: item["item_id"] == "a")
+    assert rows["base"] == [(7, 1, 1), (7, 0, 1), (8, 0, 1)]
+
+
+def test_the_committed_pairs_have_fewer_reciters_than_pairs():
+    """The cluster choice is observable on the committed set: 150 pairs, 44 reciters."""
+    from collections import Counter
+
+    from tadabur.fastconformer_screen.sets import edit_items
+
+    counts = Counter(item["source"]["reciter_id"]
+                     for item in edit_items() if item["role"] == "edit")
+    assert max(counts.values()) > 1 and len(counts) < 150
+
+
 def test_no_audio_or_weights_are_committed():
     assert not [p for p in HERE.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES]
 

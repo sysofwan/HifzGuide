@@ -113,6 +113,17 @@ def fc_edit_carried(items, lines: Mapping[str, dict]) -> dict[str, str | None]:
     return carried
 
 
+def edit_rows(subset, agrees) -> dict[str, list[tuple[object, int, int]]]:
+    """Each arm's bootstrap observations on one edit role, clustered by reciter.
+
+    #267 asks for a reciter-clustered bootstrap, and the 150 pairs come from 44 reciters: a
+    pair id would make every observation its own cluster and widen the interval.
+    """
+    return {arm: [(item["source"]["reciter_id"], int(agrees(arm, item)), 1)
+                  for item in subset]
+            for arm in ("fastconformer", *STUDENTS)}
+
+
 def edit_scores(items) -> dict:
     """Each column's heard rate on the edits and unchanged rate on the decoys.
 
@@ -139,8 +150,7 @@ def edit_scores(items) -> dict:
                         else decoy_unchanged(fc_carried[item["item_id"]], item["prescribed"]))
             return teacher_agrees(item, texts[arm][item["item_id"]])
 
-        observations = {arm: [(item["pair_id"], int(agrees(arm, item)), 1) for item in subset]
-                        for arm in ("fastconformer", *STUDENTS)}
+        observations = edit_rows(subset, agrees)
         view = _rate(observations, [("fastconformer", "base")])
         out[role] = {
             "n": len(subset),

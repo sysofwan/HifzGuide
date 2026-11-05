@@ -292,8 +292,8 @@
      "den": 150.0,
      "point": 26.0,
      "interval": {
-      "lower": 19.333333333333332,
-      "upper": 33.33333333333333,
+      "lower": 20.720559845559844,
+      "upper": 31.0126582278481,
       "method": "bootstrap",
       "reason": ""
      }
@@ -303,8 +303,8 @@
      "den": 150.0,
      "point": 22.666666666666664,
      "interval": {
-      "lower": 16.0,
-      "upper": 29.333333333333332,
+      "lower": 16.528745957599714,
+      "upper": 29.10471377290761,
       "method": "bootstrap",
       "reason": ""
      }
@@ -314,8 +314,8 @@
      "den": 150.0,
      "point": 36.0,
      "interval": {
-      "lower": 28.666666666666668,
-      "upper": 44.0,
+      "lower": 28.484848484848484,
+      "upper": 43.33381502890173,
       "method": "bootstrap",
       "reason": ""
      }
@@ -325,8 +325,8 @@
      "den": 150.0,
      "point": 31.333333333333336,
      "interval": {
-      "lower": 24.0,
-      "upper": 38.666666666666664,
+      "lower": 24.087591240875913,
+      "upper": 38.46153846153847,
       "method": "bootstrap",
       "reason": ""
      }
@@ -336,8 +336,8 @@
     "fastconformer−base": {
      "point": 3.3333333333333353,
      "interval": {
-      "lower": -6.000000000000003,
-      "upper": 12.666666666666668,
+      "lower": -4.820007301935013,
+      "upper": 10.949155084491547,
       "method": "bootstrap",
       "reason": ""
      }
@@ -358,8 +358,8 @@
      "den": 150.0,
      "point": 78.0,
      "interval": {
-      "lower": 71.33333333333334,
-      "upper": 84.66666666666667,
+      "lower": 72.84768211920529,
+      "upper": 83.48646120958404,
       "method": "bootstrap",
       "reason": ""
      }
@@ -369,8 +369,8 @@
      "den": 150.0,
      "point": 58.666666666666664,
      "interval": {
-      "lower": 50.66666666666667,
-      "upper": 66.66666666666666,
+      "lower": 50.73529411764706,
+      "upper": 66.43847108577732,
       "method": "bootstrap",
       "reason": ""
      }
@@ -380,8 +380,8 @@
      "den": 150.0,
      "point": 62.0,
      "interval": {
-      "lower": 54.0,
-      "upper": 70.0,
+      "lower": 53.74149659863946,
+      "upper": 70.00159235668787,
       "method": "bootstrap",
       "reason": ""
      }
@@ -391,8 +391,8 @@
      "den": 150.0,
      "point": 60.0,
      "interval": {
-      "lower": 52.0,
-      "upper": 68.0,
+      "lower": 51.94805194805194,
+      "upper": 68.11594202898551,
       "method": "bootstrap",
       "reason": ""
      }
@@ -402,8 +402,8 @@
     "fastconformer−base": {
      "point": 19.333333333333336,
      "interval": {
-      "lower": 8.666666666666668,
-      "upper": 29.333333333333332,
+      "lower": 10.48951048951049,
+      "upper": 28.98550724637682,
       "method": "bootstrap",
       "reason": ""
      }

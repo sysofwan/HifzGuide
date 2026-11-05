@@ -41,8 +41,8 @@ FastConformer's intervals (reciter-clustered bootstrap):
 
 - mistakes flagged: 49.3% [35.5, 61.4]
 - correct flagged: 13.5% [10.1, 17.2]
-- edits heard: 26.0% [19.3, 33.3]
-- decoys unchanged: 78.0% [71.3, 84.7]
+- edits heard: 26.0% [20.7, 31.0]
+- decoys unchanged: 78.0% [72.8, 83.5]
 
 Outcome breakdown (FastConformer):
 

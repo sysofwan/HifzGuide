@@ -414,16 +414,16 @@
  "qdat": {
   "clips": 1505,
   "words": 12040,
-  "disagreeing_words": 2161,
-  "rule": "a reference word disagrees when any of its Imlaei letters is substituted, deleted or aligned to a different shadda state; harakat are never read",
+  "disagreeing_words": 2371,
+  "rule": "a reference word disagrees when any of its Imlaei letters is substituted, deleted, inserted into or beside it, or aligned to a different shadda state; harakat are never read",
   "rates": {
    "fastconformer": {
-    "num": 2161.0,
+    "num": 2371.0,
     "den": 12040.0,
-    "point": 179.48504983388705,
+    "point": 196.92691029900334,
     "interval": {
-     "lower": 165.2086137281292,
-     "upper": 193.6326704725616,
+     "lower": 182.1690618559867,
+     "upper": 211.31979218419426,
      "method": "bootstrap",
      "reason": ""
     }

@@ -80,7 +80,7 @@ those two groups.
 
 ## qdat
 
-2161 of 12040 reference words disagree with the Imlaei text, 179.49 per 1,000 words (consonant and shaddah; harakat are not read). Its own column only: qdat's
+2371 of 12040 reference words disagree with the Imlaei text, 196.93 per 1,000 words (consonant and shaddah; harakat are not read). Its own column only: qdat's
 orthography is not compared with the harness numbers.
 
 ## What the intervals cannot carry

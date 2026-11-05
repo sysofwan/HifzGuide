@@ -137,6 +137,27 @@ def test_no_audio_or_weights_are_committed():
     assert not [p for p in HERE.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES]
 
 
+# --- the qdat word-disagreement measure ----------------------------------------------------------
+
+
+@pytest.mark.parametrize(("words", "hypothesis", "expected"), [
+    (["كُتُب"], "كُتُب", (0, 1)),                 # unchanged
+    (["كُتُب"], "كتتب", (1, 1)),                  # an inserted letter inside the word
+    (["كُتُب"], "اكتتب", (1, 1)),                 # a leading insertion belongs to the first word
+    (["كُتُب"], "كتُبا", (1, 1)),                  # a trailing insertion
+    (["مِن"], "مِن", (0, 1)),
+    (["مِن", "هُوَ"], "منه هو", (1, 2)),          # between-word insertion: the word it follows
+    (["كُتُب"], "كت", (1, 1)),                    # a deletion
+    (["كُتُب"], "كثب", (1, 1)),                   # a substitution
+    (["كُتُب"], "كُتّب", (1, 1)),                 # a shadda the reference does not carry
+])
+def test_word_disagreement_counts_inserted_letters(words, hypothesis, expected):
+    """An inserted glyph is a disagreement, never silently dropped (the write-up's measure)."""
+    from tadabur.fastconformer_screen.readout import word_disagreement
+
+    assert word_disagreement(words, hypothesis) == expected
+
+
 # --- the report ---------------------------------------------------------------------------------
 
 

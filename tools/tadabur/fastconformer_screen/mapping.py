@@ -106,11 +106,13 @@ def segment_letters(words: "list[str] | tuple[str, ...]") -> str:
     return "".join(letters_of(word) for word in words)
 
 
-def align(reference: str, hypothesis: str) -> list[int | None]:
-    """Each reference letter's hypothesis index under an edit-distance alignment.
+def align_ops(reference: str, hypothesis: str) -> list[tuple[str, int | None, int | None]]:
+    """The edit-distance alignment's operations, in order, insertions included.
 
-    A substitution is aligned (cost 1), a deletion has no index (``None``), and an insertion
-    shifts the indices after it. Ties prefer the diagonal, so equal letters stay aligned.
+    Each operation is ``(kind, reference index, hypothesis index)`` with ``kind`` one of
+    ``match``, ``sub``, ``del`` (no hypothesis index) and ``ins`` (no reference index). A
+    substitution is aligned (cost 1), a deletion has no hypothesis index, and a tie prefers the
+    diagonal, so equal letters stay aligned.
     """
     reference, hypothesis = list(reference), list(hypothesis)
     n, m = len(reference), len(hypothesis)
@@ -126,16 +128,39 @@ def align(reference: str, hypothesis: str) -> list[int | None]:
                 cost[i - 1][j] + 1,
                 cost[i][j - 1] + 1,
             )
-    mapping: list[int | None] = [None] * n
+    ops: list[tuple[str, int | None, int | None]] = []
     i, j = n, m
     while i > 0 and j > 0:
         if cost[i][j] == cost[i - 1][j - 1] + (reference[i - 1] != hypothesis[j - 1]):
-            mapping[i - 1] = j - 1
+            kind = "match" if reference[i - 1] == hypothesis[j - 1] else "sub"
+            ops.append((kind, i - 1, j - 1))
             i, j = i - 1, j - 1
         elif cost[i][j] == cost[i - 1][j] + 1:
+            ops.append(("del", i - 1, None))
             i -= 1
         else:
+            ops.append(("ins", None, j - 1))
             j -= 1
+    while i > 0:
+        ops.append(("del", i - 1, None))
+        i -= 1
+    while j > 0:
+        ops.append(("ins", None, j - 1))
+        j -= 1
+    ops.reverse()
+    return ops
+
+
+def align(reference: str, hypothesis: str) -> list[int | None]:
+    """Each reference letter's hypothesis index under an edit-distance alignment.
+
+    A substitution is aligned (cost 1), a deletion has no index (``None``), and an insertion
+    shifts the indices after it. Ties prefer the diagonal, so equal letters stay aligned.
+    """
+    mapping: list[int | None] = [None] * len(reference)
+    for _, position, index in align_ops(reference, hypothesis):
+        if position is not None:
+            mapping[position] = index
     return mapping
 
 

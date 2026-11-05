@@ -18,6 +18,7 @@ import pytest
 from tadabur.fastconformer_screen.mapping import (
     Glyph,
     align,
+    align_ops,
     carried_at,
     glyphs,
     imlaei_words,
@@ -76,6 +77,17 @@ def test_glyphs_without_shadda_keep_a_repeated_letter_twice():
 ])
 def test_align_maps_each_reference_letter_to_a_hypothesis_index(reference, hypothesis, expected):
     assert align(reference, hypothesis) == expected
+
+
+@pytest.mark.parametrize(("reference", "hypothesis", "expected"), [
+    ("قمر", "قمار", [("match", 0, 0), ("match", 1, 1), ("ins", None, 2), ("match", 2, 3)]),
+    ("قمر", "قر", [("match", 0, 0), ("del", 1, None), ("match", 2, 1)]),
+    # a leading insertion the diagonal cannot absorb, kept at the front
+    ("قمر", "زقمر", [("ins", None, 0), ("match", 0, 1), ("match", 1, 2), ("match", 2, 3)]),
+    ("", "زق", [("ins", None, 0), ("ins", None, 1)]),
+])
+def test_align_ops_keeps_insertions_in_order(reference, hypothesis, expected):
+    assert align_ops(reference, hypothesis) == expected
 
 
 # --- Imlaei words ----------------------------------------------------------------------------

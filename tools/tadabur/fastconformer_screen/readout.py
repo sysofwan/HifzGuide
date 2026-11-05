@@ -22,9 +22,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 
-from tadabur.fastconformer_screen.mapping import (align, carried_at, glyphs, imlaei_words,
-                                                  letters_of, locate_edit, locate_site,
-                                                  segment_letters)
+from tadabur.fastconformer_screen.mapping import (carried_at, glyphs, imlaei_words, letters_of,
+                                                  locate_edit, locate_site)
 from tadabur.fastconformer_screen.outcomes import (COLUMNS, HEARD, NONE, OUTCOMES, OTHER,
                                                    PRESCRIBED, breakdown, is_flagged, outcome,
                                                    student_carried, unique_catches)
@@ -151,6 +150,33 @@ def edit_scores(items) -> dict:
     return out
 
 
+def word_disagreement(words: Sequence[str], hypothesis: str) -> tuple[int, int]:
+    """``(disagreeing words, scored words)`` for one passage's reference and decode.
+
+    A word disagrees when any of its Imlaei letters is substituted or deleted, its shadda state
+    differs, or a glyph is inserted inside or beside it: an insertion belongs to the word it
+    follows (a leading insertion to the first word), so every decoded glyph is attributed.
+    """
+    from tadabur.fastconformer_screen.mapping import align_ops
+
+    reference = tuple(glyph for word in words for glyph in glyphs(word))
+    if not reference:
+        return 0, 0
+    word_of = [index for index, word in enumerate(words) for _ in glyphs(word)]
+    hypothesis_glyphs = glyphs(hypothesis)
+    wrong = [False] * len(words)
+    previous_word = None
+    for kind, position, aligned in align_ops("".join(glyph.letter for glyph in reference),
+                                             letters_of(hypothesis)):
+        if position is None:
+            wrong[previous_word if previous_word is not None else word_of[0]] = True
+            continue
+        previous_word = word_of[position]
+        if kind != "match" or hypothesis_glyphs[aligned].shadda != reference[position].shadda:
+            wrong[previous_word] = True
+    return sum(wrong), len([word for word in words if glyphs(word)])
+
+
 def qdat_disagreement(lines: Mapping[str, dict]) -> dict:
     """Word disagreement with the Imlaei reference per 1,000 words (consonant + shadda)."""
     from tadabur.nonpro_sources import QDAT
@@ -161,42 +187,19 @@ def qdat_disagreement(lines: Mapping[str, dict]) -> dict:
     with gzip.open(decodes_file(QDAT, "base"), "rt", encoding="utf-8") as handle:
         passages = {row["key"]: row for row in (json.loads(line) for line in handle if line)}
 
-    def disagree(words: Sequence[str], hypothesis: str) -> tuple[int, int]:
-        reference = tuple(glyph for word in words for glyph in glyphs(word))
-        if not reference:
-            return 0, 0
-        hypothesis_letters = letters_of(hypothesis)
-        hypothesis_glyphs = glyphs(hypothesis)
-        mapping = align("".join(glyph.letter for glyph in reference), hypothesis_letters)
-        at = 0
-        bad = 0
-        for word in words:
-            count = len(glyphs(word))
-            if count == 0:
-                continue
-            wrong = False
-            for position in range(at, at + count):
-                aligned = mapping[position]
-                reference_glyph = reference[position]
-                if aligned is None or hypothesis_letters[aligned] != reference_glyph.letter \
-                        or hypothesis_glyphs[aligned].shadda != reference_glyph.shadda:
-                    wrong = True
-            bad += wrong
-            at += count
-        return bad, len([word for word in words if glyphs(word)])
-
     observations = []
     for key, line in sorted(lines.items()):
         passage = passages[key]
         first, last = passage["word_from"], passage["word_to"]
         words = imlaei_words(passage["surah_ayah"], first - 1, last - first + 1)
-        bad, total = disagree(words, line["ctc"])
+        bad, total = word_disagreement(words, line["ctc"])
         observations.append((passage["reciter"], bad, total))
     view = _rate({"fastconformer": observations}, (), 1000.0)
     return {"clips": len(lines), "words": sum(row[2] for row in observations),
             "disagreeing_words": sum(row[1] for row in observations),
             "rule": "a reference word disagrees when any of its Imlaei letters is substituted, "
-                    "deleted or aligned to a different shadda state; harakat are never read",
+                    "deleted, inserted into or beside it, or aligned to a different shadda "
+                    "state; harakat are never read",
             "rates": view["models"]}
 
 

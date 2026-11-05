@@ -128,5 +128,12 @@ decodes; the incident is recorded because the pre-registration said G6 would nev
 Step 1's parity gate is conditional on exporting the CTC head to ONNX. The head was not
 exported: NeMo decoded on CPU in its own environment, so there is no second decoder whose text
 could differ and nothing for a parity gate to compare. The gate and its test were removed rather
-than left as code only a test calls. The step-1 card sanity line remains the applicable gate and
-is recorded, unmeasured, in the screen doc.
+than left as code only a test calls. The step-1 card sanity line remains the applicable gate.
+
+**Measured 2026-11-05** (the review asked for it): CTC WER **1.50** on the benchmark's first
+200 EveryAyah clips by key, scored through `training.zipformer_gate.card_norm` (the card's
+diacritic/tatweel strip and letter folding), pooled over reference words. The card's CTC figure
+is 7.61 and the run stops only above twice it (15.22), so the gate passes. The benchmark's
+studio reciters are not NVIDIA's test split, and the card does not publish its normalisation;
+both caveats are in `card_line.json` and the screen doc. The line's measurement is not a screen
+result and does not move any bar.

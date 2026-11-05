@@ -8,10 +8,12 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
 
+from tadabur.fastconformer_screen.card_line import record, sample_rows, wer
 from tadabur.fastconformer_screen.gates import (
     CARD_CLIPS,
     CARD_WER,
@@ -97,3 +99,44 @@ def test_a_wer_above_twice_the_cards_stops():
 def test_the_card_line_on_another_sample_size_is_refused():
     with pytest.raises(ScreenStop, match="200"):
         card_gate(wer=7.0, clips=199)
+
+
+# --- the card sanity line's measurement -----------------------------------------------------------
+
+
+def test_wer_is_pooled_over_reference_words_and_normalised():
+    assert wer([("إِنَّ اللَّهَ", "ان الله")])["wer"] == 0.0      # diacritics and ٱ fold away
+    pooled = wer([("كتب الله", "كتب"), ("قال", "قال")])
+    assert (pooled["clips"], pooled["errors"], pooled["reference_words"]) == (2, 1, 3)
+    assert pooled["wer"] == pytest.approx(100 / 3)
+
+
+def test_the_sample_is_the_first_two_hundred_everyayah_rows_by_key(tmp_path):
+    rows = [{"id": f"everyayah_heldout/{n:04d}", "source": "everyayah_heldout",
+             "reference_text": "نص", "audio": f"audio/{n}.wav"} for n in range(250)]
+    rows += [{"id": f"tlog_holdout/{n}", "source": "tlog_holdout",
+              "reference_text": "نص", "audio": f"audio/t{n}.wav"} for n in range(10)]
+    manifest = tmp_path / "benchmark.jsonl"
+    manifest.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+                        encoding="utf-8")
+    chosen = sample_rows(manifest)
+    assert len(chosen) == 200 and [row["id"] for row in chosen] == sorted(
+        row["id"] for row in chosen)
+    assert {row["source"] for row in chosen} == {"everyayah_heldout"}
+
+
+def test_a_short_sample_stops(tmp_path):
+    manifest = tmp_path / "benchmark.jsonl"
+    manifest.write_text(json.dumps({"id": "everyayah_heldout/0", "source": "everyayah_heldout",
+                                    "reference_text": "نص", "audio": "a.wav"}) + "\n",
+                        encoding="utf-8")
+    with pytest.raises(ScreenStop, match="card sanity"):
+        sample_rows(manifest)
+
+
+def test_the_record_fails_the_gate_above_twice_the_cards_wer():
+    measured = {"clips": CARD_CLIPS, "errors": 0, "reference_words": 100, "wer": 7.0}
+    assert record(measured, identity={})["gate_failed"] is False
+    assert record({**measured, "wer": 2 * CARD_WER}, identity={})["gate_failed"] is False
+    assert record({**measured, "wer": 2 * CARD_WER + 0.01}, identity={})["gate_failed"] is True
+    assert record({**measured, "clips": CARD_CLIPS - 1}, identity={})["gate_failed"] is True

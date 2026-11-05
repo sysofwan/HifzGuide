@@ -14,6 +14,8 @@
 # Both staging steps fill one directory, $ROOT/audio/clips: the decode reads that for Ship A
 # and the edit render reads it for its sources, so neither depends on a clip left there by an
 # earlier run.
+#   scripts/fastconformer-screen.sh card         # step 1's card sanity line: 200 EveryAyah
+#                                                # clips, the card's normalisation, WER
 #   scripts/fastconformer-screen.sh decode       # Ship A, the edits and qdat, CPU, gated
 #   scripts/fastconformer-screen.sh check [label]
 #   scripts/fastconformer-screen.sh fetchout DIR # pull decodes, identities and timings back
@@ -43,8 +45,8 @@ DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
 step=${1:-}
 action=${2:-}
 case "$step" in
-  env|fetch|stage-ship-a|stage-edits|decode) ;;
-  *) echo "usage: $0 {env|fetch|stage-ship-a|stage-edits|decode} [launch|print]" >&2; exit 2 ;;
+  env|fetch|card|stage-ship-a|stage-edits|decode) ;;
+  *) echo "usage: $0 {env|fetch|card|stage-ship-a|stage-edits|decode} [launch|print]" >&2; exit 2 ;;
 esac
 LABEL=$step
 
@@ -87,6 +89,25 @@ ENV
 cd '$REPO/tools' || exit 1
 '$VENV/bin/python' -c "from pathlib import Path; from tadabur.fastconformer_screen.decode import fetch_nemo; print(fetch_nemo(Path('$WORK')))"
 FETCH
+      ;;
+    card) cat <<CARD
+'$VENV/bin/python' - <<'PYBENCH'
+from pathlib import Path
+
+from huggingface_hub import HfApi, snapshot_download
+
+info = HfApi().dataset_info("Quran-Lab/quranic-asr-benchmark")
+snapshot_download("Quran-Lab/quranic-asr-benchmark", repo_type="dataset", revision=info.sha,
+                  local_dir='$ROOT/benchmark', allow_patterns=["benchmark.jsonl", "audio/**"])
+Path('$ROOT/benchmark/revision.txt').write_text(info.sha + "\n", encoding="utf-8")
+print(info.sha)
+PYBENCH
+cd '$REPO/tools' || exit 1
+'$VENV/bin/python' -u -m tadabur.fastconformer_screen.card_line \\
+    --manifest '$ROOT/benchmark/benchmark.jsonl' --out '$ROOT/card_line.json' \\
+    --nemo '$WORK/stt_ar_fastconformer_hybrid_large_pcd_v1.0.nemo' \\
+    --revision "\$(cat '$ROOT/benchmark/revision.txt')"
+CARD
       ;;
     stage-ship-a|stage-edits) stage_set=${step#stage-}; cat <<STAGE
 source '$CONDA' && conda activate '$ENV_NAME'

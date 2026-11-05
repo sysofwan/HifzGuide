@@ -1,14 +1,23 @@
 # fc-screen's isolated CPU runtime for #267 (never hifzguide's site-packages).
-# Created from the box's Python 3.11 with:
+#
+# Rebuild it from this lock, with the CPU torch wheel index:
 #   python -m venv $VENV
 #   pip install -U pip
-#   pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio
-#   pip install numpy==1.26.4 pyarrow==21.0.0 datasets==4.1.1
-#   pip install wget antlr4-python3-runtime==4.9.3
-#   pip install 'nemo_toolkit[asr]==2.0.0'
-#   pip install pytorch-lightning==2.4.0
-#   pip install hf_transfer
-# Then 'pip freeze' below. Nothing here is added to tools/requirements*.txt.
+#   pip install --index-url https://download.pytorch.org/whl/cpu \
+#       --extra-index-url https://pypi.org/simple -r environment.lock.txt
+# scripts/fastconformer-screen.sh env does exactly this. Nothing here is added to
+# tools/requirements*.txt, and no other step installs anything.
+#
+# This is the runtime that produced the committed text of all three sets. ship-a and edits were
+# decoded in it directly. qdat was decoded in it once (numpy 1.26.4, commit 8b85bcf) and
+# re-decoded to replace a timing line that had stopped at the RAM floor (e5f43ff); the old
+# decode plan imported the training readout stack, which needed `edlib` and
+# `quran-transcript==0.5.2`, and that install pulled numpy 2.4.6 (`quran-transcript` requires
+# numpy>=2.2.6), which is what the re-decode's fingerprint records. Decompressed, the two qdat
+# decode files are identical rows, so this lock reproduces the committed decodes; and
+# sets.decode_plan no longer imports that stack, so a rebuild needs only this lock.
+#
+# Then 'pip freeze' (pip excluded, as freeze excludes it):
 absl-py==2.5.1
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.5

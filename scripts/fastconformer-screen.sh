@@ -18,10 +18,11 @@
 #                                                # clips, the card's normalisation, WER
 #   scripts/fastconformer-screen.sh decode       # Ship A, the edits and qdat, CPU, gated
 #   scripts/fastconformer-screen.sh check [label]
-#   scripts/fastconformer-screen.sh fetchout DIR # pull decodes, identities and timings back
+#   scripts/fastconformer-screen.sh fetchout DIR   # the run's own $ROOT/decodes and card line
+#   scripts/fastconformer-screen.sh fetchout print # the same transfer, printed
 #
-# Every step checks the 10 GB disk reserve first and runs detached under setsid with stdin
-# closed: one log, one pid and one exit-code file under $ROOT/logs. The model runs only in
+# Every launching step checks the 10 GB disk reserve first and runs detached under setsid with
+# stdin closed: one log, one pid and one exit-code file under $ROOT/logs. The model runs only in
 # $ROOT/venv (created from the box's Python 3.11, never the hifzguide env's site-packages);
 # the repo's data tools (staging, rendering) run in hifzguide, which never imports the model.
 set -euo pipefail
@@ -44,9 +45,43 @@ DISK_RESERVE_GB=${DISK_RESERVE_GB:-10}
 
 step=${1:-}
 action=${2:-}
+
+fetchout() {
+  local destination=${1:-}
+  if [ -z "$destination" ]; then
+    echo "fetchout needs a destination directory (or 'print')" >&2
+    return 2
+  fi
+  if [ "$destination" = print ]; then
+    echo "rsync -a '$HOST:$ROOT/decodes/' DEST/"
+    echo "rsync -a '$HOST:$ROOT/card_line.json' DEST/"
+    return 0
+  fi
+  # the run's own output, never the staged checkout's committed copy
+  remote "test -d '$ROOT/decodes'" \
+    || { echo "no run output at $ROOT/decodes: run decode first" >&2; return 1; }
+  remote "test -f '$ROOT/card_line.json'" \
+    || { echo "no card line at $ROOT/card_line.json: run card first" >&2; return 1; }
+  mkdir -p "$destination"
+  rsync -a "$HOST:$ROOT/decodes/" "$destination/"
+  rsync -a "$HOST:$ROOT/card_line.json" "$destination/"
+  echo "fetched the decodes, identities, timings and the card line into $destination"
+}
+
+check() {
+  if remote "test -f '$LOGS/${1:-$LABEL}.exit'"; then
+    echo "step ${1:-$LABEL} exited $(remote "cat '$LOGS/${1:-$LABEL}.exit'")"
+  else
+    echo "step ${1:-$LABEL} is running (pid $(remote "cat '$LOGS/${1:-$LABEL}.pid' 2>/dev/null || echo unknown"))"
+  fi
+  remote "tail -n 8 '$LOGS/${1:-$LABEL}.log' 2>/dev/null || true"
+}
+
 case "$step" in
+  fetchout) fetchout "$action"; exit $? ;;
+  check) check "$action"; exit 0 ;;
   env|fetch|card|stage-ship-a|stage-edits|decode) ;;
-  *) echo "usage: $0 {env|fetch|card|stage-ship-a|stage-edits|decode} [launch|print]" >&2; exit 2 ;;
+  *) echo "usage: $0 {env|fetch|card|stage-ship-a|stage-edits|decode|check|fetchout} [action]" >&2; exit 2 ;;
 esac
 LABEL=$step
 
@@ -77,11 +112,7 @@ command_for() {
     env) cat <<ENV
 test -x '$VENV/bin/python' || /root/miniconda3/envs/hifzguide/bin/python -m venv '$VENV'
 '$VENV/bin/pip' install -q -U pip
-'$VENV/bin/pip' install -q --index-url https://download.pytorch.org/whl/cpu torch torchaudio
-'$VENV/bin/pip' install -q numpy==1.26.4 pyarrow==21.0.0 datasets==4.1.1
-'$VENV/bin/pip' install -q wget antlr4-python3-runtime==4.9.3
-'$VENV/bin/pip' install -q 'nemo_toolkit[asr]==2.0.0'
-'$VENV/bin/pip' install -q pytorch-lightning==2.4.0 hf_transfer
+'$VENV/bin/pip' install -q --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -r '$REPO/$OUT/environment.lock.txt'
 '$VENV/bin/python' -c "import nemo, torch; print('nemo', nemo.__version__, 'torch', torch.__version__)"
 ENV
       ;;
@@ -211,25 +242,7 @@ launch() {
   echo "step $LABEL started on $HOST"
 }
 
-check() {
-  if remote "test -f '$LOGS/${1:-$LABEL}.exit'"; then
-    echo "step ${1:-$LABEL} exited $(remote "cat '$LOGS/${1:-$LABEL}.exit'")"
-  else
-    echo "step ${1:-$LABEL} is running (pid $(remote "cat '$LOGS/${1:-$LABEL}.pid' 2>/dev/null || echo unknown"))"
-  fi
-  remote "tail -n 8 '$LOGS/${1:-$LABEL}.log' 2>/dev/null || true"
-}
-
-fetchout() {
-  local destination=${1:?fetchout needs a destination directory}
-  mkdir -p "$destination"
-  rsync -a "$HOST:$REPO/$OUT/decodes/" "$destination/"
-  echo "fetched the decodes, identities and timings into $destination"
-}
-
 case "$action" in
-  check) check "${3:-}" ;;
   print) command_for ;;
-  fetchout) fetchout "${3:-}" ;;
   *) launch ;;
 esac

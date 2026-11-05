@@ -84,6 +84,16 @@ def test_the_qdat_plan_is_its_1505_item_keys():
     assert plan == sorted(plan)
 
 
+@pytest.mark.parametrize("blocked", ["edlib", "quran_transcript", "matplotlib",
+                                     "training.aug_readout"])
+def test_the_qdat_plan_needs_no_readout_stack(monkeypatch, blocked):
+    """The isolated runtime has none of these; listing the decode plan must not import them."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, blocked, None)
+    assert len(decode_plan("qdat")) == 1505
+
+
 # --- the round-3 refusal ----------------------------------------------------------------------
 
 
@@ -185,3 +195,27 @@ def test_nothing_is_added_to_the_requirements_files():
         added = [r for r in requirements
                  if r.startswith(("nemo", "onnxruntime", "onnx-asr", "onnx_asr"))]
         assert not added, (path.name, added)
+
+
+def test_the_env_step_installs_the_committed_lock():
+    """A lock the launcher never reads is not the environment: the env step installs it."""
+    lock = TOOLS / "tadabur" / "fastconformer_screen" / "environment.lock.txt"
+    pinned = [line for line in lock.read_text(encoding="utf-8").splitlines()
+              if line and not line.startswith("#")]
+    assert "torch==2.15.0+cpu" in pinned
+    assert any(line.startswith("nemo_toolkit==") for line in pinned)
+    assert "numpy==1.26.4" in pinned
+    script = (TOOLS.parent / "scripts" / "fastconformer-screen.sh").read_text(encoding="utf-8")
+    assert "-r '$REPO/$OUT/environment.lock.txt'" in script
+    assert "--index-url https://download.pytorch.org/whl/cpu" in script
+    assert "'$VENV/bin/pip' install -q torch torchaudio" not in script
+
+
+def test_the_qdat_runtime_lock_matches_the_fingerprint_it_records():
+    """The retired runtime's freeze: numpy 2.4.6 and the two packages that moved it there."""
+    lock = TOOLS / "tadabur" / "fastconformer_screen" / "environment.qdat.lock.txt"
+    pinned = [line for line in lock.read_text(encoding="utf-8").splitlines()
+              if line and not line.startswith("#")]
+    assert {"numpy==2.4.6", "torch==2.15.0+cpu", "nemo_toolkit==2.0.0",
+            "quran-transcript==0.5.2"} <= set(pinned)
+    assert any(line.startswith("edlib==") for line in pinned)

@@ -37,7 +37,12 @@ def require_decodable(name: str) -> None:
 
 
 def decode_plan(name: str) -> list[str]:
-    """The item keys one set decodes, in a deterministic order."""
+    """The item keys one set decodes, in a deterministic order.
+
+    qdat's keys are the committed base decode's keys (:func:`training.nonpro_eval.decodes_file`),
+    the same file the report reads its passages from: the decode needs no scoring or training
+    import (and so no ``edlib`` or ``quran-transcript``) just to list what it decodes.
+    """
     require_decodable(name)
     if name == "ship-a":
         from training.truth_scorer import item_key
@@ -45,9 +50,11 @@ def decode_plan(name: str) -> list[str]:
         return sorted({item_key(site) for site in ship_a_sites()})
     if name == "edits":
         return sorted(item["item_id"] for item in edit_items())
-    from training.zipformer_readout import qdat_set
+    from tadabur.nonpro_sources import QDAT
+    from training.external_corpus import read_decode_file
+    from training.nonpro_eval import decodes_file
 
-    return sorted(item.key for item in qdat_set()[0])
+    return sorted(read_decode_file(decodes_file(QDAT, "base")))
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,462 @@
+{
+ "issue": 267,
+ "rule": "letter-level at each located site: heard / prescribed / other / none; flagged = not prescribed (none counts); correct and catch sides never pooled",
+ "teacher": {
+  "mistakes_flagged": 83.58208955223881,
+  "correct_flagged": 63.63636363636363,
+  "edits_heard": 22.666666666666668,
+  "decoys_unchanged": 58.666666666666664
+ },
+ "fastconformer": {
+  "mistakes_flagged": 49.25373134328358,
+  "correct_flagged": 13.513513513513514,
+  "edits_heard": 26.0,
+  "decoys_unchanged": 78.0
+ },
+ "sections": {
+  "mistakes": {
+   "fastconformer": {
+    "n": 67,
+    "flagged": 33,
+    "rate": 49.25373134328358,
+    "breakdown": {
+     "heard": 30,
+     "prescribed": 34,
+     "other": 2,
+     "none": 1
+    },
+    "sensitivity_flagged": 32
+   },
+   "base": {
+    "n": 67,
+    "flagged": 56,
+    "rate": 83.58208955223881,
+    "breakdown": {
+     "heard": 54,
+     "prescribed": 11,
+     "other": 1,
+     "none": 1
+    },
+    "sensitivity_flagged": 55
+   },
+   "c95": {
+    "n": 67,
+    "flagged": 55,
+    "rate": 82.08955223880596,
+    "breakdown": {
+     "heard": 53,
+     "prescribed": 12,
+     "other": 2,
+     "none": 0
+    },
+    "sensitivity_flagged": 55
+   },
+   "r2_candidate_ema": {
+    "n": 67,
+    "flagged": 57,
+    "rate": 85.07462686567165,
+    "breakdown": {
+     "heard": 53,
+     "prescribed": 10,
+     "other": 1,
+     "none": 3
+    },
+    "sensitivity_flagged": 54
+   }
+  },
+  "correct": {
+   "fastconformer": {
+    "n": 407,
+    "flagged": 55,
+    "rate": 13.513513513513514,
+    "breakdown": {
+     "heard": 352,
+     "prescribed": 0,
+     "other": 51,
+     "none": 4
+    },
+    "sensitivity_flagged": 51
+   },
+   "base": {
+    "n": 407,
+    "flagged": 259,
+    "rate": 63.63636363636363,
+    "breakdown": {
+     "heard": 148,
+     "prescribed": 0,
+     "other": 198,
+     "none": 61
+    },
+    "sensitivity_flagged": 198
+   },
+   "c95": {
+    "n": 407,
+    "flagged": 261,
+    "rate": 64.12776412776412,
+    "breakdown": {
+     "heard": 146,
+     "prescribed": 0,
+     "other": 199,
+     "none": 62
+    },
+    "sensitivity_flagged": 199
+   },
+   "r2_candidate_ema": {
+    "n": 407,
+    "flagged": 245,
+    "rate": 60.1965601965602,
+    "breakdown": {
+     "heard": 162,
+     "prescribed": 0,
+     "other": 183,
+     "none": 62
+    },
+    "sensitivity_flagged": 183
+   }
+  }
+ },
+ "intervals": {
+  "mistakes": {
+   "observations": 67,
+   "clusters": 46,
+   "scale": 100.0,
+   "models": {
+    "fastconformer": {
+     "num": 33.0,
+     "den": 67.0,
+     "point": 49.25373134328358,
+     "interval": {
+      "lower": 35.483870967741936,
+      "upper": 61.42857142857143,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 56.0,
+     "den": 67.0,
+     "point": 83.5820895522388,
+     "interval": {
+      "lower": 73.52941176470588,
+      "upper": 91.78082191780823,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 55.0,
+     "den": 67.0,
+     "point": 82.08955223880598,
+     "interval": {
+      "lower": 71.01449275362319,
+      "upper": 91.30434782608695,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 57.0,
+     "den": 67.0,
+     "point": 85.07462686567165,
+     "interval": {
+      "lower": 75.38461538461539,
+      "upper": 92.94159072079535,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "comparisons": {
+    "fastconformer−base": {
+     "point": -34.32835820895522,
+     "interval": {
+      "lower": -47.61904761904761,
+      "upper": -22.03099605293712,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95−base": {
+     "point": -1.492537313432829,
+     "interval": {
+      "lower": -11.290322580645162,
+      "upper": 8.21917808219178,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema−base": {
+     "point": 1.4925373134328401,
+     "interval": {
+      "lower": -4.999999999999993,
+      "upper": 8.450704225352112,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  },
+  "correct": {
+   "observations": 407,
+   "clusters": 178,
+   "scale": 100.0,
+   "models": {
+    "fastconformer": {
+     "num": 55.0,
+     "den": 407.0,
+     "point": 13.513513513513514,
+     "interval": {
+      "lower": 10.06420616002047,
+      "upper": 17.24161167394739,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 259.0,
+     "den": 407.0,
+     "point": 63.63636363636363,
+     "interval": {
+      "lower": 58.72641509433962,
+      "upper": 68.42105263157895,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 261.0,
+     "den": 407.0,
+     "point": 64.12776412776412,
+     "interval": {
+      "lower": 59.267835365853664,
+      "upper": 69.0,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 245.0,
+     "den": 407.0,
+     "point": 60.1965601965602,
+     "interval": {
+      "lower": 55.01283775714797,
+      "upper": 65.47314578005115,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "comparisons": {
+    "fastconformer−base": {
+     "point": -50.12285012285012,
+     "interval": {
+      "lower": -55.181347150259064,
+      "upper": -45.049221525205965,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95−base": {
+     "point": 0.49140049140049546,
+     "interval": {
+      "lower": -4.0405175348995614,
+      "upper": 5.167958656330751,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema−base": {
+     "point": -3.439803439803435,
+     "interval": {
+      "lower": -7.868020304568524,
+      "upper": 0.8852032230603213,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  }
+ },
+ "edits": {
+  "edit": {
+   "n": 150,
+   "counts": {
+    "fastconformer": 39,
+    "base": 34,
+    "c95": 54,
+    "r2_candidate_ema": 47
+   },
+   "rates": {
+    "fastconformer": {
+     "num": 39.0,
+     "den": 150.0,
+     "point": 26.0,
+     "interval": {
+      "lower": 19.333333333333332,
+      "upper": 33.33333333333333,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 34.0,
+     "den": 150.0,
+     "point": 22.666666666666664,
+     "interval": {
+      "lower": 16.0,
+      "upper": 29.333333333333332,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 54.0,
+     "den": 150.0,
+     "point": 36.0,
+     "interval": {
+      "lower": 28.666666666666668,
+      "upper": 44.0,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 47.0,
+     "den": 150.0,
+     "point": 31.333333333333336,
+     "interval": {
+      "lower": 24.0,
+      "upper": 38.666666666666664,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "differences": {
+    "fastconformer−base": {
+     "point": 3.3333333333333353,
+     "interval": {
+      "lower": -6.000000000000003,
+      "upper": 12.666666666666668,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  },
+  "decoy": {
+   "n": 150,
+   "counts": {
+    "fastconformer": 117,
+    "base": 88,
+    "c95": 93,
+    "r2_candidate_ema": 90
+   },
+   "rates": {
+    "fastconformer": {
+     "num": 117.0,
+     "den": 150.0,
+     "point": 78.0,
+     "interval": {
+      "lower": 71.33333333333334,
+      "upper": 84.66666666666667,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "base": {
+     "num": 88.0,
+     "den": 150.0,
+     "point": 58.666666666666664,
+     "interval": {
+      "lower": 50.66666666666667,
+      "upper": 66.66666666666666,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "c95": {
+     "num": 93.0,
+     "den": 150.0,
+     "point": 62.0,
+     "interval": {
+      "lower": 54.0,
+      "upper": 70.0,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    },
+    "r2_candidate_ema": {
+     "num": 90.0,
+     "den": 150.0,
+     "point": 60.0,
+     "interval": {
+      "lower": 52.0,
+      "upper": 68.0,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   },
+   "differences": {
+    "fastconformer−base": {
+     "point": 19.333333333333336,
+     "interval": {
+      "lower": 8.666666666666668,
+      "upper": 29.333333333333332,
+      "method": "bootstrap",
+      "reason": ""
+     }
+    }
+   }
+  }
+ },
+ "qdat": {
+  "clips": 1505,
+  "words": 12040,
+  "disagreeing_words": 2161,
+  "rule": "a reference word disagrees when any of its Imlaei letters is substituted, deleted or aligned to a different shadda state; harakat are never read",
+  "rates": {
+   "fastconformer": {
+    "num": 2161.0,
+    "den": 12040.0,
+    "point": 179.48504983388705,
+    "interval": {
+     "lower": 165.2086137281292,
+     "upper": 193.6326704725616,
+     "method": "bootstrap",
+     "reason": ""
+    }
+   }
+  }
+ },
+ "unique_catches": [],
+ "mapping": {
+  "located": 516,
+  "total": 522,
+  "unlocated": [
+   "new_audit:tadabur_spk0002_S17_A18_ede49820_000011.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0016_S17_A18_e1d73e40_000012.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0051_S17_A18_5a3f865e_000018.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0066_S23_A3_33c43374_000002.wav#0@2:shaddah",
+   "new_audit:tadabur_spk0114_S17_A18_0356123b_000011.wav#0@20:ض↔ظ",
+   "new_audit:tadabur_spk0350_S37_A13_fc588788_000000.wav#0@23:ط↔ق"
+  ],
+  "edits": {
+   "located": 300,
+   "total": 300,
+   "unlocated": []
+  }
+ },
+ "card_sanity": {
+  "measured": false,
+  "reason": "no EveryAyah test sample with the card's own normalisation is staged; the Quran-Lab benchmark's reference is Uthmani and not comparable with an Imlaei transcript, so a WER against it would not be the card's line",
+  "smoke": "the first Ship A item's text is the expected Arabic with diacritics (11:30, the 11:30 site), checked by eye before the batch"
+ },
+ "run_note": {
+  "device": "cpu",
+  "gpu_hours": 0,
+  "yielded_seconds": 0
+ },
+ "verdict": "PRIOR"
+}

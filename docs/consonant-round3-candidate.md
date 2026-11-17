@@ -330,3 +330,63 @@ committed with them.
 
 No tlog `confirm.3`/`confirm.4` row was read, no tranche is claimed, and no grade was taken: this
 sitting only materialises the guard sets' decodes.
+
+## The pre-claim (#255)
+
+Read once on the Mac through the round-3 readout, from the committed gates decodes (PR #282) and
+the committed catch-loss result (PR #286):
+
+```
+cd tools && python -m training.consonant_readout preclaim --spec consonant3 --workers 8
+```
+
+| item | value |
+|---|---|
+| wall time | **590.51 s** (9.8 min), CPU only, one process, `--workers 8`; no GPU |
+| commit / branch | `7797ac2` (main after PR #287), `agent/r3-preclaim` |
+| record | `tools/tadabur/consonant3_readout/preclaim.json` (`phase: preclaim`, `issue` 251) |
+| verdict | **pass** — every gate and the audit; no `verdict.json` and no `docs/consonant-round3-readout.md` is written on a pass |
+| inputs | 29 files digested, `missing_inputs: []`; no `control` key (round 3 decodes no control arm) |
+| choice | `choice.json` `fd25c93f…` (`choice_sha256` `56b7b00c…`), `look.claim.json` unchanged |
+| harness | `cfcb99ba…` (the pin), Muraja `99c326f`, `quran.db` `02fe3dd8…`, layout `ee66eef3…` |
+| pre-registration | `docs/consonant-round3-preregistration.md`, SHA-256 `5e574aa6…` (the pin) |
+
+`harness.json`'s `quran_db_sha256` field (`7189c88…`) is stale metadata; the record's
+`harness.quran_db_sha256` is the file's actual SHA-256, `02fe3dd8…` — the hash round 2's pre-claim
+recorded and the round-3 freeze read. Two earlier attempts, before PR #287, crashed before writing:
+G1's QUD pilot once came from a live read of QUD's gated Hub dataset (`401`, then `403`: the account
+is authenticated but not on the manual gate), and the offline read of the committed pilot decodes
+replaced it. Neither attempt wrote a record, so this is the pre-claim's first read.
+
+| gate | bar | value | verdict |
+|---|---|---|---|
+| `catch_loss` | the catch-loss audit: at most 20% of the decisive removed verdicts are real mistakes, and at least 80 decisive removed verdicts are heard | removed real 16/92 = **17.39%** (Wilson 95% 11.00–26.40%), 92 decisive; added (reported) 6/45 = 13.33% | **pass** |
+| `g3.qdat_bench.consonant` | qdat_bench stream arm, consonant agreement: paired 95% lower bound ≥ −2.0 pt | point 2.999, bound 2.083 | **pass** |
+| `g3.qdat_bench.haraka` | qdat_bench stream arm, haraka agreement: paired 95% lower bound ≥ −2.0 pt | point 2.184, bound 1.221 | **pass** |
+| `g6.ship_a_verified` | Ship A held-out verified mistakes at ط↔ق and س↔ش: candidate flags ≥ C95 − 2 sites (paired count) | difference +1 site | **pass** |
+| `bar4a.qdat` | word agreement with the teacher on qdat: paired 95% lower bound > 0 | point 6.611, bound 5.470, threshold 0.000 | **pass** |
+| `bar4b.qdat` | the same on the teacher-departure words of qdat: paired 95% lower bound ≥ −0.5 pt | point 8.083, bound 6.521, threshold −0.500 | **pass** |
+| `bar5.qdat` | qdat all-cause false flags per 1,000: candidate point estimate < C95's | candidate 34.127, C95 58.251 | **pass** |
+| `g1.qud_other` | QUD other half, all-cause false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0 | point −0.644, bound −0.271, threshold 1.000 | **pass** |
+| `g2.tadabur_dev_unseen` | Tadabur dev, decode agreement with the teacher at stream_b0: paired 95% lower bound ≥ −1.0 pt | point −0.059, bound −0.182, threshold −1.000 | **pass** |
+
+The audit's interval, disclosed and not a gate change: the pre-registration sets the catch-loss bar
+on the **point estimate** (≤ 20%, at least 80 decisive) with the Wilson 95% interval reported, and
+17.39% clears it while the interval's upper bound (26.40%) crosses the 20% point bar. The owner's
+note rule (2026-11-17, `docs/consonant-round3-catch-loss.md`) leaves the pass intact at every
+reading: k=2 17.78% (11.25–26.94%), k=5 18.39% (11.65–27.81%), k=11 19.75% (12.54–29.70%), each
+still ≥ 80 decisive — **all readings PASS**.
+
+Reported beside the gates, never folded into them:
+
+| line | value |
+|---|---|
+| `g3.qdat_bench.shaddah` (reported only) | point 1.370, 95% [0.000, 2.793] |
+| `look.vs_r2.all_cause` (round 3 − round 2 EMA) | −7.358 per 1,000 |
+| `look.vs_r2.consonant_cause` | −5.067 per 1,000 |
+| `look.vs_r2.tashkeel_cause` | −0.628 per 1,000 |
+
+G4 (+3.5, amendment A1), G5, bars 1–3 and 4a/4b.tlog_confirm are the **pooled confirm** gates: the
+verdict reads them on confirm.3+4, not here (the pre-registration's "5" is `bar5.qdat` above, not
+G5). The look lines are never read on confirm. No tranche is claimed, no confirm decode ran, and the
+pooled verdict is unread: the round now waits on the owner's go to claim confirm.3.

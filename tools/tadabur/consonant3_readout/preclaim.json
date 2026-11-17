@@ -1,0 +1,416 @@
+{
+ "audit": {
+  "added": {
+   "correct": 39,
+   "decisive": 45,
+   "real": 6,
+   "real_share": 0.13333333333333333,
+   "unclear": 5,
+   "wilson": [
+    0.062570636343,
+    0.261775822413
+   ]
+  },
+  "bars": {
+   "decisive_at_least": 80,
+   "real_at_most": 0.2
+  },
+  "by_cause": {
+   "added": {
+    "other_consonant": {
+     "correct": 32,
+     "decisive": 35,
+     "real": 3,
+     "real_share": 0.08571428571428572,
+     "unclear": 1,
+     "wilson": [
+      0.029581831005,
+      0.223795990712
+     ]
+    },
+    "shaddah": {
+     "correct": 1,
+     "decisive": 1,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.793456708526
+     ]
+    },
+    "skipped": {
+     "correct": 1,
+     "decisive": 1,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.793456708526
+     ]
+    },
+    "soft_pair": {
+     "correct": 2,
+     "decisive": 2,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.65762804711
+     ]
+    },
+    "tashkeel": {
+     "correct": 5,
+     "decisive": 8,
+     "real": 3,
+     "real_share": 0.375,
+     "unclear": 0,
+     "wilson": [
+      0.136841759462,
+      0.694262145416
+     ]
+    },
+    "unrecorded": {
+     "correct": 0,
+     "decisive": 0,
+     "real": 0,
+     "real_share": null,
+     "unclear": 4,
+     "wilson": null
+    }
+   },
+   "removed": {
+    "other_consonant": {
+     "correct": 64,
+     "decisive": 79,
+     "real": 15,
+     "real_share": 0.189873417721519,
+     "unclear": 7,
+     "wilson": [
+      0.118581268237,
+      0.289928466003
+     ]
+    },
+    "shaddah": {
+     "correct": 2,
+     "decisive": 2,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.65762804711
+     ]
+    },
+    "skipped": {
+     "correct": 1,
+     "decisive": 1,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.793456708526
+     ]
+    },
+    "soft_pair": {
+     "correct": 3,
+     "decisive": 4,
+     "real": 1,
+     "real_share": 0.25,
+     "unclear": 1,
+     "wilson": [
+      0.045586062645,
+      0.699363947557
+     ]
+    },
+    "target_pair": {
+     "correct": 1,
+     "decisive": 2,
+     "real": 1,
+     "real_share": 0.5,
+     "unclear": 0,
+     "wilson": [
+      0.094528654801,
+      0.905471345199
+     ]
+    },
+    "tashkeel": {
+     "correct": 9,
+     "decisive": 9,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 0,
+     "wilson": [
+      0.0,
+      0.299152753551
+     ]
+    },
+    "unrecorded": {
+     "correct": 1,
+     "decisive": 1,
+     "real": 0,
+     "real_share": 0.0,
+     "unclear": 1,
+     "wilson": [
+      0.0,
+      0.793456708526
+     ]
+    }
+   }
+  },
+  "caveats": [
+   "A word's position is the canonical word the grade's Muraja word starts on: a Muraja word spanning two canonical words highlights only the first.",
+   "Each clip is played whole; a row's start/end samples are provenance, not a cut.",
+   "Fewer than 80 decisive removed verdicts certifies nothing, whatever the share is."
+  ],
+  "noisy": {
+   "added": {
+    "decisive": 0,
+    "items": 0,
+    "real": 0
+   },
+   "removed": {
+    "decisive": 2,
+    "items": 2,
+    "real": 1
+   }
+  },
+  "removed": {
+   "correct": 76,
+   "decisive": 92,
+   "real": 16,
+   "real_share": 0.17391304347826086,
+   "unclear": 8,
+   "wilson": [
+    0.109980760352,
+    0.263986285274
+   ]
+  },
+  "verdict": "pass"
+ },
+ "bars": {
+  "agreement_lower_above": 0.0,
+  "all_cause_upper_below": 0.0,
+  "bench_lower_at_least": -2.0,
+  "catch_at_least": -2.0,
+  "catch_loss_decisive_at_least": 80,
+  "catch_loss_real_at_most": 0.2,
+  "consonant_upper_below": 0.0,
+  "departs_lower_at_least": -0.5,
+  "power_at_least": 0.85,
+  "qud_upper_at_most": 1.0,
+  "reduction_at_least": 4.7,
+  "tadabur_lower_at_least": -1.0,
+  "tashkeel_upper_at_most": 3.5
+ },
+ "choice_commit": "fd25c93f7440471859a3b6edb1a320d30a26a93a",
+ "choice_sha256": "56b7b00c110a8134a2b78b52fee247bfa73ca5819728dc7da8e1e0b4f7f09c9b",
+ "gates": {
+  "bar4a.qdat": {
+   "bar": "word agreement with the teacher on qdat: paired 95% lower bound > 0",
+   "bound": 5.469787243928361,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4a.qdat",
+   "point": 6.6112956810631225,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  "bar4b.qdat": {
+   "bar": "the same on the teacher-departure words of qdat: paired 95% lower bound ≥ −0.5 pt",
+   "bound": 6.52077144534721,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4b.qdat",
+   "point": 8.083480305702523,
+   "strict": false,
+   "threshold": -0.5,
+   "verdict": "pass"
+  },
+  "bar5.qdat": {
+   "bar": "qdat all-cause false flags per 1,000: candidate point estimate < C95's",
+   "c95": 58.250739001912706,
+   "candidate": 34.12705235107023,
+   "name": "bar5.qdat",
+   "verdict": "pass"
+  },
+  "catch_loss": {
+   "added": {
+    "correct": 39,
+    "decisive": 45,
+    "real": 6,
+    "real_share": 0.13333333333333333,
+    "unclear": 5,
+    "wilson": [
+     0.062570636343,
+     0.261775822413
+    ]
+   },
+   "bar": "the catch-loss audit: at most 20% of the decisive removed verdicts are real mistakes, and at least 80 decisive removed verdicts are heard",
+   "bars": {
+    "decisive_at_least": 80,
+    "real_at_most": 0.2
+   },
+   "name": "catch_loss",
+   "removed": {
+    "correct": 76,
+    "decisive": 92,
+    "real": 16,
+    "real_share": 0.17391304347826086,
+    "unclear": 8,
+    "wilson": [
+     0.109980760352,
+     0.263986285274
+    ]
+   },
+   "verdict": "pass"
+  },
+  "g1.qud_other": {
+   "bar": "QUD other half, all-cause false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
+   "bound": -0.2710839148295619,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "g1.qud_other",
+   "point": -0.6439648315035634,
+   "strict": false,
+   "threshold": 1.0,
+   "verdict": "pass"
+  },
+  "g2.tadabur_dev_unseen": {
+   "bar": "Tadabur dev, decode agreement with the teacher at stream_b0: paired 95% lower bound ≥ −1.0 pt",
+   "bound": -0.18181086360602117,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g2.tadabur_dev_unseen",
+   "point": -0.058587727412884316,
+   "strict": false,
+   "threshold": -1.0,
+   "verdict": "pass"
+  },
+  "g3.qdat_bench.consonant": {
+   "bar": "qdat_bench stream arm, consonant agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": 2.083317381317002,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.consonant",
+   "point": 2.998776009791926,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  "g3.qdat_bench.haraka": {
+   "bar": "qdat_bench stream arm, haraka agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": 1.2213175425610623,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.haraka",
+   "point": 2.1835677276091814,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  "g6.ship_a_verified": {
+   "bar": "Ship A held-out verified mistakes at ط↔ق and س↔ش: candidate flags ≥ C95 − 2 sites (paired count)",
+   "difference": 1,
+   "name": "g6.ship_a_verified",
+   "threshold": -2.0,
+   "verdict": "pass"
+  }
+ },
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "inputs": {
+  "/Users/sysofwan/repos/HifzGuide-wt/r3-preclaim/docs/consonant-round3-preregistration.md": "5e574aa653e439649999c85975f3d341a33d8ea0b557d2c3aea22686f882c118",
+  "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz": "20e376eca7f88bd64d58a56402a2859c6b14b272e247f8b1c5caadd5497f4f56",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.base.jsonl.gz": "c42bac7d9c90bf0cfaf84e095fd6b72061745e32d903c2c3fa3710bf294c8840",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "378faca688f6774531215ad7ccac8916381c71d5e446647bd4f7a71fb5b3af77",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.h448.jsonl.gz": "c707478ab2d4ee39da388b43e9740db2437f626ac18de969997aae1e7af058a3",
+  "tadabur/consonant2_readout/decodes/tlog.look.base.jsonl.gz": "ebcd8eb0606492a351dbf9ec1ca70051537b641bc83591a7aa7a3597b72765f5",
+  "tadabur/consonant2_readout/decodes/tlog.look.r2_candidate_ema.jsonl.gz": "d3e0844db1e9e71bd2f8931ba81a07440456c03d9a75f65dd1feae9e0ceafb9f",
+  "tadabur/consonant3_readout/decodes/qdat.r3_candidate_ema.jsonl.gz": "a75885e395a6590f7220850a8c59097a3f2ed99de93bede275904f50c6ad6be6",
+  "tadabur/consonant3_readout/decodes/qud_other.r3_candidate_ema.jsonl.gz": "408ff9169baa0a4f31f05aef89ea85aae07866f5c39bf0831b3492b6b7692c7b",
+  "tadabur/consonant3_readout/decodes/tadabur_dev_unseen.r3_candidate_ema.jsonl.gz": "f8e3e11aac7861c34879c7eb6422c1f5a9d31f4ea68d756474184c2b55cb536a",
+  "tadabur/consonant3_readout/decodes/tlog.look.r3_candidate_ema.jsonl.gz": "440558b0a651df84a6cfb4787d144dbfdcfa8402e88907bf933fd49f79f27c5f",
+  "tadabur/consonant3_readout/models.json": "412d5d1cc8a15465388c3d67e1c587b25467fddf5c255a70662be03660a35e97",
+  "tadabur/consonant_readout/decodes/qud_other.c95.jsonl.gz": "3919a61c9df643dcbc5079fb5a658f0abd5d1e01496fa15a6201d7e51bce2db2",
+  "tadabur/consonant_readout/g6_sites.json": "ba7ba8418cad5782ee92c7b84537e2115d0058347ce7fbe97aedd6b67fe9e370",
+  "tadabur/consonant_readout/qud_selection.json": "7deded427258020018ddb256572a0c0b3d0e3b1e1ae8fe1648c0d698ff5f2fad",
+  "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz": "affd6d7f906daf7d16e4b88ace754f3c82db9e8bba714776729d9478636b894b",
+  "tadabur/nonpro_gap/decodes/clean.base.jsonl.gz": "d5083ec28cdf8e34d4f29a88e90a3b277de9dfea98c1414f53403dbee246e4bd",
+  "tadabur/nonpro_gap/decodes/clean.h448.jsonl.gz": "82eda39d21f35cab49890d71596487b8ca06630f87a722cbe4627d2b009ffa33",
+  "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.base.jsonl.gz": "2a3989e67201c8b10f56cc7ce7cae17713062ecb8fdfc70196b2021b575a19d4",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.h448.jsonl.gz": "6654b7d3d4ca64b50627b90d61a5d37e1eb6364ba2256c8c71ab1f1a11704cc9",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.base.jsonl.gz": "e6790caca1ccd3bb71b7f177e11d1d2c065fb1a3fb55f1a00e8e7c2c8723bd17",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.h448.jsonl.gz": "5f44c7e01dd715f6903aeac5f5b5426c23439d051ab5cf008ee431651a80d004",
+  "tadabur/tlog/tranches/look.jsonl": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57",
+  "tadabur/truth_baseline/checks/c95.json": "2d23c1e29829971e0fbac84d1e6b33ceb895059493fbbc7f446fc47a8dd6c10b",
+  "tadabur/truth_baseline/checks/r3_candidate_ema.json": "5f8cd7ea74adde7bf3dff4a4b629aad4fb7be6eefc9ed71fcff09d070e89302d",
+  "tadabur/truth_baseline/decodes/c95.json": "7836e46444458f8628ebd2aed7335b207839efa8853e8dbf01731e6760eb9d67",
+  "tadabur/truth_baseline/decodes/r3_candidate_ema.json": "f8bf1df9f9ee75696cdb5d914d77bfb7999d2760bb4d29146524e0ba4709d263"
+ },
+ "issue": 251,
+ "missing_inputs": [],
+ "phase": "preclaim",
+ "prereg_sha256": "5e574aa653e439649999c85975f3d341a33d8ea0b557d2c3aea22686f882c118",
+ "reported": {
+  "g3.qdat_bench.shaddah": {
+   "bar": "qdat_bench stream arm, shaddah agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": 0.0,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "interval": {
+    "lower": 0.0,
+    "upper": 2.7932960893854775
+   },
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.shaddah",
+   "point": 1.3698630136986245,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  "look.vs_r2.all_cause": {
+   "name": "look.vs_r2.all_cause",
+   "point": -7.357557886684546
+  },
+  "look.vs_r2.consonant_cause": {
+   "name": "look.vs_r2.consonant_cause",
+   "point": -5.066566416923768
+  },
+  "look.vs_r2.tashkeel_cause": {
+   "name": "look.vs_r2.tashkeel_cause",
+   "point": -0.6283916858095019
+  }
+ },
+ "verdict": "pass"
+}

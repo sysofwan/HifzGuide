@@ -24,9 +24,14 @@ models and measures them without listening ([`docs/qud-pilot.md`](../../../../do
 | `pilot/worklist.jsonl` | one row per disagreed carrier with its excerpt; **not queued** for listening | the same |
 | `pilot/report.json` | items, classes, per-direction counts and rates, the app outcome, the listening estimate, compute | `build`, `app` (Mac with the Muraja harness) |
 
-Run from `tools/`, in that order. The pilot's ayat are registered in the exposure registry as
-the QUD use `qud.correct_recitation` (`../exposure/qud.correct_recitation.qud.jsonl`). The rules and the estimate's method are in the module
-docstrings of [`../qud_selection.py`](../qud_selection.py) and [`../qud_sizing.py`](../qud_sizing.py).
+Run from `tools/`, in that order. `build` is the one pilot step that reads QUD's metadata from
+the gated Hub (its recited text and word timings); the pre-claim and every readout rebuild the
+items from `pilot/decodes` — each line carries its ayah, segment and MP3 checksum — and
+quran-transcript, so no Hugging Face access or token is needed to read the pilot
+(`training.qud_pilot.committed_pilot`). The pilot's ayat are registered in the exposure registry
+as the QUD use `qud.correct_recitation` (`../exposure/qud.correct_recitation.qud.jsonl`). The
+rules and the estimate's method are in the module docstrings of
+[`../qud_selection.py`](../qud_selection.py) and [`../qud_sizing.py`](../qud_sizing.py).
 
 **Licence.** QUD is CC BY 4.0; its card adds that the recitation audio "is not relicensed,
 and remains the property of upstream sources/reciters". The repo commits no QUD audio, only

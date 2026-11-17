@@ -74,7 +74,7 @@ listening.
 * **Worklist:** 150 items over 141 distinct clips; every clip's source bytes are already in the
   look clip cache, so nothing was prepared for playback.
 
-## The sitting, 2026-11-02
+## The hand-off, 2026-11-02
 
 ### The served page
 
@@ -138,16 +138,50 @@ mistakes, **17.39%** (Wilson 95% 11.00–26.40%), at most the pre-registered 20%
 fewer than 80 decisive certifies nothing, whatever the share -> **pass**. Added, reported only:
 6 of 45 decisive, 13.33% (6.26–26.18%).
 
-**Sensitivity readings (REPORTED, not in `result.json`).** 38 answers carry a note (18 `mistake`,
-12 `correct`, 8 `unclear`); the readings below re-score only those answers and leave every
-un-noted one as given, the two readings the round-2 note reported. Neither is the bar.
+**The owner's note rule (REPORTED, not in `result.json`).** The owner, verbatim, on what a note
+means:
 
-| reading | removed real/decisive | removed real share (Wilson 95%) | removed-stratum verdict | added real/decisive |
+> Please count prioritize the correct/incorrect verdict that I gave. The note just says which part
+> is incorrect. For the correct with note, please read the note for verdict as it may mean unclear
+
+So the headline is the verdict as given: every `mistake` stays a mistake whatever its note, every
+`unclear` stays unclear, and only a `correct` carrying a note is re-read, individually. The
+removed stratum's eleven:
+
+| site_id | note | reading |
+|---|---|---|
+| `1588286f` | unclear | `unclear` |
+| `191c21a0` | Corrected with reread | correct |
+| `1be3a83e` | fast | likely `unclear` |
+| `1c38a407` | Previous word trimmed | correct |
+| `2379e37f` | incorrect on the first pass but corrected | correct |
+| `28232893` | Too fast | likely `unclear` |
+| `382816d3` | first fathahah incorrect | correct |
+| `52c94240` | Ghunnah missing | correct |
+| `60416add` | very low volume | likely `unclear` |
+| `a154b237` | possible ain -> alif substitution | `unclear` |
+| `f1baad7b` | Incorrect Al at the end of word | correct |
+
+The two `unclear` readings are certain, the three "likely" ones are a judgment (the word was
+heard; the recording was trimmed, fast or quiet), and the last six stay correct: each note names a
+defect the owner judged not to change the verdict (a reread corrected it, the previous word was
+trimmed, or the slip is tajweed/tashkeel rather than the consonant). All readings are recomputed
+from `verdicts.jsonl` and `key.jsonl` with the scorer's own count and Wilson machinery, as
+`result.json` is.
+
+| reading | removed real/decisive | removed real share (Wilson 95%) | removed-stratum verdict | added real/decisive (share) |
 |---|---|---|---|---|
-| (a) noted verdicts treated as `unclear` | 3/68 | 4.41% (1.51–12.19%) | cannot certify (68 decisive) | 1/39 (2.56%) |
-| (b) noted `correct` treated as a real mistake | 27/92 | 29.35% (21.02–39.33%) | fail | 7/45 (15.56%) |
+| k=2: the certain `unclear` readings | 16/90 | 17.78% (11.25–26.94%) | pass | 6/45 (13.33%) |
+| k=5: plus the three likely ones | 16/87 | 18.39% (11.65–27.81%) | pass | 6/45 (13.33%) |
+| k=11: bound, every noted `correct` `unclear` | 16/81 | 19.75% (12.54–29.70%) | pass | 6/44 (13.64%) |
 
-Reading (a) falls under the 80-decisive floor and reading (b) exceeds 20%, so the pass is the
-sitting's own scoring only: the two extremes bracket it, and neither bound is what the
-pre-registration measures. The added stratum has no bar; its share is reported under the same two
-readings.
+All three readings keep at least 80 decisive, and the share rises towards 20% without crossing
+it, so the pass is stable under the owner's rule. The added stratum has no bar; it carries one
+`correct`-with-note ("start of ayah trimmed, baini clearly heard", read as correct) and 5 noted
+`mistake`s, which stay mistakes.
+
+**Superseded round-2-style readings (REPORTED).** The round-2 note's two blanket readings, kept
+only because the owner's rule above supersedes them: (a) all 38 noted answers treated as
+`unclear`: removed 3/68 (4.41%, Wilson 1.51–12.19%) -> cannot certify (68 decisive), added 1/39
+(2.56%); (b) noted `correct` treated as a real mistake: removed 27/92 (29.35%, 21.02–39.33%) ->
+fail, added 7/45 (15.56%). Neither is the owner's rule or the bar.

@@ -7,8 +7,8 @@ confirm.2 is claimed.
 
 The rules are the pre-registration's (`docs/consonant-round3-preregistration.md`, "Catch-loss
 audit", FINAL TEXT 2026-11-01, committed at `b2470ff`), and the round-2 audit's precedent
-is `docs/consonant-round2-catch-loss.md`. This note records the tooling, the committed draw
-and the owner's instructions; the sitting's result belongs here once it has happened.
+is `docs/consonant-round2-catch-loss.md`. This note records the tooling, the committed draw,
+the owner's instructions and the sitting's result.
 
 ## The populations
 
@@ -74,11 +74,9 @@ listening.
 * **Worklist:** 150 items over 141 distinct clips; every clip's source bytes are already in the
   look clip cache, so nothing was prepared for playback.
 
-## The owner's sitting
+## The sitting, 2026-11-02
 
-Not yet listened: 0 of 150 answered.
-
-### The served page, 2026-11-02
+### The served page
 
 `SPEC=consonant3 scripts/issue-225-audit.sh ui launch` on cuda-dev, with the backup loop
 (`backup launch`) beside it. Round 2's listener is still bound on `:8000` and was left
@@ -128,3 +126,28 @@ cd tools && python -m tadabur.catch_loss_audit score --spec consonant3        # 
 Commit `verdicts.jsonl`, `review.jsonl` (if present) and `result.json` in
 `tools/tadabur/consonant3_readout/catch_loss/`. The verdicts file is irreplaceable human data
 (AGENTS.md); the backup job keeps a per-minute copy in `/root/scratch/catch_loss_r3/backup`.
+
+## The owner's sitting, 2026-11-17
+
+The owner listened to all 150 items; the committed `verdicts.jsonl` is the sitting's file, SHA-256
+`0a2d3c41d4a48ca7a3003fe0b400f75dff71f74623f5d2d17fca2fde9655976a`: 115 `correct`, 22 `mistake`,
+13 `unclear`, 38 with a note. No `review.jsonl` was written (every item was answered).
+
+**Result (the frozen rule, `result.json`).** Removed: **16 of 92 decisive** verdicts are real
+mistakes, **17.39%** (Wilson 95% 11.00–26.40%), at most the pre-registered 20% with 92 decisive;
+fewer than 80 decisive certifies nothing, whatever the share -> **pass**. Added, reported only:
+6 of 45 decisive, 13.33% (6.26–26.18%).
+
+**Sensitivity readings (REPORTED, not in `result.json`).** 38 answers carry a note (18 `mistake`,
+12 `correct`, 8 `unclear`); the readings below re-score only those answers and leave every
+un-noted one as given, the two readings the round-2 note reported. Neither is the bar.
+
+| reading | removed real/decisive | removed real share (Wilson 95%) | removed-stratum verdict | added real/decisive |
+|---|---|---|---|---|
+| (a) noted verdicts treated as `unclear` | 3/68 | 4.41% (1.51–12.19%) | cannot certify (68 decisive) | 1/39 (2.56%) |
+| (b) noted `correct` treated as a real mistake | 27/92 | 29.35% (21.02–39.33%) | fail | 7/45 (15.56%) |
+
+Reading (a) falls under the 80-decisive floor and reading (b) exceeds 20%, so the pass is the
+sitting's own scoring only: the two extremes bracket it, and neither bound is what the
+pre-registration measures. The added stratum has no bar; its share is reported under the same two
+readings.

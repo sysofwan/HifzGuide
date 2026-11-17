@@ -34,6 +34,11 @@ Files (``tadabur/qud_eval/pilot/``): ``decodes/<slug>.<model>.jsonl.gz`` (every 
 decodes, merged from the GPU box), ``truth_sites/<slug>.jsonl.gz``, ``worklist.jsonl``,
 ``report.json``; the doc ``docs/qud-pilot.md``; the exposure use ``qud.correct_recitation``.
 
+**Reading it.** :func:`committed_pilot` rebuilds every item from the committed decodes (each
+line carries its ayah, segment, sample span and MP3 checksum) and quran-transcript, so the
+pre-claim and the readouts need no Hugging Face access; only ``build`` (QUD's recited text and
+word timings) and ``merge`` (the segments per mushaf) read the gated metadata.
+
 Usage (from ``tools/``; torch-free; ``app`` needs the Muraja harness)::
 
   python -m training.qud_pilot merge --decodes-dir <the GPU box's decodes, copied>
@@ -56,7 +61,7 @@ from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.listening_session import EXCERPT_PAD_S
 from tadabur.qud_overlap import PILOT
 from tadabur.qud_selection import QUD_DIR, SELECTION_PATH
-from tadabur.qud_source import QUD_REVISION, QudRow, mushaf_metadata
+from tadabur.qud_source import QUD_REVISION, QudRow, audio_filename, mushaf_metadata
 from tadabur.qud_text import ItemReference, Unmapped, item_reference, map_words
 from tadabur.truth_sites import QUD, write_truth_sites
 from training.carrier_windowing import APP_PROTOCOLS, MODELS, SPANS, gap_report, site_rows
@@ -91,12 +96,20 @@ DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "qud-pilot.md"
 
 @dataclass(frozen=True)
 class PilotItem:
-    """One QUD segment: where it is, its audio's provenance and its realized reference."""
+    """One QUD segment: where it is, its audio's provenance and its realized reference.
+
+    ``segment`` is QUD's: the segment's ``[word_from, word_to, start_ms, end_ms]``, 1-based
+    canonical words. ``word_timestamps`` are the ayah's, which the build reads for its
+    listening excerpts; an item read from the decodes alone (:func:`committed_pilot`) has
+    ``None`` there, so nothing can silently excerpt it whole.
+    """
 
     key: str
     slug: str
-    row: QudRow
-    segment_index: int
+    surah: int
+    ayah: int
+    segment: tuple[int, int, int, int]
+    word_timestamps: tuple[tuple[int, int, int], ...] | None
     start_sample: int
     end_sample: int
     mp3_sha256: str
@@ -107,19 +120,11 @@ class PilotItem:
 
     @property
     def audio_filename(self) -> str:
-        return self.row.audio_filename
-
-    @property
-    def surah(self) -> int:
-        return self.row.surah
-
-    @property
-    def ayah(self) -> int:
-        return self.row.ayah
+        return audio_filename(self.slug, self.surah, self.ayah)
 
     @property
     def surah_ayah(self) -> str:
-        return self.row.surah_ayah
+        return f"{self.surah}:{self.ayah}"
 
     @property
     def audio_sha256(self) -> str:
@@ -166,14 +171,42 @@ def build_items(slug: str, rows: Sequence[QudRow], decodes: Mapping[str, dict],
                 left_out["phonetizer_unsupported"].append(key)
                 continue
             line = decodes[key]
-            items.append(PilotItem(key, slug, row, k, line["start_sample"], line["end_sample"],
-                                   line["mp3_sha256"], reference))
+            items.append(PilotItem(key, slug, row.surah, row.ayah, segment,
+                                   tuple(row.word_timestamps), line["start_sample"],
+                                   line["end_sample"], line["mp3_sha256"], reference))
     return items, left_out
+
+
+def items_from_decodes(slug: str, lines: Mapping[str, dict], canonical_of,
+                       reference_of) -> list[PilotItem]:
+    """A mushaf's items rebuilt from its committed decode lines, QUD's metadata unread.
+
+    ``training.qud_decode`` decoded every segment of every ayah it read, and each line holds
+    the ayah, the segment and the MP3's checksum (:func:`training.qud_decode.recordings`), so
+    a line plus quran-transcript's Uthmani words is all
+    :func:`tadabur.qud_text.item_reference` needs. A segment the phonetizer cannot realize is
+    skipped exactly as :func:`build_items` skips it.
+    """
+    items = []
+    canonical: dict[str, list[str]] = {}
+    for key, line in lines.items():
+        surah_ayah = line["surah_ayah"]
+        if surah_ayah not in canonical:
+            canonical[surah_ayah] = canonical_of(surah_ayah)
+        surah, ayah = (int(part) for part in surah_ayah.split(":"))
+        segment = tuple(line["segment"])
+        try:
+            reference = item_reference(segment, canonical[surah_ayah], reference_of)
+        except (KeyError, IndexError, Unmapped):
+            continue
+        items.append(PilotItem(key, slug, surah, ayah, segment, None, line["start_sample"],
+                               line["end_sample"], line["mp3_sha256"], reference))
+    return items
 
 
 def cluster_of(item: PilotItem) -> int:
     """The bootstrap cluster: one per mushaf and surah (each mushaf is one reciter)."""
-    return PILOT.index(item.slug) * 1000 + item.row.surah
+    return PILOT.index(item.slug) * 1000 + item.surah
 
 
 def excerpt(item: PilotItem, reference_index: int) -> tuple[int, int]:
@@ -181,11 +214,13 @@ def excerpt(item: PilotItem, reference_index: int) -> tuple[int, int]:
     indices; a re-read word has one entry per recital, so the one inside the item's own time
     span is taken), padded by #87's :data:`~tadabur.listening_session.EXCERPT_PAD_S` and
     clamped to the item. The whole item where the timestamps cannot place the words."""
+    if item.word_timestamps is None:
+        raise ValueError(f"{item.key} was read from the decodes, which carry no word timings")
     position = bisect.bisect_right(item.reference.offsets, reference_index) - 1
     words = item.reference.word_indices
     first, last = words[max(0, position - 1)] + 1, words[min(len(words) - 1, position + 1)] + 1
-    lo, hi = item.row.segments[item.segment_index][2:4]
-    times = {w[0]: (w[1], w[2]) for w in item.row.word_timestamps if lo <= w[1] and w[2] <= hi}
+    lo, hi = item.segment[2:4]
+    times = {w[0]: (w[1], w[2]) for w in item.word_timestamps if lo <= w[1] and w[2] <= hi}
     if first not in times or last not in times:
         return item.start_sample, item.end_sample
     pad = EXCERPT_PAD_S * TARGET_SAMPLE_RATE
@@ -250,15 +285,24 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
 
 @dataclass(frozen=True)
 class Pilot:
-    """Both mushafs' items, every item's decodes per model, what was left out, and the
-    models' identity records."""
+    """Both mushafs' items and every item's decodes per model: what a readout reads."""
 
     items: list[PilotItem]
     decodes: dict[str, dict[str, dict]]
+
+
+@dataclass(frozen=True)
+class PilotBuild(Pilot):
+    """A :class:`Pilot` and what the build left out of it, per mushaf and why."""
+
     left_out: dict[str, dict]
 
 
-def load_pilot() -> Pilot:
+def load_pilot() -> PilotBuild:
+    """Both mushafs' items, their decodes and what the build left out, read from QUD
+    (:func:`tadabur.qud_source.mushaf_metadata`, which needs the gated Hub dataset). Only the
+    build reads the metadata, for QUD's recited text and its word timings; every readout and
+    the pre-claim read the pilot with :func:`committed_pilot`, which needs no Hub access."""
     from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
 
     reference_of = hafs_segment_reference()
@@ -273,7 +317,31 @@ def load_pilot() -> Pilot:
         items += built
         for m in MODELS:
             decodes[m].update(mushaf_decodes[m])
-    return Pilot(items, decodes, left_out)
+    return PilotBuild(items, decodes, left_out)
+
+
+def committed_pilot() -> Pilot:
+    """Both mushafs' items and their decodes, read only from the repo's committed decodes and
+    quran-transcript: no Hub read and no token, which #144's gated dataset requires.
+
+    The decodes are the pilot's committed metadata: ``training.qud_decode`` wrote every
+    segment of every ayah it read with its ayah, its segment and its MP3's checksum, so the
+    items are the decoded segments the phonetizer can realize — exactly the ones
+    :func:`build_items` keeps. The committed report lists none of either mushaf's ayat as
+    unmapped, which is the one thing only QUD's recited text can add (#144's ``text_uthmani``:
+    a validation of that text, never part of an item's reference).
+    """
+    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+
+    reference_of = hafs_segment_reference()
+    items: list[PilotItem] = []
+    decodes: dict[str, dict[str, dict]] = {m: {} for m in MODELS}
+    for slug in PILOT:
+        mushaf_decodes = {m: read_decodes(slug, m) for m in MODELS}
+        items += items_from_decodes(slug, mushaf_decodes["base"], _uthmani_words, reference_of)
+        for m in MODELS:
+            decodes[m].update(mushaf_decodes[m])
+    return Pilot(items, decodes)
 
 
 def qud_exposures(decodes: Mapping[str, Mapping[str, dict]]) -> list:
@@ -313,7 +381,7 @@ def build(workers: int) -> dict:
         "qud_revision": QUD_REVISION,
         "rule_arms": list(RULE_ARMS),
         "items": {slug: {
-            "ayat": len({i.row.surah_ayah for i in pilot.items if i.slug == slug}),
+            "ayat": len({i.surah_ayah for i in pilot.items if i.slug == slug}),
             "items": sum(i.slug == slug for i in pilot.items),
             "hours": round(sum(i.end_sample - i.start_sample for i in pilot.items
                                if i.slug == slug) / TARGET_SAMPLE_RATE / 3600, 2),
@@ -357,7 +425,7 @@ def main() -> None:
     elif args.command == "app":
         from training.muraja_policy import require_harness
 
-        pilot = load_pilot()
+        pilot = committed_pilot()
         report["app"] = app_outcome(pilot.items, pilot.decodes, require_harness())
         report["tadabur_word_sample"] = tadabur_word_sample()
         report["device_logs"] = device_log_rates()

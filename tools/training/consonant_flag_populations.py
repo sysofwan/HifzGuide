@@ -157,10 +157,10 @@ def qud_populations(harness, ayat: Ayat) -> list[Population]:
     each flag read against the queries of the checks that set its kept grade
     (:attr:`~training.muraja_policy.SiteGrade.setting_checks`)."""
     from training.external_corpus import MODELS, word_grades
-    from training.qud_pilot import load_pilot
+    from training.qud_pilot import committed_pilot
     from training.truth_baseline import CHECKS
 
-    pilot = load_pilot()
+    pilot = committed_pilot()
     _, grades = word_grades(pilot.items, pilot.decodes, harness)
     out = []
     for model in MODELS:

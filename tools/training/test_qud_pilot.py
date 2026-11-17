@@ -5,12 +5,14 @@ Torch-free and model-free: the item, its reference and every decode are syntheti
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import pytest
 
-from tadabur.qud_source import QudRow
+from tadabur.audio import TARGET_SAMPLE_RATE
+from tadabur.qud_source import QudRow, audio_filename
 from tadabur.qud_text import ItemReference
 from tadabur.truth_sites import PENDING, parse_site
 from training import external_corpus as ec
@@ -31,9 +33,8 @@ OFFSETS = (0, 6, 11)
 
 
 def _item() -> qp.PilotItem:
-    row = QudRow(SLUG, 1, 1, 2000, "a b", ((1, 2, 0, 2000),),
-                 ((1, 100, 900), (2, 900, 1900)), "u", 0)
-    return qp.PilotItem(f"{row.audio_filename}#0", SLUG, row, 0, 0, 32000, "e" * 64,
+    return qp.PilotItem(f"{audio_filename(SLUG, 1, 1)}#0", SLUG, 1, 1, (1, 2, 0, 2000),
+                        ((1, 100, 900), (2, 900, 1900)), 0, 32000, "e" * 64,
                         ItemReference(("a", "b"), (0, 1), REFERENCE, OFFSETS))
 
 
@@ -125,9 +126,9 @@ def test_a_mid_ayah_item_starts_on_its_own_first_word(key):
     line = qp.read_decodes(slug, "base")[key]
     word_from, word_to = line["segment"][:2]
     surah, ayah = map(int, line["surah_ayah"].split(":"))
-    row = QudRow(slug, surah, ayah, 0, "", (tuple(line["segment"]),), (), "u", 0)
     words = tuple(range(word_from - 1, word_to))
-    item = qp.PilotItem(key, slug, row, 0, line["start_sample"], line["end_sample"], "e" * 64,
+    item = qp.PilotItem(key, slug, surah, ayah, tuple(line["segment"]), (),
+                        line["start_sample"], line["end_sample"], "e" * 64,
                         ItemReference(tuple("w" for _ in words), words, "x" * len(words),
                                       tuple(range(len(words) + 1))))
     text = MurajaText(QURAN_DB)
@@ -152,12 +153,20 @@ def test_merge_takes_each_item_once_and_refuses_a_missing_item(tmp_path, monkeyp
 
 
 def test_a_re_read_word_is_timed_by_its_recital_inside_the_item():
-    row = QudRow(SLUG, 1, 1, 4000, "a b a b", ((1, 2, 0, 2000), (1, 2, 2000, 4000)),
-                 ((1, 100, 900), (2, 900, 1900), (1, 2100, 2900), (2, 2900, 3900)), "u", 0)
-    item = qp.PilotItem(f"{row.audio_filename}#1", SLUG, row, 1, 0, 70000, "e" * 64,
+    item = qp.PilotItem(f"{audio_filename(SLUG, 1, 1)}#1", SLUG, 1, 1, (1, 2, 2000, 4000),
+                        ((1, 100, 900), (2, 900, 1900), (1, 2100, 2900), (2, 2900, 3900)),
+                        0, 70000, "e" * 64,
                         ItemReference(("a", "b"), (0, 1), REFERENCE, OFFSETS))
     pad = round(0.3 * 16000)
     assert qp.excerpt(item, 6) == (2100 * 16 - pad, 3900 * 16 + pad)
+
+
+def test_an_item_read_from_the_decodes_has_no_excerpt():
+    item = qp.PilotItem(f"{audio_filename(SLUG, 1, 1)}#0", SLUG, 1, 1, (1, 2, 0, 2000), None,
+                        0, 32000, "e" * 64,
+                        ItemReference(("a", "b"), (0, 1), REFERENCE, OFFSETS))
+    with pytest.raises(ValueError, match="no word timings"):
+        qp.excerpt(item, 6)
 
 
 def test_every_decoded_recording_is_registered_once():
@@ -202,10 +211,10 @@ def _real_item(key: str):
     line = decodes["base"][key]
     surah, ayah = map(int, line["surah_ayah"].split(":"))
     canonical = _uthmani_words(line["surah_ayah"])
-    row = QudRow(slug, surah, ayah, 0, " ".join(canonical), (tuple(line["segment"]),), (), "u", 0)
     reference = qp.item_reference(line["segment"], canonical, hafs_segment_reference())
-    item = qp.PilotItem(key, slug, row, 0, line["start_sample"], line["end_sample"],
-                        line["mp3_sha256"], reference)
+    item = qp.PilotItem(key, slug, surah, ayah, tuple(line["segment"]), None,
+                        line["start_sample"], line["end_sample"], line["mp3_sha256"],
+                        reference)
     return item, decodes
 
 
@@ -241,9 +250,9 @@ def test_build_registers_a_decoded_recording_that_yields_no_item(tmp_path, monke
              for m in qp.MODELS}
     decodes = {m: {item.key: {k: v for k, v in lines[m][item.key].items()
                               if k in ("spans", "stream_b0", "checks")}} for m in qp.MODELS}
-    pilot = qp.Pilot([item], decodes, {slug: {"unmapped_ayat": [], "phonetizer_unsupported":
-                                              ["qud_x_090_008.mp3#0"], "repeated_words_ayat": 0}
-                                       for slug in qp.PILOT})
+    pilot = qp.PilotBuild([item], decodes, {
+        slug: {"unmapped_ayat": [], "phonetizer_unsupported": ["qud_x_090_008.mp3#0"],
+               "repeated_words_ayat": 0} for slug in qp.PILOT})
     written = {}
     monkeypatch.setattr(qp, "load_pilot", lambda: pilot)
     monkeypatch.setattr(qp, "read_decodes",
@@ -258,8 +267,6 @@ def test_build_registers_a_decoded_recording_that_yields_no_item(tmp_path, monke
 
 
 def test_the_doc_compares_with_the_explained_excluded_device_rates_by_protocol():
-    import json
-
     from training.qud_pilot_doc import render
 
     report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
@@ -277,8 +284,6 @@ def test_the_doc_compares_with_the_explained_excluded_device_rates_by_protocol()
 
 
 def test_the_doc_discloses_what_the_fingerprint_can_miss():
-    import json
-
     from training.qud_pilot_doc import render
 
     doc = render(json.loads(qp.REPORT_PATH.read_text(encoding="utf-8")))
@@ -287,8 +292,6 @@ def test_the_doc_discloses_what_the_fingerprint_can_miss():
 
 
 def test_the_committed_doc_is_what_the_renderer_writes():
-    import json
-
     from training.qud_pilot_doc import render
 
     report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
@@ -313,7 +316,6 @@ def test_qud_s_sites_and_worklist_regenerate_byte_identically_on_a_slice():
     """Six pilot ayat (their QUD metadata in a fixture; the full build reads it from the Hub)
     rebuilt through training.external_corpus: each worklist row is the committed line, byte for
     byte, and each truth site the committed site, its census over the whole mushaf aside."""
-    import json
     from dataclasses import asdict
 
     from tadabur.truth_sites import load_truth_sites
@@ -333,7 +335,7 @@ def test_qud_s_sites_and_worklist_regenerate_byte_identically_on_a_slice():
         items += built
         for m in qp.MODELS:
             decodes[m].update({i.key: mushaf[m][i.key] for i in built})
-    assert len({i.row.surah_ayah for i in items}) == 5  # 1:7 in both mushafs
+    assert len({i.surah_ayah for i in items}) == 5  # 1:7 in both mushafs
     by_place = {(i.audio_filename, i.start_sample): i for i in items}
     rows = site_rows([ec.clip_of(i, decodes) for i in items], workers=1)
 
@@ -361,6 +363,104 @@ def test_qud_s_sites_and_worklist_regenerate_byte_identically_on_a_slice():
 FULL_REGENERATION = os.environ.get("HIFZGUIDE_FULL_REGENERATION") == "1"
 
 
+# --- the pre-claim's read: the committed decodes, no Hub ------------------------------------
+
+
+def _unread_hub(monkeypatch) -> None:
+    """QUD's gated metadata and its viewer raise: a readout must need neither."""
+    from tadabur import qud_source
+
+    def unread(*args, **kwargs):
+        raise AssertionError("the pilot read QUD's gated metadata")
+
+    for name in ("parquet_table", "mushaf_metadata", "iter_mushaf_rows", "viewer_row",
+                 "pinned_row"):
+        monkeypatch.setattr(qud_source, name, unread)
+    monkeypatch.setattr(qp, "mushaf_metadata", unread)
+
+
+def test_the_pilot_reads_the_committed_decodes_and_never_the_hub(monkeypatch):
+    """G1's items come from the decodes, each line carrying its ayah, segment and checksum,
+    so the loader works with no network and opens no QUD metadata."""
+    import socket
+
+    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+
+    _unread_hub(monkeypatch)
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("the pilot read the network")
+
+    monkeypatch.setattr(socket, "socket", no_network)
+    monkeypatch.setattr(socket, "create_connection", no_network)
+
+    def read_decodes(slug, model):
+        return {f"qud_{slug}_001_001.mp3#0": {
+            "key": f"qud_{slug}_001_001.mp3#0", "audio_filename": f"qud_{slug}_001_001.mp3",
+            "mp3_sha256": "e" * 64, "surah_ayah": "1:1", "segment_index": 0,
+            "segment": [1, 1, 0, 900], "start_sample": 0, "end_sample": 14400,
+            "spans": "x", "stream_b0": "x", "checks": []}}
+
+    monkeypatch.setattr(qp, "read_decodes", read_decodes)
+    pilot = qp.committed_pilot()
+    assert [(i.slug, i.surah_ayah, i.segment, i.start_sample, i.end_sample)
+            for i in pilot.items] == [(slug, "1:1", (1, 1, 0, 900), 0, 14400)
+                                      for slug in qp.PILOT]
+    (first_word,) = _uthmani_words("1:1")[:1]
+    assert pilot.items[0].reference.reference == hafs_segment_reference()([first_word])[0]
+    assert pilot.items[0].audio_filename == f"qud_{qp.PILOT[0]}_001_001.mp3"
+    assert set(pilot.decodes) == set(qp.MODELS)
+    assert all(len(lines) == len(qp.PILOT) for lines in pilot.decodes.values())
+
+
+@pytest.mark.slow
+def test_the_committed_items_are_the_ones_the_build_recorded(monkeypatch):
+    """Every pilot mushaf's items read from the decodes are what the build recorded: the
+    report's counts, hours and phonetizer exclusions; every truth site's and worklist row's
+    whole reference; and the carrier census per mushaf and pooled. A parity pass over both
+    mushafs' 20,368 items, so it is slow (it re-derives the report's class and direction
+    tables)."""
+    from collections import Counter
+
+    from tadabur.truth_sites import load_truth_sites
+    from training.carrier_windowing import site_rows
+
+    _unread_hub(monkeypatch)
+    pilot = qp.committed_pilot()
+    report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
+    work = [json.loads(line) for line in
+            qp.WORKLIST_PATH.read_text(encoding="utf-8").splitlines()]
+    rows = site_rows([ec.clip_of(i, pilot.decodes) for i in pilot.items], workers=1)
+    by_place = {(i.audio_filename, i.start_sample): i for i in pilot.items}
+    carriers = {ec.carrier_key(r): r for r in rows}
+
+    def of(slug: str) -> list:
+        return [r for r in rows
+                if by_place[(r.site.audio_filename, r.site.start_sample)].slug == slug]
+
+    for slug in qp.PILOT:
+        items = [i for i in pilot.items if i.slug == slug]
+        entry = report["items"][slug]
+        assert (len(items), len({i.surah_ayah for i in items})) == (entry["items"], entry["ayat"])
+        assert round(sum(i.end_sample - i.start_sample for i in items)
+                     / TARGET_SAMPLE_RATE / 3600, 2) == entry["hours"]
+        # The one field the decodes cannot carry is QUD's recited text, which only decides
+        # whether an ayah is unmapped. Neither pilot mushaf has one, so nothing else is out.
+        assert entry["unmapped_ayat_list"] == []
+        assert sorted(set(qp.read_decodes(slug, "base")) - {i.key for i in items}) == \
+            sorted(entry["phonetizer_unsupported_list"])
+        reference = {i.key: i.reference.reference for i in items}
+        for site in load_truth_sites(qp.SITES_DIR / f"{slug}.jsonl.gz"):
+            item = by_place[(site.audio_filename, site.start_sample)]
+            assert reference[item.key] == site.reference
+        assert all(reference[row["item"]] == row["reference"]
+                   for row in work if row["slug"] == slug)
+        assert dict(Counter(ec.classify(r) for key, r in carriers.items()
+                            if by_place[key[:2]].slug == slug)) == report["classes"][slug]
+        assert ec.direction_counts(of(slug)) == report["directions"][slug]
+    assert ec.direction_counts(rows) == report["directions"]["pooled"]
+
+
 @pytest.mark.skipif(not FULL_REGENERATION, reason="set HIFZGUIDE_FULL_REGENERATION=1 (slow, "
                     "needs the Hub and the Muraja harness)")
 def test_every_qud_artifact_regenerates_byte_identically(tmp_path, monkeypatch):
@@ -369,8 +469,6 @@ def test_every_qud_artifact_regenerates_byte_identically(tmp_path, monkeypatch):
     exposure use, report.json (classes, directions, rates, listening, the app aggregates and
     what they are set beside) and the doc. The report's ``models`` and ``compute`` come from the
     GPU box's merge and are carried over."""
-    import json
-
     from tadabur import exposure
     from training.muraja_policy import require_harness
     from training.qud_pilot_doc import render
@@ -391,7 +489,7 @@ def test_every_qud_artifact_regenerates_byte_identically(tmp_path, monkeypatch):
 
     rebuilt = {k: report[k] for k in ("models", "compute")}
     rebuilt.update(qp.build(workers=os.cpu_count() or 1))
-    pilot = qp.load_pilot()
+    pilot = qp.committed_pilot()
     rebuilt["app"] = ec.app_outcome(pilot.items, pilot.decodes, require_harness())
     rebuilt["tadabur_word_sample"] = ec.tadabur_word_sample()
     rebuilt["device_logs"] = ec.device_log_rates()

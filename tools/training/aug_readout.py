@@ -408,9 +408,9 @@ class Sources:
         return self._qud(QUD_OTHER_SET, load_qud_complement(), models)
 
     def _qud(self, set_name: str, keys: set[str], models: Sequence[str]) -> SetData:
-        from training.qud_pilot import load_pilot
+        from training.qud_pilot import committed_pilot
 
-        pilot = load_pilot()
+        pilot = committed_pilot()
         items = [i for i in pilot.items if i.key in keys]
         keys = {i.key for i in items}
         decodes = {**{m: pilot.decodes[m] for m in models if m in BASELINES},

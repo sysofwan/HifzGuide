@@ -589,15 +589,21 @@ def _claim_commit(path: Path) -> str:
                            path.name], check=True, capture_output=True, text=True).stdout.strip()
 
 
-def test_this_round_claims_exactly_confirm_1_then_confirm_2(tranches):
-    """The repository now carries this round's two claims (confirm.1+2), each a valid committed
-    record and in order; confirm.3 and confirm.4 stay unclaimed."""
+#: Each claim the repository carries, in order and by the round that opened it.
+CLAIM_ROUNDS = (("confirm.1", "confirm.2"), ("confirm.3", "confirm.4"))
+
+
+def test_every_tranche_is_claimed_by_one_round_in_order(tranches):
+    """The repository carries both rounds' claims: round 2's confirm.1+2, then round 3's
+    confirm.3+4. Each is a valid committed record, each pair opens from one pre-claim commit,
+    and each claim's commit is a descendant of the claim before it. No tranche is unclaimed."""
     directory = TLOG_DIR / "tranches"
+    roles = [role for pair in CLAIM_ROUNDS for role in pair]
     assert sorted(path.name for path in directory.glob("*.claim.json")) == [
-        "confirm.1.claim.json", "confirm.2.claim.json"]
+        f"{role}.claim.json" for role in roles]
 
     records = {}
-    for role in ("confirm.1", "confirm.2"):
+    for role in roles:
         stored = json.loads((directory / f"{role}.claim.json").read_text(encoding="utf-8"))
         assert set(stored) == set(tranches.CLAIM_FIELDS)
         assert stored["role"] == role
@@ -606,20 +612,28 @@ def test_this_round_claims_exactly_confirm_1_then_confirm_2(tranches):
         assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", stored["date"])
         records[role] = tranches.claim_record(role)  # present, committed, unchanged
         assert records[role]["manifest_sha256"]
+
+    # The pair may share one commit: a squash merge lands both claims together. The two rounds
+    # open from their own pre-claim commits, never the other round's.
     assert records["confirm.1"]["commit"] == records["confirm.2"]["commit"]
+    assert records["confirm.3"]["commit"] == records["confirm.4"]["commit"]
+    assert records["confirm.1"]["commit"] != records["confirm.3"]["commit"]
 
-    first = _claim_commit(directory / "confirm.1.claim.json")
-    second = _claim_commit(directory / "confirm.2.claim.json")
-    # The pair may share one commit: a squash merge lands both claims together.
-    assert first and second
-    assert subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
-                           first, second]).returncode == 0
-    tranches.require_claim_order("confirm.2", directory)
+    def is_ancestor(earlier: str, later: str) -> bool:
+        return subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                               earlier, later]).returncode == 0
 
-    for role in ("confirm.3", "confirm.4"):
-        assert not (directory / f"{role}.claim.json").exists()
-        with pytest.raises(ValueError, match=role):
-            tranches.require_claim(role, directory)
+    commits = [_claim_commit(directory / f"{role}.claim.json") for role in roles]
+    for first, second in zip(commits, commits[1:]):
+        assert first and second
+        assert is_ancestor(first, second)
+    for pair, claim_commit in zip(CLAIM_ROUNDS, commits[::2]):
+        assert is_ancestor(records[pair[0]]["commit"], claim_commit)
+
+    for role in roles[1:]:
+        tranches.require_claim_order(role, directory)
+    for role in roles:
+        tranches.require_claim(role, directory)
 
 
 # --- the committed confirm trees (r24 item 5; issue item 1) -------------------------------------

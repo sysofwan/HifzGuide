@@ -90,38 +90,68 @@ export path is unchanged; the movement is quantisation noise on a different weig
 
 ## Hugging Face stage
 
+Staged in the layout the companion publication already uses, so a reader needs nothing from
+this repository: `AutoModel`/`AutoFeatureExtractor` plus `trust_remote_code`.
+
 ```bash
 cd tools
 python3 stage_hf_model.py --checkpoint runs/consonant3_candidate/checkpoint.pt --ema \
-  --processor-config preprocessor_config.json \
-  --output-dir ../hf-stage/hifzguide-muaalem-student-h448
+  --teacher-revision 01a1ef9fbe40d144ef845101e89ff924aed3fef5 \
+  --output-dir ../hf-stage/hifzguide-muaalem-mini-v2
 ```
 
-Staged at `/Users/sysofwan/repos/HifzGuide/.orch/tasks/r3-release/hf-stage/hifzguide-muaalem-student-h448/`
-(465.7 MB, not uploaded, no repository created):
+Staged at `/Users/sysofwan/repos/HifzGuide/.orch/tasks/r3-release/hf-stage/hifzguide-muaalem-mini-v2/`
+for the repository name `sysofwan/hifzguide-muaalem-mini-v2`: 465.4 MB, nothing uploaded, no
+repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` publishes:
 
-| file | sha256 |
-| --- | --- |
-| `student_state_dict.pt` (445 MB, fp32 EMA) | `c5961ef221e5962b56d9379a977ad2f1156a046c49d05bb701ccf89727642ed4` |
-| `config.json` | `fc443ab841676333c97eddff53ce60adf6ef630137f0b21064f20a28e8738322` |
-| `phoneme_vocab.json` | `81b5ac466a801723e5229984ab9fe5bc135f69d4a3d6e8c2b9687dfdde9c8b90` |
-| `preprocessor_config.json` | `8e6281aad64f97e40534135a59dcc5d33571efae376f2a25adf5551951897ab4` |
-| `attribution/noise_pool.json` | `16c099d1099b43108dc1ab0ba7f4e0d3292cf6f17a268eee25f130621f5f574b` |
-| `README.md` (draft model card) | see `sha256sums.txt` |
-| `LICENSE` | see `sha256sums.txt` |
+| file | size (B) | sha256 | against the published copy |
+| --- | --- | --- | --- |
+| model.safetensors | 465,374,196 | `7b760511334e53ca115a2dd466e57a9241c4e3c7a30498916b721d0f6d650d89` | new weights, same byte count |
+| config.json | 3,528 | `c5e2b10914eee234e930474a828760b7ff68ef07b79f8e270db065c768f18f41` | byte-identical |
+| configuration_multi_level_ctc.py | 18,658 | `bc8d1a13d76c1066a99edf164e6a1136a86bb18d92654d726d691cdc7ef6b93f` | byte-identical |
+| modeling_multi_level_ctc.py | 5,891 | `21424f97dcce580b312d3954e92164a486b5031aac057c6a425aa4b153819172` | byte-identical |
+| phoneme_vocab.json | 496 | `f90eb258cb4b8563261252ccb4c60a699850077566557c8d878784e9282adfb5` | byte-identical |
+| preprocessor_config.json | 229 | `9c6008e1229e6914e5c11df2f673c3a0af5fd6ad442426a4b4eb3a4c11d78264` | byte-identical |
+| .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
+| LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
+| NOTICE.md | 4,394 | `24287c4fdeba03cb73098f8e58e77ec3a3b4e92a819e64530dcc92bf1a7dfc76` | rewritten: NC licence, tlog and noise attributions |
+| README.md | 8,612 | `f9b78d04617480ee519c4f57459cf070950cc42c3adf11c486ec7e1243acf459` | rewritten: comparison table |
 
-- `student_state_dict.pt` holds 772 tensors and equals the checkpoint's averaged weights
-  exactly, and differs from the live weights in all 772; `build_student(PRESETS["h448"])`
-  loads it (`116,318,635` parameters). Its config records `weights: ema`, the checkpoint sha256
-  and the teacher pin, so the staged weights cannot be mistaken for the live ones.
-- `preprocessor_config.json` is the teacher's own file, byte-identical (`SeamlessM4TFeatureExtractor`,
-  16 kHz, 80 mels, stride 2, `padding_value: 1`); the staged copy's sha256 matches the
-  downloaded file's.
-- The card declares `license: cc-by-nc-4.0` and `base_model: obadx/muaalem-model-v3_2`, and
-  records the base model's MIT notice verbatim, both training sets (Tadabur CC BY-NC 4.0,
-  tlog CC BY 4.0), the noise pool's per-recording licences, intended use, out-of-scope uses,
-  limitations, and the round-3 evaluation summary.
-- Repository name and visibility are the owner's; nothing was pushed.
+- Loads the way the published repository does: `AutoConfig.from_pretrained(dir,
+  trust_remote_code=True)` resolves the vendored `Wav2Vec2BertForMultilevelCTC` through the
+  same `auto_map`, `AutoModel` + `AutoFeatureExtractor` load it, and a forward on a fixed
+  random `(1,250,160)` window is **bit-identical** to the checkpoint's EMA student
+  (max abs diff `0.0`). `model.safetensors` holds 772 tensors, every one equal to the
+  checkpoint's averaged weights.
+- The layout is pinned by reproduction, not by hand-editing: `save_pretrained` writes the
+  published `config.json` byte for byte once the config carries `architectures`, `auto_map`
+  and the 43 phoneme labels; the two modules are copied verbatim from `tadabur/muaalem`; the
+  feature extractor is saved from the pinned teacher.
+- The card states the identity this weights file cannot: step 10000, averaged weights,
+  checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
+
+### Comparison against the previous publication
+
+Both students on the same 300 `gate_eval` dev clips, one protocol, 24,390 teacher phonemes;
+the published model was reloaded from its own `model.safetensors` through
+`trust_remote_code`, exactly as its card documents.
+
+| model | vs teacher | exact | 95% CI (reciter-clustered) |
+| --- | --- | --- | --- |
+| published `sysofwan/hifzguide-muaalem-mini` | 94.707% | 16.33% | [94.177, 95.159] |
+| this stage | 94.690% | 18.67% | [94.197, 95.117] |
+
+2.37% of characters differ between the two decodes. They tie on teacher agreement, which is
+what two imitations of one teacher should do; the app-visible change is against C95
+(−59.2 false flags per 1,000 graded words), and C95 is a **different checkpoint** from the
+published mini — all 772 tensors differ. The stage's 94.690% equals the export
+verification's PyTorch fp32 row, so the hub load path reproduces the training-time forward.
+
+- Licence: `LICENSE` is the CC BY-NC 4.0 legal code; the card declares
+  `license: cc-by-nc-4.0`, `base_model: obadx/muaalem-model-v3_2`. `NOTICE.md` carries the
+  vendored MIT notice, the lineage (Muaalem, w2v-bert-2.0), and the Tadabur, tlog and
+  Freesound attributions with citations.
+- Repository name, visibility and publishing are the owner's; nothing was pushed.
 
 ## The draft release
 
@@ -143,9 +173,10 @@ publishes.
 ```bash
 # asset checksums
 python3 -c "import hashlib,json;m=json.load(open('manifest.json'));print(all(hashlib.sha256(open(a['filename'],'rb').read()).hexdigest()==a['sha256'] for a in m['assets']))"
-# staged HF weights are the averaged ones
-python3 -c "import torch;print(len(torch.load('student_state_dict.pt',weights_only=True)))"   # 772
-# the staging tool's tests
+# staged HF weights are the averaged ones (772 tensors) and load through trust_remote_code
+python3 -c "from safetensors.torch import load_file; print(len(load_file('model.safetensors')))"
+python3 -c "from transformers import AutoModel; AutoModel.from_pretrained('.', trust_remote_code=True)"
+# the staging tool's tests, including the trust_remote_code load and the EMA comparison
 scripts/test.sh test_stage_hf_model.py
 ```
 

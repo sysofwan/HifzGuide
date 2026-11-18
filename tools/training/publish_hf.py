@@ -28,9 +28,12 @@ Usage::
         --out-dir ../hf-stage/hifzguide-muaalem-mini-v2
 
 ``--profile agpl`` (the default) writes the AGPL-3.0 card and notice of the ``mini``
-publication; ``--profile cc-by-nc`` writes the CC BY-NC 4.0 card and notice, which is what a
-student distilled from the Tadabur corpus must carry. Neither profile pushes unless ``--push``
-is set; without it the directory is a draft.
+publication. ``--profile cc-by-nc`` writes the CC BY-NC 4.0 card and notice of the v1.0.7
+publication -- the licence a student distilled from the Tadabur corpus must carry, attached to
+the one checkpoint whose comparison and readout that card reports; any other checkpoint (or
+the live weights of that one) is refused, because the prose would then attribute another
+artifact's measured results to these weights. Neither profile pushes unless ``--push`` is set;
+without it the directory is a draft.
 """
 
 from __future__ import annotations
@@ -339,18 +342,50 @@ def _render(template, fields: dict) -> str:
     return template.format(**fields) if isinstance(template, str) else template.substitute(fields)
 
 
+# `cc-by-nc` is one release's card, not a generic licence template: it names the round-3
+# candidate, its warm start, its corpora and its measured comparison and readout. Those
+# claims are true of exactly one weight set, so the profile pins that identity. Choosing a
+# licence is a separate statement from claiming these numbers -- a different CC BY-NC
+# checkpoint needs its own card, not this one with a different hash in the identity line.
+RELEASE_CANDIDATE = {
+    "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+    "weights": "ema",
+}
+
+
+def require_release_candidate(checkpoint_sha256: str, weights: str) -> None:
+    """Refuse to attach one release's measured claims to another weight set."""
+    actual = {"checkpoint_sha256": checkpoint_sha256, "weights": weights}
+    mismatches = [
+        f"  {key}: got {actual[key]!r}, card describes {expected!r}"
+        for key, expected in RELEASE_CANDIDATE.items()
+        if actual[key] != expected
+    ]
+    if mismatches:
+        raise SystemExit(
+            "the cc-by-nc card publishes the round-3 candidate's comparison table, training "
+            "history and readout; those results belong to one checkpoint and its ema weights "
+            "only.\n"
+            + "\n".join(mismatches)
+            + "\nStage that artifact (--ema with the checkpoint the readout scored), or write "
+            "the card for this weight set instead of reusing one that measured another."
+        )
+
+
 PROFILES = {
     "agpl": {
         "card": MODEL_CARD_TEMPLATE,
         "notice": NOTICE_TEMPLATE,
         "license": REPO_LICENSE_PATH,
         "values": _as_is,
+        "require": None,
     },
     "cc-by-nc": {
         "card": CARD_CC_BY_NC,
         "notice": NOTICE_CC_BY_NC,
         "license": CC_BY_NC_LICENSE_PATH,
         "values": _formatted,
+        "require": require_release_candidate,
     },
 }
 
@@ -433,6 +468,12 @@ def export_and_publish(
     """
     model, run_config, step = load_candidate(checkpoint_path, use_ema)
     weights = "ema" if use_ema else "live"
+    checkpoint_sha256 = sha256_file(checkpoint_path)
+    chosen = PROFILES[profile]
+    # Before anything is written: a card's claims are about one weight identity, not about
+    # whichever checkpoint happens to be staged with its licence.
+    if chosen["require"] is not None:
+        chosen["require"](checkpoint_sha256, weights)
     spec = PRESETS[run_config["preset"]]
     param_count = sum(p.numel() for p in model.parameters())
 
@@ -481,10 +522,9 @@ def export_and_publish(
         "param_count": param_count,
         "step": step,
         "weights": weights,
-        "checkpoint_sha256": sha256_file(checkpoint_path),
+        "checkpoint_sha256": checkpoint_sha256,
         "augmentation": (run_config.get("augment") or {}).get("version"),
     }
-    chosen = PROFILES[profile]
     values = chosen["values"](fields)
     (staging / "README.md").write_text(_render(chosen["card"], values), encoding="utf-8")
     (staging / "NOTICE.md").write_text(_render(chosen["notice"], values), encoding="utf-8")
@@ -539,8 +579,9 @@ def main() -> None:
         "--profile",
         choices=sorted(PROFILES),
         default="agpl",
-        help="which card/notice/licence set: 'agpl' is the mini publication, 'cc-by-nc' is a "
-        "student distilled from the Tadabur corpus",
+        help="which card/notice/licence set: 'agpl' is the mini publication, 'cc-by-nc' is "
+        "the v1.0.7 release, whose card reports one checkpoint's results and is refused for "
+        "any other weights",
     )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--repo-id", required=True)

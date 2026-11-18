@@ -99,8 +99,23 @@ def candidate(tmp_path_factory):
     return path, state["student"], state["ema_state"]["shadow"]
 
 
+@pytest.fixture
+def release_identity(candidate, monkeypatch):
+    """Stand the synthetic checkpoint in for the artifact the NC card reports.
+
+    The card's measured claims are bound to one checkpoint hash and its ema weights; the
+    identity check itself is what the rejection tests below exercise.
+    """
+    path, _, _ = candidate
+    monkeypatch.setattr(
+        publish_hf,
+        "RELEASE_CANDIDATE",
+        {"checkpoint_sha256": publish_hf.sha256_file(path), "weights": "ema"},
+    )
+
+
 def test_publishing_a_student_stages_the_published_layout_and_the_ema_weights(
-    candidate, extractor_calls, tmp_path
+    candidate, extractor_calls, release_identity, tmp_path
 ):
     path, live, shadow = candidate
     out = tmp_path / "mini-v2"
@@ -150,6 +165,40 @@ def test_publishing_a_student_stages_the_published_layout_and_the_ema_weights(
     assert (out / ".gitattributes").read_bytes() == publish_hf.GITATTRIBUTES_PATH.read_bytes()
     assert "The audio is not redistributed here" in notice
     assert "CC BY 4.0" in notice and "tarteel-ai/tlog" in notice
+
+
+def test_export_refuses_to_attach_the_release_card_to_another_checkpoint(candidate, tmp_path):
+    """The card's comparison and readout measured one artifact; a licence is not consent."""
+    path, _, _ = candidate
+    out = tmp_path / "stage"
+
+    with pytest.raises(SystemExit, match="round-3 candidate"):
+        publish_hf.export_and_publish(
+            checkpoint_path=path,
+            out_dir=out,
+            repo_id="sysofwan/hifzguide-muaalem-mini-v2",
+            profile="cc-by-nc",
+            use_ema=True,
+        )
+    assert not out.exists() and not out.with_name(out.name + ".tmp").exists()
+
+
+def test_export_refuses_live_weights_for_the_release_card(
+    candidate, release_identity, tmp_path
+):
+    """The readout scored the averaged weights; exporting the live ones is a different model."""
+    path, _, _ = candidate
+    out = tmp_path / "stage"
+
+    with pytest.raises(SystemExit, match="weights: got 'live'"):
+        publish_hf.export_and_publish(
+            checkpoint_path=path,
+            out_dir=out,
+            repo_id="sysofwan/hifzguide-muaalem-mini-v2",
+            profile="cc-by-nc",
+            use_ema=False,
+        )
+    assert not out.exists()
 
 
 def test_export_pins_the_feature_extractor_to_the_runs_teacher_revision(
@@ -233,7 +282,7 @@ def test_export_leaves_no_partial_stage_when_staging_fails(candidate, monkeypatc
 
 
 def test_export_json_record_keeps_stdout_machine_readable(
-    candidate, extractor_calls, tmp_path, monkeypatch, capsys
+    candidate, extractor_calls, release_identity, tmp_path, monkeypatch, capsys
 ):
     path, _, _ = candidate
     out = tmp_path / "stage"

@@ -119,8 +119,14 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
 | NOTICE.md | 4,401 | `8dfb037ed0280c914f42c1b5235ed327383128e41ab221bdbff6eae08b0c9b4c` | rewritten: NC licence, tlog and noise attributions |
-| README.md | 8,701 | `0e60f350b503f7a84aa265b41429080e3096697a29854c6944333954a2e6575b` | rewritten: comparison table |
+| README.md | 9,303 | `01e8711bace5d4205f5e4def4da57e237e54c3ada4276fe61fb61cad8db2a131` | rewritten: comparison table, previous model pinned to its Hub revision and weights hash |
 
+- The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
+  to checkpoint sha256 `1193e211…24ed4a9` **and** the ema weight set, and `publish_hf`
+  refuses any other checkpoint or the live weights before writing a file. The card's
+  comparison, training history and readout measured that artifact only, so choosing a licence
+  cannot attach them to different weights (`tools/training/test_publish_hf.py` covers both
+  refusals).
 - The weight set is the publisher's decision, not the caller's: `--ema` reads the average
   through `training.decoding.load_student_from_checkpoint` and raises when a checkpoint has
   none. The teacher revision is the checkpoint's own — `--teacher-revision` may only repeat the
@@ -148,12 +154,26 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 
 Both students on the same 300 `gate_eval` dev clips, one protocol, 24,390 teacher phonemes,
 produced by the committed scorer (`training.hub_agreement`, whose windowing and streamed
-decode `verify_student_export` also uses):
+decode `verify_student_export` also uses, and which now runs the same
+`decode_evalset.check_provenance` guard before scoring):
 
 ```bash
+huggingface-cli download sysofwan/hifzguide-muaalem-mini \
+  --revision a2bebf7c2e9a74d9ff5c3269594132d7caea7696 --local-dir /tmp/hfmini
+shasum -a 256 /tmp/hfmini/model.safetensors   # 2570fd37…84bb9, the LFS sha256 below
 python3 -m training.hub_agreement --eval-set tadabur/gate_eval --num-clips 300 \
-  --model mini=<published mini dir> --model mini-v2=<this stage>
+  --model mini=/tmp/hfmini --model mini-v2=<this stage>
 ```
+
+The comparison model is the `mini` repository at Hub revision
+`a2bebf7c2e9a74d9ff5c3269594132d7caea7696` (the branch head when the table was measured),
+whose `model.safetensors` LFS sha256 is
+`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`. The card records that
+revision and hash, so moving `main` cannot silently change what the table measured. The `mini`
+publication records no training-checkpoint hash of its own (its card, `config.json` and commit
+history name none), so its immutable Hub artifact is the identity behind the row; the original
+training checkpoint cannot be recovered from the publication. It is **not** C95 — all 772
+tensors differ.
 
 | model | vs teacher | 95% CI (reciter-clustered) | exact | drift vs mini |
 | --- | --- | --- | --- | --- |

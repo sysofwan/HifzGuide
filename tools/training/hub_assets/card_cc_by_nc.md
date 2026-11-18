@@ -38,7 +38,7 @@ character-by-character on the same held-out clips. The 300-clip column was produ
 pass over the same clips, with one protocol, for both students here; `training.hub_agreement`
 in HifzGuide's `tools/` prints this table and the decode drift.
 
-| | **mini-v2** (this) | [`mini`](https://huggingface.co/sysofwan/hifzguide-muaalem-mini) | [`$teacher_model_id`]($teacher_model_id_url) |
+| | **mini-v2** (this) | [`mini` @ `a2bebf7`](https://huggingface.co/sysofwan/hifzguide-muaalem-mini/tree/a2bebf7c2e9a74d9ff5c3269594132d7caea7696) | [`$teacher_model_id`]($teacher_model_id_url) |
 |---|---|---|---|
 | Parameters | $param_count | $param_count | ~$teacher_param_count |
 | `hidden_size` / layers / heads | $hidden_size / 24 / $num_attention_heads | $hidden_size / 24 / $num_attention_heads | 1024 / 24 / 16 |
@@ -51,6 +51,13 @@ in HifzGuide's `tools/` prints this table and the decode drift.
 | Teacher agreement, its own published dev/test | not measured at that size for this release | 94.87% [94.47, 95.20] / 94.97% [94.63, 95.27] | — |
 | All-cause false flags per 1,000 graded words, tlog confirm.3+4 | 98.7 | not measured | 95.5 |
 | Licence | CC BY-NC 4.0 | AGPL-3.0 | MIT |
+
+The `mini` column is that publication at Hub revision
+[`a2bebf7c2e9a74d9ff5c3269594132d7caea7696`](https://huggingface.co/sysofwan/hifzguide-muaalem-mini/tree/a2bebf7c2e9a74d9ff5c3269594132d7caea7696)
+(`model.safetensors` LFS sha256 `2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`);
+download that revision to reproduce the row. Its own publication records no training checkpoint
+hash, so that Hub artifact — not a checkpoint — is the identity behind these numbers. It is
+**not** C95: all 772 tensors differ (see below).
 
 The two students are within 0.017 pt of each other on the 300 clips (95% clustered CI
 width ≈ 1 pt each), and their decodes differ in 2.37% of characters — a tie on teacher

@@ -59,8 +59,9 @@ python3 verify_student_export.py --checkpoint runs/consonant3_candidate/checkpoi
 | coreml fp16 | 94.715% | +0.025 pt | 19.00% | 0.144% |
 | coreml 6-bit | 94.707% | +0.016 pt | 18.33% | 0.365% |
 
-**No material drift.** 6-bit costs 0.016 pt of agreement with the teacher, and drift (the upper
-bound on damage: characters that moved at all) is 0.365% — the same order as v1.0.6's 0.353%.
+**No material drift.** 6-bit moves +0.016 pt of agreement with the teacher, and drift (the
+upper bound on damage: characters that moved at all) is 0.365% — the same order as v1.0.6's
+0.353%.
 
 Against v1.0.6 on the same 300 clips: PyTorch fp32 94.695% → 94.690% (−0.005 pt), 6-bit
 94.645% → 94.707% (+0.062 pt), fp16 drift 0.127% → 0.144%, 6-bit drift 0.353% → 0.365%. The
@@ -90,14 +91,17 @@ export path is unchanged; the movement is quantisation noise on a different weig
 
 ## Hugging Face stage
 
-Staged in the layout the companion publication already uses, so a reader needs nothing from
-this repository: `AutoModel`/`AutoFeatureExtractor` plus `trust_remote_code`.
+Staged by the canonical publisher, `training.publish_hf` — the same tool that produced
+`sysofwan/hifzguide-muaalem-mini` — in that publication's layout, so a reader needs nothing
+from this repository: `AutoModel`/`AutoFeatureExtractor` plus `trust_remote_code`. (The
+separate `tools/stage_hf_model.py` was deleted after self-check r1: one layout writer.)
 
 ```bash
 cd tools
-python3 stage_hf_model.py --checkpoint runs/consonant3_candidate/checkpoint.pt --ema \
-  --teacher-revision 01a1ef9fbe40d144ef845101e89ff924aed3fef5 \
-  --output-dir ../hf-stage/hifzguide-muaalem-mini-v2
+python3 -m training.publish_hf \
+  --checkpoint runs/consonant3_candidate/checkpoint.pt --ema \
+  --repo-id sysofwan/hifzguide-muaalem-mini-v2 --profile cc-by-nc \
+  --out-dir ../hf-stage/hifzguide-muaalem-mini-v2 --json
 ```
 
 Staged at `/Users/sysofwan/repos/HifzGuide/.orch/tasks/r3-release/hf-stage/hifzguide-muaalem-mini-v2/`
@@ -114,32 +118,47 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 | preprocessor_config.json | 229 | `9c6008e1229e6914e5c11df2f673c3a0af5fd6ad442426a4b4eb3a4c11d78264` | byte-identical |
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
-| NOTICE.md | 4,394 | `24287c4fdeba03cb73098f8e58e77ec3a3b4e92a819e64530dcc92bf1a7dfc76` | rewritten: NC licence, tlog and noise attributions |
-| README.md | 8,612 | `f9b78d04617480ee519c4f57459cf070950cc42c3adf11c486ec7e1243acf459` | rewritten: comparison table |
+| NOTICE.md | 4,401 | `8dfb037ed0280c914f42c1b5235ed327383128e41ab221bdbff6eae08b0c9b4c` | rewritten: NC licence, tlog and noise attributions |
+| README.md | 8,701 | `0e60f350b503f7a84aa265b41429080e3096697a29854c6944333954a2e6575b` | rewritten: comparison table |
 
+- The weight set is the publisher's decision, not the caller's: `--ema` reads the average
+  through `training.decoding.load_student_from_checkpoint` and raises when a checkpoint has
+  none. The teacher revision is the checkpoint's own — `--teacher-revision` may only repeat the
+  run config's `01a1ef9f…`, anything else is refused, and a run that records none cannot stage
+  at all — so the saved `preprocessor_config.json` cannot describe preprocessing the checkpoint
+  never trained against. The frozen `(1,250,160) -> (1,125,43)` contract is checked on the
+  loaded model before anything is written, and the stage is atomic: written to `<dir>.tmp` and
+  renamed, so a hub failure leaves no half-written directory.
 - Loads the way the published repository does: `AutoConfig.from_pretrained(dir,
   trust_remote_code=True)` resolves the vendored `Wav2Vec2BertForMultilevelCTC` through the
   same `auto_map`, `AutoModel` + `AutoFeatureExtractor` load it, and a forward on a fixed
   random `(1,250,160)` window is **bit-identical** to the checkpoint's EMA student
   (max abs diff `0.0`). `model.safetensors` holds 772 tensors, every one equal to the
   checkpoint's averaged weights.
-- The layout is pinned by reproduction, not by hand-editing: `save_pretrained` writes the
-  published `config.json` byte for byte once the config carries `architectures`, `auto_map`
-  and the 43 phoneme labels; the two modules are copied verbatim from `tadabur/muaalem`; the
-  feature extractor is saved from the pinned teacher.
+- Re-staged from the tool after self-check r1: eight of the ten files are byte-identical to the
+  earlier hand-staged directory (`model.safetensors`, `config.json`, both vendored modules,
+  `phoneme_vocab.json`, `preprocessor_config.json`, `LICENSE`, `.gitattributes`); only
+  `README.md` (the scorer citation) and `NOTICE.md` (the tlog attribution) changed. The same
+  tool with `--profile agpl` reproduces the published repository's `README.md`, `NOTICE.md` and
+  `LICENSE` byte for byte, so the AGPL path has not drifted either.
 - The card states the identity this weights file cannot: step 10000, averaged weights,
   checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
 
 ### Comparison against the previous publication
 
-Both students on the same 300 `gate_eval` dev clips, one protocol, 24,390 teacher phonemes;
-the published model was reloaded from its own `model.safetensors` through
-`trust_remote_code`, exactly as its card documents.
+Both students on the same 300 `gate_eval` dev clips, one protocol, 24,390 teacher phonemes,
+produced by the committed scorer (`training.hub_agreement`, whose windowing and streamed
+decode `verify_student_export` also uses):
 
-| model | vs teacher | exact | 95% CI (reciter-clustered) |
-| --- | --- | --- | --- |
-| published `sysofwan/hifzguide-muaalem-mini` | 94.707% | 16.33% | [94.177, 95.159] |
-| this stage | 94.690% | 18.67% | [94.197, 95.117] |
+```bash
+python3 -m training.hub_agreement --eval-set tadabur/gate_eval --num-clips 300 \
+  --model mini=<published mini dir> --model mini-v2=<this stage>
+```
+
+| model | vs teacher | 95% CI (reciter-clustered) | exact | drift vs mini |
+| --- | --- | --- | --- | --- |
+| published `sysofwan/hifzguide-muaalem-mini` | 94.707% | [94.177, 95.159] | 16.33% | 0.000% |
+| this stage | 94.690% | [94.197, 95.117] | 18.67% | 2.370% |
 
 2.37% of characters differ between the two decodes. They tie on teacher agreement, which is
 what two imitations of one teacher should do; the app-visible change is against C95
@@ -176,8 +195,10 @@ python3 -c "import hashlib,json;m=json.load(open('manifest.json'));print(all(has
 # staged HF weights are the averaged ones (772 tensors) and load through trust_remote_code
 python3 -c "from safetensors.torch import load_file; print(len(load_file('model.safetensors')))"
 python3 -c "from transformers import AutoModel; AutoModel.from_pretrained('.', trust_remote_code=True)"
-# the staging tool's tests, including the trust_remote_code load and the EMA comparison
-scripts/test.sh test_stage_hf_model.py
+# the publisher's tests: trust_remote_code load, EMA selection, teacher pin, atomic stage
+scripts/test.sh training/test_publish_hf.py
+# the committed scorer behind the card's comparison table
+scripts/test.sh training/test_hub_agreement.py
 ```
 
 ## Disclosures carried into the release notes

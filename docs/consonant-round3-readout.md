@@ -41,6 +41,9 @@ pre-registration's data-discipline item 8). Shaddah stays reported only. The loo
 over round 2, reported not gating: all-cause −7.4, consonant-caused −5.1, tashkeel-caused −0.6
 per 1,000.
 
+**No control arm.** Disclosed: with no control, candidate − C95 cannot separate "more tlog data"
+from "10,000 more steps". Round 2's control measured that separation once.
+
 Pre-claim verdict: pass
 
 ## The pre-claim gates

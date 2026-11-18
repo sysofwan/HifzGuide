@@ -1,0 +1,191 @@
+{
+ "bars": {
+  "agreement_lower_above": 0.0,
+  "all_cause_upper_below": 0.0,
+  "bench_lower_at_least": -2.0,
+  "catch_at_least": -2.0,
+  "catch_loss_decisive_at_least": 80,
+  "catch_loss_real_at_most": 0.2,
+  "consonant_upper_below": 0.0,
+  "departs_lower_at_least": -0.5,
+  "power_at_least": 0.85,
+  "qud_upper_at_most": 1.0,
+  "reduction_at_least": 4.7,
+  "tadabur_lower_at_least": -1.0,
+  "tashkeel_upper_at_most": 3.5
+ },
+ "conditions": [
+  {
+   "bar": "the pooled tlog confirm.3+4 gating set, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
+   "bound": -51.74476159301892,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "bar1.all_cause",
+   "point": -59.23077916083203,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the same difference as a point reduction of at least 4.7 per 1,000",
+   "baseline_per_1000": 157.90622068032553,
+   "candidate_per_1000": 98.6754415194935,
+   "name": "bar2.reduction",
+   "reduction": 59.230779161,
+   "required": 4.7,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the pooled tlog confirm.3+4 gating set, consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0",
+   "bound": -53.44818783353238,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "bar3.consonant_cause",
+   "point": -61.343301660023556,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "word agreement with the teacher on the pooled tlog confirm tranches: paired 95% lower bound > 0",
+   "bound": 11.862136083971816,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4a.tlog_confirm",
+   "point": 12.905290529052904,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the same on the teacher-departure words of the pooled tlog confirm tranches: paired 95% lower bound ≥ −0.5 pt",
+   "bound": 11.232709231815228,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4b.tlog_confirm",
+   "point": 12.308589762286715,
+   "strict": false,
+   "threshold": -0.5,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the pooled tlog confirm.3+4 gating set, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +3.5",
+   "bound": 1.3800044703507246,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "g4.tashkeel_cause",
+   "point": -0.03238630841642144,
+   "strict": false,
+   "threshold": 3.5,
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -5.76172278492983,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ء→∅",
+   "substitution": "ء→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -1.8723151554397544,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.د→ت",
+   "substitution": "د→ت",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.8170232405490467,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ر→ل",
+   "substitution": "ر→ل",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -3.2278375240949857,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ر→∅",
+   "substitution": "ر→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.5773614978961192,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ل→ن",
+   "substitution": "ل→ن",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -3.591164602292364,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ل→∅",
+   "substitution": "ل→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.3577937277197782,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.م→∅",
+   "substitution": "م→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.0545169522292985,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ن→∅",
+   "substitution": "ن→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -3.4104640408626787,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ه→∅",
+   "substitution": "ه→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.5734318979798187,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.و→∅",
+   "substitution": "و→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -2.8227152852486053,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ي→∅",
+   "substitution": "ي→∅",
+   "verdict": "pass"
+  }
+ ],
+ "issue": 251,
+ "preclaim": "pass",
+ "statement": "clip-level split, same users possible on both sides",
+ "verdict": "pass"
+}

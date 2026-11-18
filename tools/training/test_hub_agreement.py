@@ -8,16 +8,41 @@ same loop a checkpoint-backed export uses.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import numpy as np
 import pytest
 
 from training import hub_agreement
+from training.decode_evalset import SCHEMA_VERSION, EvalClip, EvalSet
+from training.decoding import PROTOCOL_VERSION
+from training.distill_loss import CONFIRM_TIMESTEPS
 
 
 def _clip(name: str, teacher: str, reciter: int = 1):
-    return SimpleNamespace(filename=name, teacher_text=teacher, reciter_id=reciter)
+    return EvalClip(
+        filename=name,
+        surah_ayah="78:1",
+        reciter_id=reciter,
+        shard=20,
+        duration_s=4.0,
+        split="dev",
+        teacher_text=teacher,
+    )
+
+
+def _evalset(clips, **provenance):
+    base = {
+        "teacher_model_id": hub_agreement.DEFAULT_EXTRACTOR,
+        "confirm_timesteps": CONFIRM_TIMESTEPS,
+        "protocol_version": PROTOCOL_VERSION,
+    }
+    base.update(provenance)
+    return EvalSet(
+        schema_version=SCHEMA_VERSION,
+        clips=tuple(clips),
+        num_scanned=len(clips),
+        num_skipped=0,
+        provenance=base,
+    )
 
 
 def test_agreement_rows_scores_each_model_against_the_teacher_and_the_first_model():
@@ -56,8 +81,7 @@ def test_decode_windows_streams_the_frames_and_collapses_the_ctc_path():
 
 def test_score_runs_every_model_over_the_same_clips(monkeypatch, tmp_path):
     clips = [_clip("a.flac", "ببت", reciter=1), _clip("b.flac", "تث", reciter=2)]
-    manifest = SimpleNamespace(subset=lambda split: clips)
-    monkeypatch.setattr(hub_agreement, "load_manifest", lambda _path: manifest)
+    monkeypatch.setattr(hub_agreement, "load_manifest", lambda _path: _evalset(clips))
     monkeypatch.setattr(hub_agreement, "read_clip_audio", lambda _dir, _name: np.zeros(16000))
     monkeypatch.setattr(
         hub_agreement, "window_features", lambda _extractor, _samples: [np.zeros((250, 160))]
@@ -87,3 +111,16 @@ def test_score_runs_every_model_over_the_same_clips(monkeypatch, tmp_path):
     assert [row.model for row in rows] == ["reference", "other"]
     assert rows[0].drift_from_reference == 0.0
     assert rows[1].drift_from_reference > 0
+
+
+def test_score_refuses_a_manifest_built_under_other_rules(monkeypatch, tmp_path):
+    """A comparison table is only a measurement against the truth it names."""
+    clips = [_clip("a.flac", "ببت"), _clip("b.flac", "تث")]
+    stale = _evalset(clips, protocol_version="obsolete")
+    monkeypatch.setattr(hub_agreement, "load_manifest", lambda _path: stale)
+
+    def not_called(_directory):
+        raise AssertionError("scoring began before the manifest was checked")
+
+    with pytest.raises(SystemExit, match="protocol_version"):
+        hub_agreement.score(tmp_path, {"reference": tmp_path}, num_clips=2, scorer=not_called)

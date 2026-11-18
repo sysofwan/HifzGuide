@@ -31,7 +31,12 @@ from pathlib import Path
 
 import numpy as np
 
-from training.decode_evalset import CLIPS_DIRNAME, load_manifest, read_clip_audio
+from training.decode_evalset import (
+    CLIPS_DIRNAME,
+    check_provenance,
+    load_manifest,
+    read_clip_audio,
+)
 from training.decoding import stream_emissions, tokens_to_phonemes
 from training.distill_eval import levenshtein, score_decode_agreement
 from training.distill_student import DEPLOYED_LOGIT_FRAMES
@@ -158,6 +163,10 @@ def score(
     from transformers import SeamlessM4TFeatureExtractor
 
     evalset = load_manifest(eval_set)
+    # The cached teacher text is the truth this table measures against; a manifest built by a
+    # different teacher, protocol or confirmation split would produce a plausible number
+    # against the wrong reference. `verify_student_export` refuses exactly here.
+    check_provenance(evalset, DEFAULT_EXTRACTOR)
     clips = evalset.subset(split)[:num_clips]
     if not clips:
         raise SystemExit(f"no clips in split {split!r}")

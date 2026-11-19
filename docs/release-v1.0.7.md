@@ -5,8 +5,10 @@
 the owner's call.
 
 Release notes headline: models.zip now carries the round-3 candidate's **averaged (EMA)**
-weights, replacing C95 (#95's model) as the shipped `MuaalemStudent_h448_6BIT.mlmodelc`. The
-graph is byte-identical; only the weights change; the I/O contract, filename and asset set are
+weights, replacing `sysofwan/hifzguide-muaalem-mini` as the published
+`MuaalemStudent_h448_6BIT.mlmodelc`. The previous *published* model is that Hub repository;
+C95 is an internal checkpoint the round measured against and was never shipped. The graph is
+byte-identical; only the weights change; the I/O contract, filename and asset set are
 unchanged.
 
 ## The model
@@ -118,8 +120,8 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 | preprocessor_config.json | 229 | `9c6008e1229e6914e5c11df2f673c3a0af5fd6ad442426a4b4eb3a4c11d78264` | byte-identical |
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
-| NOTICE.md | 4,401 | `8dfb037ed0280c914f42c1b5235ed327383128e41ab221bdbff6eae08b0c9b4c` | rewritten: NC licence, tlog and noise attributions |
-| README.md | 9,303 | `01e8711bace5d4205f5e4def4da57e237e54c3ada4276fe61fb61cad8db2a131` | rewritten: comparison table, previous model pinned to its Hub revision and weights hash |
+| NOTICE.md | 4,962 | `8a83e7b826187571c37967bd9e842beb811a91890b0ba6fbc466ea540247539d` | rewritten: NC licence, tlog and noise attributions, artifact provenance |
+| README.md | 4,231 | `76661835cd152cbf6170fa344c78b8d9942ff7e2045625f4abcbb8a1c9cb74b8` | rewritten consumer card: quick start, contract, one comparison, limits |
 
 - The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
   to checkpoint sha256 `1193e211…24ed4a9` **and** the ema weight set, and `publish_hf`
@@ -147,8 +149,12 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
   `README.md` (the scorer citation) and `NOTICE.md` (the tlog attribution) changed. The same
   tool with `--profile agpl` reproduces the published repository's `README.md`, `NOTICE.md` and
   `LICENSE` byte for byte, so the AGPL path has not drifted either.
-- The card states the identity this weights file cannot: step 10000, averaged weights,
-  checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
+- The card is consumer-facing, per the owner-approved proposal: what the model does, how to
+  load it, the I/O contract, one measured comparison against the previously published
+  `hifzguide-muaalem-mini`, and the licence. It carries no experiment labels, checkpoint
+  identifiers or hashes, and it is byte-identical to the proposal's card block (465 words
+  including tables). Artifact provenance stays here and in `NOTICE.md`: step 10000, averaged
+  weights, checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
 
 ### Comparison against the previous publication
 
@@ -168,12 +174,12 @@ python3 -m training.hub_agreement --eval-set tadabur/gate_eval --num-clips 300 \
 The comparison model is the `mini` repository at Hub revision
 `a2bebf7c2e9a74d9ff5c3269594132d7caea7696` (the branch head when the table was measured),
 whose `model.safetensors` LFS sha256 is
-`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`. The card records that
-revision and hash, so moving `main` cannot silently change what the table measured. The `mini`
-publication records no training-checkpoint hash of its own (its card, `config.json` and commit
-history name none), so its immutable Hub artifact is the identity behind the row; the original
-training checkpoint cannot be recovered from the publication. It is **not** C95 — all 772
-tensors differ.
+`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`. This note and the staged
+`NOTICE.md` record that revision and hash, so moving `main` cannot silently change what the
+table measured. The `mini` publication records no training-checkpoint hash of its own (its
+card, `config.json` and commit history name none), so its immutable Hub artifact is the
+identity behind the row; the original training checkpoint cannot be recovered from the
+publication. It is **not** C95 — all 772 tensors differ.
 
 | model | vs teacher | 95% CI (reciter-clustered) | exact | drift vs mini |
 | --- | --- | --- | --- | --- |
@@ -181,10 +187,11 @@ tensors differ.
 | this stage | 94.690% | [94.197, 95.117] | 18.67% | 2.370% |
 
 2.37% of characters differ between the two decodes. They tie on teacher agreement, which is
-what two imitations of one teacher should do; the app-visible change is against C95
-(−59.2 false flags per 1,000 graded words), and C95 is a **different checkpoint** from the
-published mini — all 772 tensors differ. The stage's 94.690% equals the export
-verification's PyTorch fp32 row, so the hub load path reproduces the training-time forward.
+what two imitations of one teacher should do; the round's measured change is against C95
+(−59.2 false flags per 1,000 graded words), an internal checkpoint that never shipped and a
+**different checkpoint** from the published mini — all 772 tensors differ. The stage's 94.690%
+equals the export verification's PyTorch fp32 row, so the hub load path reproduces the
+training-time forward.
 
 - Licence: `LICENSE` is the CC BY-NC 4.0 legal code; the card declares
   `license: cc-by-nc-4.0`, `base_model: obadx/muaalem-model-v3_2`. `NOTICE.md` carries the
@@ -194,8 +201,7 @@ verification's PyTorch fp32 row, so the hub load path reproduces the training-ti
 
 ## The draft release
 
-`gh release create v1.0.7 --draft` on `sysofwan/HifzGuide`, title
-`v1.0.7 — models.zip ships the round-3 candidate (EMA weights)`, with the five assets plus
+`gh release create v1.0.7 --draft` on `sysofwan/HifzGuide`, with the five assets plus
 `manifest.json`. The tag points at the repository's default-branch commit at draft time
 (`bac196470ccf3a9d2f343449a6ca89b4e44a40e5`); the release stays a draft until the owner
 publishes it.
@@ -207,6 +213,15 @@ the staged names and byte counts — `manifest.json` 936, `mel_filters.bin` 82,2
 GitHub creates no tag ref for a draft, so `v1.0.7` becomes a real tag only when the owner
 publishes.
 
+The notes were rewritten after the owner's review: title
+`v1.0.7 — models.zip ships updated student weights (EMA)`, and the body names the previous
+**published** model (`hifzguide-muaalem-mini`) as the comparison baseline instead of C95. It
+carries the export verification, that same-population 94.69% / 94.71% tie, the drift, and the
+limit that these numbers do not establish better error detection; experiment labels, gate
+names, issue numbers and checkpoint hashes are gone. The manifest checksum stays for download
+verification. The full measurements and disclosures below remain in this technical record and
+in `docs/consonant-round3-readout.md`.
+
 ## Reproducing the checks
 
 ```bash
@@ -217,11 +232,11 @@ python3 -c "from safetensors.torch import load_file; print(len(load_file('model.
 python3 -c "from transformers import AutoModel; AutoModel.from_pretrained('.', trust_remote_code=True)"
 # the publisher's tests: trust_remote_code load, EMA selection, teacher pin, atomic stage
 scripts/test.sh training/test_publish_hf.py
-# the committed scorer behind the card's comparison table
+# the committed scorer behind the comparison table
 scripts/test.sh training/test_hub_agreement.py
 ```
 
-## Disclosures carried into the release notes
+## Disclosures retained in this technical record
 
 - Round 3 has **no control arm**: candidate − C95 (−59.2 false flags per 1,000 graded words,
   95% [−67.8, −51.7] on 5,651 graded clips / 113 surah clusters) cannot separate "more tlog

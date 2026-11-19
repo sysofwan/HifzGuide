@@ -92,3 +92,13 @@ at revision `a5f48ab83b64ba1d35ee4ec363dae75d4e2c69d3`, used for additive noise 
 SNR. Each recording carries its own licence — 279 CC0-1.0, 87 CC BY 3.0, 86 CC BY 4.0, 6
 CC Sampling+ — and per-recording attribution (Freesound id, uploader, licence) is recorded in
 the HifzGuide repository at `tools/tadabur/augmentation/noise_pool.json`.
+
+## Release provenance
+
+These are the averaged (EMA) parameters saved at step 10,000 of the distillation checkpoint
+recorded in HifzGuide's `docs/release-v1.0.7.md` (checkpoint sha256
+`1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9`). The evaluation
+compared them with `sysofwan/hifzguide-muaalem-mini` at Hub revision
+`a2bebf7c2e9a74d9ff5c3269594132d7caea7696` (`model.safetensors` sha256
+`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`). That document records
+the export and evaluation commands and the full measurements.

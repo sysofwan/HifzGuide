@@ -327,14 +327,11 @@ def _as_is(fields: dict) -> dict:
 
 
 def _formatted(fields: dict) -> dict:
-    """Pre-format the counts a data-file card prints, and name the weight set in prose."""
-    weights_label = "averaged (EMA)" if fields["weights"] == "ema" else "live"
+    """The million-parameter figures the release card prints, from the exact counts."""
     return {
         **fields,
-        "step": f"{fields['step']:,}",
-        "param_count": f"{fields['param_count']:,}",
-        "teacher_param_count": f"{fields['teacher_param_count']:,}",
-        "weights_label": weights_label,
+        "param_count_millions": f"{fields['param_count'] / 1_000_000:.0f}M",
+        "teacher_param_count_millions": f"{fields['teacher_param_count'] / 1_000_000:.0f}M",
     }
 
 

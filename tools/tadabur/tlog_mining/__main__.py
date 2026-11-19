@@ -13,7 +13,13 @@ decoded whole by the teacher, C95 and round 2's EMA candidate into ``checks`` an
 ``--parts-dir``. A shard's clips are fetched once before its first row, and the worker decodes
 shard by shard while the batch's budget lasts.
 
-``run`` is the preemptible driver for either phase:
+Phase C. The same worker over :func:`tadabur.tlog_mining.selection.phase_c_rows` — the gating
+rows and phase B's rows — decoding round 3's chosen weights alone under the round-3 spec, so its
+lines line up with round 2's gating decodes and phase B's mined decode. ``merge --phase C``
+writes the mined and gating files plus ``meta.<model>.json``; phase B's ``meta.json`` stays as it
+is.
+
+``run`` is the preemptible driver for any phase:
 :func:`tadabur.tlog_mining.give_way.run_give_way` takes the GPU lock non-blocking for one batch at
 a time, and each batch spawns the workers that
 still have rows to do. The PAUSE file and the disk/RAM floors stop it at a batch boundary. It
@@ -50,6 +56,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from tadabur import tlog_eval_decode as ted
@@ -58,9 +65,10 @@ from tadabur.tlog_ident_decode import load_decoder
 from tadabur.tlog_index import (head_sha, provenance, read_jsonl, sha256_file, write_json,
                                 write_jsonl)
 from tadabur.tlog_pool import default_audio
-from tadabur.tlog_tranches import SPLIT_DIR, TRANCHES_DIR
+from tadabur.tlog_tranches import GATING, SPLIT_DIR, TRANCHES_DIR
 from tadabur.tlog_vram_check import gpu_memory_mib
 from tadabur.waqf_segments import hafs_word_reference
+from training.aug_readout_spec import CONSONANT3, RoundSpec
 from training.external_decode import record_identity
 from training.nonpro_decode import item_key
 from training.tlog_eval import _canonical_words
@@ -68,10 +76,12 @@ from training.tlog_eval import _canonical_words
 from .batch import pending, run_batch, worker_rows
 from .give_way import (BATCH_SECONDS, DISK_RESERVE_GB, RAM_FLOOR_GB, YIELD_SECONDS, Gates,
                        GpuLock, run_give_way)
-from .merge import PHASE_A_TRANCHES, merge_mined_decodes, merge_word_times
-from .mined_decode import (MINED_MODELS, decode_batch, grouped_by_shard,
+from .merge import (PHASE_A_TRANCHES, merge_mined_decodes, merge_phase_c_decodes,
+                    merge_word_times)
+from .mined_decode import (MINED_MODELS, PHASE_C_MODELS, decode_batch, grouped_by_shard,
                            pending as mined_pending)
-from .selection import (PHASE, PHASE_A, PHASE_B, PHASE_B_TRANCHES, phase_a_rows, phase_b_rows,
+from .selection import (MINED_PHASES, PHASE, PHASE_A, PHASE_B, PHASE_C, PHASE_B_TRANCHES,
+                        PHASE_C_TRANCHES, phase_a_rows, phase_b_rows, phase_c_rows,
                         require_phase)
 from .word_times import build_record
 
@@ -91,19 +101,31 @@ TEACHER_RECORD = "teacher.json"
 #: gating clip (85.9 s) alone reserves ~9.1 GiB. Whole-clip phase A therefore gives each
 #: worker this budget and caps the process count to what the card's free memory holds.
 WORKER_VRAM_MIB = 9500
-#: Phase B's worker count, whatever the card offers. ``WORKER_VRAM_MIB`` is **one** teacher's
-#: whole-clip peak; a phase B worker holds the teacher, C95 and the candidate at once and takes a
-#: whole-clip ``spans`` pass per model (that store declares no shared decode), so its peak is not
-#: derivable from the phase A figure and no phase B run has measured it. One worker until a run
-#: reports its peak (the phase B run note is where it lands); a second is a deliberate increase.
+#: A mined phase's worker count, whatever the card offers. ``WORKER_VRAM_MIB`` is **one**
+#: teacher's
+#: whole-clip peak; a mined worker holds every decoder at once and takes a whole-clip ``spans``
+#: pass per model (that store declares no shared decode), so its peak is not derivable from the
+#: phase A figure and no mined run has measured it. One worker until a run reports its peak (the
+#: run notes are where it lands); a second is a deliberate increase.
 MINED_WORKERS = 1
+#: The tranches each phase reads, in the launcher's order.
+TRANCHES = {PHASE_A: PHASE_A_TRANCHES, PHASE_B: PHASE_B_TRANCHES, PHASE_C: PHASE_C_TRANCHES}
+#: What a worker of a mined phase calls a row it was not given: phase B's are mined, phase C's
+#: also hold the gating rows.
+ROW_NOUNS = {PHASE_A: "gating", PHASE_B: "mined", PHASE_C: "decodable"}
+#: Why a phase runs fewer workers than the caller asked for.
+CAP_REASONS = {
+    PHASE_A: f"whole-clip workers need {WORKER_VRAM_MIB} MiB each",
+    PHASE_B: "phase B holds three decoders and its peak is unmeasured",
+    PHASE_C: "phase C's worker peak is unmeasured",
+}
 
 
 def align(args: argparse.Namespace) -> int:
     """One worker's batch over its shard share, appending to the parts and stopping on budget."""
     started = time.monotonic()
     require_phase(args.phase)
-    _require_worker(args, "align", PHASE_A)
+    _require_worker(args, "align", (PHASE_A,))
     rows = _worker_rows(args)
     decoder, identity, fingerprint = load_decoder()
     _record_teacher(args.parts_dir, identity, fingerprint)
@@ -119,20 +141,24 @@ def align(args: argparse.Namespace) -> int:
 
 
 def decode(args: argparse.Namespace) -> int:
-    """One phase B worker's batch: its shard share of a tranche, decoded into the parts."""
+    """One mined worker's batch: its shard share of a tranche, decoded into the parts."""
     started = time.monotonic()
     require_phase(args.phase)
-    _require_worker(args, "decode", PHASE_B)
+    _require_worker(args, "decode", MINED_PHASES)
     rows = _worker_rows(args)
-    # The committed choice binds the producer set: a round that chose other weights than phase
-    # B's fixed three is refused here, before three checkpoints load.
-    ted.require_confirm_models(list(MINED_MODELS))
-    decoders = ted.load_models(args.parts_dir, models=list(MINED_MODELS))
+    models = list(_models(args.phase))
+    # The committed choice binds the producer set: a round that chose other weights than the
+    # phase's fixed set is refused here, before its checkpoints load. Phase C's weights come
+    # from round 3's spec, never the default one.
+    spec = _spec(args.phase)
+    chosen = {} if spec is None else {"spec": spec}
+    ted.require_confirm_models(models, **chosen)
+    decoders = ted.load_models(args.parts_dir, models=models, **chosen)
     stream = ted.shard_stream(args.shard_cache)
     word_counts = ted.ayah_word_counts()
     written = 0
     for shard_file, shard_rows in sorted(grouped_by_shard(rows).items()):
-        if not mined_pending(shard_rows, args.parts_dir, role=args.role, models=MINED_MODELS):
+        if not mined_pending(shard_rows, args.parts_dir, role=args.role, models=models):
             continue
         # The budget covers this worker from spawn: a shard whose clips are not fetched yet is
         # not started once the batch has spent it (a fetched shard decodes from the cache).
@@ -147,16 +173,31 @@ def decode(args: argparse.Namespace) -> int:
             clip_cache=args.clip_dir)
         written += result.written
     print(f"{args.role} worker {args.shard_index}: decoded {written}, "
-          f"done={not mined_pending(rows, args.parts_dir, role=args.role, models=MINED_MODELS)}",
+          f"done={not mined_pending(rows, args.parts_dir, role=args.role, models=models)}",
           flush=True)
     return 0
 
 
-def _require_worker(args: argparse.Namespace, worker: str, phase: str) -> None:
-    """Refuse a worker command run for the phase whose rows it does not know how to read."""
-    if args.phase != phase:
+def _models(phase: str) -> tuple[str, ...]:
+    """The models a mined phase decodes: phase B's three, or phase C's round-3 weights."""
+    return PHASE_C_MODELS if phase == PHASE_C else MINED_MODELS
+
+
+def _spec(phase: str) -> RoundSpec | None:
+    """The readout spec a mined phase's weights come from; ``None`` is the decoder's default."""
+    return CONSONANT3 if phase == PHASE_C else None
+
+
+def _selection(phase: str):
+    """The row selector a mined phase reads through: B's labelled rows, or C's added gating ones."""
+    return phase_c_rows if phase == PHASE_C else phase_b_rows
+
+
+def _require_worker(args: argparse.Namespace, worker: str, phases: tuple[str, ...]) -> None:
+    """Refuse a worker command run for a phase whose rows it does not know how to read."""
+    if args.phase not in phases:
         raise ValueError(f"phase {args.phase} does not {worker}: `{worker}` is phase "
-                         f"{phase}'s worker")
+                         f"{' or '.join(phases)}'s worker")
 
 
 def _worker_rows(args: argparse.Namespace) -> list[dict]:
@@ -164,8 +205,9 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
 
     A worklist is not an authorization: every row must be a row of ``--role`` for this phase, of
     this worker's shard share, and identical to the committed manifest row. Selection is re-read
-    through :func:`phase_a_rows` / :func:`phase_b_rows`, so a stale or forged worklist cannot put
-    a row the launcher must never touch (a gating row, an unlabelled unclean row, a train or
+    through the phase's own reader (:func:`phase_a_rows`, :func:`phase_b_rows` or
+    :func:`phase_c_rows`), so a stale or forged worklist cannot put a row the launcher must never
+    touch (a gating row where phase B owns only mined ones, an unlabelled unclean row, a train or
     confirm.3/4 row) through a model.
     """
     rows = _selected_rows(args.role, args)
@@ -174,7 +216,7 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
         return share
     canonical = {item_key(row["audio_path"]): row for row in share}
     listed = read_jsonl(args.worklist)
-    noun = "mined" if args.phase == PHASE_B else "gating"
+    noun = ROW_NOUNS[args.phase]
     seen = set()
     for row in listed:
         key = item_key(row["audio_path"])
@@ -190,11 +232,12 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
 
 
 def _selected_rows(role: str, args: argparse.Namespace) -> list[dict]:
-    """``role``'s rows for ``args.phase``: phase A's gating rows, or phase B's decodable ones."""
-    if args.phase == PHASE_B:
-        return phase_b_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir,
-                            phonetizable=_launch_phonetizer(args.parts_dir, role))[0]
-    return phase_a_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+    """``role``'s decodable rows for ``args.phase``, through that phase's own reader."""
+    if args.phase == PHASE_A:
+        return phase_a_rows(role, tranches_dir=args.tranches_dir, split_dir=args.split_dir)
+    return _selection(args.phase)(
+        role, tranches_dir=args.tranches_dir, split_dir=args.split_dir,
+        phonetizable=_launch_phonetizer(args.parts_dir, role))[0]
 
 
 def _launch_phonetizer(parts_dir: Path, role: str):
@@ -225,20 +268,21 @@ def _write_listings(selected: dict, args: argparse.Namespace) -> None:
 
 
 def _launch_rows(args: argparse.Namespace) -> dict[str, list[dict]]:
-    """The launch's rows per tranche, and for phase B the listing the workers read #248 from."""
-    if args.phase != PHASE_B:
+    """The launch's rows per tranche, and for a mined phase the listing its workers read #248 from."""
+    if args.phase == PHASE_A:
         return {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
                                    split_dir=args.split_dir)
                 for role in PHASE_A_TRANCHES}
-    selected = {role: phase_b_rows(role, tranches_dir=args.tranches_dir,
-                                   split_dir=args.split_dir)
-                for role in PHASE_B_TRANCHES}
+    selected = {role: _selection(args.phase)(role, tranches_dir=args.tranches_dir,
+                                             split_dir=args.split_dir)
+                for role in _tranches(args.phase)}
     _write_listings(selected, args)
     return {role: decodable for role, (decodable, _) in selected.items()}
 
 
 def _tranches(phase: str) -> tuple[str, ...]:
-    return PHASE_B_TRANCHES if phase == PHASE_B else PHASE_A_TRANCHES
+    """The tranches a phase reads, so its worklists and merges cover exactly its rows."""
+    return TRANCHES[phase]
 
 
 def run(args: argparse.Namespace) -> int:
@@ -254,10 +298,7 @@ def run(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.parts_dir} already holds records: pass --resume to continue "
                          f"that run, or use a fresh --parts-dir")
     if args.parallel != requested:
-        reason = ("phase B holds three decoders and its peak is unmeasured"
-                  if args.phase == PHASE_B
-                  else f"whole-clip workers need {WORKER_VRAM_MIB} MiB each")
-        print(f"parallel capped to {args.parallel}: {reason}", flush=True)
+        print(f"parallel capped to {args.parallel}: {CAP_REASONS[args.phase]}", flush=True)
     for directory in (args.parts_dir, args.clip_dir, args.shard_cache):
         Path(directory).mkdir(parents=True, exist_ok=True)
     rows_by_role = _launch_rows(args)
@@ -274,10 +315,12 @@ def run(args: argparse.Namespace) -> int:
 
 
 def merge(args: argparse.Namespace) -> int:
-    """The parts into the phase's committed files: phase A's word times, phase B's decodes."""
+    """The parts into the phase's committed files: word times, or a mined phase's decodes."""
     require_phase(args.phase)
     if args.phase == PHASE_B:
         return _merge_mined(args)
+    if args.phase == PHASE_C:
+        return _merge_round3(args)
     manifests = {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
                                     split_dir=args.split_dir)
                  for role in PHASE_A_TRANCHES}
@@ -303,14 +346,39 @@ def _merge_mined(args: argparse.Namespace) -> int:
                                  provenance=provenance(args.code_sha or head_sha(),
                                                        args.pull_request),
                                  models=list(MINED_MODELS))
-    sources = Counter(row["label_source"] for tranche in PHASE_B_TRANCHES
-                      for row in rows[tranche])
-    print(f"label sources: {dict(sources)}", flush=True)
-    print(f"unphonetizable: {sum(len(entries) for entries in listed.values())} rows listed "
-          f"(#248)", flush=True)
+    _report_selection(rows, listed, PHASE_B_TRANCHES)
     for model, count in counts.items():
         print(f"{model}: {count} rows", flush=True)
     return 0
+
+
+def _merge_round3(args: argparse.Namespace) -> int:
+    """Phase C's merge, and the counts its run note cites: per label source and per file."""
+    rows: dict[str, list[dict]] = {}
+    listed: dict[str, list[dict]] = {}
+    for role in PHASE_C_TRANCHES:
+        rows[role], listed[role] = phase_c_rows(role, tranches_dir=args.tranches_dir,
+                                                split_dir=args.split_dir)
+    counts = merge_phase_c_decodes(args.parts_dir, args.out_dir, rows=rows,
+                                   unphonetizable=listed,
+                                   provenance=provenance(args.code_sha or head_sha(),
+                                                         args.pull_request),
+                                   models=list(PHASE_C_MODELS))
+    _report_selection(rows, listed, PHASE_C_TRANCHES)
+    for model, count in counts.items():
+        print(f"{model}: {count['mined']} mined, {count['gating']} gating rows", flush=True)
+    return 0
+
+
+def _report_selection(rows: Mapping[str, Sequence[Mapping]],
+                      listed: Mapping[str, Sequence[Mapping]],
+                      tranches: Sequence[str]) -> None:
+    """The run note's two lines: rows per reference source (mined only), and the #248 listing."""
+    sources = Counter(row["label_source"] for tranche in tranches for row in rows[tranche]
+                      if row["stratum"] != GATING)
+    print(f"label sources: {dict(sources)}", flush=True)
+    print(f"unphonetizable: {sum(len(entries) for entries in listed.values())} rows listed "
+          f"(#248)", flush=True)
 
 
 def _batch(rows_by_role: dict, args: argparse.Namespace):
@@ -331,25 +399,26 @@ def _batch(rows_by_role: dict, args: argparse.Namespace):
 
 def _pending(rows: list[dict], role: str, args: argparse.Namespace) -> bool:
     """Whether any of ``rows`` still lacks a record, for ``args.phase``'s parts."""
-    if args.phase == PHASE_B:
-        return mined_pending(rows, args.parts_dir, role=role, models=MINED_MODELS)
-    return pending(rows, args.parts_dir)
+    if args.phase == PHASE_A:
+        return pending(rows, args.parts_dir)
+    return mined_pending(rows, args.parts_dir, role=role, models=_models(args.phase))
 
 
 def _parts_glob(phase: str) -> str:
     """The part files a run of ``phase`` leaves in its parts directory."""
-    return "tlog.*.jsonl" if phase == PHASE_B else "word_times.*.jsonl"
+    return "word_times.*.jsonl" if phase == PHASE_A else "tlog.*.jsonl"
 
 
 def _worker_count(requested: int, free_mib: int, phase: str = PHASE) -> int:
     """The whole-clip workers this phase may run, at most ``requested``.
 
     Phase A sizes the count from the card's free memory against one teacher's whole-clip budget.
-    Phase B does not: its worker's peak is unmeasured, so it runs :data:`MINED_WORKERS`. One
-    worker is always run: a card with less free memory than a worker's budget cannot finish a
-    clip either way, and the caller's floor must not turn into a refusal to start.
+    The mined phases do not: their worker's peak is unmeasured, so they run
+    :data:`MINED_WORKERS`. One worker is always run: a card with less free memory than a worker's
+    budget cannot finish a clip either way, and the caller's floor must not turn into a refusal
+    to start.
     """
-    if phase == PHASE_B:
+    if phase in MINED_PHASES:
         return max(1, min(requested, MINED_WORKERS))
     return max(1, min(requested, free_mib // WORKER_VRAM_MIB))
 
@@ -365,7 +434,7 @@ def _write_worklists(rows_by_role: dict, args: argparse.Namespace) -> None:
 
 def _run_workers(role: str, indexes: list[int], budget: float, args: argparse.Namespace) -> None:
     """Spawn the worker indexes and bound the whole batch in the parent, not just their rows."""
-    worker = "decode" if args.phase == PHASE_B else "align"
+    worker = "align" if args.phase == PHASE_A else "decode"
     command = [sys.executable, "-m", "tadabur.tlog_mining", worker, "--role", role,
                "--parts-dir", str(args.parts_dir), "--clip-dir", str(args.clip_dir),
                "--shard-cache", str(args.shard_cache), "--shard-count", str(args.parallel),
@@ -516,8 +585,8 @@ def main() -> None:
         command.add_argument("--tranches-dir", type=Path, default=TRANCHES_DIR)
         command.add_argument("--split-dir", type=Path, default=SPLIT_DIR)
         command.add_argument("--phase", default=PHASE,
-                             help=f"{PHASE_A}, or {PHASE_B} under its pinned amendment "
-                                  f"(phase C is refused)")
+                             help=f"{PHASE_A}, {PHASE_B} under its pinned amendment, or "
+                                  f"{PHASE_C} under round 3's committed choice and verdict")
 
     def add_worker(command: argparse.ArgumentParser, roles: tuple[str, ...]) -> None:
         command.add_argument("--role", choices=list(roles), required=True)
@@ -537,7 +606,7 @@ def main() -> None:
     add_worker(align_parser, PHASE_A_TRANCHES)
     align_parser.set_defaults(handler=align)
 
-    decode_parser = commands.add_parser("decode", help="phase B: one worker's batch")
+    decode_parser = commands.add_parser("decode", help="a mined phase's worker batch")
     add_worker(decode_parser, PHASE_B_TRANCHES)
     decode_parser.set_defaults(handler=decode, phase=PHASE_B)
 

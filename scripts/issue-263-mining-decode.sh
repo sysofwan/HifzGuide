@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# issue-263-mining-decode.sh — #263's idle-time mining, phases A and B, in one preemptible
+# issue-263-mining-decode.sh — #263's idle-time mining, phases A, B and C, in one preemptible
 # launcher.
 #
 # Phase A (the default): each look and confirm.1/2 gating clip is run whole through the base
@@ -15,9 +15,14 @@
 # only under slice 1's amendment at its pinned SHA-256, and only when the committed choice still
 # names `r2_candidate_ema` as the candidate (the decoder refuses any other producer set).
 #
-# Phase C waits for round 3's verdict and its committed live/EMA choice, and is refused by every
-# command that takes a phase, as is any other tranche: `plan`/`launch`/`resume` check the phase
-# before they stage anything.
+# Phase C: the round-3 chosen weights (`r3_candidate_ema`, the weights round 3's look sitting
+# chose) over the rows round 2's gating decodes and phase B's mined decode hold, so the round-3
+# lines up with base/C95/r2. It decodes those weights alone — base, C95 and round 2's EMA are
+# phase B's and are not decoded again. C runs only while round 3's *committed* choice names that
+# candidate at the pinned checkpoint and its *committed* verdict is `pass`, and only under slice
+# 1's pinned amendment; `plan`/`launch`/`resume` check all of it before they stage anything. Its
+# merge writes `tlog.mined.r3_candidate_ema.jsonl.gz`, `tlog.gating.r3_candidate_ema.jsonl.gz`
+# and `meta.r3_candidate_ema.json`: phase B's committed `meta.json` is never touched.
 #
 # Round 3 has the box. This launcher never holds the GPU lock across a run: the Python loop
 # (`tadabur.tlog_mining.give_way`) takes /root/scratch/gpu.lock non-blocking for one batch, at
@@ -27,17 +32,18 @@
 # logs/run.out reports the GPU seconds held and the seconds yielded, and the counts the run note
 # cites.
 #
-# `plan [A|B]` reads the **committed** choice, the two committed confirm claims and (for B) the
-# committed amendment, and prints the jobs; it writes nothing. `launch [A|B]` stages the
-# repository as a bundle clone on the box and starts `run` detached with `setsid nohup`.
-# `pause` touches PAUSE; `resume [A|B]` removes it, restages and starts `run --resume` (the batch
-# resumes by row key from the parts). `status [A|B]` reads the box's run.done/run.exit and the
-# run's line. `fetch [A|B]` copies a complete merge into the phase's committed directory.
+# `plan [A|B|C]` reads the **committed** choice, the two committed confirm claims and (for a
+# mined phase) the committed amendment, plus (for C) round 3's committed choice and verdict, and
+# prints the jobs; it writes nothing. `launch [A|B|C]` stages the repository as a bundle clone on
+# the box and starts `run` detached with `setsid nohup`. `pause` touches PAUSE; `resume [A|B|C]`
+# removes it, restages and starts `run --resume` (the batch resumes by row key from the parts).
+# `status [A|B|C]` reads the box's run.done/run.exit and the run's line. `fetch [A|B|C]` copies a
+# complete merge into the phase's committed directory.
 #
-# Each phase has its own parts, clips, logs and output directory under $ROOT (A) and $ROOT/B
-# (phase B), so no part, done or exit file of one phase is ever read as the other's. The staged
-# clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse while either phase's loop is
-# still live.
+# Each phase has its own parts, clips, logs and output directory under $ROOT (A), $ROOT/B (phase
+# B) and $ROOT/C (phase C), so no part, done or exit file of one phase is ever read as another's.
+# The staged clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse while any phase's loop
+# is still live.
 #
 # Two interpreters, two requirements. Mac side: `plan`/`launch`/`resume` read the committed
 # choice and the pinned amendment through `python`, which must be a `python` from the checkout's
@@ -59,6 +65,7 @@ HOST=${HOST:-root@cuda-dev}
 ROOT=${ISSUE_ROOT:-/root/scratch/tlog-mining}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ROUND_DIR=${ROUND_DIR:-tools/tadabur/consonant2_readout}
+ROUND3_DIR=${ROUND3_DIR:-tools/tadabur/consonant3_readout}
 TRANCHES_DIR=${TRANCHES_DIR:-tools/tadabur/tlog/tranches}
 PARALLEL=${PARALLEL:-2}
 BATCH_SECONDS=${BATCH_SECONDS:-300}
@@ -72,7 +79,7 @@ LOOK_CLIP_CACHE=${LOOK_CLIP_CACHE:-/root/scratch/tlog/r2/clips}
 #: number is not a PR: `refs/pull/263/head` would 404, and the branch SHA is the ref until then.
 PR=${PR:-}
 CHOICE=$ROUND_DIR/choice.json
-#: Slice 1's amendment: phase B refuses anything else, at the bytes the code pins.
+#: Slice 1's amendment: the mined phases refuse anything else, at the bytes the code pins.
 AMENDMENT=docs/tlog-mining-amendment.md
 #: The frozen producer prefix phase B's choice extends: the teacher and the baseline.
 PREFIX_MODELS=base,c95
@@ -85,7 +92,7 @@ CODE_TOOLS=$(cd "$(dirname "${BASH_SOURCE[0]}")/../tools" && pwd)
 #: One pause file for the whole launcher: the orchestrator touches it before any round-3 launch.
 PAUSE_FILE=$ROOT/PAUSE
 #: The phase-scoped paths, set by `phase_dirs`: PARTS, OUT, CLIPS, SHARDS, LOGS, ROLES and the
-#: merged output names MODELS (phase B) — never shared between phases.
+#: merged output names MODELS (a mined phase) — never shared between phases.
 PARTS=
 OUT=
 CLIPS=
@@ -102,26 +109,55 @@ require_phase() {  # <phase>
   case "$1" in
     A) ;;
     B) require_amendment ;;
-    C) die "phase C is not runnable here: it waits for round 3's verdict and its committed \
-live/EMA choice (phases A and B only)" ;;
-    *) die "unknown phase $1: this launcher runs phase A and phase B only" ;;
+    C) require_amendment; require_round3 ;;
+    *) die "unknown phase $1: this launcher runs phases A, B and C only" ;;
   esac
 }
 
 require_amendment() {
   local found
   git cat-file -e "HEAD:$AMENDMENT" 2>/dev/null \
-    || die "$AMENDMENT is not committed at HEAD: phase B needs the mining amendment at its \
-pinned SHA-256"
+    || die "$AMENDMENT is not committed at HEAD: the mined phases need the mining amendment at \
+its pinned SHA-256"
   found=$(git show "HEAD:$AMENDMENT" | PYTHONPATH="$CODE_TOOLS" python -c '
 import hashlib, sys
 from tadabur.tlog_mining.selection import MINING_AMENDMENT_SHA256
 found = hashlib.sha256(sys.stdin.buffer.read()).hexdigest()
 print("" if found == MINING_AMENDMENT_SHA256 else found)
-') || die "the pinned amendment SHA-256 in $CODE_TOOLS cannot be read: phase B refuses"
+') || die "the pinned amendment SHA-256 in $CODE_TOOLS cannot be read: the mined phases \
+refuse"
   [ -z "$found" ] \
-    || die "$AMENDMENT at HEAD is $found, not the pinned SHA-256: phase B needs slice 1's \
+    || die "$AMENDMENT at HEAD is $found, not the pinned SHA-256: the mined phases need slice 1's \
 amendment pinned"
+}
+
+require_round3() {
+  # Phase C's pin: round 3's *committed* choice names its chosen weights at the checkpoint the
+  # code pins, and its *committed* verdict is `pass`. The candidate name and the SHA-256 both come
+  # from the tools' pin, so this script carries neither the hash nor a second copy of the name.
+  # Each refusal names what failed.
+  local round3=$ROUND3_DIR problem
+  git cat-file -e "HEAD:$round3/choice.json" 2>/dev/null \
+    || die "$round3/choice.json is not committed at HEAD: phase C needs round 3's committed \
+choice"
+  git cat-file -e "HEAD:$round3/verdict.json" 2>/dev/null \
+    || die "$round3/verdict.json is not committed at HEAD: phase C needs round 3's committed \
+verdict pass"
+  git diff --quiet HEAD -- "$round3/choice.json" "$round3/verdict.json" 2>/dev/null \
+    || die "$round3/choice.json or verdict.json is not committed at HEAD: it changed since its \
+commit"
+  # HEAD and the worktree agree past this point, so the pin check may read the worktree files.
+  problem=$(PYTHONPATH="$CODE_TOOLS" python - "$round3" <<'PIN'
+import sys
+from pathlib import Path
+from tadabur.tlog_mining.selection import require_round3
+try:
+    require_round3(Path(sys.argv[1]))
+except ValueError as error:
+    print(error)
+PIN
+) || die "the round-3 pin in $CODE_TOOLS cannot be read: phase C refuses"
+  [ -z "$problem" ] || die "$problem"
 }
 
 require_committed() {  # <path>
@@ -146,6 +182,14 @@ phase_dirs() {  # <phase>: set the phase's paths and roles
       CLIPS=$ROOT/B/clips
       SHARDS=$ROOT/B/shards
       LOGS=$ROOT/B/logs
+      ROLES=(confirm.1 confirm.2)
+      ;;
+    C)
+      PARTS=$ROOT/C/parts
+      OUT=$ROOT/C/out
+      CLIPS=$ROOT/C/clips
+      SHARDS=$ROOT/C/shards
+      LOGS=$ROOT/C/logs
       ROLES=(confirm.1 confirm.2)
       ;;
   esac
@@ -178,6 +222,13 @@ plan() {  # [phase]
       done
       printf 'merge mined\n'
       ;;
+    C)
+      MODELS=$(round3_model)
+      for role in "${ROLES[@]}"; do
+        printf 'decode %s %s at %s processes\n' "$role" "$MODELS" "$PARALLEL"
+      done
+      printf 'merge mined\n'
+      ;;
   esac
 }
 
@@ -188,6 +239,14 @@ import json, sys
 candidate = json.load(sys.stdin)["models"]["candidate"]
 print(",".join([*sys.argv[1].split(","), candidate]))
 ' "$PREFIX_MODELS"
+}
+
+round3_model() {
+  # Round 3's chosen weights' decode name, from the code that pins them: never a second literal.
+  PYTHONPATH="$CODE_TOOLS" python -c '
+from training.aug_readout_spec import R3_CANDIDATE_MODEL
+print(R3_CANDIDATE_MODEL)
+'
 }
 
 require_candidate() {
@@ -249,11 +308,11 @@ live_pid() {  # <logs dir>
 }
 
 require_stopped() {
-  # The clone is shared by both phases (`stage_repo` replaces `$ROOT/repo`), so a live run of
-  # *either* phase must block a restage: deleting the tree under a running loop breaks its next
+  # The clone is shared by all three phases (`stage_repo` replaces `$ROOT/repo`), so a live run of
+  # *any* phase must block a restage: deleting the tree under a running loop breaks its next
   # batch.
   local dir pid
-  for dir in "$ROOT/logs" "$ROOT/B/logs"; do
+  for dir in "$ROOT/logs" "$ROOT/B/logs" "$ROOT/C/logs"; do
     pid=$(live_pid "$dir")
     [ -z "$pid" ] || die "a mining run is still live (pid $pid, logs in $dir): pause it and \
       wait for run.exit, then resume"
@@ -306,7 +365,7 @@ status() {  # [phase]
     0)
       echo "done: exit 0"
       ssh "$HOST" "grep -E \
-        '^(stopped=|look:|confirm\\.|base:|c95:|r2_|label sources:|unphonetizable:)' \
+        '^(stopped=|look:|confirm\\.|base:|c95:|r2_|r3_|label sources:|unphonetizable:)' \
         '$LOGS/run.out' || true"
       ;;
     3)
@@ -328,8 +387,17 @@ output_names() {  # <phase>: the merged files a complete run leaves in its out d
   # header, and a newline there is a syntax error, not a separator.
   local model
   case "$1" in
-    A) printf '%s.jsonl.gz ' "${ROLES[@]}" ;;
-    B) for model in ${MODELS//,/ }; do printf 'tlog.mined.%s.jsonl.gz ' "$model"; done ;;
+    A) printf '%s.jsonl.gz ' "${ROLES[@]}"; printf 'meta.json ' ;;
+    B)
+      for model in ${MODELS//,/ }; do printf 'tlog.mined.%s.jsonl.gz ' "$model"; done
+      printf 'meta.json '
+      ;;
+    C)
+      for model in ${MODELS//,/ }; do
+        printf 'tlog.mined.%s.jsonl.gz tlog.gating.%s.jsonl.gz ' "$model" "$model"
+      done
+      printf 'meta.%s.json ' "$MODELS"
+      ;;
   esac
 }
 
@@ -339,7 +407,6 @@ require_merged() {
   ssh "$HOST" bash -s <<EOF || die "the box has no complete merge to fetch"
 set -e
 grep -qx 0 '$LOGS/run.exit'
-test -f '$OUT/meta.json'
 for name in $(output_names "$1"); do test -f '$OUT/'\$name; done
 EOF
 }
@@ -348,12 +415,11 @@ fetch() {  # [phase]
   local phase=${1:-A} repo_root dest default_dir
   require_phase "$phase"
   phase_dirs "$phase"
-  if [ "$phase" = B ]; then
-    MODELS=$(chosen_models)
-    default_dir=tools/tadabur/tlog_mining/decodes
-  else
-    default_dir=tools/tadabur/tlog_mining/word_times
-  fi
+  case "$phase" in
+    A) default_dir=tools/tadabur/tlog_mining/word_times ;;
+    B) MODELS=$(chosen_models); default_dir=tools/tadabur/tlog_mining/decodes ;;
+    C) MODELS=$(round3_model); default_dir=tools/tadabur/tlog_mining/decodes ;;
+  esac
   require_merged "$phase"
   repo_root=$(git rev-parse --show-toplevel)
   dest=${FETCH_DIR:-$repo_root/$default_dir}
@@ -447,7 +513,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     run) shift; run "$@" ;;
     *)
       echo "usage: $0 {plan [A|B]|launch [A|B]|resume [A|B]|pause|status [A|B]|fetch [A|B]}
-       (run [--phase A|B] [--resume] executes on the box)" >&2
+       (run [--phase A|B|C] [--resume] executes on the box)" >&2
       exit 2
       ;;
   esac

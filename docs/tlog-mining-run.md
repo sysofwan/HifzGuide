@@ -1,12 +1,13 @@
 # tlog mining: run note
 
-**Status (2026-11-04, 02:36:39Z):** phases A and B are complete. Each run wrote `run.exit = 0`
-and the launcher fetched its merge; this note is committed with the output it describes.
+**Status (2026-11-19, 19:58:19Z):** phases A, B and C are complete. Each run wrote
+`run.exit = 0` and the launcher fetched its merge; this note is committed with the output it
+describes.
 
 Issue: [#263](https://github.com/sysofwan/HifzGuide/issues/263) (parent #261). Phase A is the
 teacher-only timing pass [`docs/tlog-mining-amendment.md`](tlog-mining-amendment.md) §5 allows
-without a claim. Phase C did not run — it waits for round 3's verdict and its committed
-live/EMA choice — and is not covered here; its section is added when its own run finishes.
+without a claim. Phase C ran after round 3's verdict was committed `pass` (PR #289) and its
+committed choice named `r3_candidate_ema`; its section is below.
 
 ## Phase A: the teacher's word times
 
@@ -204,8 +205,110 @@ all 10,642 matched. The 26 listed rows were never fetched. **No audio is committ
 are still on the box (disposable scratch, re-downloadable at the pinned revision); the 162 MB of
 parts are what make a resume possible.
 
+## Phase C: the round-3 chosen weights
+
+`tools/tadabur/tlog_mining/decodes/`, produced by the same launcher (`run --phase C`, then the
+merge) from the staged clone at `29592f904b30561aee9410fe5be8b4e97a6d5236`. That is the
+implementation commit this section's code describes; main's #291 squash carries the same phase C
+code, so the merge that brings this note in does not change what ran.
+
+| file | SHA-256 |
+|---|---|
+| `tlog.mined.r3_candidate_ema.jsonl.gz` | `427e76e7f0c5637ac6c9954ebbbd34f41c5e89081e64b847a7a561c5abdf4066` |
+| `tlog.gating.r3_candidate_ema.jsonl.gz` | `b6f383bb825502f1e99b006d4eade61bdc26bde90273692f1b2ea7c8d706be80` |
+| `meta.r3_candidate_ema.json` | `abea387728cde8043beabdb5dbab3026f8162e50e34c0c0ddc149352a713fcb0` |
+
+`meta.r3_candidate_ema.json` pins `code_sha` `29592f904b30561aee9410fe5be8b4e97a6d5236`, the two
+tranches, the one model, the per-file row counts, the `label_source` tallies and the 26 listed
+rows. Its identity section names the weights that actually decoded: `r3_candidate_ema` at `ema`,
+step 10,000, recipe `aug94-mixture-v2`, checkpoint
+`1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9` (the round-3 spec's
+`R3_CANDIDATE_SHA256`), ref `/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt`,
+with `checks`, `spans` and confirmed-stream fingerprints (bf16 weights, fp32 features, batch 1).
+`pull_request` and `pull_request_ref` are null for the same reason as phases A and B.
+
+The launcher refuses phase C unless round 3's choice is committed at that candidate and its
+verdict is committed `pass`, and both were; nothing read the output before the verdict, and this
+note is the first readout of it.
+
+**Rows.** Phase C decodes exactly what round 2's gating decodes and phase B's mined decode hold,
+so the round-3 weights line up with base/C95/r2 row by row: `phase_c_rows` takes phase A's gating
+rows and `phase_b_rows`' decodable rows unchanged. The gating keys are exactly round 2's
+`tlog.confirm.*` keys (5,762) and the mined keys exactly phase B's `tlog.mined.base` keys
+(10,642); the two sets are disjoint, and each appears once.
+
+| tranche | gating | mined | decoded | listed (#248) |
+|---|---|---|---|---|
+| confirm.1 | 2,843 | 5,325 | 8,168 | 16 |
+| confirm.2 | 2,919 | 5,317 | 8,236 | 10 |
+| total | 5,762 | 10,642 | 16,404 | 26 |
+
+The 26 listed rows are phase B's, the same eight ayat (106:1–106:4, 55:17, 90:8–90:10); they are
+listed here and never fetched. Per `label_source`, over the mined rows only: **identified 5,473,
+both 2,634, filename 2,535** — phase B's tallies unchanged. The gating rows carry no
+`label_source`: they are the gating stratum, not a labelled report.
+
+**Shape.** The mined file is phase B's record shape — round 2's confirm-decode keys plus
+`tranche`, `label_source` and `spans`. The gating file is round 2's confirm record shape —
+`key`, `tranche`, `stratum`, `split`, `shard_file`, `row`, `audio_filename`, `audio_sha256`,
+`start_sample`, `end_sample`, `surah_ayah`, `word_from`, `word_to`, `assigned_label`, `checks` —
+plus `spans`. The keys match round 2's gating decodes exactly; the shape does not, because phase C
+decodes both stores for the gating rows too.
+
+Two consequences for #261's readout, stated here so they are not found the hard way:
+
+1. **Join the gating rows on `key`.** Round 2's gating decodes are `checks`-only, so base/C95/r2
+   have no gating `spans` counterpart; a naive comparison of every field of every line trips on
+   the extra `spans` field. `checks` is comparable as it stands.
+2. **The gating `spans` cost about a third of the run and buy nothing comparative.** 5,762 of the
+   16,404 row-decodes (35.1%) are gating rows taking the whole-clip `spans` pass, for which no
+   other model has a gating counterpart. They are kept because the issue table says phase C is
+   "checks + spans" and the locked test pins the shape.
+
+### Compute and give-way
+
+`run.out`'s line: `stopped=done batches=130 gpu_seconds=39017 yielded_seconds=3870`, and the
+merge's counts (`label sources: {'filename': 2535, 'both': 2634, 'identified': 5473}`,
+`unphonetizable: 26 rows listed (#248)`, 10,642 mined and 5,762 gating rows) match the committed
+files.
+
+**The launcher asked for `P=2` and the code capped it to 1**, its first log line: `parallel
+capped to 1: phase C's worker peak is unmeasured`. `plan C` prints the requested count (`at 2
+processes`), so the preview is an upper bound on the process count, never the count that runs.
+
+**GPU time: 39,017 lock-held seconds = 10.84 GPU-h**, over `batches=130` — 129 worker
+invocations plus the terminal empty iteration `batches=` counts. Mean held per worker batch is
+302 s, essentially every batch running its 300 s `BATCH_SECONDS` budget out. Each row costs
+2.38 s of GPU across its two decodes (`checks` and whole-clip `spans`, one model), close to phase
+B's 1.26 s per decode. The issue's ~5–6 GPU-h estimate for phase C was optimistic in the same way
+phase B's was (estimated ~4–6, measured 22.37).
+
+128 worker batches printed their terminal `decoded N` line; the 129th was reaped at the parent's
+batch deadline without printing one (the only path that skips the line), and its rows resumed by
+key. The merge holds every row exactly once, so no row was decoded twice into the committed
+files.
+
+**Time yielded to round 3: 3,870 s = 1.08 h**, 9.0% of the held-plus-yielded 42,887 s. That is
+exactly 129 × the 30 s `yield_seconds`, which decomposes as one sleep after each of the 129
+worker batches and none on a failed acquire: every non-blocking acquire found
+`/root/scratch/gpu.lock` free, i.e. round 3 was idle for the whole run. Wall time was 12 h 06 m 27 s (2026-11-19T07:51:52Z → 2026-11-19T19:58:19Z); the 700 s
+outside held-plus-yielded is the loop's gates checks, lock tries and start-up.
+
+### Audio
+
+Phase C's mined rows are phase B's, so the 10,642 mined clips were **hardlinked** from
+`/root/scratch/tlog-mining/B/clips/` into `C/clips/` before the launch and re-verified by
+SHA-256 as each row decoded: no bytes re-downloaded. The 5,762 gating clips (not in that cache)
+were streamed from the pinned shards, ≈1.6 GB; `C/clips/` held 6.6 GB with the hardlinks
+counted. The clips were deleted from the box once this commit was pushed. **No audio is
+committed.**
+
 ## Changelog
 
+- 2026-11-19: phase C committed. The note records the `P=1` cap, 16,404 decoded rows (5,762
+  gating + 10,642 mined) against phase B's 26 listed, the `label_source` counts, the
+  gating-`spans` caveat for #261's key join, 10.84 GPU-h held over 129 worker batches and the
+  1.08 h yielded to an idle round 3.
 - 2026-11-04: review correction. The yield decomposition is 263 post-worker and 167
   failed-acquire sleeps — the 264th `batches=` increment is the terminal empty iteration, which
   starts no worker and sleeps not at all — and the failed polls are no longer read as a lower

@@ -138,7 +138,7 @@ one the card's results were measured on (`RELEASE_STAGE_SAFETENSORS_SHA256`, the
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
 | NOTICE.md | 5,039 | `b1a0ff7953ec3ddc9b663c497b82c6805da4fd06b0c9115bea18aeaebccb026e` | rewritten: NC licence, MIT text, dataset credits, links to this record |
-| README.md | 4,707 | `6cc1b820bd5ad32bd1fb1ac16b743d05477e8e3e14eb4c1d77cf291fe8a0f3e9` | rewritten consumer card: quick start, contract, two comparisons, limits |
+| README.md | 4,868 | `cf044eb37d40c3754fa67eb3f8d71de1e2b046192743b88004c12c2869a547ed` | rewritten consumer card: quick start, contract, two comparisons, limits |
 
 - The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
   to checkpoint sha256 `1193e211…24ed4a9` **and** the ema weight set, and `publish_hf`
@@ -171,7 +171,7 @@ one the card's results were measured on (`RELEASE_STAGE_SAFETENSORS_SHA256`, the
   `hifzguide-muaalem-mini` (base-model agreement and false flags), and the licence. It carries
   no experiment labels, checkpoint identifiers or hashes. The proposal's block is unchanged
   apart from the false-flag row and its paragraph, added once the published mini was decoded
-  on the same correctly recited recordings (552 words including tables, up from 465). Artifact
+  on the same correctly recited recordings (584 words including tables, up from 465). Artifact
   provenance stays in this record, which the public `NOTICE.md` links: step 10000, averaged
   weights, checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
   `NOTICE.md` carries only readable upstream links, the MIT text and the dataset credits, with
@@ -230,6 +230,10 @@ population and bootstrap there). Over the 43,840 words all three models graded, 
 mini flags **167.7** per 1,000 correctly recited words, this stage **78.1** and the teacher
 **73.6**; the paired clustered 95% difference mini − this stage is **+89.599 [+80.161,
 +101.759]**. Reporting only: no gate, verdict or pre-registration reads it.
+
+The row counts false alarms on correctly recited words and nothing else. No catch-loss audit
+was run for the published mini on that population, so neither version's catch of real mistakes
+is measured there; the card says so rather than implying better error detection.
 
 The card prints those figures to one decimal (167.7 / 78.1 / 73.6 and 89.6 [80.2, 101.8]).
 

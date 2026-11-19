@@ -71,7 +71,7 @@ Agreement with the base model compares phoneme strings, **not independent transc
 accuracy**. This and the previous version were evaluated on the same 300 held-out Tadabur
 development recordings using streaming inference, unlike the short-clip example above.
 
-| | This model (v2) | [Previous version (hifzguide-muaalem-mini)](https://huggingface.co/sysofwan/hifzguide-muaalem-mini) | [Base model](https://huggingface.co/obadx/muaalem-model-v3_2) |
+| | This model (v2) | [Previous version (hifzguide-muaalem-mini)](https://huggingface.co/sysofwan/hifzguide-muaalem-mini) | Base model |
 | --- | --- | --- | --- |
 | Parameters | $param_count_millions | $param_count_millions | $teacher_param_count_millions |
 | Agreement with base model | 94.69% | 94.71% | Reference |
@@ -83,6 +83,10 @@ The false-flag row is measured on held-out tlog recordings judged correctly reci
 version flags 89.6 more words per 1,000 than this model (95% confidence interval 80.2 to 101.8
 more, clustered by surah). Agreement alone says nothing about error detection; the false-flag
 row is the measured comparison.
+
+The row counts false alarms on correct recitation only. It says nothing about how many real
+mistakes either version catches, so it does not establish better recitation-error detection
+than the previous version.
 
 ## Intended use and limits
 

@@ -50,8 +50,25 @@
    }
   },
   "hub_revision": "a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+  "loader_weights_max_abs_diff": 0.0,
+  "merge_identity": {
+   "hub_revision": "a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+   "model_ref": "sysofwan/hifzguide-muaalem-mini",
+   "safetensors_sha256": "2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9"
+  },
   "model_ref": "sysofwan/hifzguide-muaalem-mini",
-  "weights_sha256": "2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9"
+  "tensors": 772,
+  "weights_bytes": 465374196,
+  "weights_sha256": "2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9",
+  "window": {
+   "max_abs_diff": 0.0,
+   "seed": 0,
+   "shape": [
+    1,
+    250,
+    160
+   ]
+  }
  },
  "population": {
   "clips": 5651,
@@ -78,12 +95,22 @@
    "90_9_5945086166.flac#0": "90:9",
    "90_9_7372271339.flac#0": "90:9"
   },
+  "graded_words": {
+   "base": 47991.0,
+   "mini": 45096.0,
+   "v2": 48016.0
+  },
+  "placed_words": 56807,
   "surahs": 113,
   "tranches": [
    "confirm.3",
    "confirm.4"
   ],
-  "words": 56807
+  "ungraded_words": {
+   "base": 8816.0,
+   "mini": 11711.0,
+   "v2": 8791.0
+  }
  },
  "reproduction": {
   "columns": {
@@ -92,6 +119,356 @@
   },
   "matched": true,
   "source": "tools/tadabur/consonant3_readout/report.json"
+ },
+ "sensitivity": {
+  "per_placed_word": {
+   "all_cause": {
+    "base": {
+     "den": 56807.0,
+     "num": 4583.0,
+     "point": 80.67667717006708
+    },
+    "mini": {
+     "den": 56807.0,
+     "num": 7933.0,
+     "point": 139.64828278205152
+    },
+    "v2": {
+     "den": 56807.0,
+     "num": 4738.0,
+     "point": 83.40521414614396
+    }
+   },
+   "consonant_cause": {
+    "base": {
+     "den": 56807.0,
+     "num": 2744.0,
+     "point": 48.30390620874188
+    },
+    "mini": {
+     "den": 56807.0,
+     "num": 6213.0,
+     "point": 109.3703240797789
+    },
+    "v2": {
+     "den": 56807.0,
+     "num": 2976.0,
+     "point": 52.38790994067632
+    }
+   },
+   "shaddah_cause": {
+    "base": {
+     "den": 56807.0,
+     "num": 130.0,
+     "point": 2.288450367032232
+    },
+    "mini": {
+     "den": 56807.0,
+     "num": 191.0,
+     "point": 3.3622616931012024
+    },
+    "v2": {
+     "den": 56807.0,
+     "num": 119.0,
+     "point": 2.0948122590525817
+    }
+   },
+   "tashkeel_cause": {
+    "base": {
+     "den": 56807.0,
+     "num": 571.0,
+     "point": 10.051578150580035
+    },
+    "mini": {
+     "den": 56807.0,
+     "num": 604.0,
+     "point": 10.632492474518985
+    },
+    "v2": {
+     "den": 56807.0,
+     "num": 582.0,
+     "point": 10.245216258559683
+    }
+   }
+  },
+  "same_words": {
+   "all_cause": {
+    "clusters": 113,
+    "comparisons": {
+     "mini−base": {
+      "interval": {
+       "lower": 85.70500937889292,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 103.87010838510379
+      },
+      "point": 94.04653284671532
+     },
+     "mini−v2": {
+      "interval": {
+       "lower": 80.16133222702994,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 101.75850062007662
+      },
+      "point": 89.59854014598541
+     },
+     "v2−base": {
+      "interval": {
+       "lower": 1.346134353600617,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 7.259711392827854
+      },
+      "point": 4.447992700729916
+     }
+    },
+    "models": {
+     "base": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 63.70576364344091,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 82.20130421849187
+      },
+      "num": 3228.0,
+      "point": 73.63138686131387
+     },
+     "mini": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 151.04289660502593,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 184.1297928392441
+      },
+      "num": 7351.0,
+      "point": 167.6779197080292
+     },
+     "v2": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 68.32737062645074,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 86.34909966492765
+      },
+      "num": 3423.0,
+      "point": 78.0793795620438
+     }
+    },
+    "observations": 43840,
+    "scale": 1000.0
+   },
+   "consonant_cause": {
+    "clusters": 113,
+    "comparisons": {
+     "mini−base": {
+      "interval": {
+       "lower": 80.03035973296538,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 98.45247073689323
+      },
+      "point": 88.50364963503651
+     },
+     "mini−v2": {
+      "interval": {
+       "lower": 74.07051062393718,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 94.64466559149078
+      },
+      "point": 83.09762773722629
+     },
+     "v2−base": {
+      "interval": {
+       "lower": 2.9828913652458073,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 7.669858746853545
+      },
+      "point": 5.406021897810219
+     }
+    },
+    "models": {
+     "base": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 37.613236442317074,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 50.19761723111766
+      },
+      "num": 1941.0,
+      "point": 44.27463503649635
+     },
+     "mini": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 118.54183926879509,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 147.77815259776253
+      },
+      "num": 5821.0,
+      "point": 132.77828467153284
+     },
+     "v2": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 42.77116871548016,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 55.65399729099387
+      },
+      "num": 2178.0,
+      "point": 49.68065693430657
+     }
+    },
+    "observations": 43840,
+    "scale": 1000.0
+   },
+   "shaddah_cause": {
+    "clusters": 113,
+    "comparisons": {
+     "mini−base": {
+      "interval": {
+       "lower": 1.4461244699608358,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.525252525252525
+      },
+      "point": 1.9616788321167884
+     },
+     "mini−v2": {
+      "interval": {
+       "lower": 1.5025802475189602,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.739672259900856
+      },
+      "point": 2.0985401459854014
+     },
+     "v2−base": {
+      "interval": {
+       "lower": -0.5033630036967387,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.25071698973278284
+      },
+      "point": -0.13686131386861322
+     }
+    },
+    "models": {
+     "base": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 1.509218704552367,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.362415793928964
+      },
+      "num": 86.0,
+      "point": 1.9616788321167884
+     },
+     "mini": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 3.2621654418995325,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 4.604808485427183
+      },
+      "num": 172.0,
+      "point": 3.923357664233577
+     },
+     "v2": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 1.4651284110042786,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.186267296438092
+      },
+      "num": 80.0,
+      "point": 1.8248175182481752
+     }
+    },
+    "observations": 43840,
+    "scale": 1000.0
+   },
+   "tashkeel_cause": {
+    "clusters": 113,
+    "comparisons": {
+     "mini−base": {
+      "interval": {
+       "lower": 2.246371971109669,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 5.043458924902117
+      },
+      "point": 3.4899635036496344
+     },
+     "mini−v2": {
+      "interval": {
+       "lower": 1.7086302563383415,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 4.080292118019939
+      },
+      "point": 2.782846715328467
+     },
+     "v2−base": {
+      "interval": {
+       "lower": -0.3199390836304165,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 1.9015943157036628
+      },
+      "point": 0.7071167883211678
+     }
+    },
+    "models": {
+     "base": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 7.649634152472658,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.824529004146264
+      },
+      "num": 406.0,
+      "point": 9.260948905109489
+     },
+     "mini": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 11.1806873229533,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 14.593718051060208
+      },
+      "num": 559.0,
+      "point": 12.750912408759124
+     },
+     "v2": {
+      "den": 43840.0,
+      "interval": {
+       "lower": 8.473135943069657,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 11.642317566972105
+      },
+      "num": 437.0,
+      "point": 9.968065693430656
+     }
+    },
+    "observations": 43840,
+    "scale": 1000.0
+   }
+  }
  },
  "tables": {
   "all_cause": {

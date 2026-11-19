@@ -56,6 +56,9 @@ and the loaded revision before decoding, and writes the same identity record bes
   published mini is about 1.5× farther from the teacher than v2 on this hard population, which
   is the direction the flag table shows. The v2 card's 2.37% was 300 `gate_eval` dev clips, not
   this population, so the two are not comparable.
+- Reproduce the drift with `python -m training.mini_flags drift`; it writes
+  `tools/tadabur/mini_flags_readout/drift.json` (stride, clips, characters, edits, identical
+  clips per pair), which is committed.
 
 ## Grading
 
@@ -64,3 +67,15 @@ The report grades the pooled population with the round's own harness pin
 reproduce round 3's committed table exactly — every count, denominator, point and interval. The
 mini's column is the new measurement. No catch-loss audit was run, so the row says nothing about
 whether the flags it removes are false.
+
+Two denominator sensitivities are reported beside that primary table, not in place of it: the
+same-words paired table (the words all three columns graded, `common_graded_terms`, denominator
+1 per word) and the per-all-placed-words points. The columns' graded denominators differ (mini
+45,096, v2 48,016, base 47,991 of 56,807 placed words) because a word the engine leaves ungraded
+or never places leaves that column's denominator; the same-words row is the fair pairing.
+
+The decode ran with `share_features=False`, while the round's confirm invocation used `True`.
+With one model there is no feature pass to share, and the check features are model-independent,
+so this cannot move a decode; the two invocations differ in the code path only, not in the
+records they write.
+

@@ -115,3 +115,38 @@ def test_the_report_refuses_columns_that_do_not_reproduce_the_round_s_table():
                            "models": {"v2": candidate, "base": base}}}
     with pytest.raises(SystemExit, match="population"):
         mf.require_reproduction(short, recorded)
+
+
+def _verification(**overrides):
+    record = {"model_ref": mf.MINI_REF, "hub_revision": mf.MINI_REVISION,
+              "weights_sha256": mf.MINI_WEIGHTS_SHA256,
+              "fingerprints": {arm: mf.expected_fingerprint(mode)
+                               for arm, mode in MODES.items()}}
+    record.update(overrides)
+    return record
+
+
+def test_the_report_refuses_a_verification_record_that_is_not_the_pinned_artifact():
+    mf.require_verification(_verification())
+    with pytest.raises(SystemExit, match="hub_revision"):
+        mf.require_verification(_verification(hub_revision="0" * 40))
+    moved = _verification()
+    moved["fingerprints"]["checks"] = {**moved["fingerprints"]["checks"],
+                                       "weights_dtype": "fp32"}
+    with pytest.raises(SystemExit, match="checks"):
+        mf.require_verification(moved)
+
+
+def test_the_report_refuses_a_merge_identity_that_is_not_the_pinned_artifact():
+    identity = {"identity": {"model_ref": mf.MINI_REF, "hub_revision": mf.MINI_REVISION,
+                             "safetensors_sha256": mf.MINI_WEIGHTS_SHA256},
+                "fingerprints": {arm: mf.expected_fingerprint(mode)
+                                 for arm, mode in MODES.items()}}
+    meta = {"identities": {f"tlog.confirm/{mf.MINI}": identity}}
+    assert mf.require_merge_identity(meta) == identity["identity"]
+    with pytest.raises(SystemExit, match="no identity"):
+        mf.require_merge_identity({"identities": {}})
+    moved = {**identity, "identity": {**identity["identity"],
+                                      "safetensors_sha256": "0" * 64}}
+    with pytest.raises(SystemExit, match="mini identity"):
+        mf.require_merge_identity({"identities": {f"tlog.confirm/{mf.MINI}": moved}})

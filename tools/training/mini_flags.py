@@ -28,6 +28,8 @@ Usage, from ``tools/``::
     python -m training.mini_flags decode --role confirm.3 --parts-dir <run>/parts \\
         --cache-dir <cache> --shard-index 0 --shard-count 4
     python -m training.mini_flags merge --parts-dir <run>/parts --out-dir <run>/out
+    python -m training.mini_flags report      # grades the pooled read, writes report + doc
+    python -m training.mini_flags drift       # the columns' character drift, beside verify.json
 """
 
 from __future__ import annotations
@@ -67,6 +69,10 @@ WINDOW_FRAMES, WINDOW_DIM, WINDOW_SEED = 250, 160, 0
 READOUT_ROOT = Path(__file__).parent.parent / "tadabur" / "mini_flags_readout"
 DECODES = READOUT_ROOT / "decodes"
 VERIFY_PATH = DECODES / "verify.json"
+META_PATH = DECODES / "meta.confirm.json"
+DRIFT_PATH = READOUT_ROOT / "drift.json"
+#: Every N-th pooled clip the drift record compares: a 471-clip stride sample.
+DRIFT_STRIDE = 12
 REPORT_PATH = READOUT_ROOT / "report.json"
 REPORT_DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "mini-flags-readout.md"
 #: The repository root, for the paths a report cites relative to it.
@@ -298,6 +304,82 @@ def tables(grades: Sequence, models: Sequence[str],
             for name, cause in CAUSES}
 
 
+def require_verification(record: dict) -> None:
+    """Refuse a verification record that is not the pinned artifact's, or is not the round's
+    protocol: the identity three ways and every mode's fingerprint."""
+    pinned = {"model_ref": MINI_REF, "hub_revision": MINI_REVISION,
+              "weights_sha256": MINI_WEIGHTS_SHA256}
+    for key, value in pinned.items():
+        if record.get(key) != value:
+            raise SystemExit(f"the verification record's {key} is {record.get(key)!r}, "
+                             f"not the pinned {value!r}")
+    for arm, mode in MODES.items():
+        found = record.get("fingerprints", {}).get(arm)
+        if found != expected_fingerprint(mode):
+            raise SystemExit(f"the verification record's {arm} fingerprint is {found}, "
+                             f"not {expected_fingerprint(mode)}")
+
+
+def require_merge_identity(meta: dict) -> dict:
+    """The identity the decode's own merge recorded, refused unless it is the pinned artifact
+    under the round's protocol. The decode's provenance cannot be a file the code never opens:
+    a decode made by another model would otherwise be graded as the published mini."""
+    key = f"{TLOG_CONFIRM}/{MINI}"
+    if key not in meta.get("identities", {}):
+        raise SystemExit(f"the merge records no identity for {key}: the decode's producer is "
+                         "not evidenced")
+    identity = meta["identities"][key]
+    pinned = {"model_ref": MINI_REF, "hub_revision": MINI_REVISION,
+              "safetensors_sha256": MINI_WEIGHTS_SHA256}
+    if identity.get("identity") != pinned:
+        raise SystemExit(f"the merge's mini identity is {identity.get('identity')}, not {pinned}")
+    for arm, mode in MODES.items():
+        found = identity.get("fingerprints", {}).get(arm)
+        if found != expected_fingerprint(mode):
+            raise SystemExit(f"the merge's {arm} fingerprint is {found}, "
+                             f"not {expected_fingerprint(mode)}")
+    return identity["identity"]
+
+
+def same_words_tables(grades: Sequence, models: Sequence[str],
+                      comparisons: Sequence[tuple[str, str]]) -> dict:
+    """The four cause tables on the words **every** column graded: one common support, each
+    word's denominator 1, so a paired difference is a same-words one. Round 3's primary tables
+    stay per the round's rule; this is reported beside them."""
+    from training.muraja_policy import SHIPPED_DEFAULT
+
+    shipped = SHIPPED_DEFAULT.name
+    return {name: am.compare(am.common_graded_terms(grades, models, shipped, cause=cause),
+                             am.PER_1000, comparisons)
+            for name, cause in CAUSES}
+
+
+def placed_word_points(grades: Sequence, models: Sequence[str]) -> dict:
+    """Each column's flagged words over **every placed word**, as points only.
+
+    The app's user-facing denominator counts every word either model places; a word a column
+    never graded can never be its flag, so this rate answers a different question than the
+    graded tables and carries no interval."""
+    from training.muraja_policy import SHIPPED_DEFAULT
+
+    shipped = SHIPPED_DEFAULT.name
+    tables = {}
+    for name, cause in CAUSES:
+        terms = am.false_flag_terms(grades, models, shipped, cause=cause)
+        placed = len(terms.clusters)
+        tables[name] = {model: {"num": float(num.sum()), "den": float(placed),
+                                "point": float(num.sum()) / placed * am.PER_1000}
+                        for model, (num, _) in terms.by_model.items()}
+    return tables
+
+
+def sensitivity(grades: Sequence) -> dict:
+    """The denominator rules beside round 3's: same-words paired (all three columns graded) and
+    per placed word (points). Neither replaces the primary tables."""
+    return {"same_words": same_words_tables(grades, MODELS, COMPARISONS),
+            "per_placed_word": placed_word_points(grades, MODELS)}
+
+
 def require_reproduction(report_tables: dict, recorded: dict) -> None:
     """Refuse a report whose v2 or base column differs from round 3's committed table.
 
@@ -319,76 +401,163 @@ def require_reproduction(report_tables: dict, recorded: dict) -> None:
                              f"clusters is not {theirs['observations']} / {theirs['clusters']}")
 
 
+def drift(stride: int = DRIFT_STRIDE) -> dict:
+    """Character drift between the committed check texts of every column pair, on every
+    ``stride``-th pooled clip.
+
+    Evidence that the mini's decode is the published model's output at the base's length scale
+    rather than a broken load, and that the flag table's direction is expected: a model farther
+    from the teacher in characters flags more. Not a quality metric and not comparable with the
+    v2 card's `gate_eval` drift, which reads a different population.
+    """
+    from training.decode_evalset import levenshtein
+    from training.decoding import committed_text
+
+    items, decodes, _ = read_pooled()
+    sample = items[::stride]
+    pairs = ((MINI, V2), (MINI, BASE), (V2, BASE))
+    record = {"stride": stride, "clips": len(sample), "pairs": {}}
+    for a, b in pairs:
+        chars = edits = identical = 0
+        for item in sample:
+            left = committed_text(decodes[a][item.key]["checks"])
+            right = committed_text(decodes[b][item.key]["checks"])
+            chars += len(left)
+            edits += levenshtein(left, right)
+            identical += left == right
+        record["pairs"][am.comparison_name(a, b)] = {
+            "chars": chars, "edits": edits, "drift": edits / chars if chars else None,
+            "identical_clips": identical, "clips": len(sample)}
+    return record
+
+
 def report() -> dict:
     """Grade the pooled confirm read for the three columns, and check the two committed ones.
 
     The mini's decode is reporting-only: v2's and the teacher's rows are re-derived here to
     prove the protocol, and the mini's rows are the new measurement. The harness is the round's
-    pinned one, and the shipped default is the only scoring read.
+    pinned one, and the shipped default is the only scoring read. The mini's identity is checked
+    against the pinned artifact in both records that name it -- the loader proof and the merge's
+    identity -- before any grade is made.
     """
     sources = Sources(CONSONANT3)
+    verification = json.loads(VERIFY_PATH.read_text(encoding="utf-8"))
+    require_verification(verification)
+    merge_identity = require_merge_identity(
+        json.loads(META_PATH.read_text(encoding="utf-8")))
     items, decodes, excluded = read_pooled()
     grades = sources.grade(items, decodes, MODELS)
     report_tables = tables(grades, MODELS, COMPARISONS)
     recorded = json.loads(ROUND3_REPORT_PATH.read_text(encoding="utf-8"))
     require_reproduction(report_tables, recorded)
-    verification = json.loads(VERIFY_PATH.read_text(encoding="utf-8"))
     identity = CONSONANT3.models[V2_DECODE]
+    placed = report_tables["all_cause"]["observations"]
     return {
         "model": {"model_ref": MINI_REF, "hub_revision": MINI_REVISION,
                   "weights_sha256": MINI_WEIGHTS_SHA256,
-                  "fingerprints": verification["fingerprints"]},
+                  "weights_bytes": verification["weights_bytes"],
+                  "tensors": verification["tensors"],
+                  "loader_weights_max_abs_diff":
+                      verification["loader_weights_max_abs_diff"],
+                  "window": verification["window"],
+                  "fingerprints": verification["fingerprints"],
+                  "merge_identity": merge_identity},
         "v2": {"decode": V2_DECODE, "checkpoint_sha256": identity.checkpoint_sha256,
                "weights": identity.weights, "step": identity.step},
         "harness": sources.harness_identity(),
         "population": {"tranches": list(CONSONANT3.confirm_tranches),
                        "clips": len(items),
                        "surahs": len({item.surah for item in items}),
-                       "words": report_tables["all_cause"]["observations"],
+                       "placed_words": placed,
                        "clusters": report_tables["all_cause"]["clusters"],
+                       "graded_words": {m: report_tables["all_cause"]["models"][m]["den"]
+                                        for m in MODELS},
+                       "ungraded_words": {m: placed - report_tables["all_cause"]["models"][m]["den"]
+                                          for m in MODELS},
                        "excluded": len(excluded),
                        "excluded_clips": dict(sorted(excluded.items()))},
         "tables": report_tables,
+        "sensitivity": sensitivity(grades),
         "reproduction": {"source": str(ROUND3_REPORT_PATH.relative_to(REPO_ROOT)),
                          "columns": {V2: "candidate", BASE: "base"},
                          "matched": True},
     }
 
 
-def _cell(model: dict) -> str:
+def _rate_row(cause: str, column: str, model: dict) -> str:
     interval = model["interval"]
-    if interval["lower"] is None or interval["upper"] is None:
-        return f"{model['point']:.3f} —"
-    return f"{model['point']:.3f} [{interval['lower']:.3f}, {interval['upper']:.3f}]"
+    interval_text = ("—" if interval["lower"] is None or interval["upper"] is None
+                     else f"[{interval['lower']:.3f}, {interval['upper']:.3f}]")
+    return (f"| {cause} | {column} | {model['num']:,.0f} | {model['den']:,.0f} | "
+            f"{model['point']:.3f} | {interval_text} |")
 
 
-def _difference(comparison: dict) -> str:
-    interval = comparison["interval"]
-    if interval["lower"] is None or interval["upper"] is None:
-        return f"{comparison['point']:+.3f} —"
-    return f"{comparison['point']:+.3f} [{interval['lower']:+.3f}, {interval['upper']:+.3f}]"
+def _difference_row(cause: str, comparison: str, difference: dict) -> str:
+    interval = difference["interval"]
+    interval_text = ("—" if interval["lower"] is None or interval["upper"] is None
+                     else f"[{interval['lower']:+.3f}, {interval['upper']:+.3f}]")
+    return f"| {cause} | {comparison} | {difference['point']:+.3f} | {interval_text} |"
+
+
+def _rate_table(title: str, tables: dict, labels: dict[str, str]) -> list[str]:
+    lines = [f"### {title}", "",
+             "| cause | column | flagged | graded | per 1,000 | 95% CI |",
+             "| --- | --- | --- | --- | --- | --- |"]
+    for name, _ in CAUSES:
+        cause = name.replace("_cause", "")
+        for model, label in labels.items():
+            lines.append(_rate_row(cause, label, tables[name]["models"][model]))
+    return lines
+
+
+def _difference_table(title: str, tables: dict) -> list[str]:
+    lines = [f"### {title}", "",
+             "| cause | difference | per 1,000 | 95% CI |",
+             "| --- | --- | --- | --- |"]
+    for name, _ in CAUSES:
+        cause = name.replace("_cause", "")
+        for a, b in COMPARISONS:
+            comparison = am.comparison_name(a, b)
+            lines.append(_difference_row(cause, comparison,
+                                         tables[name]["comparisons"][comparison]))
+    return lines
 
 
 def render(result: dict) -> str:
-    """The report document: identity, population, the four tables, and what it does not show."""
+    """The report document: identity, population, round 3's tables, the denominator
+    sensitivities, the reproduction and what the measurement does not show."""
     population = result["population"]
+    model = result["model"]
+    graded = population["graded_words"]
+    ungraded = population["ungraded_words"]
+    labels = {MINI: "mini", V2: "v2 (r3_candidate_ema)", BASE: "base"}
+    same = result["sensitivity"]["same_words"]
+    common = same["all_cause"]["observations"]
+    placed = result["sensitivity"]["per_placed_word"]
+    window = model["window"]
     lines = [
         "# The published mini's false flags on round 3's confirm read (reporting only)",
         "",
         "Generated by `python -m training.mini_flags report` from "
-        f"`{REPORT_PATH.relative_to(READOUT_ROOT.parents[2])}`. Reporting only: no gate reads "
-        "this decode, and the round's verdict, readout and pre-registration are unchanged.",
+        f"`{REPORT_PATH.relative_to(REPO_ROOT)}`. Reporting only: no gate reads this decode, "
+        "and the round's verdict, readout and pre-registration are unchanged.",
         "",
         "## The model",
         "",
         "| | |",
         "| --- | --- |",
-        f"| published repository | `{result['model']['model_ref']}` |",
-        f"| Hub revision | `{result['model']['hub_revision']}` |",
-        f"| `model.safetensors` sha256 | `{result['model']['weights_sha256']}` |",
+        f"| published repository | `{model['model_ref']}` |",
+        f"| Hub revision | `{model['hub_revision']}` |",
+        f"| `model.safetensors` | {model['weights_bytes']:,} B, sha256 "
+        f"`{model['weights_sha256']}` |",
         "| loaded as | `from_pretrained` at that revision, the vendored modeling code |",
-        "| loader proof | 772/772 tensors and a fixed `(1,250,160)` window equal the "
-        "repository's own `trust_remote_code` forward (max abs diff 0.0) |",
+        f"| loader proof | {model['tensors']}/{model['tensors']} tensors (max abs diff "
+        f"{model['loader_weights_max_abs_diff']}) and a fixed seeded "
+        f"({window['shape'][0]}, {window['shape'][1]}, {window['shape'][2]}) window (max abs "
+        "diff " + f"{window['max_abs_diff']}) equal the repository's own "
+        "`trust_remote_code` forward |",
+        "| decode provenance | the merge's own identity record names the same artifact and "
+        "the round's fingerprints |",
         "| decode protocol | round 3's: `muraja-app-checks-v2` checks store, bf16 weights, "
         "batch 1, CUDA, `fp32-features-v1` |",
         "",
@@ -398,29 +567,68 @@ def render(result: dict) -> str:
         "",
         "## The population",
         "",
-        f"Round 3's pooled `{' + '.join(population['tranches'])}` gating clips, "
-        f"**{population['clips']:,} graded clips**, **{population['words']:,} graded words**, "
-        f"**{population['clusters']} surah clusters**. The {population['excluded']} clips the "
-        "phonetizer cannot handle are the round's own exclusions, identical for every column.",
+        f"Round 3's pooled `{' + '.join(population['tranches'])}` gating clips: "
+        f"**{population['clips']:,} graded clips**, **{population['placed_words']:,} placed "
+        f"words** (one per word every column places), **{population['clusters']} surah "
+        f"clusters**. The {population['excluded']} clips the phonetizer cannot handle are the "
+        "round's own exclusions, identical for every column.",
         "",
-        "## False flags per 1,000 graded words",
+        "**The columns do not share one denominator.** A word the engine shows no grade for, "
+        "or never places on Muraja's reference, leaves that column's denominator, so the "
+        "primary tables are per 1,000 words **that column graded**: mini "
+        f"{graded[MINI]:,.0f}, v2 {graded[V2]:,.0f}, base {graded[BASE]:,.0f} of "
+        f"{population['placed_words']:,} placed (ungraded: mini {ungraded[MINI]:,.0f}, v2 "
+        f"{ungraded[V2]:,.0f}, base {ungraded[BASE]:,.0f}). That is round 3's rule, kept so "
+        "the reproduction below is exact; the same-words table is beside it.",
         "",
-        "Shipped default scoring; each cell is the point estimate with its clustered 95% "
+        "## False flags per 1,000 graded words (round 3's rule)",
+        "",
+        "Shipped default scoring; each rate is the point estimate with its clustered 95% "
         "bootstrap interval (10,000 draws, seed 20261008, one draw shared by every statistic, "
         "so a difference is paired).",
         "",
-        "| cause | mini | v2 (r3_candidate_ema) | base | mini − v2 | mini − base | v2 − base |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    lines += _rate_table("The columns", result["tables"], labels)
+    lines += [""] + _difference_table("Paired differences on the same observations",
+                                      result["tables"])
+    lines += [
+        "",
+        "## Same-words sensitivity",
+        "",
+        f"The {common:,} words **all three columns graded**, each word one observation of its "
+        "own (denominator 1), so every difference here is a same-words one. Same harness, "
+        "grades and draw; reported beside the primary table, never in place of it.",
+        "",
+    ]
+    lines += _rate_table("The columns on the common support", same,
+                         {MINI: "mini", V2: "v2", BASE: "base"})
+    lines += [""] + _difference_table("Paired differences on the same words", same)
+    v2base = same["all_cause"]["comparisons"][am.comparison_name(V2, BASE)]
+    primary_v2base = result["tables"]["all_cause"]["comparisons"][
+        am.comparison_name(V2, BASE)]
+    lines += [
+        "",
+        "On this common support v2 − base is "
+        f"{v2base['point']:+.3f} [{v2base['interval']['lower']:+.3f}, "
+        f"{v2base['interval']['upper']:+.3f}] per 1,000, against round 3's per-model-graded "
+        f"{primary_v2base['point']:+.3f} [{primary_v2base['interval']['lower']:+.3f}, "
+        f"{primary_v2base['interval']['upper']:+.3f}]. That is a reporting-only observation "
+        "about the denominator rule; it does not reopen round 3.",
+        "",
+        "## Per all placed words (points only)",
+        "",
+        f"Flagged words over all {population['placed_words']:,} placed words — the app's "
+        "user-facing denominator. A word a column never graded can never be its flag, so this "
+        "answers a different question from the graded tables and carries no interval.",
+        "",
+        "| cause | mini | v2 | base |",
+        "| --- | --- | --- | --- |",
     ]
     for name, _ in CAUSES:
-        table = result["tables"][name]
-        models = table["models"]
-        differences = table["comparisons"]
-        lines.append(
-            f"| {name.replace('_cause', '')} | {_cell(models[MINI])} | {_cell(models[V2])} | "
-            f"{_cell(models[BASE])} | {_difference(differences[am.comparison_name(MINI, V2)])} | "
-            f"{_difference(differences[am.comparison_name(MINI, BASE)])} | "
-            f"{_difference(differences[am.comparison_name(V2, BASE)])} |")
+        cause = name.replace("_cause", "")
+        cells = [f"{placed[name][m]['point']:.3f} ({placed[name][m]['num']:,.0f})"
+                 for m in MODELS]
+        lines.append(f"| {cause} | " + " | ".join(cells) + " |")
     lines += [
         "",
         "## Reproduction",
@@ -439,8 +647,8 @@ def render(result: dict) -> str:
         "decode-seed or quantisation variance.",
         "- The published mini records no training checkpoint of its own, so its row is not a "
         "recipe comparison; it is the artifact the app ships.",
-        "- Fewer flags are fewer *false* flags only together with a catch-loss read, which "
-        "this measurement did not run.",
+        "- The ungraded asymmetry above means the primary difference is driven partly by "
+        "which words each column could grade; read it beside the same-words table, not alone.",
     ]
     return "\n".join(lines) + "\n"
 
@@ -485,6 +693,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     report_ = commands.add_parser("report", help="grade the pooled read and write the report")
     report_.add_argument("--report", type=Path, default=REPORT_PATH)
     report_.add_argument("--doc", type=Path, default=REPORT_DOC_PATH)
+    drift_ = commands.add_parser("drift", help="record the columns' character drift")
+    drift_.add_argument("--stride", type=int, default=DRIFT_STRIDE)
+    drift_.add_argument("--out", type=Path, default=DRIFT_PATH)
     args = parser.parse_args(argv)
 
     if args.command == "plan":
@@ -500,10 +711,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     elif args.command == "merge":
         print(json.dumps(merge(args.parts_dir, args.out_dir,
                                pull_request=args.pr), sort_keys=True))
+    elif args.command == "drift":
+        result = drift(args.stride)
+        write_json(result, args.out)
+        print(json.dumps(result, sort_keys=True))
     else:
         result = write_report(args.report, args.doc)
         print(json.dumps({"population": result["population"],
                           "tables": result["tables"],
+                          "sensitivity": result["sensitivity"],
                           "reproduction": result["reproduction"]}, sort_keys=True))
 
 

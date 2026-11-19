@@ -75,8 +75,18 @@ development recordings using streaming inference, unlike the short-clip example 
 | --- | --- | --- | --- |
 | Parameters | $param_count_millions | $param_count_millions | $teacher_param_count_millions |
 | Agreement with base model | 94.69% | 94.71% | Reference |
+| Word flags per 1,000 commonly graded words | 78.1 | 167.7 | 73.6 |
 
-These results do not establish better recitation-error detection than the previous version.
+A word flag is a word a checker marks as a mistake. The word-flag row is measured on held-out
+tlog recordings presumed correct (selected because the right ayah is identified, not checked
+word by word), so some flags may be real mistakes. Each model is scored on the 43,840 words
+all three graded, and the previous version flags 89.6 more words per 1,000 than this model
+(95% confidence interval 80.2 to 101.8 more, clustered by surah). Agreement alone says nothing
+about error detection; the word-flag row is the measured comparison.
+
+Correctness is presumed, not adjudicated word by word, so the row is not a false-positive
+rate. It also says nothing about how many real mistakes either version catches, so it does not
+establish better recitation-error detection than the previous version.
 
 ## Intended use and limits
 

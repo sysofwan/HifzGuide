@@ -1,0 +1,48 @@
+{
+ "fingerprints": {
+  "checks": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "muraja-app-checks-v2",
+   "model": "sysofwan/hifzguide-muaalem-mini@a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "spans": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "whole-spans",
+   "model": "sysofwan/hifzguide-muaalem-mini@a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "stream_b0": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "confirmed-stream-v2-flush",
+   "model": "sysofwan/hifzguide-muaalem-mini@a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  }
+ },
+ "hub_revision": "a2bebf7c2e9a74d9ff5c3269594132d7caea7696",
+ "loader_weights_max_abs_diff": 0.0,
+ "model": "mini",
+ "model_ref": "sysofwan/hifzguide-muaalem-mini",
+ "tensors": 772,
+ "weights": "model.safetensors",
+ "weights_bytes": 465374196,
+ "weights_sha256": "2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9",
+ "window": {
+  "max_abs_diff": 0.0,
+  "seed": 0,
+  "shape": [
+   1,
+   250,
+   160
+  ]
+ }
+}

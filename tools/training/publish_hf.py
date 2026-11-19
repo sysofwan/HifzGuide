@@ -34,6 +34,16 @@ the one checkpoint whose comparison and readout that card reports; any other che
 the live weights of that one) is refused, because the prose would then attribute another
 artifact's measured results to these weights. Neither profile pushes unless ``--push`` is set;
 without it the directory is a draft.
+
+A card is prose about a stage, so correcting it takes the stage, not the checkpoint::
+
+    python -m training.publish_hf \\
+        --from-stage <the v1.0.7 stage> --repo-id sysofwan/hifzguide-muaalem-mini-v2 \\
+        --out-dir ../hf-stage/hifzguide-muaalem-mini-v2-restaged
+
+That path copies the stage file for file and re-renders only ``README.md``/``NOTICE.md`` from
+the weight file's own header, and refuses a stage whose ``model.safetensors`` is not the one
+the card's results were measured on.
 """
 
 from __future__ import annotations
@@ -41,8 +51,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import shutil
 import string
+import struct
 import sys
 from pathlib import Path
 
@@ -348,6 +360,12 @@ RELEASE_CANDIDATE = {
     "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
     "weights": "ema",
 }
+#: The stage those weights were written to, as the v1.0.7 record lists its ``model.safetensors``.
+#: A revised card needs no checkpoint, so the weight file itself is the identity its measured
+#: claims may be re-rendered onto.
+RELEASE_STAGE_SAFETENSORS_SHA256 = (
+    "7b760511334e53ca115a2dd466e57a9241c4e3c7a30498916b721d0f6d650d89"
+)
 
 
 def require_release_candidate(checkpoint_sha256: str, weights: str) -> None:
@@ -366,6 +384,17 @@ def require_release_candidate(checkpoint_sha256: str, weights: str) -> None:
             + "\n".join(mismatches)
             + "\nStage that artifact (--ema with the checkpoint the readout scored), or write "
             "the card for this weight set instead of reusing one that measured another."
+        )
+
+
+def require_release_stage(safetensors_sha256: str) -> None:
+    """Refuse to re-render the release card onto another stage's weights."""
+    if safetensors_sha256 != RELEASE_STAGE_SAFETENSORS_SHA256:
+        raise SystemExit(
+            "the cc-by-nc card reports one weight file's measured results; this stage's "
+            f"model.safetensors is {safetensors_sha256[:12]}…, not the release's "
+            f"({RELEASE_STAGE_SAFETENSORS_SHA256[:12]}…). Re-render the card of the stage "
+            "those results were measured on."
         )
 
 
@@ -446,6 +475,19 @@ def prepare_staging(out_dir: Path) -> Path:
     if staging.exists():
         shutil.rmtree(staging)
     return staging
+
+
+def push_stage(out_dir: Path, repo_id: str, *, private: bool, push: bool) -> None:
+    """Upload a finished stage, or say it stayed local. Only ``--push`` reaches the hub."""
+    if not push:
+        note("--push not set; the stage is a draft and nothing was uploaded.")
+        return
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
+    api.upload_folder(folder_path=str(out_dir), repo_id=repo_id, repo_type="model")
+    note(f"Pushed to https://huggingface.co/{repo_id} (private={private})")
 
 
 def export_and_publish(
@@ -535,16 +577,7 @@ def export_and_publish(
     checksums = {p.name: sha256_file(p) for p in sorted(out_dir.iterdir())}
     note(f"Exported {param_count:,} params to {out_dir}")
     note(f"Teacher revision {revision}; profile {profile}")
-
-    if push:
-        from huggingface_hub import HfApi
-
-        api = HfApi()
-        api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
-        api.upload_folder(folder_path=str(out_dir), repo_id=repo_id, repo_type="model")
-        note(f"Pushed to https://huggingface.co/{repo_id} (private={private})")
-    else:
-        note("--push not set; the stage is a draft and nothing was uploaded.")
+    push_stage(out_dir, repo_id, private=private, push=push)
 
     return {
         "output_dir": str(out_dir),
@@ -560,9 +593,74 @@ def export_and_publish(
     }
 
 
+def safetensors_param_count(path: Path) -> int:
+    """A stage's parameter count from its ``model.safetensors`` header.
+
+    Header only -- an 8-byte length and the tensor table -- so re-rendering a card does not
+    reach for the checkpoint the stage was written from.
+    """
+    with path.open("rb") as handle:
+        (length,) = struct.unpack("<Q", handle.read(8))
+        header = json.loads(handle.read(length))
+    return sum(
+        math.prod(entry["shape"]) for name, entry in header.items() if name != "__metadata__"
+    )
+
+
+def render_release_card(
+    stage_dir: Path, out_dir: Path, repo_id: str, *, private: bool = False, push: bool = False
+) -> dict:
+    """Copy a release stage and re-render its card and notice.
+
+    A card is prose about a weight set, so correcting it must not reach for the checkpoint:
+    the stage is the artifact the Hub holds, and the copy carries every file byte for byte,
+    with ``README.md``/``NOTICE.md`` re-rendered from the stage's own parameter count and the
+    profile's constants. The release identity is checked before anything is written, and the
+    copy is staged under a sibling temporary directory like a first export.
+    """
+    require_release_stage(sha256_file(stage_dir / "model.safetensors"))
+    fields = _formatted(
+        {
+            "repo_name": repo_name(repo_id),
+            "repo_id": repo_id,
+            "teacher_model_id": TEACHER_MODEL_ID,
+            "teacher_model_id_url": TEACHER_MODEL_URL,
+            "teacher_param_count": TEACHER_PARAM_COUNT,
+            "num_phoneme_classes": NUM_PHONEME_CLASSES,
+            "param_count": safetensors_param_count(stage_dir / "model.safetensors"),
+        }
+    )
+    staging = prepare_staging(out_dir)
+    shutil.copytree(stage_dir, staging)
+    (staging / "README.md").write_text(_render(CARD_CC_BY_NC, fields), encoding="utf-8")
+    (staging / "NOTICE.md").write_text(_render(NOTICE_CC_BY_NC, fields), encoding="utf-8")
+    if out_dir.exists():
+        out_dir.rmdir()
+    staging.rename(out_dir)
+
+    checksums = {p.name: sha256_file(p) for p in sorted(out_dir.iterdir())}
+    note(f"Re-rendered the cc-by-nc card of {stage_dir} into {out_dir}")
+    push_stage(out_dir, repo_id, private=private, push=push)
+    return {
+        "output_dir": str(out_dir),
+        "restaged_from": str(stage_dir),
+        "repo_id": repo_id,
+        "profile": "cc-by-nc",
+        "num_params": fields["param_count"],
+        "sha256": checksums,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", required=True, type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--checkpoint", type=Path)
+    source.add_argument(
+        "--from-stage",
+        type=Path,
+        help="re-render this release stage's card and notice into --out-dir, copying its "
+        "files unchanged; no checkpoint or hub access",
+    )
     parser.add_argument(
         "--ema",
         action="store_true",
@@ -575,10 +673,10 @@ def main() -> None:
     parser.add_argument(
         "--profile",
         choices=sorted(PROFILES),
-        default="agpl",
+        default=None,
         help="which card/notice/licence set: 'agpl' is the mini publication, 'cc-by-nc' is "
         "the v1.0.7 release, whose card reports one checkpoint's results and is refused for "
-        "any other weights",
+        "any other weights. Defaults to 'agpl', or 'cc-by-nc' with --from-stage",
     )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--repo-id", required=True)
@@ -588,16 +686,31 @@ def main() -> None:
     args = parser.parse_args()
 
     out_dir = args.out_dir or Path(__file__).parent.parent / "export" / repo_name(args.repo_id)
-    record = export_and_publish(
-        checkpoint_path=args.checkpoint,
-        out_dir=out_dir,
-        repo_id=args.repo_id,
-        profile=args.profile,
-        use_ema=args.ema,
-        teacher_revision=args.teacher_revision,
-        private=args.private,
-        push=args.push,
-    )
+    if args.from_stage is not None:
+        if args.ema or args.teacher_revision or args.profile not in (None, "cc-by-nc"):
+            raise SystemExit(
+                "--from-stage re-renders an existing stage's cc-by-nc card: --ema and "
+                "--teacher-revision describe a checkpoint, and --profile cannot be other than "
+                "cc-by-nc"
+            )
+        record = render_release_card(
+            stage_dir=args.from_stage,
+            out_dir=out_dir,
+            repo_id=args.repo_id,
+            private=args.private,
+            push=args.push,
+        )
+    else:
+        record = export_and_publish(
+            checkpoint_path=args.checkpoint,
+            out_dir=out_dir,
+            repo_id=args.repo_id,
+            profile=args.profile or "agpl",
+            use_ema=args.ema,
+            teacher_revision=args.teacher_revision,
+            private=args.private,
+            push=args.push,
+        )
     if args.json:
         print(json.dumps(record, indent=2))
 

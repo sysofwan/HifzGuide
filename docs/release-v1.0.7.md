@@ -108,7 +108,24 @@ python3 -m training.publish_hf \
 
 Staged at `/Users/sysofwan/repos/HifzGuide/.orch/tasks/r3-release/hf-stage/hifzguide-muaalem-mini-v2/`
 for the repository name `sysofwan/hifzguide-muaalem-mini-v2`: 465.4 MB, nothing uploaded, no
-repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` publishes:
+repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` publishes. The
+card was revised afterwards, adding the word-flag row recorded below, and the upload
+directory re-rendered beside it at
+`/Users/sysofwan/repos/HifzGuide/.orch/tasks/mini-flags/hf-stage/hifzguide-muaalem-mini-v2/`:
+the table below is that directory, and `README.md` is its only file that differs from the
+first staging. Re-rendered by the same tool from the stage, not the checkpoint, so no weight,
+code, licence or notice file was rewritten:
+
+```bash
+cd tools
+python3 -m training.publish_hf --from-stage <the r3-release stage> \
+  --repo-id sysofwan/hifzguide-muaalem-mini-v2 --out-dir <this task's hf-stage>/hifzguide-muaalem-mini-v2
+```
+
+`--from-stage` copies the stage file for file and re-renders `README.md`/`NOTICE.md` from the
+weight file's own header; it refuses a stage whose `model.safetensors` is not the
+one the card's results were measured on (`RELEASE_STAGE_SAFETENSORS_SHA256`, the
+`7b760511…6d650d89` above), so the prose cannot be re-rendered onto other weights.
 
 | file | size (B) | sha256 | against the published copy |
 | --- | --- | --- | --- |
@@ -121,7 +138,7 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
 | NOTICE.md | 5,039 | `b1a0ff7953ec3ddc9b663c497b82c6805da4fd06b0c9115bea18aeaebccb026e` | rewritten: NC licence, MIT text, dataset credits, links to this record |
-| README.md | 4,231 | `76661835cd152cbf6170fa344c78b8d9942ff7e2045625f4abcbb8a1c9cb74b8` | rewritten consumer card: quick start, contract, one comparison, limits |
+| README.md | 4,999 | `62c3045b3c47b2847310cea743430a3995148e040d22ca6b690983348153bfe7` | rewritten consumer card: quick start, contract, two comparisons, limits |
 
 - The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
   to checkpoint sha256 `1193e211…24ed4a9` **and** the ema weight set, and `publish_hf`
@@ -150,13 +167,20 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
   tool with `--profile agpl` reproduces the published repository's `README.md`, `NOTICE.md` and
   `LICENSE` byte for byte, so the AGPL path has not drifted either.
 - The card is consumer-facing, per the owner-approved proposal: what the model does, how to
-  load it, the I/O contract, one measured comparison against the previously published
-  `hifzguide-muaalem-mini`, and the licence. It carries no experiment labels, checkpoint
-  identifiers or hashes, and it is byte-identical to the proposal's card block (465 words
-  including tables). Artifact provenance stays in this record, which the public `NOTICE.md`
-  links: step 10000, averaged weights, checkpoint sha256 `1193e211…24ed4a9`,
-  `aug94-mixture-v2`, tlog + Tadabur. `NOTICE.md` carries only readable upstream links, the
-  MIT text and the dataset credits, with no revision or checksum identifiers.
+  load it, the I/O contract, two measured comparisons against the previously published
+  `hifzguide-muaalem-mini` (base-model agreement and word flags), and the licence. It carries
+  no experiment labels, checkpoint identifiers or hashes. The proposal's block is unchanged
+  apart from the word-flag row and its paragraph, added once the published mini was decoded
+  on the same presumed-correct recordings (598 words including tables, up from 465). Artifact
+  provenance stays in this record, which the public `NOTICE.md` links: step 10000, averaged
+  weights, checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
+  `NOTICE.md` carries only readable upstream links, the MIT text and the dataset credits, with
+  no revision or checksum identifiers.
+- Licence: `LICENSE` is the CC BY-NC 4.0 legal code; the card declares
+  `license: cc-by-nc-4.0`, `base_model: obadx/muaalem-model-v3_2`. `NOTICE.md` carries the
+  vendored MIT notice, the lineage (Muaalem, w2v-bert-2.0), and the Tadabur, tlog and
+  Freesound attributions with citations.
+- Repository name, visibility and publishing are the owner's; nothing was pushed.
 
 ### Comparison against the previous publication
 
@@ -189,17 +213,34 @@ from the publication. It is **not** C95 — all 772 tensors differ.
 | this stage | 94.690% | [94.197, 95.117] | 18.67% | 2.370% |
 
 2.37% of characters differ between the two decodes. They tie on teacher agreement, which is
-what two imitations of one teacher should do; the round's measured change is against C95
-(−59.2 false flags per 1,000 graded words), an internal checkpoint that never shipped and a
+what two imitations of one teacher should do; against the published mini the measured
+difference is in word flags (below). The round's gate change is against C95 (−59.2 false
+flags per 1,000 graded words), an internal checkpoint that never shipped and a
 **different checkpoint** from the published mini — all 772 tensors differ. The stage's 94.690%
 equals the export verification's PyTorch fp32 row, so the hub load path reproduces the
 training-time forward.
 
-- Licence: `LICENSE` is the CC BY-NC 4.0 legal code; the card declares
-  `license: cc-by-nc-4.0`, `base_model: obadx/muaalem-model-v3_2`. `NOTICE.md` carries the
-  vendored MIT notice, the lineage (Muaalem, w2v-bert-2.0), and the Tadabur, tlog and
-  Freesound attributions with citations.
-- Repository name, visibility and publishing are the owner's; nothing was pushed.
+### Word flags on the presumed-correct tlog population
+
+The card's second row is measured, not inferred from agreement. The published `mini` (Hub
+revision `a2bebf7c…ca7696`, `model.safetensors` sha256 `2570fd37…84bb9`) was decoded on the
+round's pooled confirm read and graded by the same harness as the round's table; the v2 and
+base columns reproduce round 3's committed numbers bit for bit (`docs/mini-flags-readout.md`,
+population and bootstrap there). Over the 43,840 words all three models graded, the published
+mini flags **167.7** words per 1,000 commonly graded words, this stage **78.1** and the teacher
+**73.6**; the paired clustered 95% difference mini − this stage is **+89.599 [+80.161,
++101.759]**. Reporting only: no gate, verdict or pre-registration reads it.
+
+The population is **presumed** correct, not adjudicated: `stratum_of` keeps clean,
+non-straddling `label_source == both` rows, which establishes the ayah's identity, and
+`docs/tlog-gating-amendment.md` §5 defines gating as clips the teacher *names* correctly — all
+52 owner-verified real-mistake decodes still identify as `both`. A word flag on one of those is
+a real catch, so **some of the row's flags may be real mistakes and the reduction is not an
+adjudicated false-positive reduction**. No catch-loss audit was run for the published mini on
+this population, so neither version's catch of real mistakes is measured there either; the card
+says both.
+
+The card prints those figures to one decimal (167.7 / 78.1 / 73.6 and 89.6 [80.2, 101.8]).
 
 #### Source and dataset identities
 

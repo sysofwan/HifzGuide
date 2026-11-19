@@ -210,6 +210,30 @@ def false_flag_terms(grades: Sequence, models: Sequence[str], scoring: str,
                                   float(by_model[m][k].graded)) for k in words] for m in models})
 
 
+def common_graded_terms(grades: Sequence, models: Sequence[str], scoring: str,
+                        cause: str | None = None) -> Terms:
+    """One observation per word **every** compared model graded: flagged over one, clustered by
+    the word's item.
+
+    :func:`false_flag_terms` takes a model-blind ``keep`` over the words every model places, so
+    a ``keep`` reading ``graded`` would silently keep the first model's words. A same-words
+    comparison needs the intersection of the models' graded words; each kept word's
+    denominator is 1, so the rate is per word on that common support.
+    """
+    if cause is not None and cause not in CAUSES:
+        raise ValueError(f"{cause!r} is no cause; the round reads {CAUSES}")
+    by_model = _by_model(grades, models, scoring)
+    words = sorted(k for k in by_model[models[0]]
+                   if all(by_model[m][k].graded for m in models))
+    clusters = [by_model[models[0]][k].item.cluster for k in words]
+
+    def counted(grade) -> bool:
+        return grade.flagged and (cause is None or carries_cause(grade.reason, cause))
+
+    return _terms(clusters, {m: [(float(counted(by_model[m][k])), 1.0) for k in words]
+                             for m in models})
+
+
 def ungraded_terms(grades: Sequence, models: Sequence[str], scoring: str) -> Terms:
     """Leniency: one observation per placed word, left ungraded (pending, or off Muraja's
     reference) over one."""

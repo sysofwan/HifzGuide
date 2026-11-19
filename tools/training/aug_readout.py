@@ -525,15 +525,17 @@ def same_harness(sources: Sources, sitting: Mapping) -> None:
 
 
 def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str],
-                 spec: RoundSpec = AUG95) -> dict[str, dict]:
+                 spec: RoundSpec = AUG95, path: Path | None = None) -> dict[str, dict]:
     """A model's merged readout decodes of ``set_name`` (``merge`` checked their count), holding
     every item of ``keys`` and only items the base decoded, each line carrying every field of
     its set's provenance, equal to the committed base decode's of its item. ``spec`` says which
-    round's decode file holds them."""
+    round's decode file holds them; ``path`` reads a decode file outside the round's sources
+    (a reporting model's, whose decode is not one of the round's roles)."""
     from training.external_corpus import read_decode_file
 
     fields = SETS[set_name].provenance
-    lines = read_decode_file(Sources(spec).decode_path(set_name, model))
+    lines = read_decode_file(Path(path) if path is not None
+                             else Sources(spec).decode_path(set_name, model))
     if missing := keys - set(lines):
         raise ValueError(f"{set_name}.{model}: {len(missing)} items not decoded")
     if stray := set(lines) - set(base):

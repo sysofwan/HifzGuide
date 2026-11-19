@@ -307,3 +307,58 @@ def test_export_json_record_keeps_stdout_machine_readable(
     assert record["weights"] == "ema" and record["profile"] == "cc-by-nc"
     assert set(record["sha256"]) == EXPECTED_FILES
     assert "Loaded h256" in captured.err
+
+
+def _release_stage(checkpoint: Path, out: Path) -> Path:
+    """A stage of the release card's weights, as the v1.0.7 publication was written."""
+    publish_hf.export_and_publish(
+        checkpoint_path=checkpoint,
+        out_dir=out,
+        repo_id="sysofwan/hifzguide-muaalem-mini-v2",
+        profile="cc-by-nc",
+        use_ema=True,
+    )
+    return out
+
+
+def test_restaging_a_card_reproduces_the_stage_byte_for_byte(
+    candidate, extractor_calls, release_identity, monkeypatch, tmp_path
+):
+    """A card correction copies the published files; the re-render must equal the export's.
+
+    The restage reads the parameter count from the weight file's header instead of the loaded
+    model, so equality here is the check that the two paths agree and the copy lost nothing.
+    """
+    stage = _release_stage(candidate[0], tmp_path / "stage")
+    monkeypatch.setattr(
+        publish_hf,
+        "RELEASE_STAGE_SAFETENSORS_SHA256",
+        publish_hf.sha256_file(stage / "model.safetensors"),
+    )
+    out = tmp_path / "restaged"
+
+    record = publish_hf.render_release_card(
+        stage, out, "sysofwan/hifzguide-muaalem-mini-v2"
+    )
+
+    assert {p.name for p in out.iterdir()} == EXPECTED_FILES
+    for name in EXPECTED_FILES:
+        assert (out / name).read_bytes() == (stage / name).read_bytes(), name
+    assert record["num_params"] == publish_hf.safetensors_param_count(
+        stage / "model.safetensors"
+    )
+    assert record["sha256"] == {
+        name: publish_hf.sha256_file(out / name) for name in EXPECTED_FILES
+    }
+
+
+def test_restaging_refuses_a_stage_the_card_did_not_measure(
+    candidate, extractor_calls, release_identity, tmp_path
+):
+    """The card's figures belong to one weight file; another stage would restate them for it."""
+    stage = _release_stage(candidate[0], tmp_path / "stage")
+    out = tmp_path / "restaged"
+
+    with pytest.raises(SystemExit, match="not the release's"):
+        publish_hf.render_release_card(stage, out, "sysofwan/hifzguide-muaalem-mini-v2")
+    assert not out.exists() and not out.with_name(out.name + ".tmp").exists()

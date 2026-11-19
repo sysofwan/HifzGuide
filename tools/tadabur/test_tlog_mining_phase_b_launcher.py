@@ -15,8 +15,8 @@ Phase A's contract is ``test_tlog_mining_launcher.py``; this file adds phase B's
   bytes; the message names ``amendment`` and ``SHA-256``. A claim or the choice not committed refuses as in phase A (``not committed``).
 * ``launch B`` and ``resume B``: the same refusals, then the phase A staging and a detached
   ``run`` whose command line names phase ``B``; never a blocking ``flock``.
-* Phase ``C`` stays refused by ``plan`` and ``launch`` (``phase C`` and ``round 3`` on stderr,
-  nothing staged), and a phase left out still means ``A``.
+* Phase ``C`` is ``test_tlog_mining_phase_c_launcher.py``'s, and a phase left out still means
+  ``A``.
 """
 
 from __future__ import annotations
@@ -85,16 +85,6 @@ def test_phase_b_still_refuses_an_input_that_is_not_committed_at_head(tmp_path, 
     done = _run("plan", round_, tmp_path, "B")
     assert done.returncode != 0 and done.stdout == ""
     assert "not committed" in done.stderr
-
-
-@pytest.mark.parametrize("command", ["plan", "launch"])
-def test_phase_c_is_refused_and_names_round_3(tmp_path, command):
-    round_ = _with_amendment(tmp_path)
-    done = _run(command, round_, tmp_path, "C", **_box(tmp_path))
-    assert done.returncode != 0 and done.stdout == ""
-    assert "phase C" in done.stderr and "round 3" in done.stderr
-    assert "#262" not in done.stderr
-    assert not (tmp_path / "ssh.log").exists()
 
 
 def test_the_phase_b_launch_starts_a_detached_run_that_names_phase_b(tmp_path):

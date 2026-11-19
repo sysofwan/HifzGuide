@@ -67,6 +67,9 @@ R3_ARM_PREFIX = "r3_"
 #: and chooses one; the SHA-256 is the file's bytes on cuda-dev after its exit file reached 0.
 R3_CANDIDATE_REF = "/root/scratch/issue-252/runs/consonant3_candidate/checkpoint.pt"
 R3_CANDIDATE_SHA256 = "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9"
+#: The decode name of round 3's chosen weights (the look sitting chose ``ema``): what the
+#: round-3 decode files are named for.
+R3_CANDIDATE_MODEL = f"{R3_ARM_PREFIX}candidate_{EMA}"
 #: Round 2's catch-loss audit seed (#225), from its pre-registration: the draw and its ids are
 #: reproducible from it.
 CONSONANT2_CATCH_LOSS_SEED = "round2-catch-loss-2026-10"

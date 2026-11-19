@@ -1,11 +1,15 @@
-"""Phase B's decode (#263): the mined rows through the teacher, C95 and round 2's EMA candidate.
+"""The mined phases' decode (#263): the rows through a phase's fixed model set.
 
-The row selection is :func:`tadabur.tlog_mining.selection.phase_b_rows`; this module is what turns
-those rows into the three committed ``tlog.mined.<model>.jsonl.gz`` files. One clip is read whole
-and decoded into both stores the round-2 confirm decodes carry — the app's check sequence
-(``checks``) and the whole-clip span decode (``spans``) — by
-:func:`tadabur.tlog_eval_decode.run_shard`, which appends one line per clip per model to
-``tlog.<tranche>.<shard>.<model>.jsonl`` so a killed run resumes by clip key.
+Phase B decodes the labelled reported rows through the teacher, C95 and round 2's EMA candidate;
+phase C decodes round 3's chosen weights over those rows and the gating ones, so its lines line
+up with round 2's and phase B's. The row selection is
+:func:`tadabur.tlog_mining.selection.phase_b_rows` (phase B) or
+:func:`tadabur.tlog_mining.selection.phase_c_rows` (phase C); this module is what turns those
+rows into the committed ``tlog.mined.<model>.jsonl.gz`` files. One clip is read whole and decoded
+into both stores the round-2 confirm decodes carry — the app's check sequence (``checks``) and
+the whole-clip span decode (``spans``) — by :func:`tadabur.tlog_eval_decode.run_shard`, which
+appends one line per clip per model to ``tlog.<tranche>.<shard>.<model>.jsonl`` so a killed run
+resumes by clip key.
 
 :func:`decode_batch` is one worker's batch: the budget is measured from the worker's spawn and
 checked **before each row**, and a row is atomic across models and stores (all three lines are
@@ -25,6 +29,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from tadabur import tlog_eval_decode as ted
+from training.aug_readout_spec import R3_CANDIDATE_MODEL
 from training.external_decode import resume_keys
 from training.nonpro_decode import item_key
 from training.truth_baseline import CHECK_STORE, PROTOCOLS, Store
@@ -33,6 +38,8 @@ from .batch import BatchResult
 
 #: Phase B's models: the teacher, C95 and round 2's chosen candidate at its EMA weights.
 MINED_MODELS = ("base", "c95", "r2_candidate_ema")
+#: Phase C's model: round 3's chosen weights alone; base, C95 and round 2 are phase B's.
+PHASE_C_MODELS = (R3_CANDIDATE_MODEL,)
 #: The committed merged files, and the identity records' prefix in ``meta.json``.
 MINED_PREFIX = "tlog.mined"
 #: Where this store's decodes are committed.

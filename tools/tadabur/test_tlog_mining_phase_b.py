@@ -12,8 +12,8 @@ Contract this file pins
 * ``MINING_AMENDMENT_PATH`` / ``MINING_AMENDMENT_SHA256``: ``docs/tlog-mining-amendment.md`` and
   the SHA-256 of its bytes. ``require_phase(phase, *, amendment_path=MINING_AMENDMENT_PATH)``:
   ``"A"`` passes; ``"B"`` passes only when the file at ``amendment_path`` hashes to the pin (a
-  missing or changed file is a ``ValueError`` naming the amendment); ``"C"`` is always a
-  ``ValueError`` naming ``phase C`` and ``round 3``. The committed amendment's "Pending" line is
+  missing or changed file is a ``ValueError`` naming the amendment); ``"C"`` is
+  ``test_tlog_mining_phase_c``'s; any other phase is a ``ValueError`` naming it. The committed amendment's "Pending" line is
   replaced by one line recording the Fable AGREE cross-check
   (https://github.com/sysofwan/HifzGuide/issues/262#issuecomment-6588663912) and the pin is that
   edited file's hash.
@@ -166,11 +166,9 @@ def test_phase_b_is_refused_for_a_changed_or_missing_amendment(tmp_path):
         assert "SHA-256" in str(raised.value)
 
 
-def test_phase_c_is_refused_whatever_the_amendment():
-    with pytest.raises(ValueError, match="phase C") as raised:
-        require_phase("C", amendment_path=AMENDMENT)
-    assert "round 3" in str(raised.value)
-    assert "#262" not in str(raised.value)
+def test_an_unknown_phase_is_refused_whatever_the_amendment():
+    with pytest.raises(ValueError, match="phase D"):
+        require_phase("D", amendment_path=AMENDMENT)
 
 
 # --- the rows --------------------------------------------------------------------------------
@@ -520,13 +518,13 @@ def test_the_phase_b_driver_reads_the_mined_tranches_through_phase_b_selection(
     assert asked == list(MINED)
 
 
-def test_the_driver_refuses_phase_c_before_it_touches_the_card(tmp_path, monkeypatch):
+def test_the_driver_refuses_an_unknown_phase_before_it_touches_the_card(tmp_path, monkeypatch):
     def card(field):
         raise AssertionError("the card was read for a refused phase")
 
     monkeypatch.setattr(cli, "gpu_memory_mib", card)
-    with pytest.raises(ValueError, match="phase C"):
-        cli.run(_driver_args(tmp_path, "C"))
+    with pytest.raises(ValueError, match="phase D"):
+        cli.run(_driver_args(tmp_path, "D"))
 
 
 def test_the_driver_runs_one_phase_b_worker_whatever_the_card_offers(tmp_path, monkeypatch):

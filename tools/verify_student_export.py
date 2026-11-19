@@ -58,8 +58,6 @@ import json
 import time
 from pathlib import Path
 
-import numpy as np
-
 
 def check_export_record(export_dir: Path, use_ema: bool) -> None:
     """Refuse an export whose recorded weight set is not the one asked for.
@@ -85,39 +83,6 @@ def check_export_record(export_dir: Path, use_ema: bool) -> None:
                 f"{path.name} records weights={recorded!r}, but this run asks for "
                 f"{wanted!r} (--ema {'set' if use_ema else 'not set'})."
             )
-
-
-def window_features(extractor, samples, frames: int = 250):
-    """The deployed protocol's windows, feature-extracted one at a time.
-
-    Per-window extraction, not whole-clip-then-slice: the extractor normalises over whatever
-    it is given and the device normalises over the 5 s window, so slicing afterwards trains
-    and measures on a distribution the device never produces.
-    """
-    from training.decoding import window_audio
-    from training.distill_data import SAMPLE_RATE
-
-    out = []
-    for chunk in window_audio(samples):
-        extracted = extractor(
-            chunk, sampling_rate=SAMPLE_RATE, return_tensors="np", padding=False
-        )
-        features = extracted.input_features[0]
-        if features.shape[0] < frames:
-            features = np.pad(features, ((0, frames - features.shape[0]), (0, 0)))
-        out.append(features[:frames].astype("float32"))
-    return out
-
-
-def decode_windows(logits_for_window, windows) -> str:
-    """Stream the windows through the deployed protocol and map to phonemes."""
-    from training.decoding import stream_emissions, tokens_to_phonemes
-    from training.distill_student import DEPLOYED_LOGIT_FRAMES
-
-    rows = [
-        logits_for_window(features)[:DEPLOYED_LOGIT_FRAMES].argmax(-1) for features in windows
-    ]
-    return tokens_to_phonemes(e.token_id for e in stream_emissions(rows))
 
 
 def main() -> None:
@@ -153,6 +118,9 @@ def main() -> None:
         load_manifest,
         read_clip_audio,
     )
+    # The deployed protocol's windowing and streamed decode live in one place; this tool and
+    # a hub card's headline number must not be able to drift apart.
+    from training.hub_agreement import decode_windows, window_features
     from training.decoding import load_student_from_checkpoint
     from training.distill_data import SAMPLE_RATE
     from training.distill_eval import levenshtein, score_decode_agreement

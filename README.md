@@ -18,7 +18,7 @@ Pre-built assets are published as [GitHub Releases](https://github.com/sysofwan/
 
 | Asset | Description | Size |
 |-------|-------------|------|
-| `models.zip` | 6-chunk Wav2Vec2-BERT CoreML models (6-bit palettized) | ~443 MB |
+| `models.zip` | Single-chunk h448 student CoreML model (`MuaalemStudent_h448_6BIT`, 6-bit palettized) | ~86 MB |
 | `fonts.zip` | 604 QCF2 page fonts + decorative fonts | ~130 MB |
 | `quran.db` | SQLite database with Quran text, phonemes, word mappings | ~48 MB |
 | `mel_filters.bin` | Mel spectrogram filter bank | 80 KB |

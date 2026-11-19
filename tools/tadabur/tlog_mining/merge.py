@@ -148,7 +148,9 @@ def merge_phase_c_decodes(parts_dir: Path, out_dir: Path, *,
 
     Writes ``tlog.mined.<model>.jsonl.gz`` (phase B's record shape: ``tranche`` and the
     manifest's ``label_source`` added), ``tlog.gating.<model>.jsonl.gz`` (round 2's confirm
-    record shape: sorted by key, each line gaining its ``tranche``) and ``meta.<model>.json``.
+    record shape plus ``spans`` — the gating stratum decodes both stores; the accepted shape,
+    compared on ``key`` with ``spans`` ignored — sorted by key, each line gaining its
+    ``tranche``) and ``meta.<model>.json``.
     The meta is never ``meta.json``: that is phase B's committed file, and phase C must leave it
     byte-identical. Returns each output's row count.
     """

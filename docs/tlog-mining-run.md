@@ -227,6 +227,11 @@ step 10,000, recipe `aug94-mixture-v2`, checkpoint
 with `checks`, `spans` and confirmed-stream fingerprints (bf16 weights, fp32 features, batch 1).
 `pull_request` and `pull_request_ref` are null for the same reason as phases A and B.
 
+The one `tlog.mined/r3_candidate_ema` identity covers both committed files: the gating decode ran
+the same weights, so its producer is that record. Unlike round 2's per-artifact
+`tlog.confirm/<model>` keys, `meta.r3_candidate_ema.json` has no separate `tlog.gating/` entry by
+decision (the locked test pins the single-key set).
+
 The launcher refuses phase C unless round 3's choice is committed at that candidate and its
 verdict is committed `pass`, and both were; nothing read the output before the verdict, and this
 note is the first readout of it.
@@ -252,8 +257,9 @@ both 2,634, filename 2,535** — phase B's tallies unchanged. The gating rows ca
 `tranche`, `label_source` and `spans`. The gating file is round 2's confirm record shape —
 `key`, `tranche`, `stratum`, `split`, `shard_file`, `row`, `audio_filename`, `audio_sha256`,
 `start_sample`, `end_sample`, `surah_ayah`, `word_from`, `word_to`, `assigned_label`, `checks` —
-plus `spans`. The keys match round 2's gating decodes exactly; the shape does not, because phase C
-decodes both stores for the gating rows too.
+plus `spans`. The keys match round 2's gating decodes exactly; the shape is round 2's plus
+`spans`, which is the accepted shape by decision (the gating stratum decodes both stores),
+pinned by the locked test — consumers join the gating rows on `key` and ignore `spans`.
 
 Two consequences for #261's readout, stated here so they are not found the hard way:
 
@@ -279,8 +285,8 @@ processes`), so the preview is an upper bound on the process count, never the co
 **GPU time: 39,017 lock-held seconds = 10.84 GPU-h**, over `batches=130` — 129 worker
 invocations plus the terminal empty iteration `batches=` counts. Mean held per worker batch is
 302 s, essentially every batch running its 300 s `BATCH_SECONDS` budget out. Each row costs
-2.38 s of GPU across its two decodes (`checks` and whole-clip `spans`, one model), close to phase
-B's 1.26 s per decode. The issue's ~5–6 GPU-h estimate for phase C was optimistic in the same way
+2.38 s of GPU across its two decodes (`checks` and whole-clip `spans`, one model), vs phase B's
+2.52 s per row (1.26 s per decode). The issue's ~5–6 GPU-h estimate for phase C was optimistic in the same way
 phase B's was (estimated ~4–6, measured 22.37).
 
 128 worker batches printed their terminal `decoded N` line; the 129th was reaped at the parent's

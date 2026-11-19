@@ -1,0 +1,27 @@
+{
+ "clips": 471,
+ "pairs": {
+  "mini−base": {
+   "chars": 30437,
+   "clips": 471,
+   "drift": 0.15727568420015114,
+   "edits": 4787,
+   "identical_clips": 29
+  },
+  "mini−v2": {
+   "chars": 30437,
+   "clips": 471,
+   "drift": 0.1326017675855045,
+   "edits": 4036,
+   "identical_clips": 44
+  },
+  "v2−base": {
+   "chars": 31279,
+   "clips": 471,
+   "drift": 0.08568048850666582,
+   "edits": 2680,
+   "identical_clips": 71
+  }
+ },
+ "stride": 12
+}

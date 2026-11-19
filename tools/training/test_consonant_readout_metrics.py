@@ -232,3 +232,54 @@ def test_a_geminate_the_teacher_does_not_hold_is_not_a_site():
     item = _geminate_item("سَططَ")
     terms = _shaddah_agreement(item, "سَططَ", "سَطَ")
     assert terms.by_model["candidate"][1].tolist() == []  # no held site, no observation
+
+
+# --- the same-words sensitivity (#256 self-check S1.2) ----------------------------------------
+
+
+def _ungraded(model: str, item: ClipItem, position: int) -> WordGrade:
+    from training.muraja_policy import NOT_GRADED
+
+    return WordGrade(model, SHIPPED, item, position, 2, position + 1, 7 + position,
+                     SiteGrade(NOT_GRADED), None)
+
+
+def test_the_same_words_terms_keep_only_words_every_model_graded():
+    """``false_flag_terms``' ``keep`` is model-blind and reads the first model's words, so a
+    ``graded`` keep would keep the candidate's larger set. The common support is the
+    intersection, one denominator per kept word."""
+    item = _item(0)
+    other = _item(1)
+    grades = [
+        _grade("candidate", item, 0, FLAG),
+        _grade("candidate", item, 1, None),
+        _ungraded("c95", item, 1),
+        _grade("c95", item, 0, None),
+        _grade("candidate", other, 0, None),
+        _grade("c95", other, 0, FLAG),
+    ]
+    models = ("candidate", "c95")
+    # Each model's own denominator counts only its graded words: the candidate 3, c95 2.
+    own = am.false_flag_terms(grades, models, SHIPPED)
+    assert _totals(own, "candidate") == (1, 3)
+    assert _totals(own, "c95") == (1, 2)
+
+    common = am.common_graded_terms(grades, models, SHIPPED)
+    assert len(common.clusters) == 2
+    assert _totals(common, "candidate") == (1, 2)
+    assert _totals(common, "c95") == (1, 2)
+
+
+def test_the_same_words_terms_take_the_cause_filter_too():
+    item = _item(0)
+    grades = [
+        _grade("candidate", item, 0, FLAG),
+        _grade("c95", item, 0, None),
+        _grade("candidate", item, 1, None),
+        _grade("c95", item, 1, None),
+    ]
+    models = ("candidate", "c95")
+    assert _totals(am.common_graded_terms(grades, models, SHIPPED, cause="consonant"),
+                   "candidate") == (1, 2)
+    assert _totals(am.common_graded_terms(grades, models, SHIPPED, cause="tashkeel"),
+                   "candidate") == (0, 2)

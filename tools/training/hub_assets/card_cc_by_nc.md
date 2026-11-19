@@ -71,7 +71,7 @@ Agreement with the base model compares phoneme strings, **not independent transc
 accuracy**. This and the previous version were evaluated on the same 300 held-out Tadabur
 development recordings using streaming inference, unlike the short-clip example above.
 
-| | This model (v2) | [Previous version (hifzguide-muaalem-mini)](https://huggingface.co/sysofwan/hifzguide-muaalem-mini) | Base model |
+| | This model (v2) | [Previous version (hifzguide-muaalem-mini)](https://huggingface.co/sysofwan/hifzguide-muaalem-mini) | [Base model](https://huggingface.co/obadx/muaalem-model-v3_2) |
 | --- | --- | --- | --- |
 | Parameters | $param_count_millions | $param_count_millions | $teacher_param_count_millions |
 | Agreement with base model | 94.69% | 94.71% | Reference |

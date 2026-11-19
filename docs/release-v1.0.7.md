@@ -138,7 +138,7 @@ one the card's results were measured on (`RELEASE_STAGE_SAFETENSORS_SHA256`, the
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
 | NOTICE.md | 5,039 | `b1a0ff7953ec3ddc9b663c497b82c6805da4fd06b0c9115bea18aeaebccb026e` | rewritten: NC licence, MIT text, dataset credits, links to this record |
-| README.md | 4,868 | `cf044eb37d40c3754fa67eb3f8d71de1e2b046192743b88004c12c2869a547ed` | rewritten consumer card: quick start, contract, two comparisons, limits |
+| README.md | 4,919 | `b015a6837c2070c35d4c5eacb6e6987f2da55774f2c510fc5033f95e3590ec0d` | rewritten consumer card: quick start, contract, two comparisons, limits |
 
 - The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
   to checkpoint sha256 `1193e211…24ed4a9` **and** the ema weight set, and `publish_hf`

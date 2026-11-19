@@ -41,9 +41,9 @@ A card is prose about a stage, so correcting it takes the stage, not the checkpo
         --from-stage <the v1.0.7 stage> --repo-id sysofwan/hifzguide-muaalem-mini-v2 \\
         --out-dir ../hf-stage/hifzguide-muaalem-mini-v2-restaged
 
-That path copies the stage file for file and re-renders only ``README.md``/``NOTICE.md``; it
-reads the parameter count from the weight file's header (no torch), and refuses a stage whose
-``model.safetensors`` is not the one the card's results were measured on.
+That path copies the stage file for file and re-renders only ``README.md``/``NOTICE.md`` from
+the weight file's own header, and refuses a stage whose ``model.safetensors`` is not the one
+the card's results were measured on.
 """
 
 from __future__ import annotations
@@ -596,8 +596,8 @@ def export_and_publish(
 def safetensors_param_count(path: Path) -> int:
     """A stage's parameter count from its ``model.safetensors`` header.
 
-    Header only -- an 8-byte length and the tensor table -- so re-rendering a card needs
-    neither torch nor the checkpoint the stage was written from.
+    Header only -- an 8-byte length and the tensor table -- so re-rendering a card does not
+    reach for the checkpoint the stage was written from.
     """
     with path.open("rb") as handle:
         (length,) = struct.unpack("<Q", handle.read(8))
@@ -659,7 +659,7 @@ def main() -> None:
         "--from-stage",
         type=Path,
         help="re-render this release stage's card and notice into --out-dir, copying its "
-        "files unchanged; no checkpoint, torch or hub access",
+        "files unchanged; no checkpoint or hub access",
     )
     parser.add_argument(
         "--ema",

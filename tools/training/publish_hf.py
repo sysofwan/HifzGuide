@@ -1,33 +1,51 @@
 """Export a distillation checkpoint to a Hugging Face model repo.
 
-Loads a ``training.distill_train`` checkpoint's ``student`` weights into the
-matching preset from :mod:`training.distill_student`, verifies the frozen
-``(1, 250, 160) -> (1, 125, 43)`` shape contract, writes a self-contained HF
-model folder (config, safetensors weights, feature extractor, phoneme vocab,
-model card, license notices, and the vendored ``modeling``/``configuration``
-source so ``trust_remote_code=True`` works with no other file needed), and
-pushes it to the Hub.
+The one writer of the hub layout: it produced the published
+``sysofwan/hifzguide-muaalem-mini`` and every later publication of the same architecture
+(the v1.0.7 model's ``sysofwan/hifzguide-muaalem-mini-v2`` included). It writes a
+self-contained HF model folder -- config, safetensors weights, feature extractor, phoneme
+vocab, model card, licence notices, and the vendored ``modeling``/``configuration`` source so
+``trust_remote_code=True`` works with no other file needed -- and optionally pushes it.
+
+The weight set is a scored decision, not this tool's: every round's ``choice.json`` records
+``weights: ema``, so ``--ema`` reads the average through the loader every eval tool uses
+(:func:`training.decoding.load_student_from_checkpoint`) rather than ``checkpoint["student"]``.
+That loader raises when a checkpoint has no average, so an ``--ema`` publication cannot
+silently ship the live weights.
+
+The frozen ``(1, 250, 160) -> (1, 125, 43)`` shape contract is checked on the loaded model
+before anything is written, and the stage is atomic: files are written to a sibling temporary
+directory and renamed, so a failure leaves no partial directory the next run would refuse.
+``--teacher-revision`` defaults to the revision the checkpoint's run config records, and any
+other value is refused -- a feature extractor saved from a different teacher revision would
+describe preprocessing the checkpoint never trained against.
 
 Usage::
 
     python -m training.publish_hf \\
-        --preset h448 \\
-        --checkpoint runs/h448_stream/checkpoint.pt \\
-        --repo-id sysofwan/hifzguide-muaalem-mini \\
-        --private
+        --checkpoint runs/consonant3_candidate/checkpoint.pt --ema \\
+        --repo-id sysofwan/hifzguide-muaalem-mini-v2 --profile cc-by-nc \\
+        --out-dir ../hf-stage/hifzguide-muaalem-mini-v2
 
-Runs on Linux + CUDA (or CPU) with ``tools/requirements-train.txt`` installed;
-the Hub push additionally needs an authenticated ``hf auth login``.
+``--profile agpl`` (the default) writes the AGPL-3.0 card and notice of the ``mini``
+publication. ``--profile cc-by-nc`` writes the CC BY-NC 4.0 card and notice of the v1.0.7
+publication -- the licence a student distilled from the Tadabur corpus must carry, attached to
+the one checkpoint whose comparison and readout that card reports; any other checkpoint (or
+the live weights of that one) is refused, because the prose would then attribute another
+artifact's measured results to these weights. Neither profile pushes unless ``--push`` is set;
+without it the directory is a draft.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
+import string
+import sys
 from pathlib import Path
 
-import torch
 from transformers import SeamlessM4TFeatureExtractor
 
 from tadabur.muaalem import Wav2Vec2BertForMultilevelCTC, Wav2Vec2BertForMultilevelCTCConfig
@@ -38,18 +56,39 @@ from training.distill_student import (
     FEATURE_INPUT_DIM,
     NUM_PHONEME_CLASSES,
     PRESETS,
-    build_student_config,
+    verify_shape_contract,
 )
 
 TEACHER_MODEL_ID = "obadx/muaalem-model-v3_2"
 TEACHER_MODEL_URL = f"https://huggingface.co/{TEACHER_MODEL_ID}"
 REPO_LICENSE_PATH = Path(__file__).parent.parent.parent / "LICENSE"
+# The CC BY-NC 4.0 legal code, committed so a stage is reproducible offline and does not
+# depend on what creativecommons.org serves today. `gitattributes` is the published
+# repository's LFS rule set, kept beside it so the layout writer emits every file the Hub
+# repository carries.
+HUB_ASSETS = Path(__file__).parent / "hub_assets"
+CC_BY_NC_LICENSE_PATH = HUB_ASSETS / "cc-by-nc-4.0.txt"
+GITATTRIBUTES_PATH = HUB_ASSETS / "gitattributes"
 
 TEACHER_PARAM_COUNT = 605_754_251  # measured: obadx/muaalem-model-v3_2, all 11 heads
 
 
 def repo_name(repo_id: str) -> str:
     return repo_id.split("/")[-1]
+
+
+def sha256_file(path: Path) -> str:
+    """The checkpoint's identity, recorded in the card for the weights it describes."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def note(message: str) -> None:
+    """Progress goes to stderr: ``--json`` writes the only thing that belongs on stdout."""
+    print(message, file=sys.stderr, flush=True)
 
 MODEL_CARD_TEMPLATE = """\
 ---
@@ -269,113 +308,298 @@ educational use only, attribution required. Cite as:
 """
 
 
+# --- The CC BY-NC 4.0 publication -------------------------------------------------------
+#
+# A student distilled from `FaisaI/tadabur` cannot be relicensed AGPL-3.0: the corpus's
+# non-commercial term travels with the weights. Its card and notice are data files beside this
+# module (`hub_assets/`), where the prose is reviewable as prose; they are rendered with
+# `string.Template` so braces in the citations need no escaping. The identity fields are the
+# only things this tool decides -- the measured tables in the card are the release's readings,
+# and `training.hub_agreement` reproduces them.
+CARD_CC_BY_NC = string.Template((HUB_ASSETS / "card_cc_by_nc.md").read_text(encoding="utf-8"))
+NOTICE_CC_BY_NC = string.Template(
+    (HUB_ASSETS / "notice_cc_by_nc.md").read_text(encoding="utf-8")
+)
+
+
+def _as_is(fields: dict) -> dict:
+    return fields
+
+
+def _formatted(fields: dict) -> dict:
+    """The million-parameter figures the release card prints, from the exact counts."""
+    return {
+        **fields,
+        "param_count_millions": f"{fields['param_count'] / 1_000_000:.0f}M",
+        "teacher_param_count_millions": f"{fields['teacher_param_count'] / 1_000_000:.0f}M",
+    }
+
+
+def _render(template, fields: dict) -> str:
+    return template.format(**fields) if isinstance(template, str) else template.substitute(fields)
+
+
+# `cc-by-nc` is one release's card, not a generic licence template: it names the round-3
+# candidate, its warm start, its corpora and its measured comparison and readout. Those
+# claims are true of exactly one weight set, so the profile pins that identity. Choosing a
+# licence is a separate statement from claiming these numbers -- a different CC BY-NC
+# checkpoint needs its own card, not this one with a different hash in the identity line.
+RELEASE_CANDIDATE = {
+    "checkpoint_sha256": "1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9",
+    "weights": "ema",
+}
+
+
+def require_release_candidate(checkpoint_sha256: str, weights: str) -> None:
+    """Refuse to attach one release's measured claims to another weight set."""
+    actual = {"checkpoint_sha256": checkpoint_sha256, "weights": weights}
+    mismatches = [
+        f"  {key}: got {actual[key]!r}, card describes {expected!r}"
+        for key, expected in RELEASE_CANDIDATE.items()
+        if actual[key] != expected
+    ]
+    if mismatches:
+        raise SystemExit(
+            "the cc-by-nc card publishes the round-3 candidate's comparison table, training "
+            "history and readout; those results belong to one checkpoint and its ema weights "
+            "only.\n"
+            + "\n".join(mismatches)
+            + "\nStage that artifact (--ema with the checkpoint the readout scored), or write "
+            "the card for this weight set instead of reusing one that measured another."
+        )
+
+
+PROFILES = {
+    "agpl": {
+        "card": MODEL_CARD_TEMPLATE,
+        "notice": NOTICE_TEMPLATE,
+        "license": REPO_LICENSE_PATH,
+        "values": _as_is,
+        "require": None,
+    },
+    "cc-by-nc": {
+        "card": CARD_CC_BY_NC,
+        "notice": NOTICE_CC_BY_NC,
+        "license": CC_BY_NC_LICENSE_PATH,
+        "values": _formatted,
+        "require": require_release_candidate,
+    },
+}
+
+
+def resolve_teacher_revision(run_config: dict, given: str | None) -> str:
+    """The teacher revision the feature extractor is saved from, pinned to the run's own.
+
+    A ``preprocessor_config.json`` is a statement about the preprocessing the weights were
+    trained on. Fetching it from the teacher's default branch, or from a revision other than
+    the one the run recorded, publishes a preprocessing contract the checkpoint was never
+    trained against, and nothing downstream would notice.
+    """
+    recorded = run_config.get("teacher_revision")
+    if given and recorded and given != recorded:
+        raise SystemExit(
+            f"--teacher-revision {given!r} is not the revision the run trained against "
+            f"({recorded!r}); the saved feature extractor would describe preprocessing the "
+            f"checkpoint never saw."
+        )
+    revision = given or recorded
+    if not revision:
+        raise SystemExit(
+            "the checkpoint records no teacher_revision, so the feature extractor cannot be "
+            "pinned to the run; pass --teacher-revision <revision>."
+        )
+    return revision
+
+
+def load_candidate(checkpoint_path: Path, use_ema: bool):
+    """The student a publication carries, through the loader every eval tool uses.
+
+    ``use_ema`` selects the averaged weights (:func:`training.decoding.averaged_state`) and
+    raises rather than falling back when the checkpoint has none, so ``--ema`` can never
+    publish the live weights under the averaged name.
+    """
+    from training.decoding import load_student_from_checkpoint
+
+    model, run_config, step = load_student_from_checkpoint(
+        checkpoint_path, "cpu", use_ema=use_ema
+    )
+    note(
+        f"Loaded {run_config['preset']} from {checkpoint_path} @ step {step} "
+        f"({'ema' if use_ema else 'live'})"
+    )
+    return model, run_config, step
+
+
+def prepare_staging(out_dir: Path) -> Path:
+    """Refuse a populated target and return the sibling directory to write into.
+
+    Staging then renaming keeps the publication atomic: a Hub fetch or a disk error halfway
+    through leaves a ``.tmp`` directory, not a half-written stage that the non-empty guard
+    would refuse to overwrite on the retry.
+    """
+    if out_dir.exists() and any(out_dir.iterdir()):
+        raise SystemExit(
+            f"{out_dir} is not empty: a stage is written once, from one checkpoint, so a merge "
+            f"into an older stage would mix two weight sets. Point --out-dir at a new directory."
+        )
+    staging = out_dir.with_name(out_dir.name + ".tmp")
+    if staging.exists():
+        shutil.rmtree(staging)
+    return staging
+
+
 def export_and_publish(
-    preset_name: str,
     checkpoint_path: Path,
     out_dir: Path,
     repo_id: str,
-    private: bool,
-    push: bool,
-) -> None:
-    spec = PRESETS[preset_name]
-    config = build_student_config(spec)
-    model = Wav2Vec2BertForMultilevelCTC(config)
+    profile: str = "agpl",
+    use_ema: bool = False,
+    teacher_revision: str | None = None,
+    private: bool = False,
+    push: bool = False,
+) -> dict:
+    """Write the hub layout for one checkpoint and return its record.
 
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    model.load_state_dict(checkpoint["student"], strict=True)
-    model.eval()
-
+    The record is what a release note quotes: the file checksums, the shape contract the model
+    was probed against, and the weight set and teacher revision the stage was written from.
+    """
+    model, run_config, step = load_candidate(checkpoint_path, use_ema)
+    weights = "ema" if use_ema else "live"
+    checkpoint_sha256 = sha256_file(checkpoint_path)
+    chosen = PROFILES[profile]
+    # Before anything is written: a card's claims are about one weight identity, not about
+    # whichever checkpoint happens to be staged with its licence.
+    if chosen["require"] is not None:
+        chosen["require"](checkpoint_sha256, weights)
+    spec = PRESETS[run_config["preset"]]
     param_count = sum(p.numel() for p in model.parameters())
 
-    with torch.no_grad():
-        probe = torch.zeros(1, DEPLOYED_FEATURE_FRAMES, FEATURE_INPUT_DIM)
-        logits = model(input_features=probe).logits["phonemes"]
-    expected_shape = (1, DEPLOYED_LOGIT_FRAMES, NUM_PHONEME_CLASSES)
-    if tuple(logits.shape) != expected_shape:
-        raise ValueError(f"shape contract violated: got {tuple(logits.shape)}, want {expected_shape}")
+    frames, classes = verify_shape_contract(model)
+    note(f"Shape contract OK: (1, {frames}, {classes})")
+    revision = resolve_teacher_revision(run_config, teacher_revision)
 
-    config.id2label = {i: ch for i, ch in enumerate(PHONEME_ID_TO_CHAR)}
-    config.label2id = {ch: i for i, ch in enumerate(PHONEME_ID_TO_CHAR)}
+    model.config.id2label = {i: ch for i, ch in enumerate(PHONEME_ID_TO_CHAR)}
+    model.config.label2id = {ch: i for i, ch in enumerate(PHONEME_ID_TO_CHAR)}
 
-    out_dir.mkdir(parents=True, exist_ok=True)
+    staging = prepare_staging(out_dir)
+    staging.mkdir(parents=True)
 
     Wav2Vec2BertForMultilevelCTCConfig.register_for_auto_class()
     Wav2Vec2BertForMultilevelCTC.register_for_auto_class("AutoModel")
-    model.save_pretrained(out_dir, safe_serialization=True)
+    model.save_pretrained(staging, safe_serialization=True)
 
-    feature_extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
-    feature_extractor.save_pretrained(out_dir)
+    feature_extractor = SeamlessM4TFeatureExtractor.from_pretrained(
+        TEACHER_MODEL_ID, revision=revision
+    )
+    feature_extractor.save_pretrained(staging)
 
-    with (out_dir / "phoneme_vocab.json").open("w", encoding="utf-8") as f:
-        json.dump(
+    (staging / "phoneme_vocab.json").write_text(
+        json.dumps(
             {"id_to_char": list(PHONEME_ID_TO_CHAR), "pad_id": 0, "pad_token": "[PAD]"},
-            f,
             ensure_ascii=False,
             indent=2,
-        )
-
-    (out_dir / "README.md").write_text(
-        MODEL_CARD_TEMPLATE.format(
-            repo_name=repo_name(repo_id),
-            repo_id=repo_id,
-            teacher_model_id=TEACHER_MODEL_ID,
-            teacher_model_id_url=TEACHER_MODEL_URL,
-            teacher_param_count=TEACHER_PARAM_COUNT,
-            hidden_size=spec.hidden_size,
-            intermediate_size=spec.intermediate_size,
-            num_attention_heads=spec.num_attention_heads,
-            num_phoneme_classes=NUM_PHONEME_CLASSES,
-            deployed_feature_frames=DEPLOYED_FEATURE_FRAMES,
-            deployed_logit_frames=DEPLOYED_LOGIT_FRAMES,
-            feature_input_dim=FEATURE_INPUT_DIM,
-            feature_extractor_type=type(feature_extractor).__name__,
-            param_count=param_count,
         ),
         encoding="utf-8",
     )
-    (out_dir / "NOTICE.md").write_text(
-        NOTICE_TEMPLATE.format(
-            teacher_model_id=TEACHER_MODEL_ID,
-            teacher_model_id_url=TEACHER_MODEL_URL,
-        ),
-        encoding="utf-8",
-    )
-    shutil.copyfile(REPO_LICENSE_PATH, out_dir / "LICENSE")
 
-    print(f"Exported {param_count:,} params to {out_dir}")
-    print(f"Shape contract OK: {tuple(logits.shape)}")
+    fields = {
+        "repo_name": repo_name(repo_id),
+        "repo_id": repo_id,
+        "teacher_model_id": TEACHER_MODEL_ID,
+        "teacher_model_id_url": TEACHER_MODEL_URL,
+        "teacher_param_count": TEACHER_PARAM_COUNT,
+        "hidden_size": spec.hidden_size,
+        "intermediate_size": spec.intermediate_size,
+        "num_attention_heads": spec.num_attention_heads,
+        "num_phoneme_classes": NUM_PHONEME_CLASSES,
+        "deployed_feature_frames": DEPLOYED_FEATURE_FRAMES,
+        "deployed_logit_frames": DEPLOYED_LOGIT_FRAMES,
+        "feature_input_dim": FEATURE_INPUT_DIM,
+        "feature_extractor_type": type(feature_extractor).__name__,
+        "param_count": param_count,
+        "step": step,
+        "weights": weights,
+        "checkpoint_sha256": checkpoint_sha256,
+        "augmentation": (run_config.get("augment") or {}).get("version"),
+    }
+    values = chosen["values"](fields)
+    (staging / "README.md").write_text(_render(chosen["card"], values), encoding="utf-8")
+    (staging / "NOTICE.md").write_text(_render(chosen["notice"], values), encoding="utf-8")
+    shutil.copyfile(chosen["license"], staging / "LICENSE")
+    shutil.copyfile(GITATTRIBUTES_PATH, staging / ".gitattributes")
 
-    if not push:
-        print("--push not set; skipping Hub upload.")
-        return
+    if out_dir.exists():
+        out_dir.rmdir()  # empty by the guard in prepare_staging
+    staging.rename(out_dir)
 
-    from huggingface_hub import HfApi
+    checksums = {p.name: sha256_file(p) for p in sorted(out_dir.iterdir())}
+    note(f"Exported {param_count:,} params to {out_dir}")
+    note(f"Teacher revision {revision}; profile {profile}")
 
-    api = HfApi()
-    api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
-    api.upload_folder(folder_path=str(out_dir), repo_id=repo_id, repo_type="model")
-    print(f"Pushed to https://huggingface.co/{repo_id} (private={private})")
+    if push:
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
+        api.upload_folder(folder_path=str(out_dir), repo_id=repo_id, repo_type="model")
+        note(f"Pushed to https://huggingface.co/{repo_id} (private={private})")
+    else:
+        note("--push not set; the stage is a draft and nothing was uploaded.")
+
+    return {
+        "output_dir": str(out_dir),
+        "repo_id": repo_id,
+        "profile": profile,
+        "weights": weights,
+        "step": step,
+        "checkpoint_sha256": fields["checkpoint_sha256"],
+        "teacher_revision": revision,
+        "shape": [frames, classes],
+        "num_params": param_count,
+        "sha256": checksums,
+    }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--preset", required=True, choices=sorted(PRESETS))
     parser.add_argument("--checkpoint", required=True, type=Path)
+    parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="publish the averaged weights a --ema-decay run stored beside the live ones",
+    )
+    parser.add_argument(
+        "--teacher-revision",
+        help="defaults to the revision the checkpoint's run config records; any other is refused",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILES),
+        default="agpl",
+        help="which card/notice/licence set: 'agpl' is the mini publication, 'cc-by-nc' is "
+        "the v1.0.7 release, whose card reports one checkpoint's results and is refused for "
+        "any other weights",
+    )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--repo-id", required=True)
     parser.add_argument("--private", action="store_true")
     parser.add_argument("--push", action="store_true", help="Actually upload to the Hub.")
+    parser.add_argument("--json", action="store_true", help="print the stage record as JSON")
     args = parser.parse_args()
 
     out_dir = args.out_dir or Path(__file__).parent.parent / "export" / repo_name(args.repo_id)
-    export_and_publish(
-        preset_name=args.preset,
+    record = export_and_publish(
         checkpoint_path=args.checkpoint,
         out_dir=out_dir,
         repo_id=args.repo_id,
+        profile=args.profile,
+        use_ema=args.ema,
+        teacher_revision=args.teacher_revision,
         private=args.private,
         push=args.push,
     )
+    if args.json:
+        print(json.dumps(record, indent=2))
 
 
 if __name__ == "__main__":

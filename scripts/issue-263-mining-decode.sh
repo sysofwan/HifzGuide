@@ -40,6 +40,10 @@
 # `status [A|B|C]` reads the box's run.done/run.exit and the run's line. `fetch [A|B|C]` copies a
 # complete merge into the phase's committed directory.
 #
+# `plan` prints the processes it asks for (`PARALLEL`, default 2); the Python loop then caps a
+# mined phase to its measured worker count (`MINED_WORKERS` = 1) and prints `parallel capped to
+# N` at the run's start. A mined phase's plan line is therefore an upper bound, never the count.
+#
 # Each phase has its own parts, clips, logs and output directory under $ROOT (A), $ROOT/B (phase
 # B) and $ROOT/C (phase C), so no part, done or exit file of one phase is ever read as another's.
 # The staged clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse while any phase's loop
@@ -452,7 +456,7 @@ record_run_result() {  # <status>
   return "$status"
 }
 
-run() {  # [--resume] [--phase A|B]
+run() {  # [--resume] [--phase A|B|C]
   local resume=0 phase=A status=0 flags="" merge_pr=""
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -512,7 +516,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     fetch) shift; fetch "${1:-A}" ;;
     run) shift; run "$@" ;;
     *)
-      echo "usage: $0 {plan [A|B]|launch [A|B]|resume [A|B]|pause|status [A|B]|fetch [A|B]}
+      echo "usage: $0 {plan [A|B|C]|launch [A|B|C]|resume [A|B|C]|pause|status [A|B|C]|fetch [A|B|C]}
        (run [--phase A|B|C] [--resume] executes on the box)" >&2
       exit 2
       ;;

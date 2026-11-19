@@ -285,9 +285,10 @@ processes`), so the preview is an upper bound on the process count, never the co
 **GPU time: 39,017 lock-held seconds = 10.84 GPU-h**, over `batches=130` — 129 worker
 invocations plus the terminal empty iteration `batches=` counts. Mean held per worker batch is
 302 s, essentially every batch running its 300 s `BATCH_SECONDS` budget out. Each row costs
-2.38 s of GPU across its two decodes (`checks` and whole-clip `spans`, one model), vs phase B's
-2.52 s per row (1.26 s per decode). The issue's ~5–6 GPU-h estimate for phase C was optimistic in the same way
-phase B's was (estimated ~4–6, measured 22.37).
+2.38 s of GPU across the two decodes it needs (two stores × one model), i.e. 2.38 s per
+model-row, vs phase B's 2.52 s per model-row (7.57 s per selected row across its three models;
+1.26 s per store-decode). The issue's ~5–6 GPU-h estimate for phase C was optimistic in the same
+way phase B's was (estimated ~4–6, measured 22.37).
 
 128 worker batches printed their terminal `decoded N` line; the 129th was reaped at the parent's
 batch deadline without printing one (the only path that skips the line), and its rows resumed by

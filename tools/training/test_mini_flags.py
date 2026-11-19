@@ -87,3 +87,31 @@ def test_decode_refuses_a_shard_index_outside_its_count(tmp_path):
     with pytest.raises(ValueError, match="shard-index"):
         mf.decode_role("confirm.3", parts_dir=tmp_path, cache_dir=tmp_path,
                        shard_index=4, shard_count=4)
+
+
+def _model(num, den, point, lower, upper):
+    return {"num": num, "den": den, "point": point,
+            "interval": {"lower": lower, "upper": upper, "method": "bootstrap", "reason": ""}}
+
+
+def _recorded(**models):
+    return {"main": {"all_cause": {"observations": 12, "clusters": 3, "models": models}}}
+
+
+def test_the_report_refuses_columns_that_do_not_reproduce_the_round_s_table():
+    candidate = _model(3.0, 40.0, 75.0, 60.0, 90.0)
+    base = _model(2.0, 40.0, 50.0, 40.0, 60.0)
+    recorded = _recorded(candidate=candidate, base=base)
+    ours = {"all_cause": {"observations": 12, "clusters": 3,
+                          "models": {"v2": candidate, "base": base}}}
+    mf.require_reproduction(ours, recorded)
+
+    moved = {"all_cause": {"observations": 12, "clusters": 3,
+                           "models": {"v2": {**candidate, "point": 74.0}, "base": base}}}
+    with pytest.raises(SystemExit, match="v2"):
+        mf.require_reproduction(moved, recorded)
+
+    short = {"all_cause": {"observations": 11, "clusters": 3,
+                           "models": {"v2": candidate, "base": base}}}
+    with pytest.raises(SystemExit, match="population"):
+        mf.require_reproduction(short, recorded)

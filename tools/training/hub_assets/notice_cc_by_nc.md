@@ -8,9 +8,10 @@ from it is the dataset owner's to grant.
 ## Vendored code (MIT)
 
 `modeling_multi_level_ctc.py` and `configuration_multi_level_ctc.py` are vendored
-**verbatim** from [`obadx/quran-muaalem`](https://github.com/obadx/quran-muaalem),
-commit `e9e692c87667ea6353486b2429bfcbaf32670cbe` (`src/quran_muaalem/modeling/`),
-under the following license:
+**verbatim** from [`obadx/quran-muaalem`](https://github.com/obadx/quran-muaalem)
+(`src/quran_muaalem/modeling/`), under the following license. The exact source commit,
+like every other artifact and dataset identity, is recorded in HifzGuide's
+`docs/release-v1.0.7.md`:
 
 > MIT License
 >
@@ -84,21 +85,21 @@ attribution required. Cite as:
 **[`tarteel-ai/tlog`](https://huggingface.co/datasets/tarteel-ai/tlog)** — **CC BY 4.0**
 (<https://creativecommons.org/licenses/by/4.0/>), by Tarteel AI
 (<https://tarteel.ai/>). The audio is not redistributed here; this project records only the
-row keys it read, at revision `9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51`.
+row keys it read. The dataset revision is in HifzGuide's `docs/release-v1.0.7.md`.
 
 **Noise pool** — 458 recordings (4.51 h) from Freesound, distributed as
-[`obadx/freesound-commercial-50k-noise-only`](https://huggingface.co/datasets/obadx/freesound-commercial-50k-noise-only)
-at revision `a5f48ab83b64ba1d35ee4ec363dae75d4e2c69d3`, used for additive noise at 3-20 dB
-SNR. Each recording carries its own licence — 279 CC0-1.0, 87 CC BY 3.0, 86 CC BY 4.0, 6
-CC Sampling+ — and per-recording attribution (Freesound id, uploader, licence) is recorded in
-the HifzGuide repository at `tools/tadabur/augmentation/noise_pool.json`.
+[`obadx/freesound-commercial-50k-noise-only`](https://huggingface.co/datasets/obadx/freesound-commercial-50k-noise-only),
+used for additive noise at 3-20 dB SNR. Each recording carries its own licence — 279 CC0-1.0,
+87 CC BY 3.0, 86 CC BY 4.0, 6 CC Sampling+ — and per-recording attribution (Freesound id,
+uploader, licence) is recorded in the HifzGuide repository at
+`tools/tadabur/augmentation/noise_pool.json`. The dataset revision is in that repository's
+`docs/release-v1.0.7.md`.
 
 ## Release provenance
 
 These are the averaged (EMA) parameters saved at step 10,000 of the distillation checkpoint
-recorded in HifzGuide's `docs/release-v1.0.7.md` (checkpoint sha256
-`1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9`). The evaluation
-compared them with `sysofwan/hifzguide-muaalem-mini` at Hub revision
-`a2bebf7c2e9a74d9ff5c3269594132d7caea7696` (`model.safetensors` sha256
-`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`). That document records
-the export and evaluation commands and the full measurements.
+described in HifzGuide's `docs/release-v1.0.7.md`. The evaluation compared them with
+[`sysofwan/hifzguide-muaalem-mini`](https://huggingface.co/sysofwan/hifzguide-muaalem-mini).
+That document records the exact checkpoint, source and dataset identities, the comparison
+artifact's revision and weights hash, and the export and evaluation commands. The release
+manifest separately pins every distributable asset by checksum.

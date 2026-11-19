@@ -120,7 +120,7 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
 | preprocessor_config.json | 229 | `9c6008e1229e6914e5c11df2f673c3a0af5fd6ad442426a4b4eb3a4c11d78264` | byte-identical |
 | .gitattributes | 1,519 | `11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361` | byte-identical |
 | LICENSE | 19,347 | `41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0` | CC BY-NC 4.0 legal code (published is AGPL-3.0) |
-| NOTICE.md | 4,962 | `8a83e7b826187571c37967bd9e842beb811a91890b0ba6fbc466ea540247539d` | rewritten: NC licence, tlog and noise attributions, artifact provenance |
+| NOTICE.md | 5,039 | `b1a0ff7953ec3ddc9b663c497b82c6805da4fd06b0c9115bea18aeaebccb026e` | rewritten: NC licence, MIT text, dataset credits, links to this record |
 | README.md | 4,231 | `76661835cd152cbf6170fa344c78b8d9942ff7e2045625f4abcbb8a1c9cb74b8` | rewritten consumer card: quick start, contract, one comparison, limits |
 
 - The `cc-by-nc` profile is this release's card, not a reusable licence template: it is bound
@@ -153,8 +153,10 @@ repository created. Ten files, the same set `sysofwan/hifzguide-muaalem-mini` pu
   load it, the I/O contract, one measured comparison against the previously published
   `hifzguide-muaalem-mini`, and the licence. It carries no experiment labels, checkpoint
   identifiers or hashes, and it is byte-identical to the proposal's card block (465 words
-  including tables). Artifact provenance stays here and in `NOTICE.md`: step 10000, averaged
-  weights, checkpoint sha256 `1193e211…24ed4a9`, `aug94-mixture-v2`, tlog + Tadabur.
+  including tables). Artifact provenance stays in this record, which the public `NOTICE.md`
+  links: step 10000, averaged weights, checkpoint sha256 `1193e211…24ed4a9`,
+  `aug94-mixture-v2`, tlog + Tadabur. `NOTICE.md` carries only readable upstream links, the
+  MIT text and the dataset credits, with no revision or checksum identifiers.
 
 ### Comparison against the previous publication
 
@@ -174,12 +176,12 @@ python3 -m training.hub_agreement --eval-set tadabur/gate_eval --num-clips 300 \
 The comparison model is the `mini` repository at Hub revision
 `a2bebf7c2e9a74d9ff5c3269594132d7caea7696` (the branch head when the table was measured),
 whose `model.safetensors` LFS sha256 is
-`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`. This note and the staged
-`NOTICE.md` record that revision and hash, so moving `main` cannot silently change what the
-table measured. The `mini` publication records no training-checkpoint hash of its own (its
-card, `config.json` and commit history name none), so its immutable Hub artifact is the
-identity behind the row; the original training checkpoint cannot be recovered from the
-publication. It is **not** C95 — all 772 tensors differ.
+`2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`. This note records that
+revision and hash (the public NOTICE links the record instead), so moving `main` cannot
+silently change what the table measured. The `mini` publication records no training-checkpoint
+hash of its own (its card, `config.json` and commit history name none), so its immutable Hub
+artifact is the identity behind the row; the original training checkpoint cannot be recovered
+from the publication. It is **not** C95 — all 772 tensors differ.
 
 | model | vs teacher | 95% CI (reciter-clustered) | exact | drift vs mini |
 | --- | --- | --- | --- | --- |
@@ -198,6 +200,23 @@ training-time forward.
   vendored MIT notice, the lineage (Muaalem, w2v-bert-2.0), and the Tadabur, tlog and
   Freesound attributions with citations.
 - Repository name, visibility and publishing are the owner's; nothing was pushed.
+
+#### Source and dataset identities
+
+`NOTICE.md` and the card link the upstream repositories; their immutable identities live
+here, so the public text carries no revision or checksum identifiers:
+
+- vendored `modeling`/`configuration` source: `obadx/quran-muaalem` commit
+  `e9e692c87667ea6353486b2429bfcbaf32670cbe` (`src/quran_muaalem/modeling/`);
+- `tarteel-ai/tlog` revision `9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51`;
+- Freesound noise pool `obadx/freesound-commercial-50k-noise-only` revision
+  `a5f48ab83b64ba1d35ee4ec363dae75d4e2c69d3`, with per-recording attribution in
+  `tools/tadabur/augmentation/noise_pool.json`;
+- teacher `obadx/muaalem-model-v3_2` revision `01a1ef9fbe40d144ef845101e89ff924aed3fef5`;
+- checkpoint sha256 `1193e2117b56381ccc078a5b5e21d61d0ad0903565dcca0cb110b39ce24ed4a9`;
+- previous publication `sysofwan/hifzguide-muaalem-mini` at Hub revision
+  `a2bebf7c2e9a74d9ff5c3269594132d7caea7696`, `model.safetensors` sha256
+  `2570fd3780a8435a11eb20e336bac29ac6f4dedd7c367d39abc20627e6784bb9`.
 
 ## The draft release
 
@@ -219,8 +238,9 @@ The notes were rewritten after the owner's review: title
 carries the export verification, that same-population 94.69% / 94.71% tie, the drift, and the
 limit that these numbers do not establish better error detection; experiment labels, gate
 names, issue numbers and checkpoint hashes are gone. The manifest checksum stays for download
-verification. The full measurements and disclosures below remain in this technical record and
-in `docs/consonant-round3-readout.md`.
+verification, following v1.0.6's notes, which carry the same line. The full measurements and
+disclosures below remain in this technical record and in
+`docs/consonant-round3-readout.md`.
 
 ## Reproducing the checks
 

@@ -137,7 +137,7 @@ def test_phase_c_is_refused_before_staging_unless_every_pin_holds(tmp_path, comm
 def test_phase_c_refuses_a_round_3_file_that_changed_since_its_commit(tmp_path, name):
     round_ = _phase_c_round(tmp_path)
     (round_.repo / "round3" / name).write_text(
-        _choice() if name == "choice.json" else '{"verdict": "pass", "edited": true}',
+        _choice() + "\n" if name == "choice.json" else '{"verdict": "pass", "edited": true}',
         encoding="utf-8")
     done = _c("plan", round_, tmp_path)
     assert done.returncode != 0 and done.stdout == ""

@@ -75,8 +75,14 @@ development recordings using streaming inference, unlike the short-clip example 
 | --- | --- | --- | --- |
 | Parameters | $param_count_millions | $param_count_millions | $teacher_param_count_millions |
 | Agreement with base model | 94.69% | 94.71% | Reference |
+| False flags per 1,000 correctly recited words | 78.1 | 167.7 | 73.6 |
 
-These results do not establish better recitation-error detection than the previous version.
+A false flag is a word a checker marks as a mistake in a recitation that is in fact correct.
+The false-flag row is measured on held-out tlog recordings judged correctly recited, over the
+43,840 words all three models graded, so each is scored on the same words: the previous
+version flags 89.6 more words per 1,000 than this model (95% confidence interval 80.2 to 101.8
+more, clustered by surah). Agreement alone says nothing about error detection; the false-flag
+row is the measured comparison.
 
 ## Intended use and limits
 

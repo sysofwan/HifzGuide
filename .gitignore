@@ -217,3 +217,7 @@ tools/tadabur/aug_readout/restricted/
 # The #245 zipformer screen's decodes are `.jsonl.gz` (no rule above matches them): one line per
 # item per arm, NPL-1.2 share-alike beside the model's LICENSE, committed so the readout is
 # re-derivable without the box.
+# The candidate inventory (#300): the per-word grades and per-clip word counts are the readout's
+# only per-word record, source-of-truth for the mistake dataset's candidates. Gzipped JSONL is
+# not matched by the ``*.jsonl`` rule above; named here so a later rule cannot swallow it.
+!tools/tadabur/tlog_mining/inventory/*.jsonl.gz

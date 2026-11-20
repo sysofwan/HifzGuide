@@ -19,6 +19,10 @@ phase B's rows, written as ``tlog.mined.<model>.jsonl.gz`` beside
 ``tlog.gating.<model>.jsonl.gz`` — the mined file in phase B's shape, the gating file in round
 2's — plus its **own** ``meta.<model>.json``. Phase B's committed ``meta.json`` is never
 touched.
+
+Phase D (:func:`merge_mined_word_times`): phase A's word-times contract over phase B's rows,
+written as ``mined.<tranche>.jsonl.gz`` plus its **own** ``meta.mined.json``. Phase A's
+``meta.json`` and its three files are never touched.
 """
 
 from __future__ import annotations
@@ -33,7 +37,7 @@ from tadabur.tlog_tranches import GATING
 from training.nonpro_decode import item_key
 
 from .mined_decode import MINED_PREFIX
-from .selection import PHASE_A_TRANCHES, PHASE_B_TRANCHES, PHASE_C_TRANCHES
+from .selection import PHASE_A_TRANCHES, PHASE_B_TRANCHES, PHASE_C_TRANCHES, PHASE_D_TRANCHES
 
 #: Phase C's two pooled files: the mined rows under phase B's prefix, the gating rows under their
 #: own, both named for the model that decoded them.
@@ -51,34 +55,79 @@ def merge_word_times(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, 
     if set(manifests) != set(PHASE_A_TRANCHES):
         raise ValueError(f"the merge takes exactly the phase A tranches {list(PHASE_A_TRANCHES)}, "
                          f"not {sorted(manifests)}")
-    expected: dict[str, set[str]] = {}
+    expected = {tranche: {item_key(row["audio_path"]) for row in manifests[tranche]
+                          if row["stratum"] == GATING}
+                for tranche in PHASE_A_TRANCHES}
+    return _merge_word_times(parts_dir, out_dir, expected=expected, prefix="",
+                             meta_name="meta.json", provenance=provenance, extra={})
+
+
+def merge_mined_word_times(parts_dir: Path, out_dir: Path, *,
+                           rows: Mapping[str, Sequence[Mapping]],
+                           unphonetizable: Mapping[str, Sequence[Mapping]],
+                           provenance: Mapping) -> dict:
+    """Pool phase D's word times, over phase B's rows, beside phase A's committed files (#263).
+
+    ``rows`` maps each mined tranche to :func:`~tadabur.tlog_mining.selection.phase_d_rows`'
+    decodable rows and ``unphonetizable`` to its #248 listing. The parts are phase A's
+    (``word_times.<shard>.jsonl``, the record shape phase D commits unchanged). Every decodable
+    row must hold exactly one record: a missing, repeated, foreign or listed row, a clip in both
+    tranches or a wrong tranche set is a ``ValueError`` before anything is written, so a partial
+    run never looks complete.
+
+    Writes **only** ``mined.<tranche>.jsonl.gz`` (sorted by key) and its own
+    ``meta.mined.json``: the provenance, phase A's per-tranche counts, the row count per
+    ``label_source`` and the listed rows. Phase A's ``meta.json`` and its three files are never
+    written.
+    """
+    if set(rows) != set(PHASE_D_TRANCHES):
+        raise ValueError(f"the mined word-times merge takes exactly the phase D tranches "
+                         f"{list(PHASE_D_TRANCHES)}, not {sorted(rows)}")
+    manifests = {tranche: {item_key(row["audio_path"]): row for row in rows[tranche]}
+                 for tranche in PHASE_D_TRANCHES}
+    _require_one_tranche_per_clip(manifests, PHASE_D_TRANCHES)
+    label_sources = Counter(row["label_source"] for tranche in PHASE_D_TRANCHES
+                            for row in manifests[tranche].values())
+    return _merge_word_times(
+        parts_dir, out_dir, expected={tranche: set(manifests[tranche])
+                                     for tranche in PHASE_D_TRANCHES},
+        prefix="mined.", meta_name="meta.mined.json", provenance=provenance,
+        extra={"label_sources": dict(label_sources),
+               "unphonetizable": _listing(unphonetizable, PHASE_D_TRANCHES)})
+
+
+def _merge_word_times(parts_dir: Path, out_dir: Path, *, expected: Mapping[str, set[str]],
+                      prefix: str, meta_name: str, provenance: Mapping,
+                      extra: Mapping) -> dict:
+    """Validate each tranche's records against ``expected``, then write them and the meta.
+
+    A clip belongs to one tranche and holds exactly one record: a repeated, foreign, missing or
+    cross-tranche key is a ``ValueError`` before any output file is written.
+    """
     owner: dict[str, str] = {}
-    for tranche in PHASE_A_TRANCHES:
-        keys = {item_key(row["audio_path"]) for row in manifests[tranche]
-                if row["stratum"] == GATING}
+    for tranche, keys in expected.items():
         for key in keys:
-            if key in owner:
-                raise ValueError(f"{key} is a gating row of both {owner[key]} and {tranche}")
-            owner[key] = tranche
-        expected[tranche] = keys
+            other = owner.setdefault(key, tranche)
+            if other != tranche:
+                raise ValueError(f"{key} is in both {other} and {tranche}: a clip is merged once")
     records = _read_parts(Path(parts_dir))
     foreign = sorted(set(records) - set(owner))
     if foreign:
-        raise ValueError(f"{len(foreign)} records are for rows that are not gating rows of "
-                         f"phase A (first {foreign[0]})")
+        raise ValueError(f"{len(foreign)} records are for rows this merge does not take "
+                         f"(first {foreign[0]})")
     tranches = {tranche: _tranche_records(tranche, expected[tranche], records)
-                for tranche in PHASE_A_TRANCHES}
+                for tranche in expected}
     counts = {}
-    for tranche in PHASE_A_TRANCHES:
-        aligned = sum(1 for record in tranches[tranche] if record["aligned"])
-        rows = len(tranches[tranche])
+    for tranche, found in tranches.items():
+        aligned = sum(1 for record in found if record["aligned"])
+        rows = len(found)
         counts[tranche] = {"rows": rows, "aligned": aligned, "fallback": rows - aligned,
                            "fallback_rate": (rows - aligned) / rows if rows else 0.0}
     out_dir = Path(out_dir)
-    for tranche in PHASE_A_TRANCHES:
-        write_shard(tranches[tranche], out_dir / f"{tranche}.jsonl.gz")
-    meta = {**provenance, "tranches": counts}
-    write_json(meta, out_dir / "meta.json")
+    for tranche in expected:
+        write_shard(tranches[tranche], out_dir / f"{prefix}{tranche}.jsonl.gz")
+    meta = {**provenance, "tranches": counts, **extra}
+    write_json(meta, out_dir / meta_name)
     return meta
 
 
@@ -264,9 +313,9 @@ def _read_parts(parts_dir: Path) -> dict[str, dict]:
 
 
 def _tranche_records(tranche: str, expected: set[str], records: Mapping[str, dict]) -> list[dict]:
-    """``tranche``'s records in key order, refusing a gating row with no record."""
+    """``tranche``'s records in key order, refusing a row with no record."""
     missing = sorted(expected - set(records))
     if missing:
-        raise ValueError(f"{tranche}: {len(missing)} gating rows have no record "
+        raise ValueError(f"{tranche}: {len(missing)} rows have no record "
                          f"(first {missing[0]}): the run is not complete")
     return [records[key] for key in sorted(expected)]

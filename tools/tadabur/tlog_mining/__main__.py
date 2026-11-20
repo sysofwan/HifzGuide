@@ -19,6 +19,11 @@ lines line up with round 2's gating decodes and phase B's mined decode. ``merge 
 writes the mined and gating files plus ``meta.<model>.json``; phase B's ``meta.json`` stays as it
 is.
 
+Phase D. Phase A's worker over :func:`tadabur.tlog_mining.selection.phase_d_rows` — phase B's
+mined rows — aligning each row's **``assigned_label``** ayah instead of its filename, so #264 can
+snip a word from a mined clip. ``merge --phase D`` writes ``mined.<tranche>.jsonl.gz`` and
+``meta.mined.json`` beside phase A's files, which it never touches.
+
 ``run`` is the preemptible driver for any phase:
 :func:`tadabur.tlog_mining.give_way.run_give_way` takes the GPU lock non-blocking for one batch at
 a time, and each batch spawns the workers that
@@ -76,13 +81,13 @@ from training.tlog_eval import _canonical_words
 from .batch import pending, run_batch, worker_rows
 from .give_way import (BATCH_SECONDS, DISK_RESERVE_GB, RAM_FLOOR_GB, YIELD_SECONDS, Gates,
                        GpuLock, run_give_way)
-from .merge import (PHASE_A_TRANCHES, merge_mined_decodes, merge_phase_c_decodes,
-                    merge_word_times)
+from .merge import (PHASE_A_TRANCHES, merge_mined_decodes, merge_mined_word_times,
+                    merge_phase_c_decodes, merge_word_times)
 from .mined_decode import (MINED_MODELS, PHASE_C_MODELS, decode_batch, grouped_by_shard,
                            pending as mined_pending)
-from .selection import (MINED_PHASES, PHASE, PHASE_A, PHASE_B, PHASE_C, PHASE_B_TRANCHES,
-                        PHASE_C_TRANCHES, phase_a_rows, phase_b_rows, phase_c_rows,
-                        require_phase)
+from .selection import (MINED_PHASES, PHASE, PHASE_A, PHASE_B, PHASE_C, PHASE_D,
+                        PHASE_B_TRANCHES, PHASE_C_TRANCHES, PHASE_D_TRANCHES, phase_a_rows,
+                        phase_b_rows, phase_c_rows, phase_d_rows, require_phase)
 from .word_times import build_record
 
 #: The box's GPU lock, the file round 3's launcher holds.
@@ -105,19 +110,27 @@ WORKER_VRAM_MIB = 9500
 #: teacher's
 #: whole-clip peak; a mined worker holds every decoder at once and takes a whole-clip ``spans``
 #: pass per model (that store declares no shared decode), so its peak is not derivable from the
-#: phase A figure and no mined run has measured it. One worker until a run reports its peak (the
-#: run notes are where it lands); a second is a deliberate increase.
+#: phase A figure and no mined run has measured it. Phase D holds one teacher, but its clips are
+#: longer than phase A's, which already OOM'd at two workers (#272). One worker until a run
+#: reports its peak (the run notes are where it lands); a second is a deliberate increase.
 MINED_WORKERS = 1
+#: The phases whose worker is ``align``: phase A's gating clips and phase D's mined rows both run
+#: one whole clip through the teacher and write phase A's ``word_times.<shard>.jsonl`` parts.
+ALIGN_PHASES = (PHASE_A, PHASE_D)
+#: The phases that run one worker whatever the card offers.
+SINGLE_WORKER_PHASES = (*MINED_PHASES, PHASE_D)
 #: The tranches each phase reads, in the launcher's order.
-TRANCHES = {PHASE_A: PHASE_A_TRANCHES, PHASE_B: PHASE_B_TRANCHES, PHASE_C: PHASE_C_TRANCHES}
+TRANCHES = {PHASE_A: PHASE_A_TRANCHES, PHASE_B: PHASE_B_TRANCHES, PHASE_C: PHASE_C_TRANCHES,
+            PHASE_D: PHASE_D_TRANCHES}
 #: What a worker of a mined phase calls a row it was not given: phase B's are mined, phase C's
 #: also hold the gating rows.
-ROW_NOUNS = {PHASE_A: "gating", PHASE_B: "mined", PHASE_C: "decodable"}
+ROW_NOUNS = {PHASE_A: "gating", PHASE_B: "mined", PHASE_C: "decodable", PHASE_D: "mined"}
 #: Why a phase runs fewer workers than the caller asked for.
 CAP_REASONS = {
     PHASE_A: f"whole-clip workers need {WORKER_VRAM_MIB} MiB each",
     PHASE_B: "phase B holds three decoders and its peak is unmeasured",
     PHASE_C: "phase C's worker peak is unmeasured",
+    PHASE_D: "phase D's mined clips are longer than phase A's, which OOM'd at two workers",
 }
 
 
@@ -125,7 +138,7 @@ def align(args: argparse.Namespace) -> int:
     """One worker's batch over its shard share, appending to the parts and stopping on budget."""
     started = time.monotonic()
     require_phase(args.phase)
-    _require_worker(args, "align", (PHASE_A,))
+    _require_worker(args, "align", ALIGN_PHASES)
     rows = _worker_rows(args)
     decoder, identity, fingerprint = load_decoder()
     _record_teacher(args.parts_dir, identity, fingerprint)
@@ -189,7 +202,9 @@ def _spec(phase: str) -> RoundSpec | None:
 
 
 def _selection(phase: str):
-    """The row selector a mined phase reads through: B's labelled rows, or C's added gating ones."""
+    """The row selector a mined phase reads through: B's, C's added gating rows, or D's rows."""
+    if phase == PHASE_D:
+        return phase_d_rows
     return phase_c_rows if phase == PHASE_C else phase_b_rows
 
 
@@ -205,10 +220,10 @@ def _worker_rows(args: argparse.Namespace) -> list[dict]:
 
     A worklist is not an authorization: every row must be a row of ``--role`` for this phase, of
     this worker's shard share, and identical to the committed manifest row. Selection is re-read
-    through the phase's own reader (:func:`phase_a_rows`, :func:`phase_b_rows` or
-    :func:`phase_c_rows`), so a stale or forged worklist cannot put a row the launcher must never
-    touch (a gating row where phase B owns only mined ones, an unlabelled unclean row, a train or
-    confirm.3/4 row) through a model.
+    through the phase's own reader (:func:`phase_a_rows`, :func:`phase_b_rows`,
+    :func:`phase_c_rows` or :func:`phase_d_rows`), so a stale or forged worklist cannot put a row
+    the launcher must never touch (a gating row where phase B owns only mined ones, an unlabelled
+    unclean row, a train or confirm.3/4 row) through a model.
     """
     rows = _selected_rows(args.role, args)
     share = worker_rows(rows, shard_index=args.shard_index, shard_count=args.shard_count)
@@ -321,6 +336,8 @@ def merge(args: argparse.Namespace) -> int:
         return _merge_mined(args)
     if args.phase == PHASE_C:
         return _merge_round3(args)
+    if args.phase == PHASE_D:
+        return _merge_word_times_mined(args)
     manifests = {role: phase_a_rows(role, tranches_dir=args.tranches_dir,
                                     split_dir=args.split_dir)
                  for role in PHASE_A_TRANCHES}
@@ -328,10 +345,31 @@ def merge(args: argparse.Namespace) -> int:
                             provenance={**provenance(args.code_sha or head_sha(),
                                                      args.pull_request),
                                         **_teacher(args.parts_dir)})
+    _report_tranches(meta)
+    return 0
+
+
+def _merge_word_times_mined(args: argparse.Namespace) -> int:
+    """Phase D's merge: phase A's word times over phase B's rows, and the counts its note cites."""
+    rows: dict[str, list[dict]] = {}
+    listed: dict[str, list[dict]] = {}
+    for role in PHASE_D_TRANCHES:
+        rows[role], listed[role] = phase_d_rows(role, tranches_dir=args.tranches_dir,
+                                                split_dir=args.split_dir)
+    meta = merge_mined_word_times(
+        args.parts_dir, args.out_dir, rows=rows, unphonetizable=listed,
+        provenance={**provenance(args.code_sha or head_sha(), args.pull_request),
+                    **_teacher(args.parts_dir)})
+    _report_tranches(meta)
+    _report_selection(rows, listed, PHASE_D_TRANCHES)
+    return 0
+
+
+def _report_tranches(meta: Mapping) -> None:
+    """The run note's per-tranche line: rows, aligned, fallback, and the fallback rate."""
     for tranche, counts in meta["tranches"].items():
         print(f"{tranche}: {counts['rows']} rows, {counts['aligned']} aligned, "
               f"{counts['fallback']} fallback ({counts['fallback_rate']:.2%})", flush=True)
-    return 0
 
 
 def _merge_mined(args: argparse.Namespace) -> int:
@@ -399,26 +437,27 @@ def _batch(rows_by_role: dict, args: argparse.Namespace):
 
 def _pending(rows: list[dict], role: str, args: argparse.Namespace) -> bool:
     """Whether any of ``rows`` still lacks a record, for ``args.phase``'s parts."""
-    if args.phase == PHASE_A:
+    if args.phase in ALIGN_PHASES:
         return pending(rows, args.parts_dir)
     return mined_pending(rows, args.parts_dir, role=role, models=_models(args.phase))
 
 
 def _parts_glob(phase: str) -> str:
     """The part files a run of ``phase`` leaves in its parts directory."""
-    return "word_times.*.jsonl" if phase == PHASE_A else "tlog.*.jsonl"
+    return "word_times.*.jsonl" if phase in ALIGN_PHASES else "tlog.*.jsonl"
 
 
 def _worker_count(requested: int, free_mib: int, phase: str = PHASE) -> int:
     """The whole-clip workers this phase may run, at most ``requested``.
 
     Phase A sizes the count from the card's free memory against one teacher's whole-clip budget.
-    The mined phases do not: their worker's peak is unmeasured, so they run
+    The mined phases do not: phase B and C's worker peak is unmeasured and phase D's mined clips
+    are longer than phase A's, which already OOM'd at two, so all three run
     :data:`MINED_WORKERS`. One worker is always run: a card with less free memory than a worker's
     budget cannot finish a clip either way, and the caller's floor must not turn into a refusal
     to start.
     """
-    if phase in MINED_PHASES:
+    if phase in SINGLE_WORKER_PHASES:
         return max(1, min(requested, MINED_WORKERS))
     return max(1, min(requested, free_mib // WORKER_VRAM_MIB))
 
@@ -434,7 +473,7 @@ def _write_worklists(rows_by_role: dict, args: argparse.Namespace) -> None:
 
 def _run_workers(role: str, indexes: list[int], budget: float, args: argparse.Namespace) -> None:
     """Spawn the worker indexes and bound the whole batch in the parent, not just their rows."""
-    worker = "align" if args.phase == PHASE_A else "decode"
+    worker = "align" if args.phase in ALIGN_PHASES else "decode"
     command = [sys.executable, "-m", "tadabur.tlog_mining", worker, "--role", role,
                "--parts-dir", str(args.parts_dir), "--clip-dir", str(args.clip_dir),
                "--shard-cache", str(args.shard_cache), "--shard-count", str(args.parallel),
@@ -492,8 +531,14 @@ def _reap(process: subprocess.Popen) -> None:
 
 
 def _align_row(decoder, args: argparse.Namespace):
-    """The clip -> samples -> posteriors -> record path, with the clip cached by checksum."""
+    """The clip -> samples -> posteriors -> record path, with the clip cached by checksum.
+
+    Phase A aligns the filename ayah the gating clip claims; phase D aligns the row's
+    ``assigned_label``, the reference phase B decodes and the mined dataset is built on (a mined
+    row's filename label may be missing or name another ayah).
+    """
     reference = hafs_word_reference()
+    label_field = "assigned_label" if args.phase == PHASE_D else "filename_label"
 
     def reference_for(label: str) -> tuple[str, list[int]]:
         return reference(_canonical_words(label))
@@ -503,7 +548,8 @@ def _align_row(decoder, args: argparse.Namespace):
         samples = default_audio(path.read_bytes())
         (log_posteriors,) = decoder.span_log_posteriors([samples])
         return build_record(row, reference_for=reference_for, log_posteriors=log_posteriors,
-                            duration_s=len(samples) / TARGET_SAMPLE_RATE)
+                            duration_s=len(samples) / TARGET_SAMPLE_RATE,
+                            label_field=label_field)
     return align
 
 
@@ -585,8 +631,9 @@ def main() -> None:
         command.add_argument("--tranches-dir", type=Path, default=TRANCHES_DIR)
         command.add_argument("--split-dir", type=Path, default=SPLIT_DIR)
         command.add_argument("--phase", default=PHASE,
-                             help=f"{PHASE_A}, {PHASE_B} under its pinned amendment, or "
-                                  f"{PHASE_C} under round 3's committed choice and verdict")
+                             help=f"{PHASE_A}, {PHASE_B} or {PHASE_D} under the mining "
+                                  f"amendment's pinned SHA-256, or {PHASE_C} under round 3's "
+                                  f"committed choice and verdict")
 
     def add_worker(command: argparse.ArgumentParser, roles: tuple[str, ...]) -> None:
         command.add_argument("--role", choices=list(roles), required=True)
@@ -602,7 +649,7 @@ def main() -> None:
         command.add_argument("--budget-seconds", type=float, default=BATCH_SECONDS)
         add_common(command)
 
-    align_parser = commands.add_parser("align", help="phase A: one worker's batch")
+    align_parser = commands.add_parser("align", help="phase A's or phase D's worker batch")
     add_worker(align_parser, PHASE_A_TRANCHES)
     align_parser.set_defaults(handler=align)
 

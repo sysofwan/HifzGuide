@@ -1,0 +1,7133 @@
+{
+ "catch_loss_context": {
+  "round2": {
+   "by_cause": {
+    "other_consonant": {
+     "decisive": 119,
+     "real": 9
+    },
+    "shaddah": {
+     "decisive": 1,
+     "real": 0
+    },
+    "skipped": {
+     "decisive": 7,
+     "real": 0
+    },
+    "soft_pair": {
+     "decisive": 3,
+     "real": 2
+    },
+    "target_pair": {
+     "decisive": 1,
+     "real": 0
+    },
+    "tashkeel": {
+     "decisive": 15,
+     "real": 1
+    },
+    "unrecorded": {
+     "decisive": 1,
+     "real": 0
+    }
+   },
+   "real_total": 11
+  },
+  "round3": {
+   "by_cause": {
+    "other_consonant": {
+     "decisive": 114,
+     "real": 18
+    },
+    "shaddah": {
+     "decisive": 3,
+     "real": 0
+    },
+    "skipped": {
+     "decisive": 2,
+     "real": 0
+    },
+    "soft_pair": {
+     "decisive": 6,
+     "real": 1
+    },
+    "target_pair": {
+     "decisive": 2,
+     "real": 1
+    },
+    "tashkeel": {
+     "decisive": 17,
+     "real": 3
+    },
+    "unrecorded": {
+     "decisive": 1,
+     "real": 0
+    }
+   },
+   "real_total": 22
+  }
+ },
+ "exclusions": {
+  "gating_decoded": 5762,
+  "gating_excluded_248": 20,
+  "listed_unphonetizable": 26,
+  "mined_decoded": 10642
+ },
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "inputs": {
+  "consonant2_readout/catch_loss/result.json": "1babf43ce3bfd650548440834f5163d8cca40a81cf072dcc600336f8a3288ea3",
+  "consonant2_readout/decodes/tlog.confirm.base.jsonl.gz": "91b66205beb25e36044558e91cd96876b6e439c8d33d24ca4165cb896abaf172",
+  "consonant2_readout/decodes/tlog.confirm.c95.jsonl.gz": "644a1bd1a3e25ceb320ff32e3d3125729e3d3dc14f5270a82627772d0418a5fc",
+  "consonant2_readout/decodes/tlog.confirm.r2_candidate_ema.jsonl.gz": "4de59c3c8dbceb630a854fb00982b16874885414839c7bc63919c8bc53d1c46a",
+  "consonant2_readout/report.json": "2149ea0f2f5dc4ba125f718f89f6a942fd2c30a39850f1d259e2823e338b1117",
+  "consonant3_readout/catch_loss/result.json": "9f23f6cb5ecec789fb30e0417e9bf3be41b6c78f83556dfc4e904e1641b1088d",
+  "tlog/tranches/confirm.1.jsonl": "b46b96209546a3d67952797a2e6628fe7280ad13bf25ccc68d763a7a743ac7a4",
+  "tlog/tranches/confirm.2.jsonl": "c7521a584da7321c4bf13e5cc99b4dae5ae476d7c484465b7b7af0a918d44493",
+  "tlog_mining/decodes/meta.r3_candidate_ema.json": "abea387728cde8043beabdb5dbab3026f8162e50e34c0c0ddc149352a713fcb0",
+  "tlog_mining/decodes/tlog.gating.r3_candidate_ema.jsonl.gz": "b6f383bb825502f1e99b006d4eade61bdc26bde90273692f1b2ea7c8d706be80",
+  "tlog_mining/decodes/tlog.mined.base.jsonl.gz": "a31c4f0535c0bd3a4cd8ff6e7d1b6578fb03e2757e0530a7263a1b6784e49448",
+  "tlog_mining/decodes/tlog.mined.c95.jsonl.gz": "b9b1e3526a77201a91725943062d3bf4faf15a30bf1b1bc2622321cff0444607",
+  "tlog_mining/decodes/tlog.mined.r2_candidate_ema.jsonl.gz": "4630d0902c96c884f01357432036522d5d64ebc636f7ca85ffe157f6c9c12150",
+  "tlog_mining/decodes/tlog.mined.r3_candidate_ema.jsonl.gz": "427e76e7f0c5637ac6c9954ebbbd34f41c5e89081e64b847a7a561c5abdf4066"
+ },
+ "label_source_trust": {
+  "both": {
+   "ci95": [
+    0.25252946698654427,
+    0.2814756671899529
+   ],
+   "difference_ci95": [
+    0.062387975951366414,
+    0.09338299186509658
+   ],
+   "difference_from_gating": 0.07789261662310398,
+   "flagged_words": 5001,
+   "rate": 0.2664499973360328,
+   "words": 18769
+  },
+  "filename": {
+   "ci95": [
+    0.34330708661417325,
+    0.4163372859025033
+   ],
+   "difference_ci95": [
+    0.15446726049141007,
+    0.22764231432772092
+   ],
+   "difference_from_gating": 0.19076954236399424,
+   "flagged_words": 789,
+   "rate": 0.37932692307692306,
+   "words": 2080
+  },
+  "gating": {
+   "ci95": [
+    0.18239932287954383,
+    0.1949343771586461
+   ],
+   "flagged_words": 8437,
+   "rate": 0.18855738071292882,
+   "words": 44745
+  },
+  "identified": {
+   "ci95": [
+    0.3011070340195286,
+    0.32496560158997095
+   ],
+   "difference_ci95": [
+    0.11107741553890263,
+    0.13786172371627353
+   ],
+   "difference_from_gating": 0.1243506128823415,
+   "flagged_words": 10162,
+   "rate": 0.31290799359527033,
+   "words": 32476
+  }
+ },
+ "population": {
+  "all": {
+   "clips": 16384,
+   "group_keys": 16276,
+   "words": 98070
+  },
+  "gating": {
+   "clips": 5742,
+   "group_keys": 5657,
+   "words": 44745
+  },
+  "mined": {
+   "clips": 10642,
+   "group_keys": 10633,
+   "words": 53325
+  }
+ },
+ "shipped_default": {
+  "by_cause": {
+   "other_consonant": 15856,
+   "shaddah": 571,
+   "skipped": 5904,
+   "soft_pair": 789,
+   "target_pair": 283,
+   "tashkeel": 2324,
+   "unrecorded": 521
+  },
+  "by_label_source": {
+   "gating:both": {
+    "flagged_words": 7791,
+    "words": 44745
+   },
+   "mined:both": {
+    "flagged_words": 4627,
+    "words": 18769
+   },
+   "mined:filename": {
+    "flagged_words": 746,
+    "words": 2080
+   },
+   "mined:identified": {
+    "flagged_words": 9641,
+    "words": 32476
+   }
+  },
+  "by_level": {
+   "0": 75265,
+   "1": 8213,
+   "2": 2591,
+   "3": 2764,
+   "4": 9237
+  },
+  "by_pattern": {
+   "base": 1047,
+   "base+c95": 815,
+   "base+c95+r2_candidate_ema": 319,
+   "base+c95+r2_candidate_ema+r3_candidate_ema": 9237,
+   "base+c95+r3_candidate_ema": 258,
+   "base+r2_candidate_ema": 117,
+   "base+r2_candidate_ema+r3_candidate_ema": 409,
+   "base+r3_candidate_ema": 142,
+   "c95": 6505,
+   "c95+r2_candidate_ema": 762,
+   "c95+r2_candidate_ema+r3_candidate_ema": 1778,
+   "c95+r3_candidate_ema": 390,
+   "none": 75265,
+   "r2_candidate_ema": 350,
+   "r2_candidate_ema+r3_candidate_ema": 365,
+   "r3_candidate_ema": 311
+  },
+  "by_stratum": {
+   "gating": {
+    "flagged_words": 7791,
+    "words": 44745
+   },
+   "reported:below_bar": {
+    "flagged_words": 267,
+    "words": 695
+   },
+   "reported:identified": {
+    "flagged_words": 1123,
+    "words": 4473
+   },
+   "reported:straddles": {
+    "flagged_words": 6393,
+    "words": 24559
+   },
+   "reported:unclean": {
+    "flagged_words": 7231,
+    "words": 23598
+   }
+  },
+  "by_tranche": {
+   "confirm.1": {
+    "flagged_words": 11541,
+    "words": 48404
+   },
+   "confirm.2": {
+    "flagged_words": 11264,
+    "words": 49666
+   }
+  },
+  "concentration": {
+   "flagged_words": 22805,
+   "group_keys": 8087,
+   "top": [
+    {
+     "flagged_words": 69,
+     "group_key": "-1_-1_6620816433.wav"
+    },
+    {
+     "flagged_words": 59,
+     "group_key": "-1_-1_1655893272.wav"
+    },
+    {
+     "flagged_words": 57,
+     "group_key": "-1_-1_7639662380.wav"
+    },
+    {
+     "flagged_words": 54,
+     "group_key": "2_249_6392051585.flac"
+    },
+    {
+     "flagged_words": 50,
+     "group_key": "-1_-1_9731876774.wav"
+    },
+    {
+     "flagged_words": 49,
+     "group_key": "-1_-1_7662157013.wav"
+    },
+    {
+     "flagged_words": 43,
+     "group_key": "-1_-1_6809554831.wav"
+    },
+    {
+     "flagged_words": 41,
+     "group_key": "-1_-1_1524107990.wav"
+    },
+    {
+     "flagged_words": 36,
+     "group_key": "-1_-1_9392791004.wav"
+    },
+    {
+     "flagged_words": 35,
+     "group_key": "33_47_8188992411.flac"
+    },
+    {
+     "flagged_words": 35,
+     "group_key": "5_32_7610801808.flac"
+    },
+    {
+     "flagged_words": 34,
+     "group_key": "2_177_7771393194.flac"
+    },
+    {
+     "flagged_words": 32,
+     "group_key": "-1_-1_1264027655.wav"
+    },
+    {
+     "flagged_words": 32,
+     "group_key": "-1_-1_5852672859.wav"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "-1_-1_9526206880.wav"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "3_199_2289260008.flac"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "4_102_6522628176.flac"
+    },
+    {
+     "flagged_words": 30,
+     "group_key": "-1_-1_6435490657.wav"
+    },
+    {
+     "flagged_words": 30,
+     "group_key": "2_26_3986267208.flac"
+    },
+    {
+     "flagged_words": 29,
+     "group_key": "-1_-1_1193354321.wav"
+    }
+   ]
+  },
+  "flagged_words": 22805,
+  "scoring": "shipped_default",
+  "substitutions": [
+   {
+    "pair": "ا→∅",
+    "words": 2160
+   },
+   {
+    "pair": "ء→∅",
+    "words": 1513
+   },
+   {
+    "pair": "ل→∅",
+    "words": 875
+   },
+   {
+    "pair": "ه→∅",
+    "words": 766
+   },
+   {
+    "pair": "م→∅",
+    "words": 732
+   },
+   {
+    "pair": "ن→∅",
+    "words": 715
+   },
+   {
+    "pair": "و→∅",
+    "words": 694
+   },
+   {
+    "pair": "ر→∅",
+    "words": 522
+   },
+   {
+    "pair": "ي→∅",
+    "words": 500
+   },
+   {
+    "pair": "ع→ء",
+    "words": 475
+   },
+   {
+    "pair": "ع→∅",
+    "words": 447
+   },
+   {
+    "pair": "ل→ن",
+    "words": 440
+   },
+   {
+    "pair": "ء→ع",
+    "words": 405
+   },
+   {
+    "pair": "ن→ل",
+    "words": 372
+   },
+   {
+    "pair": "ر→ل",
+    "words": 360
+   },
+   {
+    "pair": "د→ت",
+    "words": 313
+   },
+   {
+    "pair": "ب→∅",
+    "words": 296
+   },
+   {
+    "pair": "ت→∅",
+    "words": 288
+   },
+   {
+    "pair": "ء→ي",
+    "words": 226
+   },
+   {
+    "pair": "ب→م",
+    "words": 220
+   },
+   {
+    "pair": "ف→∅",
+    "words": 219
+   },
+   {
+    "pair": "ض→د",
+    "words": 217
+   },
+   {
+    "pair": "د→∅",
+    "words": 212
+   },
+   {
+    "pair": "ك→∅",
+    "words": 205
+   },
+   {
+    "pair": "ن→م",
+    "words": 194
+   },
+   {
+    "pair": "ب→ف",
+    "words": 175
+   },
+   {
+    "pair": "ل→ر",
+    "words": 170
+   },
+   {
+    "pair": "ق→∅",
+    "words": 169
+   },
+   {
+    "pair": "و→ف",
+    "words": 166
+   },
+   {
+    "pair": "ث→س",
+    "words": 153
+   },
+   {
+    "pair": "ص→س",
+    "words": 153
+   },
+   {
+    "pair": "ء→ا",
+    "words": 148
+   },
+   {
+    "pair": "ك→ت",
+    "words": 148
+   },
+   {
+    "pair": "ط→ت",
+    "words": 146
+   },
+   {
+    "pair": "ز→س",
+    "words": 143
+   },
+   {
+    "pair": "ذ→∅",
+    "words": 138
+   },
+   {
+    "pair": "ح→∅",
+    "words": 136
+   },
+   {
+    "pair": "ل→م",
+    "words": 129
+   },
+   {
+    "pair": "س→∅",
+    "words": 127
+   },
+   {
+    "pair": "غ→خ",
+    "words": 124
+   },
+   {
+    "pair": "و→ب",
+    "words": 122
+   },
+   {
+    "pair": "ض→∅",
+    "words": 121
+   },
+   {
+    "pair": "ق→ك",
+    "words": 119
+   },
+   {
+    "pair": "م→و",
+    "words": 118
+   },
+   {
+    "pair": "و→م",
+    "words": 118
+   },
+   {
+    "pair": "د→ل",
+    "words": 116
+   },
+   {
+    "pair": "ا→ع",
+    "words": 115
+   },
+   {
+    "pair": "ں→∅",
+    "words": 113
+   },
+   {
+    "pair": "ل→د",
+    "words": 109
+   },
+   {
+    "pair": "ں→م",
+    "words": 108
+   },
+   {
+    "pair": "ع→ا",
+    "words": 105
+   },
+   {
+    "pair": "ج→ش",
+    "words": 104
+   },
+   {
+    "pair": "م→ب",
+    "words": 103
+   },
+   {
+    "pair": "ذ→د",
+    "words": 101
+   },
+   {
+    "pair": "غ→∅",
+    "words": 101
+   },
+   {
+    "pair": "ط→∅",
+    "words": 100
+   },
+   {
+    "pair": "ق→خ",
+    "words": 99
+   },
+   {
+    "pair": "ء→و",
+    "words": 98
+   },
+   {
+    "pair": "غ→ق",
+    "words": 95
+   },
+   {
+    "pair": "ه→ء",
+    "words": 95
+   },
+   {
+    "pair": "ح→ه",
+    "words": 94
+   },
+   {
+    "pair": "ت→د",
+    "words": 91
+   },
+   {
+    "pair": "س→ش",
+    "words": 90
+   },
+   {
+    "pair": "ذ→ت",
+    "words": 89
+   },
+   {
+    "pair": "ر→ع",
+    "words": 86
+   },
+   {
+    "pair": "ه→ح",
+    "words": 86
+   },
+   {
+    "pair": "ل→ت",
+    "words": 84
+   },
+   {
+    "pair": "ء→ه",
+    "words": 83
+   },
+   {
+    "pair": "د→ب",
+    "words": 79
+   },
+   {
+    "pair": "ل→ي",
+    "words": 78
+   },
+   {
+    "pair": "ء→ل",
+    "words": 76
+   },
+   {
+    "pair": "ح→ع",
+    "words": 76
+   },
+   {
+    "pair": "ه→ك",
+    "words": 76
+   },
+   {
+    "pair": "ر→ب",
+    "words": 74
+   },
+   {
+    "pair": "ط→ق",
+    "words": 73
+   },
+   {
+    "pair": "ز→∅",
+    "words": 70
+   },
+   {
+    "pair": "ص→∅",
+    "words": 69
+   },
+   {
+    "pair": "ي→ۦ",
+    "words": 69
+   },
+   {
+    "pair": "خ→ق",
+    "words": 68
+   },
+   {
+    "pair": "ع→ح",
+    "words": 68
+   },
+   {
+    "pair": "خ→ح",
+    "words": 67
+   },
+   {
+    "pair": "غ→ع",
+    "words": 66
+   },
+   {
+    "pair": "م→ن",
+    "words": 66
+   },
+   {
+    "pair": "ج→∅",
+    "words": 65
+   },
+   {
+    "pair": "ذ→س",
+    "words": 65
+   },
+   {
+    "pair": "ل→ذ",
+    "words": 65
+   },
+   {
+    "pair": "ر→و",
+    "words": 64
+   },
+   {
+    "pair": "ك→ق",
+    "words": 64
+   },
+   {
+    "pair": "ت→س",
+    "words": 63
+   },
+   {
+    "pair": "ي→ل",
+    "words": 63
+   },
+   {
+    "pair": "ت→ك",
+    "words": 62
+   },
+   {
+    "pair": "خ→∅",
+    "words": 62
+   },
+   {
+    "pair": "ر→ن",
+    "words": 60
+   },
+   {
+    "pair": "ف→و",
+    "words": 59
+   },
+   {
+    "pair": "ل→ب",
+    "words": 59
+   },
+   {
+    "pair": "د→ذ",
+    "words": 58
+   },
+   {
+    "pair": "ض→ت",
+    "words": 58
+   },
+   {
+    "pair": "ض→ط",
+    "words": 57
+   },
+   {
+    "pair": "د→ج",
+    "words": 56
+   },
+   {
+    "pair": "ع→و",
+    "words": 56
+   },
+   {
+    "pair": "م→ل",
+    "words": 56
+   },
+   {
+    "pair": "س→ص",
+    "words": 55
+   },
+   {
+    "pair": "ظ→ذ",
+    "words": 55
+   },
+   {
+    "pair": "ف→ب",
+    "words": 55
+   },
+   {
+    "pair": "ج→ت",
+    "words": 54
+   },
+   {
+    "pair": "ذ→ث",
+    "words": 54
+   },
+   {
+    "pair": "ف→س",
+    "words": 54
+   },
+   {
+    "pair": "ه→ع",
+    "words": 54
+   },
+   {
+    "pair": "ف→ص",
+    "words": 53
+   },
+   {
+    "pair": "د→ن",
+    "words": 52
+   },
+   {
+    "pair": "ه→و",
+    "words": 51
+   },
+   {
+    "pair": "ر→د",
+    "words": 49
+   },
+   {
+    "pair": "ن→ي",
+    "words": 49
+   },
+   {
+    "pair": "ذ→ز",
+    "words": 48
+   },
+   {
+    "pair": "ع→ي",
+    "words": 48
+   },
+   {
+    "pair": "ض→ذ",
+    "words": 46
+   },
+   {
+    "pair": "غ→ر",
+    "words": 46
+   },
+   {
+    "pair": "غ→و",
+    "words": 45
+   },
+   {
+    "pair": "ه→ي",
+    "words": 45
+   },
+   {
+    "pair": "ب→ق",
+    "words": 43
+   },
+   {
+    "pair": "ن→ر",
+    "words": 43
+   },
+   {
+    "pair": "ت→ف",
+    "words": 42
+   },
+   {
+    "pair": "ح→ء",
+    "words": 42
+   },
+   {
+    "pair": "ف→ح",
+    "words": 42
+   },
+   {
+    "pair": "ك→ف",
+    "words": 42
+   },
+   {
+    "pair": "ث→ت",
+    "words": 41
+   },
+   {
+    "pair": "ن→د",
+    "words": 41
+   },
+   {
+    "pair": "و→ا",
+    "words": 41
+   },
+   {
+    "pair": "ا→ل",
+    "words": 40
+   },
+   {
+    "pair": "ت→ل",
+    "words": 40
+   },
+   {
+    "pair": "ث→∅",
+    "words": 39
+   },
+   {
+    "pair": "ف→ت",
+    "words": 39
+   },
+   {
+    "pair": "ل→ا",
+    "words": 39
+   },
+   {
+    "pair": "ب→ت",
+    "words": 38
+   },
+   {
+    "pair": "ب→ك",
+    "words": 38
+   },
+   {
+    "pair": "ع→ه",
+    "words": 38
+   },
+   {
+    "pair": "ل→ء",
+    "words": 38
+   },
+   {
+    "pair": "ل→و",
+    "words": 38
+   },
+   {
+    "pair": "ن→ت",
+    "words": 38
+   },
+   {
+    "pair": "ء→ح",
+    "words": 37
+   },
+   {
+    "pair": "ب→و",
+    "words": 37
+   },
+   {
+    "pair": "د→ر",
+    "words": 37
+   },
+   {
+    "pair": "س→ت",
+    "words": 37
+   },
+   {
+    "pair": "و→ر",
+    "words": 37
+   },
+   {
+    "pair": "ي→ج",
+    "words": 37
+   },
+   {
+    "pair": "ء→م",
+    "words": 36
+   },
+   {
+    "pair": "ظ→∅",
+    "words": 36
+   },
+   {
+    "pair": "ك→ه",
+    "words": 36
+   },
+   {
+    "pair": "و→ء",
+    "words": 36
+   },
+   {
+    "pair": "ب→ل",
+    "words": 35
+   },
+   {
+    "pair": "ر→ا",
+    "words": 35
+   },
+   {
+    "pair": "ش→∅",
+    "words": 35
+   },
+   {
+    "pair": "ه→ف",
+    "words": 35
+   },
+   {
+    "pair": "ح→خ",
+    "words": 34
+   },
+   {
+    "pair": "و→ۥ",
+    "words": 34
+   },
+   {
+    "pair": "ا→ه",
+    "words": 33
+   },
+   {
+    "pair": "ا→و",
+    "words": 33
+   },
+   {
+    "pair": "ق→ف",
+    "words": 33
+   },
+   {
+    "pair": "ض→ب",
+    "words": 32
+   },
+   {
+    "pair": "و→ل",
+    "words": 32
+   },
+   {
+    "pair": "ف→خ",
+    "words": 31
+   },
+   {
+    "pair": "ا→ي",
+    "words": 30
+   },
+   {
+    "pair": "ب→ض",
+    "words": 30
+   },
+   {
+    "pair": "س→ث",
+    "words": 30
+   },
+   {
+    "pair": "ص→ش",
+    "words": 30
+   },
+   {
+    "pair": "غ→ك",
+    "words": 29
+   },
+   {
+    "pair": "ق→ح",
+    "words": 29
+   },
+   {
+    "pair": "ك→ء",
+    "words": 29
+   },
+   {
+    "pair": "ل→ج",
+    "words": 29
+   },
+   {
+    "pair": "م→ف",
+    "words": 29
+   },
+   {
+    "pair": "ه→ا",
+    "words": 29
+   },
+   {
+    "pair": "ا→ء",
+    "words": 28
+   },
+   {
+    "pair": "ب→ر",
+    "words": 28
+   },
+   {
+    "pair": "ت→ق",
+    "words": 28
+   },
+   {
+    "pair": "ذ→ظ",
+    "words": 28
+   },
+   {
+    "pair": "ر→ت",
+    "words": 28
+   },
+   {
+    "pair": "ط→ض",
+    "words": 28
+   },
+   {
+    "pair": "غ→ء",
+    "words": 28
+   },
+   {
+    "pair": "ي→ء",
+    "words": 28
+   },
+   {
+    "pair": "ں→ل",
+    "words": 28
+   },
+   {
+    "pair": "ء→ك",
+    "words": 27
+   },
+   {
+    "pair": "ء→ۥ",
+    "words": 27
+   },
+   {
+    "pair": "ر→ف",
+    "words": 27
+   },
+   {
+    "pair": "س→ز",
+    "words": 27
+   },
+   {
+    "pair": "ت→ث",
+    "words": 26
+   },
+   {
+    "pair": "ذ→ل",
+    "words": 26
+   },
+   {
+    "pair": "ر→م",
+    "words": 26
+   },
+   {
+    "pair": "ض→ل",
+    "words": 26
+   },
+   {
+    "pair": "ن→ا",
+    "words": 26
+   },
+   {
+    "pair": "د→ض",
+    "words": 25
+   },
+   {
+    "pair": "ر→غ",
+    "words": 25
+   },
+   {
+    "pair": "ز→ذ",
+    "words": 25
+   },
+   {
+    "pair": "ش→س",
+    "words": 25
+   },
+   {
+    "pair": "ف→ق",
+    "words": 25
+   },
+   {
+    "pair": "ق→ء",
+    "words": 25
+   },
+   {
+    "pair": "و→ق",
+    "words": 25
+   },
+   {
+    "pair": "غ→ب",
+    "words": 24
+   },
+   {
+    "pair": "ف→ك",
+    "words": 24
+   },
+   {
+    "pair": "ف→م",
+    "words": 24
+   },
+   {
+    "pair": "و→ع",
+    "words": 24
+   },
+   {
+    "pair": "خ→ص",
+    "words": 23
+   },
+   {
+    "pair": "ق→غ",
+    "words": 23
+   },
+   {
+    "pair": "ن→ه",
+    "words": 23
+   },
+   {
+    "pair": "ه→خ",
+    "words": 23
+   },
+   {
+    "pair": "ي→ت",
+    "words": 23
+   },
+   {
+    "pair": "ء→ر",
+    "words": 22
+   },
+   {
+    "pair": "ء→ۦ",
+    "words": 22
+   },
+   {
+    "pair": "ب→د",
+    "words": 22
+   },
+   {
+    "pair": "ج→د",
+    "words": 22
+   },
+   {
+    "pair": "خ→ه",
+    "words": 22
+   },
+   {
+    "pair": "ر→ي",
+    "words": 22
+   },
+   {
+    "pair": "ط→د",
+    "words": 22
+   },
+   {
+    "pair": "ظ→ص",
+    "words": 22
+   },
+   {
+    "pair": "ث→ف",
+    "words": 21
+   },
+   {
+    "pair": "ج→ك",
+    "words": 21
+   },
+   {
+    "pair": "س→ف",
+    "words": 21
+   },
+   {
+    "pair": "ظ→ز",
+    "words": 21
+   },
+   {
+    "pair": "ع→ر",
+    "words": 21
+   },
+   {
+    "pair": "ل→ه",
+    "words": 21
+   },
+   {
+    "pair": "م→ا",
+    "words": 21
+   },
+   {
+    "pair": "ه→ل",
+    "words": 21
+   },
+   {
+    "pair": "ي→ذ",
+    "words": 21
+   },
+   {
+    "pair": "ي→ن",
+    "words": 21
+   },
+   {
+    "pair": "ء→ق",
+    "words": 20
+   },
+   {
+    "pair": "ء→ن",
+    "words": 20
+   },
+   {
+    "pair": "ا→ت",
+    "words": 20
+   },
+   {
+    "pair": "ذ→ج",
+    "words": 20
+   },
+   {
+    "pair": "ض→ص",
+    "words": 20
+   },
+   {
+    "pair": "ف→ش",
+    "words": 20
+   },
+   {
+    "pair": "ك→خ",
+    "words": 20
+   },
+   {
+    "pair": "ن→و",
+    "words": 20
+   },
+   {
+    "pair": "و→غ",
+    "words": 20
+   },
+   {
+    "pair": "ج→ل",
+    "words": 19
+   },
+   {
+    "pair": "خ→ك",
+    "words": 19
+   },
+   {
+    "pair": "د→م",
+    "words": 19
+   },
+   {
+    "pair": "ذ→ب",
+    "words": 19
+   },
+   {
+    "pair": "ر→ذ",
+    "words": 19
+   },
+   {
+    "pair": "ع→ل",
+    "words": 19
+   },
+   {
+    "pair": "ق→ت",
+    "words": 19
+   },
+   {
+    "pair": "م→ء",
+    "words": 19
+   },
+   {
+    "pair": "ي→م",
+    "words": 19
+   },
+   {
+    "pair": "ي→ه",
+    "words": 19
+   },
+   {
+    "pair": "ت→ط",
+    "words": 18
+   },
+   {
+    "pair": "ت→ي",
+    "words": 18
+   },
+   {
+    "pair": "ز→د",
+    "words": 18
+   },
+   {
+    "pair": "ظ→ض",
+    "words": 18
+   },
+   {
+    "pair": "غ→ه",
+    "words": 18
+   },
+   {
+    "pair": "ق→ب",
+    "words": 18
+   },
+   {
+    "pair": "م→ه",
+    "words": 18
+   },
+   {
+    "pair": "م→ں",
+    "words": 18
+   },
+   {
+    "pair": "ه→م",
+    "words": 18
+   },
+   {
+    "pair": "ي→ا",
+    "words": 18
+   },
+   {
+    "pair": "ي→ع",
+    "words": 18
+   },
+   {
+    "pair": "ں→ۥ",
+    "words": 18
+   },
+   {
+    "pair": "د→ز",
+    "words": 17
+   },
+   {
+    "pair": "ر→ح",
+    "words": 17
+   },
+   {
+    "pair": "ف→ء",
+    "words": 17
+   },
+   {
+    "pair": "ك→ب",
+    "words": 17
+   },
+   {
+    "pair": "ل→ف",
+    "words": 17
+   },
+   {
+    "pair": "ل→ں",
+    "words": 17
+   },
+   {
+    "pair": "ه→ت",
+    "words": 17
+   },
+   {
+    "pair": "و→ه",
+    "words": 17
+   },
+   {
+    "pair": "ت→ء",
+    "words": 16
+   },
+   {
+    "pair": "ت→ه",
+    "words": 16
+   },
+   {
+    "pair": "ذ→ف",
+    "words": 16
+   },
+   {
+    "pair": "ض→ق",
+    "words": 16
+   },
+   {
+    "pair": "ط→ف",
+    "words": 16
+   },
+   {
+    "pair": "ك→ح",
+    "words": 16
+   },
+   {
+    "pair": "م→ر",
+    "words": 16
+   },
+   {
+    "pair": "ي→ك",
+    "words": 16
+   },
+   {
+    "pair": "ء→ف",
+    "words": 15
+   },
+   {
+    "pair": "ح→ق",
+    "words": 15
+   },
+   {
+    "pair": "خ→ف",
+    "words": 15
+   },
+   {
+    "pair": "ذ→ض",
+    "words": 15
+   },
+   {
+    "pair": "ز→ج",
+    "words": 15
+   },
+   {
+    "pair": "ض→ر",
+    "words": 15
+   },
+   {
+    "pair": "ط→ك",
+    "words": 15
+   },
+   {
+    "pair": "ل→س",
+    "words": 15
+   },
+   {
+    "pair": "ل→ض",
+    "words": 15
+   },
+   {
+    "pair": "ل→ع",
+    "words": 15
+   },
+   {
+    "pair": "ں→و",
+    "words": 15
+   },
+   {
+    "pair": "ا→ب",
+    "words": 14
+   },
+   {
+    "pair": "ا→ۥ",
+    "words": 14
+   },
+   {
+    "pair": "ب→ء",
+    "words": 14
+   },
+   {
+    "pair": "ت→ب",
+    "words": 14
+   },
+   {
+    "pair": "ت→ن",
+    "words": 14
+   },
+   {
+    "pair": "ث→ص",
+    "words": 14
+   },
+   {
+    "pair": "ر→ص",
+    "words": 14
+   },
+   {
+    "pair": "ر→ه",
+    "words": 14
+   },
+   {
+    "pair": "ط→ص",
+    "words": 14
+   },
+   {
+    "pair": "ك→ل",
+    "words": 14
+   },
+   {
+    "pair": "ل→ك",
+    "words": 14
+   },
+   {
+    "pair": "ل→ۦ",
+    "words": 14
+   },
+   {
+    "pair": "م→ي",
+    "words": 14
+   },
+   {
+    "pair": "ن→ء",
+    "words": 14
+   },
+   {
+    "pair": "ء→ب",
+    "words": 13
+   },
+   {
+    "pair": "ء→ت",
+    "words": 13
+   },
+   {
+    "pair": "ا→ف",
+    "words": 13
+   },
+   {
+    "pair": "ص→ف",
+    "words": 13
+   },
+   {
+    "pair": "ف→ث",
+    "words": 13
+   },
+   {
+    "pair": "ق→ط",
+    "words": 13
+   },
+   {
+    "pair": "ه→ش",
+    "words": 13
+   },
+   {
+    "pair": "ه→ق",
+    "words": 13
+   },
+   {
+    "pair": "ي→ب",
+    "words": 13
+   },
+   {
+    "pair": "ں→ا",
+    "words": 13
+   },
+   {
+    "pair": "ا→ق",
+    "words": 12
+   },
+   {
+    "pair": "ا→م",
+    "words": 12
+   },
+   {
+    "pair": "ا→ن",
+    "words": 12
+   },
+   {
+    "pair": "ت→ج",
+    "words": 12
+   },
+   {
+    "pair": "ت→ذ",
+    "words": 12
+   },
+   {
+    "pair": "ج→ز",
+    "words": 12
+   },
+   {
+    "pair": "ج→ي",
+    "words": 12
+   },
+   {
+    "pair": "ض→ز",
+    "words": 12
+   },
+   {
+    "pair": "ك→ج",
+    "words": 12
+   },
+   {
+    "pair": "م→ع",
+    "words": 12
+   },
+   {
+    "pair": "ه→ر",
+    "words": 12
+   },
+   {
+    "pair": "ه→ن",
+    "words": 12
+   },
+   {
+    "pair": "ي→ر",
+    "words": 12
+   },
+   {
+    "pair": "ج→ب",
+    "words": 11
+   },
+   {
+    "pair": "ح→ا",
+    "words": 11
+   },
+   {
+    "pair": "ح→س",
+    "words": 11
+   },
+   {
+    "pair": "ذ→ي",
+    "words": 11
+   },
+   {
+    "pair": "ر→ض",
+    "words": 11
+   },
+   {
+    "pair": "ر→ق",
+    "words": 11
+   },
+   {
+    "pair": "ض→ظ",
+    "words": 11
+   },
+   {
+    "pair": "ع→ق",
+    "words": 11
+   },
+   {
+    "pair": "ع→م",
+    "words": 11
+   },
+   {
+    "pair": "ل→ظ",
+    "words": 11
+   },
+   {
+    "pair": "ل→ق",
+    "words": 11
+   },
+   {
+    "pair": "و→ي",
+    "words": 11
+   },
+   {
+    "pair": "ا→ر",
+    "words": 10
+   },
+   {
+    "pair": "ا→ك",
+    "words": 10
+   },
+   {
+    "pair": "ح→ي",
+    "words": 10
+   },
+   {
+    "pair": "خ→ء",
+    "words": 10
+   },
+   {
+    "pair": "خ→غ",
+    "words": 10
+   },
+   {
+    "pair": "د→ي",
+    "words": 10
+   },
+   {
+    "pair": "ر→ش",
+    "words": 10
+   },
+   {
+    "pair": "ر→ك",
+    "words": 10
+   },
+   {
+    "pair": "ز→ت",
+    "words": 10
+   },
+   {
+    "pair": "ش→ج",
+    "words": 10
+   },
+   {
+    "pair": "ض→ج",
+    "words": 10
+   },
+   {
+    "pair": "ع→غ",
+    "words": 10
+   },
+   {
+    "pair": "غ→ض",
+    "words": 10
+   },
+   {
+    "pair": "ف→ل",
+    "words": 10
+   },
+   {
+    "pair": "ق→ص",
+    "words": 10
+   },
+   {
+    "pair": "ك→ث",
+    "words": 10
+   },
+   {
+    "pair": "ك→س",
+    "words": 10
+   },
+   {
+    "pair": "ل→ۥ",
+    "words": 10
+   },
+   {
+    "pair": "ن→ب",
+    "words": 10
+   },
+   {
+    "pair": "ں→ر",
+    "words": 10
+   },
+   {
+    "pair": "ء→ج",
+    "words": 9
+   },
+   {
+    "pair": "ا→ۦ",
+    "words": 9
+   },
+   {
+    "pair": "ب→ذ",
+    "words": 9
+   },
+   {
+    "pair": "ب→ن",
+    "words": 9
+   },
+   {
+    "pair": "ت→ر",
+    "words": 9
+   },
+   {
+    "pair": "خ→ع",
+    "words": 9
+   },
+   {
+    "pair": "ذ→ن",
+    "words": 9
+   },
+   {
+    "pair": "ر→ء",
+    "words": 9
+   },
+   {
+    "pair": "ر→ج",
+    "words": 9
+   },
+   {
+    "pair": "ر→س",
+    "words": 9
+   },
+   {
+    "pair": "س→ل",
+    "words": 9
+   },
+   {
+    "pair": "ص→ث",
+    "words": 9
+   },
+   {
+    "pair": "ض→ف",
+    "words": 9
+   },
+   {
+    "pair": "ض→م",
+    "words": 9
+   },
+   {
+    "pair": "ط→ر",
+    "words": 9
+   },
+   {
+    "pair": "ف→ه",
+    "words": 9
+   },
+   {
+    "pair": "ن→ذ",
+    "words": 9
+   },
+   {
+    "pair": "ن→ع",
+    "words": 9
+   },
+   {
+    "pair": "ي→ش",
+    "words": 9
+   },
+   {
+    "pair": "ي→و",
+    "words": 9
+   },
+   {
+    "pair": "ں→ي",
+    "words": 9
+   },
+   {
+    "pair": "ا→خ",
+    "words": 8
+   },
+   {
+    "pair": "ب→ه",
+    "words": 8
+   },
+   {
+    "pair": "ت→ا",
+    "words": 8
+   },
+   {
+    "pair": "ت→ش",
+    "words": 8
+   },
+   {
+    "pair": "ث→ك",
+    "words": 8
+   },
+   {
+    "pair": "ح→ك",
+    "words": 8
+   },
+   {
+    "pair": "د→ء",
+    "words": 8
+   },
+   {
+    "pair": "ز→ص",
+    "words": 8
+   },
+   {
+    "pair": "س→ء",
+    "words": 8
+   },
+   {
+    "pair": "س→ذ",
+    "words": 8
+   },
+   {
+    "pair": "ط→ب",
+    "words": 8
+   },
+   {
+    "pair": "غ→ح",
+    "words": 8
+   },
+   {
+    "pair": "غ→ذ",
+    "words": 8
+   },
+   {
+    "pair": "غ→ظ",
+    "words": 8
+   },
+   {
+    "pair": "غ→م",
+    "words": 8
+   },
+   {
+    "pair": "ك→ش",
+    "words": 8
+   },
+   {
+    "pair": "م→ح",
+    "words": 8
+   },
+   {
+    "pair": "م→ۥ",
+    "words": 8
+   },
+   {
+    "pair": "ي→د",
+    "words": 8
+   },
+   {
+    "pair": "ں→د",
+    "words": 8
+   },
+   {
+    "pair": "ں→ۦ",
+    "words": 8
+   },
+   {
+    "pair": "ء→ذ",
+    "words": 7
+   },
+   {
+    "pair": "ا→ظ",
+    "words": 7
+   },
+   {
+    "pair": "ا→ں",
+    "words": 7
+   },
+   {
+    "pair": "ب→ط",
+    "words": 7
+   },
+   {
+    "pair": "ج→س",
+    "words": 7
+   },
+   {
+    "pair": "ح→ص",
+    "words": 7
+   },
+   {
+    "pair": "ح→ف",
+    "words": 7
+   },
+   {
+    "pair": "د→ا",
+    "words": 7
+   },
+   {
+    "pair": "ر→ز",
+    "words": 7
+   },
+   {
+    "pair": "ز→ن",
+    "words": 7
+   },
+   {
+    "pair": "ش→ح",
+    "words": 7
+   },
+   {
+    "pair": "ش→ف",
+    "words": 7
+   },
+   {
+    "pair": "ط→ل",
+    "words": 7
+   },
+   {
+    "pair": "ع→ۦ",
+    "words": 7
+   },
+   {
+    "pair": "غ→ص",
+    "words": 7
+   },
+   {
+    "pair": "غ→ل",
+    "words": 7
+   },
+   {
+    "pair": "ق→ر",
+    "words": 7
+   },
+   {
+    "pair": "ق→ل",
+    "words": 7
+   },
+   {
+    "pair": "ق→م",
+    "words": 7
+   },
+   {
+    "pair": "ك→ع",
+    "words": 7
+   },
+   {
+    "pair": "ك→م",
+    "words": 7
+   },
+   {
+    "pair": "م→ذ",
+    "words": 7
+   },
+   {
+    "pair": "ه→غ",
+    "words": 7
+   },
+   {
+    "pair": "و→ض",
+    "words": 7
+   },
+   {
+    "pair": "و→ن",
+    "words": 7
+   },
+   {
+    "pair": "ء→خ",
+    "words": 6
+   },
+   {
+    "pair": "ء→غ",
+    "words": 6
+   },
+   {
+    "pair": "ء→ں",
+    "words": 6
+   },
+   {
+    "pair": "ب→ظ",
+    "words": 6
+   },
+   {
+    "pair": "ب→ۥ",
+    "words": 6
+   },
+   {
+    "pair": "ت→ص",
+    "words": 6
+   },
+   {
+    "pair": "ج→ذ",
+    "words": 6
+   },
+   {
+    "pair": "د→ك",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ا",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ك",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ه",
+    "words": 6
+   },
+   {
+    "pair": "ر→ۥ",
+    "words": 6
+   },
+   {
+    "pair": "ز→ل",
+    "words": 6
+   },
+   {
+    "pair": "س→ا",
+    "words": 6
+   },
+   {
+    "pair": "ش→ت",
+    "words": 6
+   },
+   {
+    "pair": "ص→ت",
+    "words": 6
+   },
+   {
+    "pair": "ص→ط",
+    "words": 6
+   },
+   {
+    "pair": "ض→ث",
+    "words": 6
+   },
+   {
+    "pair": "ظ→د",
+    "words": 6
+   },
+   {
+    "pair": "ظ→ق",
+    "words": 6
+   },
+   {
+    "pair": "ع→ن",
+    "words": 6
+   },
+   {
+    "pair": "ف→ي",
+    "words": 6
+   },
+   {
+    "pair": "ق→ه",
+    "words": 6
+   },
+   {
+    "pair": "ل→ز",
+    "words": 6
+   },
+   {
+    "pair": "ه→ذ",
+    "words": 6
+   },
+   {
+    "pair": "ه→ۦ",
+    "words": 6
+   },
+   {
+    "pair": "و→ت",
+    "words": 6
+   },
+   {
+    "pair": "و→ذ",
+    "words": 6
+   },
+   {
+    "pair": "و→ص",
+    "words": 6
+   },
+   {
+    "pair": "و→ك",
+    "words": 6
+   },
+   {
+    "pair": "ي→ف",
+    "words": 6
+   },
+   {
+    "pair": "ں→ع",
+    "words": 6
+   },
+   {
+    "pair": "ء→د",
+    "words": 5
+   },
+   {
+    "pair": "ا→ح",
+    "words": 5
+   },
+   {
+    "pair": "ا→د",
+    "words": 5
+   },
+   {
+    "pair": "ا→س",
+    "words": 5
+   },
+   {
+    "pair": "ا→ص",
+    "words": 5
+   },
+   {
+    "pair": "ب→ا",
+    "words": 5
+   },
+   {
+    "pair": "ب→ع",
+    "words": 5
+   },
+   {
+    "pair": "ب→غ",
+    "words": 5
+   },
+   {
+    "pair": "ب→ي",
+    "words": 5
+   },
+   {
+    "pair": "ب→ۦ",
+    "words": 5
+   },
+   {
+    "pair": "ت→ح",
+    "words": 5
+   },
+   {
+    "pair": "ت→ز",
+    "words": 5
+   },
+   {
+    "pair": "ت→م",
+    "words": 5
+   },
+   {
+    "pair": "ث→ذ",
+    "words": 5
+   },
+   {
+    "pair": "ث→ه",
+    "words": 5
+   },
+   {
+    "pair": "ح→ت",
+    "words": 5
+   },
+   {
+    "pair": "ح→ر",
+    "words": 5
+   },
+   {
+    "pair": "ح→ش",
+    "words": 5
+   },
+   {
+    "pair": "ح→م",
+    "words": 5
+   },
+   {
+    "pair": "خ→س",
+    "words": 5
+   },
+   {
+    "pair": "د→ث",
+    "words": 5
+   },
+   {
+    "pair": "د→ه",
+    "words": 5
+   },
+   {
+    "pair": "ذ→م",
+    "words": 5
+   },
+   {
+    "pair": "ر→ں",
+    "words": 5
+   },
+   {
+    "pair": "ز→ض",
+    "words": 5
+   },
+   {
+    "pair": "ز→ظ",
+    "words": 5
+   },
+   {
+    "pair": "س→ح",
+    "words": 5
+   },
+   {
+    "pair": "س→م",
+    "words": 5
+   },
+   {
+    "pair": "س→ي",
+    "words": 5
+   },
+   {
+    "pair": "ص→ق",
+    "words": 5
+   },
+   {
+    "pair": "ض→ن",
+    "words": 5
+   },
+   {
+    "pair": "ط→ث",
+    "words": 5
+   },
+   {
+    "pair": "ط→ذ",
+    "words": 5
+   },
+   {
+    "pair": "ظ→س",
+    "words": 5
+   },
+   {
+    "pair": "ظ→ط",
+    "words": 5
+   },
+   {
+    "pair": "ع→ب",
+    "words": 5
+   },
+   {
+    "pair": "ع→ت",
+    "words": 5
+   },
+   {
+    "pair": "ع→ف",
+    "words": 5
+   },
+   {
+    "pair": "غ→ا",
+    "words": 5
+   },
+   {
+    "pair": "غ→ي",
+    "words": 5
+   },
+   {
+    "pair": "غ→ۥ",
+    "words": 5
+   },
+   {
+    "pair": "ق→ع",
+    "words": 5
+   },
+   {
+    "pair": "ك→د",
+    "words": 5
+   },
+   {
+    "pair": "ك→ذ",
+    "words": 5
+   },
+   {
+    "pair": "ل→ط",
+    "words": 5
+   },
+   {
+    "pair": "م→د",
+    "words": 5
+   },
+   {
+    "pair": "م→ض",
+    "words": 5
+   },
+   {
+    "pair": "م→ق",
+    "words": 5
+   },
+   {
+    "pair": "ن→ج",
+    "words": 5
+   },
+   {
+    "pair": "ن→س",
+    "words": 5
+   },
+   {
+    "pair": "ن→ۥ",
+    "words": 5
+   },
+   {
+    "pair": "ه→س",
+    "words": 5
+   },
+   {
+    "pair": "و→ظ",
+    "words": 5
+   },
+   {
+    "pair": "ں→ت",
+    "words": 5
+   },
+   {
+    "pair": "ا→ذ",
+    "words": 4
+   },
+   {
+    "pair": "ا→ض",
+    "words": 4
+   },
+   {
+    "pair": "ب→ص",
+    "words": 4
+   },
+   {
+    "pair": "ت→ض",
+    "words": 4
+   },
+   {
+    "pair": "ث→ء",
+    "words": 4
+   },
+   {
+    "pair": "ث→ز",
+    "words": 4
+   },
+   {
+    "pair": "ث→ل",
+    "words": 4
+   },
+   {
+    "pair": "ج→ء",
+    "words": 4
+   },
+   {
+    "pair": "ج→ه",
+    "words": 4
+   },
+   {
+    "pair": "ح→ب",
+    "words": 4
+   },
+   {
+    "pair": "ح→ل",
+    "words": 4
+   },
+   {
+    "pair": "د→و",
+    "words": 4
+   },
+   {
+    "pair": "ذ→ر",
+    "words": 4
+   },
+   {
+    "pair": "ذ→ق",
+    "words": 4
+   },
+   {
+    "pair": "ر→ط",
+    "words": 4
+   },
+   {
+    "pair": "ر→ظ",
+    "words": 4
+   },
+   {
+    "pair": "ز→ء",
+    "words": 4
+   },
+   {
+    "pair": "ز→ب",
+    "words": 4
+   },
+   {
+    "pair": "ز→ف",
+    "words": 4
+   },
+   {
+    "pair": "ز→م",
+    "words": 4
+   },
+   {
+    "pair": "ز→و",
+    "words": 4
+   },
+   {
+    "pair": "ز→ي",
+    "words": 4
+   },
+   {
+    "pair": "س→خ",
+    "words": 4
+   },
+   {
+    "pair": "س→ر",
+    "words": 4
+   },
+   {
+    "pair": "س→ك",
+    "words": 4
+   },
+   {
+    "pair": "ش→ك",
+    "words": 4
+   },
+   {
+    "pair": "ش→ي",
+    "words": 4
+   },
+   {
+    "pair": "ض→و",
+    "words": 4
+   },
+   {
+    "pair": "ط→ء",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ب",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ت",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ث",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ل",
+    "words": 4
+   },
+   {
+    "pair": "ع→ج",
+    "words": 4
+   },
+   {
+    "pair": "ع→ك",
+    "words": 4
+   },
+   {
+    "pair": "ع→ۥ",
+    "words": 4
+   },
+   {
+    "pair": "غ→ج",
+    "words": 4
+   },
+   {
+    "pair": "غ→د",
+    "words": 4
+   },
+   {
+    "pair": "غ→ط",
+    "words": 4
+   },
+   {
+    "pair": "غ→ف",
+    "words": 4
+   },
+   {
+    "pair": "ف→ا",
+    "words": 4
+   },
+   {
+    "pair": "ف→ذ",
+    "words": 4
+   },
+   {
+    "pair": "ف→ر",
+    "words": 4
+   },
+   {
+    "pair": "ف→ط",
+    "words": 4
+   },
+   {
+    "pair": "ف→ں",
+    "words": 4
+   },
+   {
+    "pair": "ق→س",
+    "words": 4
+   },
+   {
+    "pair": "ق→ن",
+    "words": 4
+   },
+   {
+    "pair": "ق→ي",
+    "words": 4
+   },
+   {
+    "pair": "ك→ا",
+    "words": 4
+   },
+   {
+    "pair": "ك→ط",
+    "words": 4
+   },
+   {
+    "pair": "ل→ح",
+    "words": 4
+   },
+   {
+    "pair": "ل→ص",
+    "words": 4
+   },
+   {
+    "pair": "ل→غ",
+    "words": 4
+   },
+   {
+    "pair": "م→ك",
+    "words": 4
+   },
+   {
+    "pair": "ن→ح",
+    "words": 4
+   },
+   {
+    "pair": "ن→ك",
+    "words": 4
+   },
+   {
+    "pair": "و→س",
+    "words": 4
+   },
+   {
+    "pair": "و→ں",
+    "words": 4
+   },
+   {
+    "pair": "و→ۦ",
+    "words": 4
+   },
+   {
+    "pair": "ي→ث",
+    "words": 4
+   },
+   {
+    "pair": "ں→ج",
+    "words": 4
+   },
+   {
+    "pair": "ں→ه",
+    "words": 4
+   },
+   {
+    "pair": "ء→ث",
+    "words": 3
+   },
+   {
+    "pair": "ء→ض",
+    "words": 3
+   },
+   {
+    "pair": "ا→ج",
+    "words": 3
+   },
+   {
+    "pair": "ا→غ",
+    "words": 3
+   },
+   {
+    "pair": "ب→ج",
+    "words": 3
+   },
+   {
+    "pair": "ب→ح",
+    "words": 3
+   },
+   {
+    "pair": "ب→خ",
+    "words": 3
+   },
+   {
+    "pair": "ب→ز",
+    "words": 3
+   },
+   {
+    "pair": "ب→س",
+    "words": 3
+   },
+   {
+    "pair": "ت→خ",
+    "words": 3
+   },
+   {
+    "pair": "ت→ع",
+    "words": 3
+   },
+   {
+    "pair": "ت→و",
+    "words": 3
+   },
+   {
+    "pair": "ث→د",
+    "words": 3
+   },
+   {
+    "pair": "ج→ث",
+    "words": 3
+   },
+   {
+    "pair": "ج→ف",
+    "words": 3
+   },
+   {
+    "pair": "ح→ث",
+    "words": 3
+   },
+   {
+    "pair": "ح→غ",
+    "words": 3
+   },
+   {
+    "pair": "ح→ن",
+    "words": 3
+   },
+   {
+    "pair": "خ→ت",
+    "words": 3
+   },
+   {
+    "pair": "خ→ل",
+    "words": 3
+   },
+   {
+    "pair": "خ→و",
+    "words": 3
+   },
+   {
+    "pair": "د→س",
+    "words": 3
+   },
+   {
+    "pair": "د→ع",
+    "words": 3
+   },
+   {
+    "pair": "د→ق",
+    "words": 3
+   },
+   {
+    "pair": "د→ۦ",
+    "words": 3
+   },
+   {
+    "pair": "ذ→ء",
+    "words": 3
+   },
+   {
+    "pair": "ذ→ص",
+    "words": 3
+   },
+   {
+    "pair": "ر→خ",
+    "words": 3
+   },
+   {
+    "pair": "ز→ث",
+    "words": 3
+   },
+   {
+    "pair": "ز→ں",
+    "words": 3
+   },
+   {
+    "pair": "س→ب",
+    "words": 3
+   },
+   {
+    "pair": "س→ج",
+    "words": 3
+   },
+   {
+    "pair": "س→ع",
+    "words": 3
+   },
+   {
+    "pair": "س→ق",
+    "words": 3
+   },
+   {
+    "pair": "س→ن",
+    "words": 3
+   },
+   {
+    "pair": "ش→ص",
+    "words": 3
+   },
+   {
+    "pair": "ص→ا",
+    "words": 3
+   },
+   {
+    "pair": "ص→ز",
+    "words": 3
+   },
+   {
+    "pair": "ص→ل",
+    "words": 3
+   },
+   {
+    "pair": "ص→ن",
+    "words": 3
+   },
+   {
+    "pair": "ض→س",
+    "words": 3
+   },
+   {
+    "pair": "ض→ع",
+    "words": 3
+   },
+   {
+    "pair": "ط→ا",
+    "words": 3
+   },
+   {
+    "pair": "ط→س",
+    "words": 3
+   },
+   {
+    "pair": "ط→ن",
+    "words": 3
+   },
+   {
+    "pair": "ع→ذ",
+    "words": 3
+   },
+   {
+    "pair": "ع→ں",
+    "words": 3
+   },
+   {
+    "pair": "غ→ن",
+    "words": 3
+   },
+   {
+    "pair": "ق→ج",
+    "words": 3
+   },
+   {
+    "pair": "ق→د",
+    "words": 3
+   },
+   {
+    "pair": "ك→ر",
+    "words": 3
+   },
+   {
+    "pair": "ك→ن",
+    "words": 3
+   },
+   {
+    "pair": "ك→ي",
+    "words": 3
+   },
+   {
+    "pair": "ل→ش",
+    "words": 3
+   },
+   {
+    "pair": "م→ت",
+    "words": 3
+   },
+   {
+    "pair": "ن→ز",
+    "words": 3
+   },
+   {
+    "pair": "ن→ۦ",
+    "words": 3
+   },
+   {
+    "pair": "ه→ب",
+    "words": 3
+   },
+   {
+    "pair": "ه→ض",
+    "words": 3
+   },
+   {
+    "pair": "ه→ۥ",
+    "words": 3
+   },
+   {
+    "pair": "و→خ",
+    "words": 3
+   },
+   {
+    "pair": "ي→خ",
+    "words": 3
+   },
+   {
+    "pair": "ي→ز",
+    "words": 3
+   },
+   {
+    "pair": "ي→ق",
+    "words": 3
+   },
+   {
+    "pair": "ي→ۥ",
+    "words": 3
+   },
+   {
+    "pair": "ں→ذ",
+    "words": 3
+   },
+   {
+    "pair": "ں→ك",
+    "words": 3
+   },
+   {
+    "pair": "ء→ز",
+    "words": 2
+   },
+   {
+    "pair": "ا→ط",
+    "words": 2
+   },
+   {
+    "pair": "ث→ا",
+    "words": 2
+   },
+   {
+    "pair": "ث→ح",
+    "words": 2
+   },
+   {
+    "pair": "ث→ش",
+    "words": 2
+   },
+   {
+    "pair": "ث→ط",
+    "words": 2
+   },
+   {
+    "pair": "ث→م",
+    "words": 2
+   },
+   {
+    "pair": "ث→و",
+    "words": 2
+   },
+   {
+    "pair": "ج→ق",
+    "words": 2
+   },
+   {
+    "pair": "ج→م",
+    "words": 2
+   },
+   {
+    "pair": "ج→ن",
+    "words": 2
+   },
+   {
+    "pair": "ح→ج",
+    "words": 2
+   },
+   {
+    "pair": "ح→ذ",
+    "words": 2
+   },
+   {
+    "pair": "ح→ۥ",
+    "words": 2
+   },
+   {
+    "pair": "خ→ا",
+    "words": 2
+   },
+   {
+    "pair": "خ→ث",
+    "words": 2
+   },
+   {
+    "pair": "خ→ج",
+    "words": 2
+   },
+   {
+    "pair": "خ→ر",
+    "words": 2
+   },
+   {
+    "pair": "خ→ط",
+    "words": 2
+   },
+   {
+    "pair": "د→ص",
+    "words": 2
+   },
+   {
+    "pair": "ذ→ح",
+    "words": 2
+   },
+   {
+    "pair": "ذ→ع",
+    "words": 2
+   },
+   {
+    "pair": "ذ→و",
+    "words": 2
+   },
+   {
+    "pair": "ر→ث",
+    "words": 2
+   },
+   {
+    "pair": "ر→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ز→ع",
+    "words": 2
+   },
+   {
+    "pair": "ز→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "س→ه",
+    "words": 2
+   },
+   {
+    "pair": "س→و",
+    "words": 2
+   },
+   {
+    "pair": "س→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ش→ا",
+    "words": 2
+   },
+   {
+    "pair": "ش→ق",
+    "words": 2
+   },
+   {
+    "pair": "ش→ل",
+    "words": 2
+   },
+   {
+    "pair": "ش→ه",
+    "words": 2
+   },
+   {
+    "pair": "ص→ب",
+    "words": 2
+   },
+   {
+    "pair": "ص→ح",
+    "words": 2
+   },
+   {
+    "pair": "ص→خ",
+    "words": 2
+   },
+   {
+    "pair": "ص→ر",
+    "words": 2
+   },
+   {
+    "pair": "ص→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ض→ا",
+    "words": 2
+   },
+   {
+    "pair": "ض→غ",
+    "words": 2
+   },
+   {
+    "pair": "ض→ں",
+    "words": 2
+   },
+   {
+    "pair": "ط→ج",
+    "words": 2
+   },
+   {
+    "pair": "ط→ح",
+    "words": 2
+   },
+   {
+    "pair": "ط→خ",
+    "words": 2
+   },
+   {
+    "pair": "ط→م",
+    "words": 2
+   },
+   {
+    "pair": "ظ→غ",
+    "words": 2
+   },
+   {
+    "pair": "ظ→ن",
+    "words": 2
+   },
+   {
+    "pair": "ظ→و",
+    "words": 2
+   },
+   {
+    "pair": "ع→خ",
+    "words": 2
+   },
+   {
+    "pair": "ع→د",
+    "words": 2
+   },
+   {
+    "pair": "ع→س",
+    "words": 2
+   },
+   {
+    "pair": "غ→ث",
+    "words": 2
+   },
+   {
+    "pair": "غ→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ـ→ي",
+    "words": 2
+   },
+   {
+    "pair": "ـ→∅",
+    "words": 2
+   },
+   {
+    "pair": "ف→ج",
+    "words": 2
+   },
+   {
+    "pair": "ف→ن",
+    "words": 2
+   },
+   {
+    "pair": "ق→ا",
+    "words": 2
+   },
+   {
+    "pair": "ق→ث",
+    "words": 2
+   },
+   {
+    "pair": "ك→ز",
+    "words": 2
+   },
+   {
+    "pair": "ك→و",
+    "words": 2
+   },
+   {
+    "pair": "ل→خ",
+    "words": 2
+   },
+   {
+    "pair": "م→ج",
+    "words": 2
+   },
+   {
+    "pair": "م→ز",
+    "words": 2
+   },
+   {
+    "pair": "م→ط",
+    "words": 2
+   },
+   {
+    "pair": "م→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ن→ث",
+    "words": 2
+   },
+   {
+    "pair": "ن→ض",
+    "words": 2
+   },
+   {
+    "pair": "ن→ف",
+    "words": 2
+   },
+   {
+    "pair": "ن→ق",
+    "words": 2
+   },
+   {
+    "pair": "ه→ج",
+    "words": 2
+   },
+   {
+    "pair": "ه→د",
+    "words": 2
+   },
+   {
+    "pair": "ه→ں",
+    "words": 2
+   },
+   {
+    "pair": "و→ث",
+    "words": 2
+   },
+   {
+    "pair": "و→ح",
+    "words": 2
+   },
+   {
+    "pair": "و→د",
+    "words": 2
+   },
+   {
+    "pair": "ي→س",
+    "words": 2
+   },
+   {
+    "pair": "ي→ں",
+    "words": 2
+   },
+   {
+    "pair": "ں→ب",
+    "words": 2
+   },
+   {
+    "pair": "ء→س",
+    "words": 1
+   },
+   {
+    "pair": "ء→ص",
+    "words": 1
+   },
+   {
+    "pair": "ء→ط",
+    "words": 1
+   },
+   {
+    "pair": "ب→ث",
+    "words": 1
+   },
+   {
+    "pair": "ب→ش",
+    "words": 1
+   },
+   {
+    "pair": "ب→۾",
+    "words": 1
+   },
+   {
+    "pair": "ت→ں",
+    "words": 1
+   },
+   {
+    "pair": "ث→ب",
+    "words": 1
+   },
+   {
+    "pair": "ث→ق",
+    "words": 1
+   },
+   {
+    "pair": "ث→ن",
+    "words": 1
+   },
+   {
+    "pair": "ث→ي",
+    "words": 1
+   },
+   {
+    "pair": "ج→ح",
+    "words": 1
+   },
+   {
+    "pair": "ج→ر",
+    "words": 1
+   },
+   {
+    "pair": "ج→ں",
+    "words": 1
+   },
+   {
+    "pair": "ج→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "ح→د",
+    "words": 1
+   },
+   {
+    "pair": "ح→ز",
+    "words": 1
+   },
+   {
+    "pair": "ح→و",
+    "words": 1
+   },
+   {
+    "pair": "ح→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "خ→ب",
+    "words": 1
+   },
+   {
+    "pair": "خ→ز",
+    "words": 1
+   },
+   {
+    "pair": "خ→ش",
+    "words": 1
+   },
+   {
+    "pair": "خ→ض",
+    "words": 1
+   },
+   {
+    "pair": "خ→م",
+    "words": 1
+   },
+   {
+    "pair": "خ→ي",
+    "words": 1
+   },
+   {
+    "pair": "د→ح",
+    "words": 1
+   },
+   {
+    "pair": "د→ش",
+    "words": 1
+   },
+   {
+    "pair": "د→ط",
+    "words": 1
+   },
+   {
+    "pair": "د→ں",
+    "words": 1
+   },
+   {
+    "pair": "ذ→خ",
+    "words": 1
+   },
+   {
+    "pair": "ذ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ذ→ط",
+    "words": 1
+   },
+   {
+    "pair": "ذ→غ",
+    "words": 1
+   },
+   {
+    "pair": "ز→ا",
+    "words": 1
+   },
+   {
+    "pair": "ز→خ",
+    "words": 1
+   },
+   {
+    "pair": "ز→غ",
+    "words": 1
+   },
+   {
+    "pair": "ز→ق",
+    "words": 1
+   },
+   {
+    "pair": "ز→ه",
+    "words": 1
+   },
+   {
+    "pair": "س→د",
+    "words": 1
+   },
+   {
+    "pair": "س→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ش→ء",
+    "words": 1
+   },
+   {
+    "pair": "ش→ب",
+    "words": 1
+   },
+   {
+    "pair": "ش→ث",
+    "words": 1
+   },
+   {
+    "pair": "ش→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ش→ن",
+    "words": 1
+   },
+   {
+    "pair": "ش→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ص→ء",
+    "words": 1
+   },
+   {
+    "pair": "ص→ج",
+    "words": 1
+   },
+   {
+    "pair": "ص→د",
+    "words": 1
+   },
+   {
+    "pair": "ص→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ص→ض",
+    "words": 1
+   },
+   {
+    "pair": "ص→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ص→و",
+    "words": 1
+   },
+   {
+    "pair": "ص→ي",
+    "words": 1
+   },
+   {
+    "pair": "ض→ء",
+    "words": 1
+   },
+   {
+    "pair": "ض→ح",
+    "words": 1
+   },
+   {
+    "pair": "ض→خ",
+    "words": 1
+   },
+   {
+    "pair": "ض→ه",
+    "words": 1
+   },
+   {
+    "pair": "ض→ي",
+    "words": 1
+   },
+   {
+    "pair": "ط→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ط→ع",
+    "words": 1
+   },
+   {
+    "pair": "ط→غ",
+    "words": 1
+   },
+   {
+    "pair": "ط→ه",
+    "words": 1
+   },
+   {
+    "pair": "ط→و",
+    "words": 1
+   },
+   {
+    "pair": "ط→ں",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ج",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ر",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ع",
+    "words": 1
+   },
+   {
+    "pair": "ع→ز",
+    "words": 1
+   },
+   {
+    "pair": "غ→ت",
+    "words": 1
+   },
+   {
+    "pair": "غ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ـ→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "ف→ض",
+    "words": 1
+   },
+   {
+    "pair": "ف→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ق→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ق→ض",
+    "words": 1
+   },
+   {
+    "pair": "ق→و",
+    "words": 1
+   },
+   {
+    "pair": "ق→ں",
+    "words": 1
+   },
+   {
+    "pair": "ك→ص",
+    "words": 1
+   },
+   {
+    "pair": "ك→ض",
+    "words": 1
+   },
+   {
+    "pair": "ك→غ",
+    "words": 1
+   },
+   {
+    "pair": "ك→ں",
+    "words": 1
+   },
+   {
+    "pair": "ك→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ل→۾",
+    "words": 1
+   },
+   {
+    "pair": "م→خ",
+    "words": 1
+   },
+   {
+    "pair": "م→س",
+    "words": 1
+   },
+   {
+    "pair": "م→غ",
+    "words": 1
+   },
+   {
+    "pair": "ن→ش",
+    "words": 1
+   },
+   {
+    "pair": "ن→ص",
+    "words": 1
+   },
+   {
+    "pair": "ن→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ن→غ",
+    "words": 1
+   },
+   {
+    "pair": "ن→۾",
+    "words": 1
+   },
+   {
+    "pair": "ه→ث",
+    "words": 1
+   },
+   {
+    "pair": "ه→ز",
+    "words": 1
+   },
+   {
+    "pair": "ه→ص",
+    "words": 1
+   },
+   {
+    "pair": "ه→ط",
+    "words": 1
+   },
+   {
+    "pair": "و→ج",
+    "words": 1
+   },
+   {
+    "pair": "و→ش",
+    "words": 1
+   },
+   {
+    "pair": "ي→ح",
+    "words": 1
+   },
+   {
+    "pair": "ي→ص",
+    "words": 1
+   },
+   {
+    "pair": "ي→ض",
+    "words": 1
+   },
+   {
+    "pair": "ي→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ي→غ",
+    "words": 1
+   },
+   {
+    "pair": "ں→ء",
+    "words": 1
+   },
+   {
+    "pair": "ں→ث",
+    "words": 1
+   },
+   {
+    "pair": "ں→ح",
+    "words": 1
+   },
+   {
+    "pair": "ں→ص",
+    "words": 1
+   },
+   {
+    "pair": "ں→ض",
+    "words": 1
+   },
+   {
+    "pair": "ں→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ں→ف",
+    "words": 1
+   },
+   {
+    "pair": "ں→ق",
+    "words": 1
+   },
+   {
+    "pair": "ں→۾",
+    "words": 1
+   }
+  ],
+  "words": 98070
+ },
+ "strict": {
+  "by_cause": {
+   "other_consonant": 16047,
+   "shaddah": 1035,
+   "skipped": 6016,
+   "soft_pair": 2098,
+   "target_pair": 282,
+   "tashkeel": 2152,
+   "unrecorded": 798
+  },
+  "by_label_source": {
+   "gating:both": {
+    "flagged_words": 8437,
+    "words": 44745
+   },
+   "mined:both": {
+    "flagged_words": 5001,
+    "words": 18769
+   },
+   "mined:filename": {
+    "flagged_words": 789,
+    "words": 2080
+   },
+   "mined:identified": {
+    "flagged_words": 10162,
+    "words": 32476
+   }
+  },
+  "by_level": {
+   "0": 73681,
+   "1": 8316,
+   "2": 2724,
+   "3": 3018,
+   "4": 10331
+  },
+  "by_pattern": {
+   "base": 1094,
+   "base+c95": 860,
+   "base+c95+r2_candidate_ema": 340,
+   "base+c95+r2_candidate_ema+r3_candidate_ema": 10331,
+   "base+c95+r3_candidate_ema": 283,
+   "base+r2_candidate_ema": 120,
+   "base+r2_candidate_ema+r3_candidate_ema": 461,
+   "base+r3_candidate_ema": 147,
+   "c95": 6534,
+   "c95+r2_candidate_ema": 812,
+   "c95+r2_candidate_ema+r3_candidate_ema": 1934,
+   "c95+r3_candidate_ema": 406,
+   "none": 73681,
+   "r2_candidate_ema": 372,
+   "r2_candidate_ema+r3_candidate_ema": 379,
+   "r3_candidate_ema": 316
+  },
+  "by_stratum": {
+   "gating": {
+    "flagged_words": 8437,
+    "words": 44745
+   },
+   "reported:below_bar": {
+    "flagged_words": 281,
+    "words": 695
+   },
+   "reported:identified": {
+    "flagged_words": 1169,
+    "words": 4473
+   },
+   "reported:straddles": {
+    "flagged_words": 6881,
+    "words": 24559
+   },
+   "reported:unclean": {
+    "flagged_words": 7621,
+    "words": 23598
+   }
+  },
+  "by_tranche": {
+   "confirm.1": {
+    "flagged_words": 12286,
+    "words": 48404
+   },
+   "confirm.2": {
+    "flagged_words": 12103,
+    "words": 49666
+   }
+  },
+  "concentration": {
+   "flagged_words": 24389,
+   "group_keys": 8417,
+   "top": [
+    {
+     "flagged_words": 69,
+     "group_key": "-1_-1_6620816433.wav"
+    },
+    {
+     "flagged_words": 59,
+     "group_key": "-1_-1_1655893272.wav"
+    },
+    {
+     "flagged_words": 57,
+     "group_key": "-1_-1_7639662380.wav"
+    },
+    {
+     "flagged_words": 54,
+     "group_key": "2_249_6392051585.flac"
+    },
+    {
+     "flagged_words": 50,
+     "group_key": "-1_-1_9731876774.wav"
+    },
+    {
+     "flagged_words": 49,
+     "group_key": "-1_-1_7662157013.wav"
+    },
+    {
+     "flagged_words": 43,
+     "group_key": "-1_-1_6809554831.wav"
+    },
+    {
+     "flagged_words": 41,
+     "group_key": "-1_-1_1524107990.wav"
+    },
+    {
+     "flagged_words": 36,
+     "group_key": "-1_-1_9392791004.wav"
+    },
+    {
+     "flagged_words": 36,
+     "group_key": "2_177_7771393194.flac"
+    },
+    {
+     "flagged_words": 36,
+     "group_key": "5_32_7610801808.flac"
+    },
+    {
+     "flagged_words": 35,
+     "group_key": "33_47_8188992411.flac"
+    },
+    {
+     "flagged_words": 32,
+     "group_key": "-1_-1_1264027655.wav"
+    },
+    {
+     "flagged_words": 32,
+     "group_key": "-1_-1_5852672859.wav"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "-1_-1_9526206880.wav"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "3_199_2289260008.flac"
+    },
+    {
+     "flagged_words": 31,
+     "group_key": "4_102_6522628176.flac"
+    },
+    {
+     "flagged_words": 30,
+     "group_key": "-1_-1_6435490657.wav"
+    },
+    {
+     "flagged_words": 30,
+     "group_key": "2_26_3986267208.flac"
+    },
+    {
+     "flagged_words": 30,
+     "group_key": "4_157_5531985553.flac"
+    }
+   ]
+  },
+  "flagged_words": 24389,
+  "scoring": "allowances_off",
+  "substitutions": [
+   {
+    "pair": "ا→∅",
+    "words": 2172
+   },
+   {
+    "pair": "ء→∅",
+    "words": 1529
+   },
+   {
+    "pair": "ل→∅",
+    "words": 1007
+   },
+   {
+    "pair": "ه→∅",
+    "words": 782
+   },
+   {
+    "pair": "م→∅",
+    "words": 740
+   },
+   {
+    "pair": "ن→∅",
+    "words": 724
+   },
+   {
+    "pair": "و→∅",
+    "words": 714
+   },
+   {
+    "pair": "ي→∅",
+    "words": 601
+   },
+   {
+    "pair": "ر→∅",
+    "words": 538
+   },
+   {
+    "pair": "ع→ء",
+    "words": 476
+   },
+   {
+    "pair": "ل→ن",
+    "words": 449
+   },
+   {
+    "pair": "ع→∅",
+    "words": 448
+   },
+   {
+    "pair": "ء→ع",
+    "words": 409
+   },
+   {
+    "pair": "ص→س",
+    "words": 409
+   },
+   {
+    "pair": "ب→∅",
+    "words": 407
+   },
+   {
+    "pair": "ط→ت",
+    "words": 367
+   },
+   {
+    "pair": "ن→ل",
+    "words": 367
+   },
+   {
+    "pair": "ر→ل",
+    "words": 360
+   },
+   {
+    "pair": "د→ت",
+    "words": 316
+   },
+   {
+    "pair": "ت→∅",
+    "words": 315
+   },
+   {
+    "pair": "ق→ك",
+    "words": 271
+   },
+   {
+    "pair": "ح→ه",
+    "words": 241
+   },
+   {
+    "pair": "ه→ح",
+    "words": 236
+   },
+   {
+    "pair": "د→∅",
+    "words": 233
+   },
+   {
+    "pair": "ف→∅",
+    "words": 230
+   },
+   {
+    "pair": "ء→ي",
+    "words": 226
+   },
+   {
+    "pair": "ب→م",
+    "words": 221
+   },
+   {
+    "pair": "ك→∅",
+    "words": 218
+   },
+   {
+    "pair": "ض→د",
+    "words": 217
+   },
+   {
+    "pair": "ن→م",
+    "words": 197
+   },
+   {
+    "pair": "ب→ف",
+    "words": 179
+   },
+   {
+    "pair": "ق→∅",
+    "words": 176
+   },
+   {
+    "pair": "ل→ر",
+    "words": 172
+   },
+   {
+    "pair": "و→ف",
+    "words": 166
+   },
+   {
+    "pair": "س→ص",
+    "words": 162
+   },
+   {
+    "pair": "ذ→∅",
+    "words": 154
+   },
+   {
+    "pair": "ث→س",
+    "words": 152
+   },
+   {
+    "pair": "ك→ق",
+    "words": 151
+   },
+   {
+    "pair": "ء→ا",
+    "words": 149
+   },
+   {
+    "pair": "ك→ت",
+    "words": 149
+   },
+   {
+    "pair": "ز→س",
+    "words": 143
+   },
+   {
+    "pair": "ح→∅",
+    "words": 139
+   },
+   {
+    "pair": "س→∅",
+    "words": 134
+   },
+   {
+    "pair": "ل→م",
+    "words": 134
+   },
+   {
+    "pair": "ض→∅",
+    "words": 125
+   },
+   {
+    "pair": "غ→خ",
+    "words": 124
+   },
+   {
+    "pair": "و→ب",
+    "words": 123
+   },
+   {
+    "pair": "و→م",
+    "words": 119
+   },
+   {
+    "pair": "ذ→ز",
+    "words": 118
+   },
+   {
+    "pair": "م→و",
+    "words": 118
+   },
+   {
+    "pair": "د→ل",
+    "words": 116
+   },
+   {
+    "pair": "ط→∅",
+    "words": 115
+   },
+   {
+    "pair": "ا→ع",
+    "words": 113
+   },
+   {
+    "pair": "ل→د",
+    "words": 112
+   },
+   {
+    "pair": "ں→∅",
+    "words": 112
+   },
+   {
+    "pair": "ں→م",
+    "words": 109
+   },
+   {
+    "pair": "ع→ا",
+    "words": 105
+   },
+   {
+    "pair": "ج→ش",
+    "words": 103
+   },
+   {
+    "pair": "م→ب",
+    "words": 103
+   },
+   {
+    "pair": "غ→∅",
+    "words": 101
+   },
+   {
+    "pair": "ذ→د",
+    "words": 100
+   },
+   {
+    "pair": "ق→خ",
+    "words": 100
+   },
+   {
+    "pair": "ه→ء",
+    "words": 98
+   },
+   {
+    "pair": "ء→و",
+    "words": 97
+   },
+   {
+    "pair": "غ→ق",
+    "words": 95
+   },
+   {
+    "pair": "ت→د",
+    "words": 91
+   },
+   {
+    "pair": "س→ش",
+    "words": 91
+   },
+   {
+    "pair": "ذ→ت",
+    "words": 89
+   },
+   {
+    "pair": "ل→ت",
+    "words": 86
+   },
+   {
+    "pair": "ء→ه",
+    "words": 85
+   },
+   {
+    "pair": "ر→ع",
+    "words": 84
+   },
+   {
+    "pair": "د→ب",
+    "words": 81
+   },
+   {
+    "pair": "ز→∅",
+    "words": 80
+   },
+   {
+    "pair": "ل→ي",
+    "words": 80
+   },
+   {
+    "pair": "ح→ع",
+    "words": 78
+   },
+   {
+    "pair": "ء→ل",
+    "words": 76
+   },
+   {
+    "pair": "ه→ك",
+    "words": 76
+   },
+   {
+    "pair": "ر→ب",
+    "words": 74
+   },
+   {
+    "pair": "ص→∅",
+    "words": 72
+   },
+   {
+    "pair": "ز→ذ",
+    "words": 71
+   },
+   {
+    "pair": "ط→ق",
+    "words": 70
+   },
+   {
+    "pair": "ي→ۦ",
+    "words": 70
+   },
+   {
+    "pair": "ج→∅",
+    "words": 69
+   },
+   {
+    "pair": "خ→ح",
+    "words": 69
+   },
+   {
+    "pair": "ع→ح",
+    "words": 69
+   },
+   {
+    "pair": "خ→ق",
+    "words": 68
+   },
+   {
+    "pair": "ذ→س",
+    "words": 67
+   },
+   {
+    "pair": "ل→ذ",
+    "words": 66
+   },
+   {
+    "pair": "م→ن",
+    "words": 66
+   },
+   {
+    "pair": "غ→ع",
+    "words": 65
+   },
+   {
+    "pair": "ت→س",
+    "words": 64
+   },
+   {
+    "pair": "خ→∅",
+    "words": 64
+   },
+   {
+    "pair": "ر→و",
+    "words": 64
+   },
+   {
+    "pair": "ي→ل",
+    "words": 63
+   },
+   {
+    "pair": "ظ→ض",
+    "words": 62
+   },
+   {
+    "pair": "ر→ن",
+    "words": 61
+   },
+   {
+    "pair": "د→ذ",
+    "words": 60
+   },
+   {
+    "pair": "ت→ك",
+    "words": 59
+   },
+   {
+    "pair": "ف→و",
+    "words": 59
+   },
+   {
+    "pair": "ض→ت",
+    "words": 58
+   },
+   {
+    "pair": "ض→ط",
+    "words": 58
+   },
+   {
+    "pair": "ل→ب",
+    "words": 58
+   },
+   {
+    "pair": "م→ل",
+    "words": 58
+   },
+   {
+    "pair": "د→ج",
+    "words": 57
+   },
+   {
+    "pair": "ظ→ذ",
+    "words": 57
+   },
+   {
+    "pair": "ف→س",
+    "words": 57
+   },
+   {
+    "pair": "ع→و",
+    "words": 56
+   },
+   {
+    "pair": "ج→ت",
+    "words": 55
+   },
+   {
+    "pair": "ف→ب",
+    "words": 55
+   },
+   {
+    "pair": "ه→ع",
+    "words": 55
+   },
+   {
+    "pair": "د→ن",
+    "words": 53
+   },
+   {
+    "pair": "ذ→ث",
+    "words": 53
+   },
+   {
+    "pair": "ف→ص",
+    "words": 53
+   },
+   {
+    "pair": "ه→و",
+    "words": 50
+   },
+   {
+    "pair": "ت→ط",
+    "words": 49
+   },
+   {
+    "pair": "ر→د",
+    "words": 49
+   },
+   {
+    "pair": "ع→ي",
+    "words": 48
+   },
+   {
+    "pair": "ن→ي",
+    "words": 48
+   },
+   {
+    "pair": "ض→ذ",
+    "words": 46
+   },
+   {
+    "pair": "غ→ر",
+    "words": 46
+   },
+   {
+    "pair": "ك→ف",
+    "words": 46
+   },
+   {
+    "pair": "ه→ي",
+    "words": 46
+   },
+   {
+    "pair": "غ→و",
+    "words": 45
+   },
+   {
+    "pair": "ن→ر",
+    "words": 44
+   },
+   {
+    "pair": "ت→ف",
+    "words": 43
+   },
+   {
+    "pair": "ث→ت",
+    "words": 42
+   },
+   {
+    "pair": "ح→ء",
+    "words": 42
+   },
+   {
+    "pair": "ف→ح",
+    "words": 42
+   },
+   {
+    "pair": "ب→ق",
+    "words": 41
+   },
+   {
+    "pair": "ف→ت",
+    "words": 41
+   },
+   {
+    "pair": "ن→د",
+    "words": 41
+   },
+   {
+    "pair": "و→ا",
+    "words": 41
+   },
+   {
+    "pair": "ث→∅",
+    "words": 40
+   },
+   {
+    "pair": "د→ر",
+    "words": 40
+   },
+   {
+    "pair": "ش→∅",
+    "words": 40
+   },
+   {
+    "pair": "ا→ل",
+    "words": 39
+   },
+   {
+    "pair": "ء→ح",
+    "words": 38
+   },
+   {
+    "pair": "ب→ت",
+    "words": 38
+   },
+   {
+    "pair": "ت→ل",
+    "words": 38
+   },
+   {
+    "pair": "ض→ظ",
+    "words": 38
+   },
+   {
+    "pair": "ع→ه",
+    "words": 38
+   },
+   {
+    "pair": "ل→ء",
+    "words": 38
+   },
+   {
+    "pair": "ل→ا",
+    "words": 38
+   },
+   {
+    "pair": "ن→ت",
+    "words": 38
+   },
+   {
+    "pair": "و→ر",
+    "words": 38
+   },
+   {
+    "pair": "ي→ج",
+    "words": 38
+   },
+   {
+    "pair": "ب→ك",
+    "words": 37
+   },
+   {
+    "pair": "س→ت",
+    "words": 37
+   },
+   {
+    "pair": "ب→ل",
+    "words": 36
+   },
+   {
+    "pair": "ب→و",
+    "words": 36
+   },
+   {
+    "pair": "ظ→∅",
+    "words": 36
+   },
+   {
+    "pair": "و→ء",
+    "words": 36
+   },
+   {
+    "pair": "ء→م",
+    "words": 35
+   },
+   {
+    "pair": "ح→خ",
+    "words": 35
+   },
+   {
+    "pair": "ل→و",
+    "words": 35
+   },
+   {
+    "pair": "ر→ا",
+    "words": 34
+   },
+   {
+    "pair": "ك→ه",
+    "words": 34
+   },
+   {
+    "pair": "ه→ف",
+    "words": 34
+   },
+   {
+    "pair": "و→ۥ",
+    "words": 34
+   },
+   {
+    "pair": "ا→ه",
+    "words": 33
+   },
+   {
+    "pair": "ا→و",
+    "words": 33
+   },
+   {
+    "pair": "ق→ف",
+    "words": 33
+   },
+   {
+    "pair": "ض→ب",
+    "words": 32
+   },
+   {
+    "pair": "و→ل",
+    "words": 32
+   },
+   {
+    "pair": "ا→ي",
+    "words": 30
+   },
+   {
+    "pair": "ب→ض",
+    "words": 30
+   },
+   {
+    "pair": "ر→ت",
+    "words": 30
+   },
+   {
+    "pair": "س→ث",
+    "words": 30
+   },
+   {
+    "pair": "ف→خ",
+    "words": 30
+   },
+   {
+    "pair": "ه→ا",
+    "words": 30
+   },
+   {
+    "pair": "ا→ء",
+    "words": 29
+   },
+   {
+    "pair": "ص→ش",
+    "words": 29
+   },
+   {
+    "pair": "غ→ك",
+    "words": 29
+   },
+   {
+    "pair": "ق→ح",
+    "words": 29
+   },
+   {
+    "pair": "ك→ء",
+    "words": 29
+   },
+   {
+    "pair": "ل→ج",
+    "words": 29
+   },
+   {
+    "pair": "ب→ر",
+    "words": 28
+   },
+   {
+    "pair": "ت→ق",
+    "words": 28
+   },
+   {
+    "pair": "ذ→ظ",
+    "words": 28
+   },
+   {
+    "pair": "غ→ء",
+    "words": 28
+   },
+   {
+    "pair": "م→ف",
+    "words": 28
+   },
+   {
+    "pair": "ي→ء",
+    "words": 28
+   },
+   {
+    "pair": "ء→ك",
+    "words": 27
+   },
+   {
+    "pair": "ء→ۥ",
+    "words": 27
+   },
+   {
+    "pair": "ر→ف",
+    "words": 27
+   },
+   {
+    "pair": "ر→م",
+    "words": 27
+   },
+   {
+    "pair": "س→ز",
+    "words": 27
+   },
+   {
+    "pair": "ط→ض",
+    "words": 27
+   },
+   {
+    "pair": "ں→ل",
+    "words": 27
+   },
+   {
+    "pair": "ت→ث",
+    "words": 26
+   },
+   {
+    "pair": "ض→ل",
+    "words": 26
+   },
+   {
+    "pair": "ط→د",
+    "words": 26
+   },
+   {
+    "pair": "ق→ء",
+    "words": 26
+   },
+   {
+    "pair": "ن→ا",
+    "words": 26
+   },
+   {
+    "pair": "د→ض",
+    "words": 25
+   },
+   {
+    "pair": "ذ→ل",
+    "words": 25
+   },
+   {
+    "pair": "ر→غ",
+    "words": 25
+   },
+   {
+    "pair": "ش→س",
+    "words": 25
+   },
+   {
+    "pair": "ف→ق",
+    "words": 25
+   },
+   {
+    "pair": "ف→م",
+    "words": 25
+   },
+   {
+    "pair": "و→ق",
+    "words": 25
+   },
+   {
+    "pair": "غ→ب",
+    "words": 24
+   },
+   {
+    "pair": "ف→ك",
+    "words": 24
+   },
+   {
+    "pair": "و→ع",
+    "words": 24
+   },
+   {
+    "pair": "خ→ص",
+    "words": 23
+   },
+   {
+    "pair": "ق→غ",
+    "words": 23
+   },
+   {
+    "pair": "ن→ه",
+    "words": 23
+   },
+   {
+    "pair": "ه→خ",
+    "words": 23
+   },
+   {
+    "pair": "ي→ت",
+    "words": 23
+   },
+   {
+    "pair": "ء→ر",
+    "words": 22
+   },
+   {
+    "pair": "ء→ۦ",
+    "words": 22
+   },
+   {
+    "pair": "ب→د",
+    "words": 22
+   },
+   {
+    "pair": "ج→د",
+    "words": 22
+   },
+   {
+    "pair": "ج→ك",
+    "words": 22
+   },
+   {
+    "pair": "خ→ه",
+    "words": 22
+   },
+   {
+    "pair": "ر→ي",
+    "words": 22
+   },
+   {
+    "pair": "ظ→ز",
+    "words": 22
+   },
+   {
+    "pair": "ث→ف",
+    "words": 21
+   },
+   {
+    "pair": "س→ف",
+    "words": 21
+   },
+   {
+    "pair": "ض→ص",
+    "words": 21
+   },
+   {
+    "pair": "ظ→ص",
+    "words": 21
+   },
+   {
+    "pair": "ع→ر",
+    "words": 21
+   },
+   {
+    "pair": "ك→خ",
+    "words": 21
+   },
+   {
+    "pair": "م→ا",
+    "words": 21
+   },
+   {
+    "pair": "ه→ل",
+    "words": 21
+   },
+   {
+    "pair": "ي→ذ",
+    "words": 21
+   },
+   {
+    "pair": "ي→ن",
+    "words": 21
+   },
+   {
+    "pair": "ء→ق",
+    "words": 20
+   },
+   {
+    "pair": "ء→ن",
+    "words": 20
+   },
+   {
+    "pair": "ا→ت",
+    "words": 20
+   },
+   {
+    "pair": "ذ→ج",
+    "words": 20
+   },
+   {
+    "pair": "ف→ش",
+    "words": 20
+   },
+   {
+    "pair": "ن→و",
+    "words": 20
+   },
+   {
+    "pair": "و→غ",
+    "words": 20
+   },
+   {
+    "pair": "ج→ل",
+    "words": 19
+   },
+   {
+    "pair": "خ→ك",
+    "words": 19
+   },
+   {
+    "pair": "د→م",
+    "words": 19
+   },
+   {
+    "pair": "ذ→ب",
+    "words": 19
+   },
+   {
+    "pair": "ر→ذ",
+    "words": 19
+   },
+   {
+    "pair": "ع→ل",
+    "words": 19
+   },
+   {
+    "pair": "ل→ه",
+    "words": 19
+   },
+   {
+    "pair": "م→ء",
+    "words": 19
+   },
+   {
+    "pair": "ي→ع",
+    "words": 19
+   },
+   {
+    "pair": "ي→م",
+    "words": 19
+   },
+   {
+    "pair": "د→ز",
+    "words": 18
+   },
+   {
+    "pair": "ز→د",
+    "words": 18
+   },
+   {
+    "pair": "غ→ه",
+    "words": 18
+   },
+   {
+    "pair": "ف→ء",
+    "words": 18
+   },
+   {
+    "pair": "ق→ب",
+    "words": 18
+   },
+   {
+    "pair": "ل→ف",
+    "words": 18
+   },
+   {
+    "pair": "م→ه",
+    "words": 18
+   },
+   {
+    "pair": "ي→ا",
+    "words": 18
+   },
+   {
+    "pair": "ں→ۥ",
+    "words": 18
+   },
+   {
+    "pair": "ت→ء",
+    "words": 17
+   },
+   {
+    "pair": "ر→ح",
+    "words": 17
+   },
+   {
+    "pair": "ط→ف",
+    "words": 17
+   },
+   {
+    "pair": "ق→ت",
+    "words": 17
+   },
+   {
+    "pair": "ك→ح",
+    "words": 17
+   },
+   {
+    "pair": "م→ں",
+    "words": 17
+   },
+   {
+    "pair": "ه→ت",
+    "words": 17
+   },
+   {
+    "pair": "ه→م",
+    "words": 17
+   },
+   {
+    "pair": "و→ه",
+    "words": 17
+   },
+   {
+    "pair": "ي→ه",
+    "words": 17
+   },
+   {
+    "pair": "ت→ن",
+    "words": 16
+   },
+   {
+    "pair": "ت→ه",
+    "words": 16
+   },
+   {
+    "pair": "ت→ي",
+    "words": 16
+   },
+   {
+    "pair": "ذ→ف",
+    "words": 16
+   },
+   {
+    "pair": "ك→ب",
+    "words": 16
+   },
+   {
+    "pair": "ل→ض",
+    "words": 16
+   },
+   {
+    "pair": "ل→ع",
+    "words": 16
+   },
+   {
+    "pair": "ل→ں",
+    "words": 16
+   },
+   {
+    "pair": "م→ر",
+    "words": 16
+   },
+   {
+    "pair": "ي→ك",
+    "words": 16
+   },
+   {
+    "pair": "ء→ف",
+    "words": 15
+   },
+   {
+    "pair": "ح→ق",
+    "words": 15
+   },
+   {
+    "pair": "خ→ف",
+    "words": 15
+   },
+   {
+    "pair": "ذ→ض",
+    "words": 15
+   },
+   {
+    "pair": "ز→ج",
+    "words": 15
+   },
+   {
+    "pair": "ص→ث",
+    "words": 15
+   },
+   {
+    "pair": "ض→ر",
+    "words": 15
+   },
+   {
+    "pair": "ض→ق",
+    "words": 15
+   },
+   {
+    "pair": "ك→ل",
+    "words": 15
+   },
+   {
+    "pair": "ل→س",
+    "words": 15
+   },
+   {
+    "pair": "ں→و",
+    "words": 15
+   },
+   {
+    "pair": "ا→ب",
+    "words": 14
+   },
+   {
+    "pair": "ا→ۥ",
+    "words": 14
+   },
+   {
+    "pair": "ب→ء",
+    "words": 14
+   },
+   {
+    "pair": "ت→ب",
+    "words": 14
+   },
+   {
+    "pair": "ث→ص",
+    "words": 14
+   },
+   {
+    "pair": "ر→ص",
+    "words": 14
+   },
+   {
+    "pair": "ر→ه",
+    "words": 14
+   },
+   {
+    "pair": "ل→ك",
+    "words": 14
+   },
+   {
+    "pair": "ل→ۦ",
+    "words": 14
+   },
+   {
+    "pair": "م→ي",
+    "words": 14
+   },
+   {
+    "pair": "ن→ء",
+    "words": 14
+   },
+   {
+    "pair": "ه→ش",
+    "words": 14
+   },
+   {
+    "pair": "ه→ق",
+    "words": 14
+   },
+   {
+    "pair": "ء→ب",
+    "words": 13
+   },
+   {
+    "pair": "ء→ت",
+    "words": 13
+   },
+   {
+    "pair": "ا→ف",
+    "words": 13
+   },
+   {
+    "pair": "ا→م",
+    "words": 13
+   },
+   {
+    "pair": "ط→ص",
+    "words": 13
+   },
+   {
+    "pair": "ف→ث",
+    "words": 13
+   },
+   {
+    "pair": "ي→ب",
+    "words": 13
+   },
+   {
+    "pair": "ں→ا",
+    "words": 13
+   },
+   {
+    "pair": "ا→ر",
+    "words": 12
+   },
+   {
+    "pair": "ا→ق",
+    "words": 12
+   },
+   {
+    "pair": "ا→ن",
+    "words": 12
+   },
+   {
+    "pair": "ت→ذ",
+    "words": 12
+   },
+   {
+    "pair": "ج→ز",
+    "words": 12
+   },
+   {
+    "pair": "ج→ي",
+    "words": 12
+   },
+   {
+    "pair": "ح→ا",
+    "words": 12
+   },
+   {
+    "pair": "ر→ق",
+    "words": 12
+   },
+   {
+    "pair": "ص→ف",
+    "words": 12
+   },
+   {
+    "pair": "ض→ز",
+    "words": 12
+   },
+   {
+    "pair": "ط→ك",
+    "words": 12
+   },
+   {
+    "pair": "ق→ط",
+    "words": 12
+   },
+   {
+    "pair": "ك→ج",
+    "words": 12
+   },
+   {
+    "pair": "ل→ق",
+    "words": 12
+   },
+   {
+    "pair": "م→ع",
+    "words": 12
+   },
+   {
+    "pair": "ه→ر",
+    "words": 12
+   },
+   {
+    "pair": "ه→ن",
+    "words": 12
+   },
+   {
+    "pair": "ي→ر",
+    "words": 12
+   },
+   {
+    "pair": "ت→ج",
+    "words": 11
+   },
+   {
+    "pair": "ج→ب",
+    "words": 11
+   },
+   {
+    "pair": "ح→س",
+    "words": 11
+   },
+   {
+    "pair": "ذ→ي",
+    "words": 11
+   },
+   {
+    "pair": "ط→ر",
+    "words": 11
+   },
+   {
+    "pair": "ع→ق",
+    "words": 11
+   },
+   {
+    "pair": "ع→م",
+    "words": 11
+   },
+   {
+    "pair": "ل→ظ",
+    "words": 11
+   },
+   {
+    "pair": "و→ي",
+    "words": 11
+   },
+   {
+    "pair": "ا→ك",
+    "words": 10
+   },
+   {
+    "pair": "ب→ن",
+    "words": 10
+   },
+   {
+    "pair": "ح→ي",
+    "words": 10
+   },
+   {
+    "pair": "خ→ء",
+    "words": 10
+   },
+   {
+    "pair": "خ→غ",
+    "words": 10
+   },
+   {
+    "pair": "د→ي",
+    "words": 10
+   },
+   {
+    "pair": "ر→ج",
+    "words": 10
+   },
+   {
+    "pair": "ر→ش",
+    "words": 10
+   },
+   {
+    "pair": "ر→ض",
+    "words": 10
+   },
+   {
+    "pair": "ز→ت",
+    "words": 10
+   },
+   {
+    "pair": "ش→ج",
+    "words": 10
+   },
+   {
+    "pair": "ض→ج",
+    "words": 10
+   },
+   {
+    "pair": "ع→غ",
+    "words": 10
+   },
+   {
+    "pair": "غ→ض",
+    "words": 10
+   },
+   {
+    "pair": "ف→ل",
+    "words": 10
+   },
+   {
+    "pair": "ق→ص",
+    "words": 10
+   },
+   {
+    "pair": "ك→س",
+    "words": 10
+   },
+   {
+    "pair": "ل→ۥ",
+    "words": 10
+   },
+   {
+    "pair": "ن→ب",
+    "words": 10
+   },
+   {
+    "pair": "ں→ر",
+    "words": 10
+   },
+   {
+    "pair": "ء→ج",
+    "words": 9
+   },
+   {
+    "pair": "ا→ۦ",
+    "words": 9
+   },
+   {
+    "pair": "ب→ذ",
+    "words": 9
+   },
+   {
+    "pair": "خ→ع",
+    "words": 9
+   },
+   {
+    "pair": "ذ→ن",
+    "words": 9
+   },
+   {
+    "pair": "ر→ء",
+    "words": 9
+   },
+   {
+    "pair": "ر→س",
+    "words": 9
+   },
+   {
+    "pair": "ر→ك",
+    "words": 9
+   },
+   {
+    "pair": "ض→ف",
+    "words": 9
+   },
+   {
+    "pair": "ض→م",
+    "words": 9
+   },
+   {
+    "pair": "ف→ه",
+    "words": 9
+   },
+   {
+    "pair": "ك→ث",
+    "words": 9
+   },
+   {
+    "pair": "ن→ذ",
+    "words": 9
+   },
+   {
+    "pair": "ن→ع",
+    "words": 9
+   },
+   {
+    "pair": "ي→د",
+    "words": 9
+   },
+   {
+    "pair": "ي→ش",
+    "words": 9
+   },
+   {
+    "pair": "ي→و",
+    "words": 9
+   },
+   {
+    "pair": "ں→د",
+    "words": 9
+   },
+   {
+    "pair": "ں→ي",
+    "words": 9
+   },
+   {
+    "pair": "ا→خ",
+    "words": 8
+   },
+   {
+    "pair": "ب→ه",
+    "words": 8
+   },
+   {
+    "pair": "ت→ا",
+    "words": 8
+   },
+   {
+    "pair": "ت→ر",
+    "words": 8
+   },
+   {
+    "pair": "ت→ش",
+    "words": 8
+   },
+   {
+    "pair": "ث→ك",
+    "words": 8
+   },
+   {
+    "pair": "ح→ك",
+    "words": 8
+   },
+   {
+    "pair": "د→ء",
+    "words": 8
+   },
+   {
+    "pair": "س→ء",
+    "words": 8
+   },
+   {
+    "pair": "س→ل",
+    "words": 8
+   },
+   {
+    "pair": "ش→ح",
+    "words": 8
+   },
+   {
+    "pair": "ط→ب",
+    "words": 8
+   },
+   {
+    "pair": "ط→ل",
+    "words": 8
+   },
+   {
+    "pair": "غ→ح",
+    "words": 8
+   },
+   {
+    "pair": "غ→ذ",
+    "words": 8
+   },
+   {
+    "pair": "غ→ظ",
+    "words": 8
+   },
+   {
+    "pair": "غ→م",
+    "words": 8
+   },
+   {
+    "pair": "ك→ش",
+    "words": 8
+   },
+   {
+    "pair": "م→ح",
+    "words": 8
+   },
+   {
+    "pair": "م→ۥ",
+    "words": 8
+   },
+   {
+    "pair": "ں→ۦ",
+    "words": 8
+   },
+   {
+    "pair": "ء→ذ",
+    "words": 7
+   },
+   {
+    "pair": "ا→ظ",
+    "words": 7
+   },
+   {
+    "pair": "ا→ں",
+    "words": 7
+   },
+   {
+    "pair": "ب→ط",
+    "words": 7
+   },
+   {
+    "pair": "ج→س",
+    "words": 7
+   },
+   {
+    "pair": "ح→ص",
+    "words": 7
+   },
+   {
+    "pair": "ح→ف",
+    "words": 7
+   },
+   {
+    "pair": "د→ا",
+    "words": 7
+   },
+   {
+    "pair": "ر→ز",
+    "words": 7
+   },
+   {
+    "pair": "ر→ۥ",
+    "words": 7
+   },
+   {
+    "pair": "ز→ص",
+    "words": 7
+   },
+   {
+    "pair": "ز→ن",
+    "words": 7
+   },
+   {
+    "pair": "س→ذ",
+    "words": 7
+   },
+   {
+    "pair": "ش→ف",
+    "words": 7
+   },
+   {
+    "pair": "ص→ط",
+    "words": 7
+   },
+   {
+    "pair": "ص→ق",
+    "words": 7
+   },
+   {
+    "pair": "ع→ۦ",
+    "words": 7
+   },
+   {
+    "pair": "غ→ص",
+    "words": 7
+   },
+   {
+    "pair": "غ→ل",
+    "words": 7
+   },
+   {
+    "pair": "ق→ر",
+    "words": 7
+   },
+   {
+    "pair": "ق→م",
+    "words": 7
+   },
+   {
+    "pair": "ك→ع",
+    "words": 7
+   },
+   {
+    "pair": "ك→م",
+    "words": 7
+   },
+   {
+    "pair": "م→ذ",
+    "words": 7
+   },
+   {
+    "pair": "ه→غ",
+    "words": 7
+   },
+   {
+    "pair": "و→ض",
+    "words": 7
+   },
+   {
+    "pair": "و→ن",
+    "words": 7
+   },
+   {
+    "pair": "ء→خ",
+    "words": 6
+   },
+   {
+    "pair": "ء→غ",
+    "words": 6
+   },
+   {
+    "pair": "ء→ں",
+    "words": 6
+   },
+   {
+    "pair": "ا→ص",
+    "words": 6
+   },
+   {
+    "pair": "ب→ظ",
+    "words": 6
+   },
+   {
+    "pair": "ب→ي",
+    "words": 6
+   },
+   {
+    "pair": "ب→ۥ",
+    "words": 6
+   },
+   {
+    "pair": "ج→ذ",
+    "words": 6
+   },
+   {
+    "pair": "د→ك",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ا",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ك",
+    "words": 6
+   },
+   {
+    "pair": "ذ→ه",
+    "words": 6
+   },
+   {
+    "pair": "ز→ل",
+    "words": 6
+   },
+   {
+    "pair": "س→ا",
+    "words": 6
+   },
+   {
+    "pair": "ش→ت",
+    "words": 6
+   },
+   {
+    "pair": "ص→ت",
+    "words": 6
+   },
+   {
+    "pair": "ض→ث",
+    "words": 6
+   },
+   {
+    "pair": "ط→ث",
+    "words": 6
+   },
+   {
+    "pair": "ط→ذ",
+    "words": 6
+   },
+   {
+    "pair": "ظ→د",
+    "words": 6
+   },
+   {
+    "pair": "ظ→ق",
+    "words": 6
+   },
+   {
+    "pair": "ع→ن",
+    "words": 6
+   },
+   {
+    "pair": "ف→ي",
+    "words": 6
+   },
+   {
+    "pair": "ق→ل",
+    "words": 6
+   },
+   {
+    "pair": "ق→ه",
+    "words": 6
+   },
+   {
+    "pair": "ل→ز",
+    "words": 6
+   },
+   {
+    "pair": "ن→س",
+    "words": 6
+   },
+   {
+    "pair": "ه→ذ",
+    "words": 6
+   },
+   {
+    "pair": "ه→ۦ",
+    "words": 6
+   },
+   {
+    "pair": "و→ت",
+    "words": 6
+   },
+   {
+    "pair": "و→ذ",
+    "words": 6
+   },
+   {
+    "pair": "و→ص",
+    "words": 6
+   },
+   {
+    "pair": "ي→ف",
+    "words": 6
+   },
+   {
+    "pair": "ں→ع",
+    "words": 6
+   },
+   {
+    "pair": "ء→د",
+    "words": 5
+   },
+   {
+    "pair": "ا→ح",
+    "words": 5
+   },
+   {
+    "pair": "ا→د",
+    "words": 5
+   },
+   {
+    "pair": "ا→س",
+    "words": 5
+   },
+   {
+    "pair": "ب→ا",
+    "words": 5
+   },
+   {
+    "pair": "ت→ح",
+    "words": 5
+   },
+   {
+    "pair": "ت→ز",
+    "words": 5
+   },
+   {
+    "pair": "ت→ص",
+    "words": 5
+   },
+   {
+    "pair": "ت→م",
+    "words": 5
+   },
+   {
+    "pair": "ث→ذ",
+    "words": 5
+   },
+   {
+    "pair": "ث→ه",
+    "words": 5
+   },
+   {
+    "pair": "ح→ت",
+    "words": 5
+   },
+   {
+    "pair": "ح→ر",
+    "words": 5
+   },
+   {
+    "pair": "ح→ش",
+    "words": 5
+   },
+   {
+    "pair": "ح→م",
+    "words": 5
+   },
+   {
+    "pair": "خ→س",
+    "words": 5
+   },
+   {
+    "pair": "د→ث",
+    "words": 5
+   },
+   {
+    "pair": "د→ه",
+    "words": 5
+   },
+   {
+    "pair": "ذ→م",
+    "words": 5
+   },
+   {
+    "pair": "ر→ں",
+    "words": 5
+   },
+   {
+    "pair": "ز→ض",
+    "words": 5
+   },
+   {
+    "pair": "ز→ظ",
+    "words": 5
+   },
+   {
+    "pair": "س→ح",
+    "words": 5
+   },
+   {
+    "pair": "س→م",
+    "words": 5
+   },
+   {
+    "pair": "س→ي",
+    "words": 5
+   },
+   {
+    "pair": "ض→ن",
+    "words": 5
+   },
+   {
+    "pair": "ط→ء",
+    "words": 5
+   },
+   {
+    "pair": "ظ→س",
+    "words": 5
+   },
+   {
+    "pair": "ظ→ط",
+    "words": 5
+   },
+   {
+    "pair": "ع→ب",
+    "words": 5
+   },
+   {
+    "pair": "ع→ت",
+    "words": 5
+   },
+   {
+    "pair": "ع→ف",
+    "words": 5
+   },
+   {
+    "pair": "غ→ا",
+    "words": 5
+   },
+   {
+    "pair": "غ→ي",
+    "words": 5
+   },
+   {
+    "pair": "غ→ۥ",
+    "words": 5
+   },
+   {
+    "pair": "ف→ط",
+    "words": 5
+   },
+   {
+    "pair": "ك→د",
+    "words": 5
+   },
+   {
+    "pair": "ك→ذ",
+    "words": 5
+   },
+   {
+    "pair": "ل→ص",
+    "words": 5
+   },
+   {
+    "pair": "ل→ط",
+    "words": 5
+   },
+   {
+    "pair": "م→د",
+    "words": 5
+   },
+   {
+    "pair": "م→ض",
+    "words": 5
+   },
+   {
+    "pair": "م→ق",
+    "words": 5
+   },
+   {
+    "pair": "ن→ج",
+    "words": 5
+   },
+   {
+    "pair": "ن→ۥ",
+    "words": 5
+   },
+   {
+    "pair": "ن→ۦ",
+    "words": 5
+   },
+   {
+    "pair": "ه→س",
+    "words": 5
+   },
+   {
+    "pair": "و→ظ",
+    "words": 5
+   },
+   {
+    "pair": "و→ك",
+    "words": 5
+   },
+   {
+    "pair": "ں→ت",
+    "words": 5
+   },
+   {
+    "pair": "ا→ذ",
+    "words": 4
+   },
+   {
+    "pair": "ا→ض",
+    "words": 4
+   },
+   {
+    "pair": "ب→س",
+    "words": 4
+   },
+   {
+    "pair": "ب→ص",
+    "words": 4
+   },
+   {
+    "pair": "ب→ع",
+    "words": 4
+   },
+   {
+    "pair": "ب→غ",
+    "words": 4
+   },
+   {
+    "pair": "ب→ۦ",
+    "words": 4
+   },
+   {
+    "pair": "ت→ض",
+    "words": 4
+   },
+   {
+    "pair": "ث→ء",
+    "words": 4
+   },
+   {
+    "pair": "ث→ز",
+    "words": 4
+   },
+   {
+    "pair": "ث→ل",
+    "words": 4
+   },
+   {
+    "pair": "ج→ء",
+    "words": 4
+   },
+   {
+    "pair": "ج→ه",
+    "words": 4
+   },
+   {
+    "pair": "ح→ب",
+    "words": 4
+   },
+   {
+    "pair": "ح→غ",
+    "words": 4
+   },
+   {
+    "pair": "ح→ل",
+    "words": 4
+   },
+   {
+    "pair": "ذ→ر",
+    "words": 4
+   },
+   {
+    "pair": "ذ→ق",
+    "words": 4
+   },
+   {
+    "pair": "ر→ط",
+    "words": 4
+   },
+   {
+    "pair": "ر→ظ",
+    "words": 4
+   },
+   {
+    "pair": "ز→ء",
+    "words": 4
+   },
+   {
+    "pair": "ز→ب",
+    "words": 4
+   },
+   {
+    "pair": "ز→ف",
+    "words": 4
+   },
+   {
+    "pair": "ز→م",
+    "words": 4
+   },
+   {
+    "pair": "ز→و",
+    "words": 4
+   },
+   {
+    "pair": "ز→ي",
+    "words": 4
+   },
+   {
+    "pair": "س→خ",
+    "words": 4
+   },
+   {
+    "pair": "س→ر",
+    "words": 4
+   },
+   {
+    "pair": "س→ك",
+    "words": 4
+   },
+   {
+    "pair": "ش→ك",
+    "words": 4
+   },
+   {
+    "pair": "ش→ي",
+    "words": 4
+   },
+   {
+    "pair": "ص→ز",
+    "words": 4
+   },
+   {
+    "pair": "ض→و",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ب",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ت",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ث",
+    "words": 4
+   },
+   {
+    "pair": "ظ→ل",
+    "words": 4
+   },
+   {
+    "pair": "ع→ج",
+    "words": 4
+   },
+   {
+    "pair": "ع→ك",
+    "words": 4
+   },
+   {
+    "pair": "ع→ۥ",
+    "words": 4
+   },
+   {
+    "pair": "غ→ج",
+    "words": 4
+   },
+   {
+    "pair": "غ→د",
+    "words": 4
+   },
+   {
+    "pair": "غ→ط",
+    "words": 4
+   },
+   {
+    "pair": "غ→ف",
+    "words": 4
+   },
+   {
+    "pair": "ف→ا",
+    "words": 4
+   },
+   {
+    "pair": "ف→ذ",
+    "words": 4
+   },
+   {
+    "pair": "ف→ں",
+    "words": 4
+   },
+   {
+    "pair": "ق→س",
+    "words": 4
+   },
+   {
+    "pair": "ق→ع",
+    "words": 4
+   },
+   {
+    "pair": "ق→ن",
+    "words": 4
+   },
+   {
+    "pair": "ق→ي",
+    "words": 4
+   },
+   {
+    "pair": "ك→ا",
+    "words": 4
+   },
+   {
+    "pair": "ك→ط",
+    "words": 4
+   },
+   {
+    "pair": "ل→ح",
+    "words": 4
+   },
+   {
+    "pair": "ل→ش",
+    "words": 4
+   },
+   {
+    "pair": "ل→غ",
+    "words": 4
+   },
+   {
+    "pair": "م→ك",
+    "words": 4
+   },
+   {
+    "pair": "ن→ح",
+    "words": 4
+   },
+   {
+    "pair": "ن→ك",
+    "words": 4
+   },
+   {
+    "pair": "ه→ۥ",
+    "words": 4
+   },
+   {
+    "pair": "و→س",
+    "words": 4
+   },
+   {
+    "pair": "و→ں",
+    "words": 4
+   },
+   {
+    "pair": "و→ۦ",
+    "words": 4
+   },
+   {
+    "pair": "ي→ث",
+    "words": 4
+   },
+   {
+    "pair": "ں→ج",
+    "words": 4
+   },
+   {
+    "pair": "ں→ه",
+    "words": 4
+   },
+   {
+    "pair": "ء→ث",
+    "words": 3
+   },
+   {
+    "pair": "ء→ض",
+    "words": 3
+   },
+   {
+    "pair": "ا→ج",
+    "words": 3
+   },
+   {
+    "pair": "ا→غ",
+    "words": 3
+   },
+   {
+    "pair": "ب→ج",
+    "words": 3
+   },
+   {
+    "pair": "ب→ح",
+    "words": 3
+   },
+   {
+    "pair": "ب→خ",
+    "words": 3
+   },
+   {
+    "pair": "ب→ز",
+    "words": 3
+   },
+   {
+    "pair": "ت→خ",
+    "words": 3
+   },
+   {
+    "pair": "ث→د",
+    "words": 3
+   },
+   {
+    "pair": "ج→ث",
+    "words": 3
+   },
+   {
+    "pair": "ج→ف",
+    "words": 3
+   },
+   {
+    "pair": "ح→ث",
+    "words": 3
+   },
+   {
+    "pair": "ح→ج",
+    "words": 3
+   },
+   {
+    "pair": "ح→ن",
+    "words": 3
+   },
+   {
+    "pair": "خ→ت",
+    "words": 3
+   },
+   {
+    "pair": "خ→ل",
+    "words": 3
+   },
+   {
+    "pair": "خ→و",
+    "words": 3
+   },
+   {
+    "pair": "د→ع",
+    "words": 3
+   },
+   {
+    "pair": "د→ق",
+    "words": 3
+   },
+   {
+    "pair": "د→و",
+    "words": 3
+   },
+   {
+    "pair": "ذ→ء",
+    "words": 3
+   },
+   {
+    "pair": "ذ→ص",
+    "words": 3
+   },
+   {
+    "pair": "ر→خ",
+    "words": 3
+   },
+   {
+    "pair": "ز→ث",
+    "words": 3
+   },
+   {
+    "pair": "ز→ں",
+    "words": 3
+   },
+   {
+    "pair": "س→ب",
+    "words": 3
+   },
+   {
+    "pair": "س→ج",
+    "words": 3
+   },
+   {
+    "pair": "س→ع",
+    "words": 3
+   },
+   {
+    "pair": "س→ن",
+    "words": 3
+   },
+   {
+    "pair": "ش→ص",
+    "words": 3
+   },
+   {
+    "pair": "ص→ر",
+    "words": 3
+   },
+   {
+    "pair": "ص→ل",
+    "words": 3
+   },
+   {
+    "pair": "ص→ن",
+    "words": 3
+   },
+   {
+    "pair": "ض→س",
+    "words": 3
+   },
+   {
+    "pair": "ض→ع",
+    "words": 3
+   },
+   {
+    "pair": "ط→ا",
+    "words": 3
+   },
+   {
+    "pair": "ط→س",
+    "words": 3
+   },
+   {
+    "pair": "ط→ن",
+    "words": 3
+   },
+   {
+    "pair": "ع→ذ",
+    "words": 3
+   },
+   {
+    "pair": "غ→ن",
+    "words": 3
+   },
+   {
+    "pair": "ف→ر",
+    "words": 3
+   },
+   {
+    "pair": "ق→ج",
+    "words": 3
+   },
+   {
+    "pair": "ق→د",
+    "words": 3
+   },
+   {
+    "pair": "ك→ر",
+    "words": 3
+   },
+   {
+    "pair": "ك→ن",
+    "words": 3
+   },
+   {
+    "pair": "ك→ي",
+    "words": 3
+   },
+   {
+    "pair": "م→ت",
+    "words": 3
+   },
+   {
+    "pair": "ن→ز",
+    "words": 3
+   },
+   {
+    "pair": "ه→ب",
+    "words": 3
+   },
+   {
+    "pair": "ه→ض",
+    "words": 3
+   },
+   {
+    "pair": "و→خ",
+    "words": 3
+   },
+   {
+    "pair": "ي→خ",
+    "words": 3
+   },
+   {
+    "pair": "ي→ز",
+    "words": 3
+   },
+   {
+    "pair": "ي→ق",
+    "words": 3
+   },
+   {
+    "pair": "ي→ۥ",
+    "words": 3
+   },
+   {
+    "pair": "ں→ذ",
+    "words": 3
+   },
+   {
+    "pair": "ں→ك",
+    "words": 3
+   },
+   {
+    "pair": "ء→ز",
+    "words": 2
+   },
+   {
+    "pair": "ا→ط",
+    "words": 2
+   },
+   {
+    "pair": "ت→ع",
+    "words": 2
+   },
+   {
+    "pair": "ت→و",
+    "words": 2
+   },
+   {
+    "pair": "ث→ا",
+    "words": 2
+   },
+   {
+    "pair": "ث→ح",
+    "words": 2
+   },
+   {
+    "pair": "ث→ش",
+    "words": 2
+   },
+   {
+    "pair": "ث→ط",
+    "words": 2
+   },
+   {
+    "pair": "ث→م",
+    "words": 2
+   },
+   {
+    "pair": "ث→و",
+    "words": 2
+   },
+   {
+    "pair": "ج→ق",
+    "words": 2
+   },
+   {
+    "pair": "ج→م",
+    "words": 2
+   },
+   {
+    "pair": "ج→ن",
+    "words": 2
+   },
+   {
+    "pair": "ح→ذ",
+    "words": 2
+   },
+   {
+    "pair": "ح→ۥ",
+    "words": 2
+   },
+   {
+    "pair": "خ→ا",
+    "words": 2
+   },
+   {
+    "pair": "خ→ث",
+    "words": 2
+   },
+   {
+    "pair": "خ→ج",
+    "words": 2
+   },
+   {
+    "pair": "خ→ر",
+    "words": 2
+   },
+   {
+    "pair": "خ→ط",
+    "words": 2
+   },
+   {
+    "pair": "د→س",
+    "words": 2
+   },
+   {
+    "pair": "د→ص",
+    "words": 2
+   },
+   {
+    "pair": "د→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ذ→ح",
+    "words": 2
+   },
+   {
+    "pair": "ذ→خ",
+    "words": 2
+   },
+   {
+    "pair": "ذ→ع",
+    "words": 2
+   },
+   {
+    "pair": "ذ→و",
+    "words": 2
+   },
+   {
+    "pair": "ر→ث",
+    "words": 2
+   },
+   {
+    "pair": "ر→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ز→ع",
+    "words": 2
+   },
+   {
+    "pair": "ز→غ",
+    "words": 2
+   },
+   {
+    "pair": "ز→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "س→ق",
+    "words": 2
+   },
+   {
+    "pair": "س→ه",
+    "words": 2
+   },
+   {
+    "pair": "س→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ش→ا",
+    "words": 2
+   },
+   {
+    "pair": "ش→ق",
+    "words": 2
+   },
+   {
+    "pair": "ش→ل",
+    "words": 2
+   },
+   {
+    "pair": "ش→ه",
+    "words": 2
+   },
+   {
+    "pair": "ص→ا",
+    "words": 2
+   },
+   {
+    "pair": "ص→ب",
+    "words": 2
+   },
+   {
+    "pair": "ص→ح",
+    "words": 2
+   },
+   {
+    "pair": "ص→خ",
+    "words": 2
+   },
+   {
+    "pair": "ض→ا",
+    "words": 2
+   },
+   {
+    "pair": "ض→غ",
+    "words": 2
+   },
+   {
+    "pair": "ض→ں",
+    "words": 2
+   },
+   {
+    "pair": "ط→ج",
+    "words": 2
+   },
+   {
+    "pair": "ط→ح",
+    "words": 2
+   },
+   {
+    "pair": "ط→خ",
+    "words": 2
+   },
+   {
+    "pair": "ط→م",
+    "words": 2
+   },
+   {
+    "pair": "ظ→ن",
+    "words": 2
+   },
+   {
+    "pair": "ظ→و",
+    "words": 2
+   },
+   {
+    "pair": "ع→خ",
+    "words": 2
+   },
+   {
+    "pair": "ع→د",
+    "words": 2
+   },
+   {
+    "pair": "ع→س",
+    "words": 2
+   },
+   {
+    "pair": "ع→ں",
+    "words": 2
+   },
+   {
+    "pair": "غ→ث",
+    "words": 2
+   },
+   {
+    "pair": "غ→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ـ→ي",
+    "words": 2
+   },
+   {
+    "pair": "ـ→∅",
+    "words": 2
+   },
+   {
+    "pair": "ف→ج",
+    "words": 2
+   },
+   {
+    "pair": "ف→ن",
+    "words": 2
+   },
+   {
+    "pair": "ق→ا",
+    "words": 2
+   },
+   {
+    "pair": "ق→ث",
+    "words": 2
+   },
+   {
+    "pair": "ك→ز",
+    "words": 2
+   },
+   {
+    "pair": "ك→و",
+    "words": 2
+   },
+   {
+    "pair": "ل→خ",
+    "words": 2
+   },
+   {
+    "pair": "م→ج",
+    "words": 2
+   },
+   {
+    "pair": "م→ز",
+    "words": 2
+   },
+   {
+    "pair": "م→ط",
+    "words": 2
+   },
+   {
+    "pair": "م→ۦ",
+    "words": 2
+   },
+   {
+    "pair": "ن→ث",
+    "words": 2
+   },
+   {
+    "pair": "ن→ص",
+    "words": 2
+   },
+   {
+    "pair": "ن→ض",
+    "words": 2
+   },
+   {
+    "pair": "ن→ظ",
+    "words": 2
+   },
+   {
+    "pair": "ن→ف",
+    "words": 2
+   },
+   {
+    "pair": "ن→ق",
+    "words": 2
+   },
+   {
+    "pair": "ه→ج",
+    "words": 2
+   },
+   {
+    "pair": "ه→د",
+    "words": 2
+   },
+   {
+    "pair": "ه→ں",
+    "words": 2
+   },
+   {
+    "pair": "و→ث",
+    "words": 2
+   },
+   {
+    "pair": "و→ح",
+    "words": 2
+   },
+   {
+    "pair": "و→د",
+    "words": 2
+   },
+   {
+    "pair": "ي→س",
+    "words": 2
+   },
+   {
+    "pair": "ي→ں",
+    "words": 2
+   },
+   {
+    "pair": "ں→ب",
+    "words": 2
+   },
+   {
+    "pair": "ء→س",
+    "words": 1
+   },
+   {
+    "pair": "ء→ص",
+    "words": 1
+   },
+   {
+    "pair": "ء→ط",
+    "words": 1
+   },
+   {
+    "pair": "ب→ث",
+    "words": 1
+   },
+   {
+    "pair": "ب→ش",
+    "words": 1
+   },
+   {
+    "pair": "ب→۾",
+    "words": 1
+   },
+   {
+    "pair": "ت→ں",
+    "words": 1
+   },
+   {
+    "pair": "ث→ب",
+    "words": 1
+   },
+   {
+    "pair": "ث→ق",
+    "words": 1
+   },
+   {
+    "pair": "ث→ن",
+    "words": 1
+   },
+   {
+    "pair": "ث→ي",
+    "words": 1
+   },
+   {
+    "pair": "ج→ح",
+    "words": 1
+   },
+   {
+    "pair": "ج→ر",
+    "words": 1
+   },
+   {
+    "pair": "ج→ں",
+    "words": 1
+   },
+   {
+    "pair": "ج→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "ح→د",
+    "words": 1
+   },
+   {
+    "pair": "ح→ز",
+    "words": 1
+   },
+   {
+    "pair": "ح→و",
+    "words": 1
+   },
+   {
+    "pair": "ح→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "خ→ب",
+    "words": 1
+   },
+   {
+    "pair": "خ→ز",
+    "words": 1
+   },
+   {
+    "pair": "خ→ش",
+    "words": 1
+   },
+   {
+    "pair": "خ→ض",
+    "words": 1
+   },
+   {
+    "pair": "خ→م",
+    "words": 1
+   },
+   {
+    "pair": "خ→ي",
+    "words": 1
+   },
+   {
+    "pair": "د→ح",
+    "words": 1
+   },
+   {
+    "pair": "د→ش",
+    "words": 1
+   },
+   {
+    "pair": "د→ط",
+    "words": 1
+   },
+   {
+    "pair": "د→ں",
+    "words": 1
+   },
+   {
+    "pair": "ذ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ذ→ط",
+    "words": 1
+   },
+   {
+    "pair": "ذ→غ",
+    "words": 1
+   },
+   {
+    "pair": "ز→ا",
+    "words": 1
+   },
+   {
+    "pair": "ز→خ",
+    "words": 1
+   },
+   {
+    "pair": "ز→ق",
+    "words": 1
+   },
+   {
+    "pair": "ز→ه",
+    "words": 1
+   },
+   {
+    "pair": "س→د",
+    "words": 1
+   },
+   {
+    "pair": "س→و",
+    "words": 1
+   },
+   {
+    "pair": "س→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ش→ء",
+    "words": 1
+   },
+   {
+    "pair": "ش→ب",
+    "words": 1
+   },
+   {
+    "pair": "ش→ث",
+    "words": 1
+   },
+   {
+    "pair": "ش→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ش→ن",
+    "words": 1
+   },
+   {
+    "pair": "ش→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ص→ء",
+    "words": 1
+   },
+   {
+    "pair": "ص→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ص→ض",
+    "words": 1
+   },
+   {
+    "pair": "ص→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ص→و",
+    "words": 1
+   },
+   {
+    "pair": "ص→ي",
+    "words": 1
+   },
+   {
+    "pair": "ص→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "ض→ء",
+    "words": 1
+   },
+   {
+    "pair": "ض→ح",
+    "words": 1
+   },
+   {
+    "pair": "ض→خ",
+    "words": 1
+   },
+   {
+    "pair": "ض→ه",
+    "words": 1
+   },
+   {
+    "pair": "ض→ي",
+    "words": 1
+   },
+   {
+    "pair": "ط→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ط→ع",
+    "words": 1
+   },
+   {
+    "pair": "ط→غ",
+    "words": 1
+   },
+   {
+    "pair": "ط→ه",
+    "words": 1
+   },
+   {
+    "pair": "ط→و",
+    "words": 1
+   },
+   {
+    "pair": "ط→ں",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ج",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ر",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ظ→ع",
+    "words": 1
+   },
+   {
+    "pair": "ظ→غ",
+    "words": 1
+   },
+   {
+    "pair": "ظ→م",
+    "words": 1
+   },
+   {
+    "pair": "ع→ز",
+    "words": 1
+   },
+   {
+    "pair": "غ→ت",
+    "words": 1
+   },
+   {
+    "pair": "غ→ش",
+    "words": 1
+   },
+   {
+    "pair": "ـ→ۦ",
+    "words": 1
+   },
+   {
+    "pair": "ف→ض",
+    "words": 1
+   },
+   {
+    "pair": "ف→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ق→ذ",
+    "words": 1
+   },
+   {
+    "pair": "ق→ض",
+    "words": 1
+   },
+   {
+    "pair": "ق→و",
+    "words": 1
+   },
+   {
+    "pair": "ق→ں",
+    "words": 1
+   },
+   {
+    "pair": "ك→ص",
+    "words": 1
+   },
+   {
+    "pair": "ك→ض",
+    "words": 1
+   },
+   {
+    "pair": "ك→غ",
+    "words": 1
+   },
+   {
+    "pair": "ك→ں",
+    "words": 1
+   },
+   {
+    "pair": "ك→ۥ",
+    "words": 1
+   },
+   {
+    "pair": "ل→۾",
+    "words": 1
+   },
+   {
+    "pair": "م→خ",
+    "words": 1
+   },
+   {
+    "pair": "م→س",
+    "words": 1
+   },
+   {
+    "pair": "م→غ",
+    "words": 1
+   },
+   {
+    "pair": "ن→ش",
+    "words": 1
+   },
+   {
+    "pair": "ن→غ",
+    "words": 1
+   },
+   {
+    "pair": "ن→۾",
+    "words": 1
+   },
+   {
+    "pair": "ه→ث",
+    "words": 1
+   },
+   {
+    "pair": "ه→ز",
+    "words": 1
+   },
+   {
+    "pair": "ه→ص",
+    "words": 1
+   },
+   {
+    "pair": "ه→ط",
+    "words": 1
+   },
+   {
+    "pair": "و→ج",
+    "words": 1
+   },
+   {
+    "pair": "و→ش",
+    "words": 1
+   },
+   {
+    "pair": "ي→ح",
+    "words": 1
+   },
+   {
+    "pair": "ي→ص",
+    "words": 1
+   },
+   {
+    "pair": "ي→ض",
+    "words": 1
+   },
+   {
+    "pair": "ي→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ں→ء",
+    "words": 1
+   },
+   {
+    "pair": "ں→ث",
+    "words": 1
+   },
+   {
+    "pair": "ں→ح",
+    "words": 1
+   },
+   {
+    "pair": "ں→ص",
+    "words": 1
+   },
+   {
+    "pair": "ں→ض",
+    "words": 1
+   },
+   {
+    "pair": "ں→ظ",
+    "words": 1
+   },
+   {
+    "pair": "ں→ف",
+    "words": 1
+   },
+   {
+    "pair": "ں→ق",
+    "words": 1
+   },
+   {
+    "pair": "ں→۾",
+    "words": 1
+   }
+  ],
+  "words": 98070
+ },
+ "word_grades": {
+  "bytes": 1421522,
+  "complete": true,
+  "file": "word_grades.jsonl.gz"
+ }
+}

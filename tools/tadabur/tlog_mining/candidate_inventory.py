@@ -265,14 +265,23 @@ def clip_table(rows_by_tranche: Mapping[str, Sequence[Mapping]], *, excluded: It
     return clips
 
 
-def population(rows: Sequence[Mapping]) -> dict:
-    """Clips, group keys and words, per population and over all."""
+def population(rows: Sequence[Mapping], *, clips: Mapping[str, Mapping] | None = None) -> dict:
+    """Clips, group keys and words, per population and over all. ``clips`` is the pool's clip
+    table (:func:`clip_table`): the clip and group-key counts are its, because a clip whose
+    audio the harness could not place (a partial recitation, a different ayah) contributes no
+    word row but is still part of the pool. Without it the counts come from the rows alone."""
     counts = {}
     for name in (*POPULATIONS, "all"):
         chosen = rows if name == "all" else [row for row in rows if row["population"] == name]
-        counts[name] = {"clips": len({row["key"] for row in chosen}),
-                        "group_keys": len({row["group_key"] for row in chosen}),
-                        "words": len(chosen)}
+        if clips is None:
+            keys = {row["key"] for row in chosen}
+            groups = {row["group_key"] for row in chosen}
+        else:
+            pool = [(key, clip) for key, clip in clips.items()
+                    if name == "all" or clip["population"] == name]
+            keys = {key for key, _ in pool}
+            groups = {clip["group_key"] for _, clip in pool}
+        counts[name] = {"clips": len(keys), "group_keys": len(groups), "words": len(chosen)}
     return counts
 
 
@@ -540,13 +549,15 @@ def write_word_grades(rows: Sequence[Mapping], directory: Path, *,
 
 def build_summary(rows: Sequence[Mapping], *, inputs: Mapping[str, str],
                   harness: Mapping, exclusions: Mapping, catch_loss: Mapping,
-                  word_grades: Mapping) -> dict:
+                  word_grades: Mapping, clips: Mapping[str, Mapping] | None = None) -> dict:
     """``summary.json``: the pins, the harness, the population, the two scorings' counts, the
-    label-source trust, the catch-loss context and the word export's record."""
+    label-source trust, the catch-loss context and the word export's record. ``clips`` is the
+    pool's clip table, so the population's clip and group-key counts include a clip that no
+    word row could be graded from."""
     return {
         "inputs": dict(inputs),
         "harness": dict(harness),
-        "population": population(rows),
+        "population": population(rows, clips=clips),
         "exclusions": dict(exclusions),
         "strict": counts(rows, STRICT),
         "shipped_default": counts(rows, SHIPPED),
@@ -574,7 +585,8 @@ def render(summary: Mapping) -> str:
     share = f" ({flagged / strict['words']:.1%})" if strict["words"] else ""
     lines += [
         f"- {total['clips']} clips in {total['group_keys']} group keys carry {total['words']} "
-        f"graded words.",
+        f"words all four detectors graded; a clip whose audio they could not place (a partial "
+        f"recitation, a different ayah) has no word row but stays in the pool.",
         f"- {flagged} words{share} are flagged by at least one of the four detectors under the "
         f"strict `allowances_off` scoring; the shipped default flags "
         f"{shipped['flagged_words']}.",
@@ -684,13 +696,14 @@ def _format_rate(entry: Mapping) -> str:
 
 def write_inventory(rows: Sequence[Mapping], *, inputs: Mapping[str, str],
                     harness: Mapping, exclusions: Mapping, catch_loss: Mapping,
-                    out_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH) -> dict:
+                    out_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH,
+                    clips: Mapping[str, Mapping] | None = None) -> dict:
     """Write the word export, ``summary.json`` and the doc rendered from it; returns the
     summary."""
     out_dir = Path(out_dir)
     report = write_word_grades(rows, out_dir)
     summary = build_summary(rows, inputs=inputs, harness=harness, exclusions=exclusions,
-                            catch_loss=catch_loss, word_grades=report)
+                            catch_loss=catch_loss, word_grades=report, clips=clips)
     write_json(summary, out_dir / "summary.json")
     write_text_atomically(Path(doc_path), render(summary))
     return summary
@@ -760,7 +773,8 @@ def build(*, harness=None) -> dict:
                     "gating_excluded_248": len(excluded),
                     "mined_decoded": len(decodes[MINED][BASE]),
                     "listed_unphonetizable": len(listed)},
-        catch_loss=catch_loss_context(ROOT), out_dir=INVENTORY_DIR, doc_path=DOC_PATH)
+        catch_loss=catch_loss_context(ROOT), out_dir=INVENTORY_DIR, doc_path=DOC_PATH,
+        clips=clips)
     _progress("artifacts written", clock)
     return summary
 

@@ -7128,6 +7128,7 @@
  "word_grades": {
   "bytes": 1421522,
   "complete": true,
-  "file": "word_grades.jsonl.gz"
+  "file": "word_grades.jsonl.gz",
+  "sha256": "2ee36e6662dc568e0ab167623d345fd21b911101d5dbfe7d3f13edffb39165c1"
  }
 }

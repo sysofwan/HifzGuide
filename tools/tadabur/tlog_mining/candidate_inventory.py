@@ -540,14 +540,22 @@ def write_word_grades(rows: Sequence[Mapping], directory: Path, *,
     if len(complete) <= limit_bytes:
         _write_bytes(grades_path, complete)
         counts_path.unlink(missing_ok=True)
-        return {"file": grades_path.name, "bytes": grades_path.stat().st_size,
-                "complete": True}
-    _write_bytes(grades_path, _jsonl_gz([row for row in ordered if _any_flagged(row)]))
+        return _export_record(grades_path, complete, complete=True)
+    written = _jsonl_gz([row for row in ordered if _any_flagged(row)])
+    _write_bytes(grades_path, written)
     words: Counter = Counter(row["key"] for row in ordered)
     _write_bytes(counts_path, _jsonl_gz([{"key": key, "words": number}
                                          for key, number in sorted(words.items())]))
-    return {"file": grades_path.name, "bytes": grades_path.stat().st_size, "complete": False,
-            "clip_word_counts_file": counts_path.name}
+    return _export_record(grades_path, written, complete=False,
+                          clip_word_counts_file=counts_path.name)
+
+
+def _export_record(path: Path, data: bytes, **extra) -> dict:
+    """What the summary records of the export it just wrote: its name, size and SHA-256. The
+    hash is what :func:`regenerate` authenticates the bytes by; size and row count alone do not
+    catch a changed flag."""
+    return {"file": path.name, "bytes": path.stat().st_size,
+            "sha256": hashlib.sha256(data).hexdigest(), **extra}
 
 
 def build_summary(rows: Sequence[Mapping], *, inputs: Mapping[str, str],
@@ -787,17 +795,32 @@ def _assigned_label(row: Mapping) -> str | None:
     return row["assigned_label"]
 
 
-def _read_word_grades(path: Path) -> list[dict]:
-    with gzip.open(path, "rt", encoding="utf-8") as handle:
-        return [json.loads(line) for line in handle if line.strip()]
+def _export_rows(data: bytes, name: str) -> list[dict]:
+    """The export's JSON rows, refusing bytes that are not gzipped UTF-8 JSON lines."""
+    try:
+        text = gzip.decompress(data).decode("utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise ValueError(f"{name} is not a gzipped UTF-8 word export") from error
+    rows = []
+    for number, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{name}:{number} is not a word row") from error
+    return rows
 
 
 def regenerate(*, inventory_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH) -> dict:
     """Rewrite ``summary.json`` and the doc from the committed word export: the counts, the
     intervals and the population are recomputed from the exported rows, so a counting or
-    statistics fix needs no harness and no regrade. The harness record and the export's own
-    record are the committed ones; an export holding only the flagged words is refused, because
-    the counts cannot be rebuilt from it."""
+    statistics fix needs no harness and no regrade.
+
+    The export is an input, so it is authenticated: its bytes must hash to the SHA-256 the
+    committed summary recorded when it was written, and every row must name a clip of the
+    reconstructed confirm.1/2 pool with that clip's provenance. An export holding only the
+    flagged words is refused, because the counts cannot be rebuilt from it."""
     inventory_dir = Path(inventory_dir)
     summary_path = inventory_dir / "summary.json"
     committed = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -805,7 +828,16 @@ def regenerate(*, inventory_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH
     if not report.get("complete"):
         raise ValueError(f"{summary_path}: the committed export is the flagged-word fallback "
                          f"({report.get('clip_word_counts_file')}); the counts need every word")
-    rows = _read_word_grades(inventory_dir / report["file"])
+    recorded = report.get("sha256")
+    if recorded is None:
+        raise ValueError(f"{summary_path}: the word export records no SHA-256; rebuild the "
+                         f"inventory so the export it reads is authenticated")
+    data = (inventory_dir / report["file"]).read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != recorded:
+        raise ValueError(f"{report['file']} is the SHA-256 {digest}, not the recorded "
+                         f"{recorded}: the export changed after the summary recorded it")
+    rows = _export_rows(data, report["file"])
     decodes = _decode_lines(ROOT)
     excluded = excluded_248(ROOT)
     listed = listed_unphonetizable(ROOT)
@@ -815,6 +847,18 @@ def regenerate(*, inventory_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH
                                  if item_key(row["audio_path"]) in decoded]
                        for tranche, manifest in manifests.items()}
     clips = clip_table(rows_by_tranche, excluded=excluded, listed=listed)
+    for row in rows:
+        key = row["key"]
+        clip = clips.get(key)
+        if clip is None:
+            raise ValueError(f"{key} is not a clip of the confirm.1/confirm.2 pool: the export "
+                             f"does not belong to the inputs it is counted under")
+        if row["tranche"] not in CONFIRM_TRANCHES:
+            raise ValueError(f"{key} is a {row['tranche']!r} row, not a confirm.1/confirm.2 row")
+        fields = ("population", "tranche", "stratum", "label_source", "group_key")
+        if any(row[field] != clip[field] for field in fields):
+            raise ValueError(f"{key}: the export's {fields} are not the clip table's "
+                             f"{[clip[field] for field in fields]}")
     summary = build_summary(
         rows, inputs=dict(PINS), harness=committed["harness"],
         exclusions={"gating_decoded": len(decodes[GATING][BASE]),

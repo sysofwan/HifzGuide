@@ -661,6 +661,70 @@ def test_a_rerun_is_byte_identical(ci, tmp_path):
         assert (tmp_path / "one" / relative).read_bytes() == (tmp_path / "two" / relative).read_bytes()
 
 
+# --- regeneration from the committed export ---------------------------------------------------------
+
+
+def _copied_inventory(ci, root: Path) -> Path:
+    inventory = root / "inventory"
+    inventory.mkdir(parents=True)
+    for name in ("summary.json", "word_grades.jsonl.gz"):
+        (inventory / name).write_bytes((ci.INVENTORY_DIR / name).read_bytes())
+    return inventory
+
+
+def _resealed_export(inventory: Path, mutate) -> None:
+    """Rewrite the copied export after ``mutate`` and record its new SHA-256, as a summary
+    written beside those bytes would: the row checks must then stand on their own."""
+    path = inventory / "word_grades.jsonl.gz"
+    rows = _read_gz(path)
+    mutate(rows)
+    data = gzip.compress("".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+                                 for row in rows).encode("utf-8"), mtime=0)
+    path.write_bytes(data)
+    summary = json.loads((inventory / "summary.json").read_text(encoding="utf-8"))
+    summary["word_grades"]["sha256"] = hashlib.sha256(data).hexdigest()
+    summary["word_grades"]["bytes"] = len(data)
+    (inventory / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def test_regeneration_from_the_committed_export_is_byte_identical(ci, tmp_path):
+    inventory = _copied_inventory(ci, tmp_path)
+    doc = tmp_path / "doc.md"
+    ci.regenerate(inventory_dir=inventory, doc_path=doc)
+    assert (inventory / "summary.json").read_bytes() == \
+        (ci.INVENTORY_DIR / "summary.json").read_bytes()
+    assert doc.read_bytes() == ci.DOC_PATH.read_bytes()
+
+
+def test_regeneration_refuses_an_export_whose_bytes_changed(ci, tmp_path):
+    inventory = _copied_inventory(ci, tmp_path)
+    path = inventory / "word_grades.jsonl.gz"
+    rows = _read_gz(path)
+    path.write_bytes(gzip.compress("".join(json.dumps(row, ensure_ascii=False, sort_keys=True)
+                                          + "\n" for row in rows[:-1]).encode("utf-8"), mtime=0))
+    with pytest.raises(ValueError, match="SHA-256"):
+        ci.regenerate(inventory_dir=inventory, doc_path=tmp_path / "doc.md")
+
+
+def test_regeneration_refuses_rows_outside_the_confirm_pool(ci, tmp_path):
+    def out_of_pool(rows):
+        rows[-1]["key"] = "out-of-pool.flac#0"
+
+    inventory = _copied_inventory(ci, tmp_path / "one")
+    _resealed_export(inventory, out_of_pool)
+    with pytest.raises(ValueError, match="not a clip"):
+        ci.regenerate(inventory_dir=inventory, doc_path=tmp_path / "one" / "doc.md")
+
+    def other_tranche(rows):
+        rows[-1]["tranche"] = "look"
+
+    inventory = _copied_inventory(ci, tmp_path / "two")
+    _resealed_export(inventory, other_tranche)
+    with pytest.raises(ValueError, match="confirm.1"):
+        ci.regenerate(inventory_dir=inventory, doc_path=tmp_path / "two" / "doc.md")
+
+
 # --- the committed artifacts --------------------------------------------------------------------------------
 
 

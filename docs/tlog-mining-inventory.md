@@ -17,6 +17,7 @@ Generated from `tools/tadabur/tlog_mining/inventory/summary.json` by `python -m 
 | `bytes` | 1421522 |
 | `complete` | True |
 | `file` | word_grades.jsonl.gz |
+| `sha256` | 2ee36e6662dc568e0ab167623d345fd21b911101d5dbfe7d3f13edffb39165c1 |
 
 ## Inputs
 

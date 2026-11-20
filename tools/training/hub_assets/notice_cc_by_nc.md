@@ -97,13 +97,14 @@ uploader, licence) is recorded in the HifzGuide repository at
 
 ## Evaluation data
 
-The model was **evaluated** on held-out sites built from
+The model was **evaluated** on the held-out half of the QUD pilot audio set
 **[`QUD-Technologies/quranic-universal-ayahs`](https://huggingface.co/datasets/QUD-Technologies/quranic-universal-ayahs)**,
 QUD Technologies - Qur'anic Universal Audio (<https://qud.dev>). The dataset is **CC BY 4.0**
 (<https://creativecommons.org/licenses/by/4.0/>) as published at revision
 `6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175`. QUD audio was an evaluation input only, never a
-training signal, and no QUD audio is redistributed here: the HifzGuide repository records only
-provenance (source URL, offsets, checksums) under `tools/tadabur/qud_eval/`.
+training signal, and no QUD audio is redistributed here: the HifzGuide repository records
+provenance (source URL, offsets, checksums) and the derived model decodes and truth sites under
+`tools/tadabur/qud_eval/`.
 
 ## Release provenance
 

@@ -36,6 +36,8 @@ import gzip
 import hashlib
 import json
 import os
+import sys
+import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from itertools import combinations
@@ -437,9 +439,13 @@ def _difference_interval(gating: Sequence[Mapping], source: Sequence[Mapping]) -
                [{**cluster, "cluster": (MINED, cluster["cluster"])} for cluster in source]
 
     def statistic(sample):
-        by_population = {name: [c for c in sample if c["cluster"][0] == name]
-                         for name in (GATING, MINED)}
-        return _rate(by_population[MINED]) - _rate(by_population[GATING])
+        totals = {GATING: [0, 0], MINED: [0, 0]}
+        for cluster in sample:
+            total = totals[cluster["cluster"][0]]
+            total[0] += cluster["words"]
+            total[1] += cluster["flagged"]
+        return (totals[MINED][1] / totals[MINED][0] if totals[MINED][0] else 0.0) - \
+               (totals[GATING][1] / totals[GATING][0] if totals[GATING][0] else 0.0)
 
     low, high = cluster_bootstrap(combined, lambda cluster: cluster["cluster"], statistic,
                                   seed=TRUST_BOOTSTRAP_SEED,
@@ -693,6 +699,15 @@ def write_inventory(rows: Sequence[Mapping], *, inputs: Mapping[str, str],
 # --- the real run -------------------------------------------------------------------------------
 
 
+def _progress(message: str, since: float | None = None) -> float:
+    """A run's phase marker on stderr: the phonetizer and the harness take minutes, and a run
+    that prints nothing for that long is indistinguishable from a hung one."""
+    now = time.time()
+    spent = "" if since is None else f" after {now - since:.0f}s"
+    print(f"[inventory] {message}{spent}", file=sys.stderr, flush=True)
+    return now
+
+
 def build(*, harness=None) -> dict:
     """Grade the committed confirm.1/2 decodes with the four detectors and write the committed
     inventory. Needs the Mac harness only: no GPU and no audio."""
@@ -703,6 +718,7 @@ def build(*, harness=None) -> dict:
     from training.tlog_eval import gating_items, reported_item_sets
 
     harness = require_harness() if harness is None else harness
+    clock = _progress("build started")
     decodes = _decode_lines(ROOT)
     excluded = excluded_248(ROOT)
     listed = listed_unphonetizable(ROOT)
@@ -712,6 +728,7 @@ def build(*, harness=None) -> dict:
                                  if item_key(row["audio_path"]) in decoded]
                        for tranche, rows in manifests.items()}
     clips = clip_table(rows_by_tranche, excluded=excluded, listed=listed)
+    clock = _progress(f"inputs read: {len(clips)} clips", clock)
 
     def chosen(population: str) -> list[dict]:
         return [row for rows in rows_by_tranche.values() for row in rows
@@ -727,19 +744,25 @@ def build(*, harness=None) -> dict:
         raise ValueError(f"{len(unsupported)} rows the readout expected to grade have no item: "
                          f"{sorted(unsupported)[:5]}")
     items = [*gating, *(item for name in sorted(reported) for item in reported[name])]
+    clock = _progress(f"{len(items)} items built", clock)
 
     merged = {model: {**decodes[GATING][model], **decodes[MINED][model]} for model in DETECTORS}
     _, grades = word_grades(items, merged, harness, models=DETECTORS,
                             scorings=app_scorings())
+    clock = _progress(f"{len(grades)} word grades", clock)
     rows = word_rows(grades, clips)
+    clock = _progress(f"{len(rows)} words paired", clock)
 
-    return write_inventory(
+    clock = _progress("counting and writing", clock)
+    summary = write_inventory(
         rows, inputs=dict(PINS), harness=harness_identity(harness),
         exclusions={"gating_decoded": len(decodes[GATING][BASE]),
                     "gating_excluded_248": len(excluded),
                     "mined_decoded": len(decodes[MINED][BASE]),
                     "listed_unphonetizable": len(listed)},
         catch_loss=catch_loss_context(ROOT), out_dir=INVENTORY_DIR, doc_path=DOC_PATH)
+    _progress("artifacts written", clock)
+    return summary
 
 
 def _assigned_label(row: Mapping) -> str | None:

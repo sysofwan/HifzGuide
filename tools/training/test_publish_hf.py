@@ -21,6 +21,7 @@ import yaml
 
 torch = pytest.importorskip("torch")
 
+from tadabur.qud_selection import SOURCES_PATH
 from training import publish_hf
 from training.distill_student import PRESETS, build_student
 from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
@@ -165,6 +166,13 @@ def test_publishing_a_student_stages_the_published_layout_and_the_ema_weights(
     assert (out / ".gitattributes").read_bytes() == publish_hf.GITATTRIBUTES_PATH.read_bytes()
     assert "The audio is not redistributed here" in notice
     assert "CC BY 4.0" in notice and "tarteel-ai/tlog" in notice
+    # QUD was an evaluation input, so it is credited in prose but kept out of the training
+    # metadata asserted above; the notice names the revision every read was pinned to.
+    qud_revision = json.loads(SOURCES_PATH.read_text(encoding="utf-8"))["qud"]["revision"]
+    assert "evaluated, not trained" in card
+    assert "QUD-Technologies/quranic-universal-ayahs" in card
+    assert "QUD Technologies - Qur'anic Universal Audio" in notice
+    assert qud_revision in notice
 
 
 def test_export_refuses_to_attach_the_release_card_to_another_checkpoint(candidate, tmp_path):

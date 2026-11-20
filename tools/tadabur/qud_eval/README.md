@@ -34,5 +34,6 @@ rules and the estimate's method are in the module docstrings of
 [`../qud_selection.py`](../qud_selection.py) and [`../qud_sizing.py`](../qud_sizing.py).
 
 **Licence.** QUD is CC BY 4.0; its card adds that the recitation audio "is not relicensed,
-and remains the property of upstream sources/reciters". The repo commits no QUD audio, only
-provenance (source URL, offsets, checksums), as for Tadabur.
+and remains the property of upstream sources/reciters". The repo commits no QUD audio:
+provenance (source URL, offsets, checksums), the pilot's decodes and truth sites, and the
+selection data are committed, as for Tadabur.

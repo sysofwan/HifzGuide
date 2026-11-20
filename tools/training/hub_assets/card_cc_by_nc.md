@@ -108,6 +108,11 @@ Training used [Tadabur by Faisal Alherran](https://huggingface.co/datasets/Faisa
 (CC BY 4.0), and Freesound noise augmentation. Full upstream notices and noise-recording
 credits are in [NOTICE.md](NOTICE.md).
 
+The model was evaluated, not trained, on
+[`QUD-Technologies/quranic-universal-ayahs`](https://huggingface.co/datasets/QUD-Technologies/quranic-universal-ayahs),
+"Qur'anic Universal Audio" by QUD Technologies; its licence and attribution are in
+[NOTICE.md](NOTICE.md).
+
 [Release details](https://github.com/sysofwan/HifzGuide/releases/tag/v1.0.7)
 and the [technical report](https://github.com/sysofwan/HifzGuide/blob/main/docs/release-v1.0.7.md)
 provide evaluation and export details.

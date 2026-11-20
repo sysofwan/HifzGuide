@@ -1,0 +1,223 @@
+{
+ "code_sha": "e056fbdda1fefe8b912db969b9cfc9d4ec89248d",
+ "label_sources": {
+  "both": 2634,
+  "filename": 2535,
+  "identified": 5473
+ },
+ "pull_request": null,
+ "pull_request_ref": null,
+ "teacher": {
+  "fingerprint": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "whole-spans",
+   "model": "obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "identity": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  }
+ },
+ "tranches": {
+  "confirm.1": {
+   "aligned": 4418,
+   "fallback": 907,
+   "fallback_rate": 0.1703286384976526,
+   "rows": 5325
+  },
+  "confirm.2": {
+   "aligned": 4480,
+   "fallback": 837,
+   "fallback_rate": 0.15741959751739704,
+   "rows": 5317
+  }
+ },
+ "unphonetizable": [
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_1475887113.flac",
+   "key": "106_1_1475887113.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_7596349253.flac",
+   "key": "106_1_7596349253.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "106_2_3381915052.flac",
+   "key": "106_2_3381915052.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "106_3_1855495811.flac",
+   "key": "106_3_1855495811.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_2641355919.flac",
+   "key": "106_3_2641355919.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_8567575022.flac",
+   "key": "106_3_8567575022.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "9_75_1926938503.flac",
+   "key": "9_75_1926938503.flac#0",
+   "stratum": "reported:identified",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:10",
+   "audio_filename": "90_10_3305061080.flac",
+   "key": "90_10_3305061080.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:8",
+   "audio_filename": "90_11_2705788577.flac",
+   "key": "90_11_2705788577.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_2652698480.flac",
+   "key": "90_9_2652698480.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_6113834586.flac",
+   "key": "90_9_6113834586.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "-1_-1_3357225533.wav",
+   "key": "-1_-1_3357225533.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "-1_-1_3714104226.wav",
+   "key": "-1_-1_3714104226.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "-1_-1_5685654105.wav",
+   "key": "-1_-1_5685654105.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:4",
+   "audio_filename": "-1_-1_6654222731.wav",
+   "key": "-1_-1_6654222731.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "-1_-1_6939186917.wav",
+   "key": "-1_-1_6939186917.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.1"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "106_1_5262981751.flac",
+   "key": "106_1_5262981751.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:3",
+   "audio_filename": "106_3_1942206366.flac",
+   "key": "106_3_1942206366.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "55:17",
+   "audio_filename": "55_17_2560059342.flac",
+   "key": "55_17_2560059342.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "55:17",
+   "audio_filename": "55_17_6407063692.flac",
+   "key": "55_17_6407063692.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:1",
+   "audio_filename": "77_12_1024726790.flac",
+   "key": "77_12_1024726790.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:10",
+   "audio_filename": "90_10_4997608475.flac",
+   "key": "90_10_4997608475.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:8",
+   "audio_filename": "90_8_6761761404.flac",
+   "key": "90_8_6761761404.flac#0",
+   "stratum": "reported:straddles",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_4538230635.flac",
+   "key": "90_9_4538230635.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "90:9",
+   "audio_filename": "90_9_7057250330.flac",
+   "key": "90_9_7057250330.flac#0",
+   "stratum": "reported:below_bar",
+   "tranche": "confirm.2"
+  },
+  {
+   "assigned_label": "106:2",
+   "audio_filename": "-1_-1_2364875120.wav",
+   "key": "-1_-1_2364875120.wav#0",
+   "stratum": "reported:unclean",
+   "tranche": "confirm.2"
+  }
+ ]
+}

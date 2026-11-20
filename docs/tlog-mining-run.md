@@ -1,13 +1,15 @@
 # tlog mining: run note
 
-**Status (2026-11-19, 19:58:19Z):** phases A, B and C are complete. Each run wrote
+**Status (2026-11-20, 14:02:09Z):** phases A, B, C and D are complete. Each run wrote
 `run.exit = 0` and the launcher fetched its merge; this note is committed with the output it
 describes.
 
 Issue: [#263](https://github.com/sysofwan/HifzGuide/issues/263) (parent #261). Phase A is the
 teacher-only timing pass [`docs/tlog-mining-amendment.md`](tlog-mining-amendment.md) §5 allows
 without a claim. Phase C ran after round 3's verdict was committed `pass` (PR #289) and its
-committed choice named `r3_candidate_ema`; its section is below.
+committed choice named `r3_candidate_ema`; its section is below. Phase D is phase A's alignment
+again over phase B's rows, run in idle GPU time so [#264](https://github.com/sysofwan/HifzGuide/issues/264)
+can snip a single word from a mined clip; its section follows phase C's.
 
 ## Phase A: the teacher's word times
 
@@ -310,8 +312,109 @@ were streamed from the pinned shards, ≈1.6 GB; `C/clips/` held 6.6 GB with the
 counted. The clips were deleted from the box once this commit was pushed. **No audio is
 committed.**
 
+## Phase D: the teacher's word times for the mined rows
+
+`tools/tadabur/tlog_mining/word_times/mined.*` and `meta.mined.json`, produced by the same
+launcher (`run --phase D`, then the merge) from the staged clone at
+`e056fbdda1fefe8b912db969b9cfc9d4ec89248d` — the #301 squash merge, which is the code this
+section describes.
+
+| file | SHA-256 |
+|---|---|
+| `mined.confirm.1.jsonl.gz` | `5d8b275dd7f052da0d50598473326cf6b0327d7409b76c690409c52893caf541` |
+| `mined.confirm.2.jsonl.gz` | `e2c801671faa9000d78faed29284b352821adb97f03ed65e0975a8b47057111a` |
+| `meta.mined.json` | `01594bc682098d5149404a22bef5799f32a6947af0d664fa1ba7eb52490b2223` |
+
+`meta.mined.json` pins `code_sha` `e056fbdda1fefe8b912db969b9cfc9d4ec89248d`, the base teacher's
+identity (`obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5`, mode
+`whole-spans`, bf16 weights, fp32 features, batch 1), the two tranches, the per-tranche counts,
+the `label_source` tallies and the 26 listed rows. `pull_request` and `pull_request_ref` are
+null, for the same reason as phases A–C: #263 is the issue, not a PR.
+
+**Rows.** `phase_d_rows` is phase B's row set exactly — the labelled `reported:*` rows of
+confirm.1/2 — aligned against each row's **`assigned_label`**, the reference phase B decodes and
+the dataset is built on. (The filename label is missing for a third of these rows and names
+another ayah for more, so phase A's filename reference would leave most of them unalignable.)
+Every aligned record is phase A's shape, unchanged.
+
+| tranche | rows | aligned | fallback | fallback rate |
+|---|---|---|---|---|
+| confirm.1 | 5,325 | 4,418 | 907 | 17.03% |
+| confirm.2 | 5,317 | 4,480 | 837 | 15.74% |
+| total | 10,642 | 8,898 | 1,744 | 16.39% |
+
+That is **88,140 words** with committed start/end times (9.9 per aligned clip on average); the
+median aligned record's frame is 40.06 ms and its per-frame forward alignment log-likelihood is
+−1.41.
+
+**All 1,744 fallbacks have the same cause**: the posteriors are too short for the assigned
+ayah's transcript — CTC cannot place more labels than the clip has frames. A mined clip often
+holds less than its assigned ayah (the draw took a span of it), so the full-ayah reference does
+not fit. The failure is concentrated where the assignment is a *guess* rather than part of the
+audio:
+
+| stratum | rows | fallback |
+|---|---|---|
+| reported:identified | 827 | 304 (36.76%) |
+| reported:unclean | 3,840 | 1,159 (30.18%) |
+| reported:below_bar | 1,719 | 151 (8.78%) |
+| reported:straddles | 4,256 | 130 (3.05%) |
+
+and by reference source: `identified` 27.50% (5,473 rows), `filename` 7.10% (2,535), `both`
+2.24% (2,634). Phase A's full-ayah gating clips fell back at only 3.0–3.4%; these clips are not
+full ayahs. A fallback row is a committed record with `aligned: false` and its `reason`, so #264
+plays the whole clip for it — the presentation fallback the pre-registration prescribes.
+
+**The 26 listed rows.** Phase B's #248 refusal is unchanged: 16 in confirm.1 and 10 in
+confirm.2, the eight ayat 106:1–106:4, 55:17 and 90:8–90:10, by stratum 15 straddles, 6 unclean,
+4 below-bar and 1 identified. They are listed in `meta.mined.json` (tranche, key, filename,
+`assigned_label`, stratum) and are in neither `mined.*` file; they were never fetched.
+
+### Compute and give-way
+
+`run.out`'s line: `stopped=done batches=59 gpu_seconds=17303 yielded_seconds=1740`.
+
+**The launcher asked for `P=2` and the code capped it to 1**, its first log line: `parallel
+capped to 1: phase D's mined clips are longer than phase A's, which OOM'd at two workers`.
+`plan D` prints the requested count (`at 2 processes`), so the preview is an upper bound on the
+process count, never the count that runs.
+
+**GPU time: 17,303 lock-held seconds = 4.81 GPU-h**, over `batches=59` — 58 worker invocations
+plus the terminal empty iteration `batches=` counts. Mean held is 298 s of the 300 s budget:
+essentially every batch ran its budget out. That is **3.2× the brief's ~1.5 GPU-h estimate**, and
+the cause is I/O, not alignment: 1.63 s held per row, where the forward pass is a fraction of
+it. The 10,642 clips (5.0 GB) were **re-streamed** — phase B's and C's clip caches were already
+cleared, and the surviving `/root/scratch/tlog/r2/clips` cache holds round 2's look gating clips,
+not these confirm rows — inside the lock-held batches, so the fetch is counted as GPU time. Phase
+A's resumed rate, with its clips hardlinked, was 0.74 s/row.
+
+43 worker batches printed their terminal `wrote N` line, summing 8,901 rows; the other 15 were
+reaped at the parent's batch deadline without printing one (the only path that skips the line,
+and the only one that loses an in-flight row). The merge holds every row exactly once — 10,642
+records for 10,642 rows, the 26 listed and never fetched — so the 1,741 rows those batches wrote
+before being stopped are all in the committed files.
+
+**Time yielded to round 3: 1,740 s = 0.48 h**, 8.9% of the held-plus-yielded 19,043 s. That is
+exactly 58 × the 30 s `yield_seconds`, one sleep after each worker batch and none on a failed
+acquire: every non-blocking acquire found `/root/scratch/gpu.lock` free, i.e. round 3 was idle
+for the whole run. Wall time was **5 h 28 m 48 s** (2026-11-20T08:33:21Z → 2026-11-20T14:02:09Z);
+the 685 s outside held-plus-yielded is the driver's selection (the launch's #248 phonetizer,
+≈2 × 200 s), the teacher loads and the merge.
+
+### Audio
+
+5.0 GB was streamed into `/root/scratch/tlog-mining/D/clips/`, stored under each recorded
+`audio_sha256` and checked before the teacher saw it. The round-2 cache is look-gating only and
+phase B/C's caches were gone, so no clip could be hardlinked. Nothing was deleted from the box;
+**no audio is committed**.
+
 ## Changelog
 
+- 2026-11-20: phase D committed. The note records the `P=1` cap, 10,642 rows aligned against
+  `assigned_label` (8,898 aligned, 1,744 fallback — all posteriors too short for the full ayah),
+  the 26 #248 rows listed, 4.81 GPU-h held over 58 worker batches and 0.48 h yielded to an idle
+  round 3: 3.2× the ~1.5 GPU-h estimate, because 5.0 GB of clips was re-streamed inside the
+  lock-held batches.
 - 2026-11-19: phase C committed. The note records the `P=1` cap, 16,404 decoded rows (5,762
   gating + 10,642 mined) against phase B's 26 listed, the `label_source` counts, the
   gating-`spans` caveat for #261's key join, 10.84 GPU-h held over 129 worker batches and the

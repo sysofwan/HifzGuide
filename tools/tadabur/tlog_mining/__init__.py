@@ -1,4 +1,5 @@
-"""Idle-time mining (#263): phase A's word times, phase B's pool extension and phase C's decode.
+"""Idle-time mining (#263): phase A's word times, phase B's pool extension, phase C's decode and
+phase D's word times for the mined rows.
 
 Phase A. One clip, whole, through the base teacher; its filename ayah's spaceless phoneme
 reference as the transcript; :func:`training.ctc_paths.ctc_best_path` for where each phoneme
@@ -11,6 +12,9 @@ Phase B. The labelled ``reported:*`` rows of confirm.1/2, decoded by the teacher
 Phase C. Round 3's chosen weights alone (``r3_candidate_ema``, under the round-3 spec), over the
 rows round 2's gating decodes and phase B's mined decode hold, so the two line up row by row.
 
+Phase D. Phase A's alignment again, over phase B's rows, against each row's ``assigned_label``,
+so #264 can snip a single word from a mined clip. No new alignment logic and no student decode.
+
 Modules:
 
 ``word_times``
@@ -19,12 +23,13 @@ Modules:
 ``selection``
     Which rows each phase may touch: phase A's gating stratum of ``look``, ``confirm.1`` and
     ``confirm.2``; phase B's labelled reported rows of the two confirm tranches, with the
-    un-phonetizable ones listed (#248); phase C's gating rows and phase B's. Every mined phase
-    requires slice 1's amendment at its pinned SHA-256, and phase C also round 3's committed
-    choice at its pinned checkpoint and round 3's committed ``pass`` verdict.
+    un-phonetizable ones listed (#248); phase C's gating rows and phase B's; phase D's phase B
+    rows, unchanged. Every mined phase requires slice 1's amendment at its pinned SHA-256, and
+    phase C also round 3's committed choice at its pinned checkpoint and round 3's committed
+    ``pass`` verdict (phase D reads no round-3 output and needs neither).
 ``batch``
-    Phase A's batch: disjoint whole shards per worker, appending to one part per shard so a
-    killed run resumes by key.
+    Phase A's and phase D's batch: disjoint whole shards per worker, appending to one part per
+    shard so a killed run resumes by key.
 ``mined_decode``
     A mined phase's batch: the rows through the phase's models — phase B's three round-2
     producers, or phase C's round-3 weights alone — into both stores, with the budget checked
@@ -32,8 +37,9 @@ Modules:
 ``merge``
     The parts into the phase's committed files: ``word_times/<tranche>.jsonl.gz`` plus
     ``meta.json`` (phase A); ``decodes/tlog.mined.<model>.jsonl.gz`` plus ``meta.json`` (phase
-    B); or, for phase C, ``tlog.mined.<model>.jsonl.gz``, ``tlog.gating.<model>.jsonl.gz`` and
-    its own ``meta.<model>.json``.
+    B); ``tlog.mined.<model>.jsonl.gz``, ``tlog.gating.<model>.jsonl.gz`` and its own
+    ``meta.<model>.json`` (phase C); or ``word_times/mined.<tranche>.jsonl.gz`` and
+    ``meta.mined.json`` (phase D).
 ``give_way``
     The preemptible loop: the GPU lock taken non-blocking for one batch at a time, the PAUSE
     file and the disk/RAM floors checked at every batch boundary.

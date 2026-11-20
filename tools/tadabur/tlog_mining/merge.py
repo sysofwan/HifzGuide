@@ -19,6 +19,11 @@ phase B's rows, written as ``tlog.mined.<model>.jsonl.gz`` beside
 ``tlog.gating.<model>.jsonl.gz`` — the mined file in phase B's shape, the gating file in round
 2's — plus its **own** ``meta.<model>.json``. Phase B's committed ``meta.json`` is never
 touched.
+
+Phase D (:func:`merge_mined_word_times`): phase A's word-times contract over phase B's rows,
+written as ``mined.<tranche>.jsonl.gz`` plus its **own** ``meta.mined.json``. Every record must
+also be its selected row's — the row's ``assigned_label`` and audio — because a resumed run
+reuses parts by key. Phase A's ``meta.json`` and its three files are never touched.
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ from tadabur.tlog_tranches import GATING
 from training.nonpro_decode import item_key
 
 from .mined_decode import MINED_PREFIX
-from .selection import PHASE_A_TRANCHES, PHASE_B_TRANCHES, PHASE_C_TRANCHES
+from .selection import PHASE_A_TRANCHES, PHASE_B_TRANCHES, PHASE_C_TRANCHES, PHASE_D_TRANCHES
 
 #: Phase C's two pooled files: the mined rows under phase B's prefix, the gating rows under their
 #: own, both named for the model that decoded them.
@@ -51,35 +56,111 @@ def merge_word_times(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, 
     if set(manifests) != set(PHASE_A_TRANCHES):
         raise ValueError(f"the merge takes exactly the phase A tranches {list(PHASE_A_TRANCHES)}, "
                          f"not {sorted(manifests)}")
-    expected: dict[str, set[str]] = {}
+    expected = {tranche: {item_key(row["audio_path"]) for row in manifests[tranche]
+                          if row["stratum"] == GATING}
+                for tranche in PHASE_A_TRANCHES}
+    tranches, counts = _pool_word_times(parts_dir, expected)
+    return _write_word_times(out_dir, tranches, counts, prefix="", meta_name="meta.json",
+                             provenance=provenance, extra={})
+
+
+def merge_mined_word_times(parts_dir: Path, out_dir: Path, *,
+                           rows: Mapping[str, Sequence[Mapping]],
+                           unphonetizable: Mapping[str, Sequence[Mapping]],
+                           provenance: Mapping) -> dict:
+    """Pool phase D's word times, over phase B's rows, beside phase A's committed files (#263).
+
+    ``rows`` maps each mined tranche to :func:`~tadabur.tlog_mining.selection.phase_d_rows`'
+    decodable rows and ``unphonetizable`` to its #248 listing. The parts are phase A's
+    (``word_times.<shard>.jsonl``, the record shape phase D commits unchanged). Every decodable
+    row must hold exactly one record: a missing, repeated, foreign or listed row, a clip in both
+    tranches or a wrong tranche set is a ``ValueError`` before anything is written, so a partial
+    run never looks complete. Every record must also be **that row's** — its ``surah_ayah`` and
+    audio provenance — so a resumed run's parts, checked for completeness by key, cannot publish
+    timings for another ayah or clip.
+
+    Writes **only** ``mined.<tranche>.jsonl.gz`` (sorted by key) and its own
+    ``meta.mined.json``: the provenance, phase A's per-tranche counts, the row count per
+    ``label_source`` and the listed rows. Phase A's ``meta.json`` and its three files are never
+    written.
+    """
+    if set(rows) != set(PHASE_D_TRANCHES):
+        raise ValueError(f"the mined word-times merge takes exactly the phase D tranches "
+                         f"{list(PHASE_D_TRANCHES)}, not {sorted(rows)}")
+    manifests = {tranche: {item_key(row["audio_path"]): row for row in rows[tranche]}
+                 for tranche in PHASE_D_TRANCHES}
+    _require_one_tranche_per_clip(manifests, PHASE_D_TRANCHES)
+    label_sources = Counter(row["label_source"] for tranche in PHASE_D_TRANCHES
+                            for row in manifests[tranche].values())
+    tranches, counts = _pool_word_times(
+        parts_dir, {tranche: set(manifests[tranche]) for tranche in PHASE_D_TRANCHES})
+    for tranche in PHASE_D_TRANCHES:
+        for record in tranches[tranche]:
+            _require_record_of_row(record, manifests[tranche][record["key"]])
+    return _write_word_times(
+        out_dir, tranches, counts, prefix="mined.", meta_name="meta.mined.json",
+        provenance=provenance,
+        extra={"label_sources": dict(label_sources),
+               "unphonetizable": _listing(unphonetizable, PHASE_D_TRANCHES)})
+
+
+def _pool_word_times(parts_dir: Path, expected: Mapping[str, set[str]]
+                     ) -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """Each tranche's records and their counts, validated against ``expected``.
+
+    A clip belongs to one tranche and holds exactly one record: a repeated, foreign, missing or
+    cross-tranche key is a ``ValueError``, so a partial run never looks complete. The caller may
+    still refuse individual records before writing them.
+    """
     owner: dict[str, str] = {}
-    for tranche in PHASE_A_TRANCHES:
-        keys = {item_key(row["audio_path"]) for row in manifests[tranche]
-                if row["stratum"] == GATING}
+    for tranche, keys in expected.items():
         for key in keys:
-            if key in owner:
-                raise ValueError(f"{key} is a gating row of both {owner[key]} and {tranche}")
-            owner[key] = tranche
-        expected[tranche] = keys
+            other = owner.setdefault(key, tranche)
+            if other != tranche:
+                raise ValueError(f"{key} is in both {other} and {tranche}: a clip is merged once")
     records = _read_parts(Path(parts_dir))
     foreign = sorted(set(records) - set(owner))
     if foreign:
-        raise ValueError(f"{len(foreign)} records are for rows that are not gating rows of "
-                         f"phase A (first {foreign[0]})")
+        raise ValueError(f"{len(foreign)} records are for rows this merge does not take "
+                         f"(first {foreign[0]})")
     tranches = {tranche: _tranche_records(tranche, expected[tranche], records)
-                for tranche in PHASE_A_TRANCHES}
+                for tranche in expected}
     counts = {}
-    for tranche in PHASE_A_TRANCHES:
-        aligned = sum(1 for record in tranches[tranche] if record["aligned"])
-        rows = len(tranches[tranche])
+    for tranche, found in tranches.items():
+        aligned = sum(1 for record in found if record["aligned"])
+        rows = len(found)
         counts[tranche] = {"rows": rows, "aligned": aligned, "fallback": rows - aligned,
                            "fallback_rate": (rows - aligned) / rows if rows else 0.0}
+    return tranches, counts
+
+
+def _write_word_times(out_dir: Path, tranches: Mapping[str, Sequence[Mapping]],
+                      counts: Mapping[str, Mapping], *, prefix: str, meta_name: str,
+                      provenance: Mapping, extra: Mapping) -> dict:
+    """Write one sorted, gzipped file per tranche under ``prefix`` and the meta; returns the meta."""
     out_dir = Path(out_dir)
-    for tranche in PHASE_A_TRANCHES:
-        write_shard(tranches[tranche], out_dir / f"{tranche}.jsonl.gz")
-    meta = {**provenance, "tranches": counts}
-    write_json(meta, out_dir / "meta.json")
+    for tranche, found in tranches.items():
+        write_shard(found, out_dir / f"{prefix}{tranche}.jsonl.gz")
+    meta = {**provenance, "tranches": counts, **extra}
+    write_json(meta, out_dir / meta_name)
     return meta
+
+
+#: The record fields that must repeat the manifest row the clip was aligned from.
+_ROW_FIELDS = ("split", "shard_file", "row", "audio_path", "audio_sha256")
+
+
+def _require_record_of_row(record: Mapping, row: Mapping) -> None:
+    """Refuse a record that is not this row's: another ayah's reference, another clip's audio.
+
+    The parts are resumed by key, so a part whose key is right but whose reference or audio is
+    another row's would otherwise publish timings for the wrong ayah, silently.
+    """
+    for name in (*_ROW_FIELDS, "surah_ayah"):
+        expected = row["assigned_label"] if name == "surah_ayah" else row[name]
+        if record.get(name) != expected:
+            raise ValueError(f"{record['key']}: the record's {name} is {record.get(name)!r}, "
+                             f"not the selected row's {expected!r}")
 
 
 def merge_mined_decodes(parts_dir: Path, out_dir: Path, *,
@@ -264,9 +345,9 @@ def _read_parts(parts_dir: Path) -> dict[str, dict]:
 
 
 def _tranche_records(tranche: str, expected: set[str], records: Mapping[str, dict]) -> list[dict]:
-    """``tranche``'s records in key order, refusing a gating row with no record."""
+    """``tranche``'s records in key order, refusing a row with no record."""
     missing = sorted(expected - set(records))
     if missing:
-        raise ValueError(f"{tranche}: {len(missing)} gating rows have no record "
+        raise ValueError(f"{tranche}: {len(missing)} rows have no record "
                          f"(first {missing[0]}): the run is not complete")
     return [records[key] for key in sorted(expected)]

@@ -1,8 +1,10 @@
-"""One gating clip's word times (#263): CTC-force-align the filename ayah, map it to words.
+"""One clip's word times (#263): CTC-force-align a reference, map it to words.
 
-The reference is the filename ayah's **full text** — the phonemes
+Phase A aligns the **filename** ayah's **full text** — the phonemes
 :mod:`training.tlog_eval` grades, whose readout reference is
-:func:`tadabur.waqf_segments.hafs_segment_reference` (space-bearing). CTC labels are phoneme
+:func:`tadabur.waqf_segments.hafs_segment_reference` (space-bearing). Phase D aligns a mined row's
+**assigned** ayah instead: that row's filename label may be missing or name another ayah, and the
+assigned label is the reference the mined dataset is built on. CTC labels are phoneme
 classes, and the model's alphabet has no space, so the alignment uses
 :func:`tadabur.waqf_segments.hafs_word_reference`: the **spaceless remap of that same
 phonetization**, with the per-word offsets into it. Do not swap in the spaced builder: every
@@ -18,8 +20,8 @@ probability over every alignment (``ctc_log_likelihood / frames``), not the Vite
 the existing helper's value and needs no change to :mod:`training.ctc_paths`.
 
 A clip that cannot be aligned is a committed record with ``aligned: false`` and a ``reason``,
-never an exception and never a missing row: an ayah with no filename label, an ayah the
-phonetizer cannot handle, a reference character outside the model's 43 classes, or posteriors
+never an exception and never a missing row: a row that names no ayah in the aligned field, an ayah
+the phonetizer cannot handle, a reference character outside the model's 43 classes, or posteriors
 too short for the transcript. The times depend only on the reference and the posteriors — no
 decoded mark is read — so re-running reproduces them.
 """
@@ -69,19 +71,22 @@ def align_words(log_posteriors: np.ndarray, labels: Sequence[int], offsets: Sequ
 
 
 def build_record(row: dict, *, reference_for: Callable[[str], tuple[str, Sequence[int]]],
-                 log_posteriors: np.ndarray, duration_s: float) -> dict:
-    """The committed record of one gating clip, aligned or listed unaligned with its reason.
+                 log_posteriors: np.ndarray, duration_s: float,
+                 label_field: str = "filename_label") -> dict:
+    """The committed record of one clip, aligned or listed unaligned with its reason.
 
     ``reference_for(label)`` returns the ayah's raw spaceless phoneme reference and its word
-    offsets. The reference is the **filename** ayah (:func:`training.tlog_eval._canonical_words`
-    over ``hafs_word_reference``), never the row's ``assigned_label``: the row's own label is
-    what the clip claims, not what it says.
+    offsets. ``label_field`` names the row's ayah that is aligned and recorded as
+    ``surah_ayah``: phase A's **filename** ayah (:func:`training.tlog_eval._canonical_words` over
+    ``hafs_word_reference``), which is what a gating clip claims; phase D's **assigned** ayah, the
+    reference the mined row is decoded and graded against — the filename label is missing for a
+    third of those rows and differs from the assigned one for more.
     """
+    label = row.get(label_field)
     record = {"key": item_key(row["audio_path"]), "split": row["split"],
               "shard_file": row["shard_file"], "row": row["row"],
               "audio_path": row["audio_path"], "audio_sha256": row["audio_sha256"],
-              "surah_ayah": row.get("filename_label")}
-    label = row.get("filename_label")
+              "surah_ayah": label}
     if label is None:
         return _unaligned(record, "the row names no ayah")
     try:

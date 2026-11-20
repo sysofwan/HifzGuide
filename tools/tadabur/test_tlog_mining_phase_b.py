@@ -167,8 +167,8 @@ def test_phase_b_is_refused_for_a_changed_or_missing_amendment(tmp_path):
 
 
 def test_an_unknown_phase_is_refused_whatever_the_amendment():
-    with pytest.raises(ValueError, match="phase D"):
-        require_phase("D", amendment_path=AMENDMENT)
+    with pytest.raises(ValueError, match="phase E"):
+        require_phase("E", amendment_path=AMENDMENT)
 
 
 # --- the rows --------------------------------------------------------------------------------
@@ -523,8 +523,8 @@ def test_the_driver_refuses_an_unknown_phase_before_it_touches_the_card(tmp_path
         raise AssertionError("the card was read for a refused phase")
 
     monkeypatch.setattr(cli, "gpu_memory_mib", card)
-    with pytest.raises(ValueError, match="phase D"):
-        cli.run(_driver_args(tmp_path, "D"))
+    with pytest.raises(ValueError, match="phase E"):
+        cli.run(_driver_args(tmp_path, "E"))
 
 
 def test_the_driver_runs_one_phase_b_worker_whatever_the_card_offers(tmp_path, monkeypatch):

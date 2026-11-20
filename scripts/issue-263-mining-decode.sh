@@ -24,6 +24,15 @@
 # merge writes `tlog.mined.r3_candidate_ema.jsonl.gz`, `tlog.gating.r3_candidate_ema.jsonl.gz`
 # and `meta.r3_candidate_ema.json`: phase B's committed `meta.json` is never touched.
 #
+# Phase D: the teacher-only alignment of phase A, over phase B's mined rows, so #264 can snip a
+# word from a mined clip. It adds no alignment logic and no decode: the same `align` worker, with
+# each row's `assigned_label` as the reference instead of its filename. Its rows are
+# `tadabur.tlog_mining.selection.phase_d_rows` — phase B's decodable rows and its #248 listing —
+# and it runs only under slice 1's pinned amendment; it reads no round-3 output, so it needs
+# neither round 3's choice nor its verdict. Its merge writes
+# `mined.confirm.1.jsonl.gz`, `mined.confirm.2.jsonl.gz` and `meta.mined.json` beside phase A's
+# files, which are never touched.
+#
 # Round 3 has the box. This launcher never holds the GPU lock across a run: the Python loop
 # (`tadabur.tlog_mining.give_way`) takes /root/scratch/gpu.lock non-blocking for one batch, at
 # most BATCH_SECONDS, releases it, sleeps at least YIELD_SECONDS, and tries again. A held lock is
@@ -32,22 +41,22 @@
 # logs/run.out reports the GPU seconds held and the seconds yielded, and the counts the run note
 # cites.
 #
-# `plan [A|B|C]` reads the **committed** choice, the two committed confirm claims and (for a
+# `plan [A|B|C|D]` reads the **committed** choice, the two committed confirm claims and (for a
 # mined phase) the committed amendment, plus (for C) round 3's committed choice and verdict, and
-# prints the jobs; it writes nothing. `launch [A|B|C]` stages the repository as a bundle clone on
-# the box and starts `run` detached with `setsid nohup`. `pause` touches PAUSE; `resume [A|B|C]`
+# prints the jobs; it writes nothing. `launch [A|B|C|D]` stages the repository as a bundle clone on
+# the box and starts `run` detached with `setsid nohup`. `pause` touches PAUSE; `resume [A|B|C|D]`
 # removes it, restages and starts `run --resume` (the batch resumes by row key from the parts).
-# `status [A|B|C]` reads the box's run.done/run.exit and the run's line. `fetch [A|B|C]` copies a
-# complete merge into the phase's committed directory.
+# `status [A|B|C|D]` reads the box's run.done/run.exit and the run's line. `fetch [A|B|C|D]` copies
+# a complete merge into the phase's committed directory.
 #
 # `plan` prints the processes it asks for (`PARALLEL`, default 2); the Python loop then caps a
 # mined phase to its measured worker count (`MINED_WORKERS` = 1) and prints `parallel capped to
 # N` at the run's start. A mined phase's plan line is therefore an upper bound, never the count.
 #
 # Each phase has its own parts, clips, logs and output directory under $ROOT (A), $ROOT/B (phase
-# B) and $ROOT/C (phase C), so no part, done or exit file of one phase is ever read as another's.
-# The staged clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse while any phase's loop
-# is still live.
+# B), $ROOT/C (phase C) and $ROOT/D (phase D), so no part, done or exit file of one phase is ever
+# read as another's. The staged clone at $ROOT/repo **is** shared, so `launch`/`resume` refuse
+# while any phase's loop is still live.
 #
 # Two interpreters, two requirements. Mac side: `plan`/`launch`/`resume` read the committed
 # choice and the pinned amendment through `python`, which must be a `python` from the checkout's
@@ -112,9 +121,9 @@ die() { echo "$*" >&2; exit 1; }
 require_phase() {  # <phase>
   case "$1" in
     A) ;;
-    B) require_amendment ;;
+    B|D) require_amendment ;;
     C) require_amendment; require_round3 ;;
-    *) die "unknown phase $1: this launcher runs phases A, B and C only" ;;
+    *) die "unknown phase $1: this launcher runs phases A, B, C and D only" ;;
   esac
 }
 
@@ -196,6 +205,14 @@ phase_dirs() {  # <phase>: set the phase's paths and roles
       LOGS=$ROOT/C/logs
       ROLES=(confirm.1 confirm.2)
       ;;
+    D)
+      PARTS=$ROOT/D/parts
+      OUT=$ROOT/D/out
+      CLIPS=$ROOT/D/clips
+      SHARDS=$ROOT/D/shards
+      LOGS=$ROOT/D/logs
+      ROLES=(confirm.1 confirm.2)
+      ;;
   esac
 }
 
@@ -232,6 +249,12 @@ plan() {  # [phase]
         printf 'decode %s %s at %s processes\n' "$role" "$MODELS" "$PARALLEL"
       done
       printf 'merge mined\n'
+      ;;
+    D)
+      for role in "${ROLES[@]}"; do
+        printf 'align %s base at %s processes\n' "$role" "$PARALLEL"
+      done
+      printf 'merge mined word_times\n'
       ;;
   esac
 }
@@ -312,11 +335,11 @@ live_pid() {  # <logs dir>
 }
 
 require_stopped() {
-  # The clone is shared by all three phases (`stage_repo` replaces `$ROOT/repo`), so a live run of
+  # The clone is shared by all four phases (`stage_repo` replaces `$ROOT/repo`), so a live run of
   # *any* phase must block a restage: deleting the tree under a running loop breaks its next
   # batch.
   local dir pid
-  for dir in "$ROOT/logs" "$ROOT/B/logs" "$ROOT/C/logs"; do
+  for dir in "$ROOT/logs" "$ROOT/B/logs" "$ROOT/C/logs" "$ROOT/D/logs"; do
     pid=$(live_pid "$dir")
     [ -z "$pid" ] || die "a mining run is still live (pid $pid, logs in $dir): pause it and \
       wait for run.exit, then resume"
@@ -402,6 +425,7 @@ output_names() {  # <phase>: the merged files a complete run leaves in its out d
       done
       printf 'meta.%s.json ' "$MODELS"
       ;;
+    D) printf 'mined.%s.jsonl.gz ' "${ROLES[@]}"; printf 'meta.mined.json ' ;;
   esac
 }
 
@@ -423,6 +447,7 @@ fetch() {  # [phase]
     A) default_dir=tools/tadabur/tlog_mining/word_times ;;
     B) MODELS=$(chosen_models); default_dir=tools/tadabur/tlog_mining/decodes ;;
     C) MODELS=$(round3_model); default_dir=tools/tadabur/tlog_mining/decodes ;;
+    D) default_dir=tools/tadabur/tlog_mining/word_times ;;
   esac
   require_merged "$phase"
   repo_root=$(git rev-parse --show-toplevel)
@@ -516,8 +541,8 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     fetch) shift; fetch "${1:-A}" ;;
     run) shift; run "$@" ;;
     *)
-      echo "usage: $0 {plan [A|B|C]|launch [A|B|C]|resume [A|B|C]|pause|status [A|B|C]|fetch [A|B|C]}
-       (run [--phase A|B|C] [--resume] executes on the box)" >&2
+      echo "usage: $0 {plan [A|B|C|D]|launch [A|B|C|D]|resume [A|B|C|D]|pause|status [A|B|C|D]|fetch [A|B|C|D]}
+       (run [--phase A|B|C|D] [--resume] executes on the box)" >&2
       exit 2
       ;;
   esac

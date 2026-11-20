@@ -64,12 +64,14 @@ from tadabur.test_tlog_mining_phase_b import (AMENDMENT, MINED, SHARD_OF, _claim
                                               _driver_args, _merge_inputs, _phonetizable,
                                               _quiet_box, _tranche)
 from tadabur.test_tlog_mining_selection import _split_tree
+from tadabur.tlog_ident import BASE_MODEL, BASE_REVISION
 from tadabur.tlog_index import read_jsonl
 from tadabur.tlog_mining import __main__ as cli
 from tadabur.tlog_mining import merge, selection
 from tadabur.tlog_mining.batch import part_path
 from tadabur.tlog_mining.selection import phase_b_rows, require_phase
 from tadabur.tlog_pass1 import read_jsonl_gz
+from training.decoding import SPANS
 from training.nonpro_decode import item_key
 
 REPO = Path(__file__).resolve().parents[2]
@@ -567,7 +569,8 @@ def test_the_merge_command_pools_phase_ds_rows_with_the_teacher_record(tmp_path,
                                                                        capsys):
     rows, listed = _merge_inputs(tmp_path)
     _write_parts(tmp_path / "parts", rows, unaligned={("confirm.1", 4)})
-    teacher = {"identity": {"model_ref": "teacher"}, "fingerprint": {"mode": "spans"}}
+    teacher = {"identity": {"hub_revision": BASE_REVISION, "model_ref": BASE_MODEL},
+               "fingerprint": {"mode": SPANS}}
     (tmp_path / "parts" / cli.TEACHER_RECORD).write_text(json.dumps(teacher), encoding="utf-8")
 
     def never(*args, **kwargs):

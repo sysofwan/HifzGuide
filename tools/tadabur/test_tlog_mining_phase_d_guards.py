@@ -11,12 +11,13 @@ This file pins the two refusals that close them, as published behaviour of
   row's ``surah_ayah`` (the row's ``assigned_label``) and audio provenance (``audio_sha256``,
   ``audio_path``, ``split``, ``shard_file``, ``row``); a mismatch names the key and the field and
   nothing is written; and
-* ``tadabur.tlog_mining.__main__.merge --phase D``: the parts must hold ``teacher.json`` with the
-  worker's identity and its decode fingerprint; a missing or shapeless record refuses before any
-  output file is written.
+* ``tadabur.tlog_mining.__main__.merge --phase D``: the parts must hold ``teacher.json`` naming
+  the pinned base teacher (``tadabur.tlog_ident.BASE_MODEL``/``BASE_REVISION``) with its
+  whole-spans decode fingerprint; a missing record, another model, a missing or wrong revision or
+  another mode refuses before any output file is written.
 
-The real pinned producer identity (``tadabur.tlog_ident.BASE_MODEL``/``BASE_REVISION``, the
-whole-spans mode) is accepted, so the guard refuses absence, never a real run.
+The pinned producer identity (``BASE_MODEL``/``BASE_REVISION``, ``training.decoding.SPANS``) is
+accepted and nothing else is, so the guard refuses unpinned inputs, never a real run.
 """
 
 from __future__ import annotations
@@ -105,9 +106,17 @@ def test_the_merge_refuses_parts_with_no_producer_record(tmp_path, monkeypatch):
     {"fingerprint": {"mode": SPANS}},
     {"identity": {"hub_revision": BASE_REVISION, "model_ref": BASE_MODEL}},
     {"identity": {"model_ref": BASE_MODEL}, "fingerprint": {}},
-], ids=["no-identity", "no-fingerprint", "no-mode"])
-def test_the_merge_refuses_a_producer_record_that_is_not_a_teacher_pass(tmp_path, monkeypatch,
-                                                                       record):
+    {"identity": {"hub_revision": BASE_REVISION, "model_ref": "unpinned-student"},
+     "fingerprint": {"mode": SPANS}},
+    {"identity": {"model_ref": BASE_MODEL}, "fingerprint": {"mode": SPANS}},
+    {"identity": {"hub_revision": "wrong-revision", "model_ref": BASE_MODEL},
+     "fingerprint": {"mode": SPANS}},
+    {"identity": {"hub_revision": BASE_REVISION, "model_ref": BASE_MODEL},
+     "fingerprint": {"mode": "spans"}},
+], ids=["no-identity", "no-fingerprint", "no-mode", "wrong-model", "no-revision",
+        "wrong-revision", "not-whole-spans"])
+def test_the_merge_refuses_a_producer_record_that_is_not_the_pinned_teacher(
+        tmp_path, monkeypatch, record):
     rows, listed = _merge_inputs(tmp_path)
     _write_parts(tmp_path / "parts", rows)
     (tmp_path / "parts" / cli.TEACHER_RECORD).write_text(json.dumps(record), encoding="utf-8")

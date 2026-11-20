@@ -66,6 +66,7 @@ from pathlib import Path
 
 from tadabur import tlog_eval_decode as ted
 from tadabur.audio import TARGET_SAMPLE_RATE
+from tadabur.tlog_ident import BASE_MODEL, BASE_REVISION
 from tadabur.tlog_ident_decode import load_decoder
 from tadabur.tlog_index import (head_sha, provenance, read_jsonl, sha256_file, write_json,
                                 write_jsonl)
@@ -74,6 +75,7 @@ from tadabur.tlog_tranches import GATING, SPLIT_DIR, TRANCHES_DIR
 from tadabur.tlog_vram_check import gpu_memory_mib
 from tadabur.waqf_segments import hafs_word_reference
 from training.aug_readout_spec import CONSONANT3, RoundSpec
+from training.decoding import SPANS
 from training.external_decode import record_identity
 from training.nonpro_decode import item_key
 from training.tlog_eval import _canonical_words
@@ -614,26 +616,32 @@ def _teacher(parts_dir: Path) -> dict:
 
 
 def _require_teacher(parts_dir: Path) -> dict:
-    """Phase D's producer record, required: its word times are the teacher's and must say so.
+    """Phase D's producer record, required and pinned: its word times are the base teacher's.
 
     A standalone merge — or a resume whose parts are already complete — never loads the teacher,
     so nothing else reads this record on that path: a parts directory restored without
-    ``teacher.json`` would otherwise publish a success-shaped artifact naming no producer at all.
-    The record must carry the worker's identity and the decode fingerprint it ran under.
+    ``teacher.json``, or with another model's or another revision's identity, would otherwise
+    publish a success-shaped artifact the base teacher never made. The pin is
+    :data:`tadabur.tlog_ident.BASE_MODEL`/``BASE_REVISION`` with the whole-spans decode
+    fingerprint, read here without loading the model.
     """
     path = Path(parts_dir) / TEACHER_RECORD
     if not path.exists():
-        raise ValueError(f"{path} is missing: phase D's word times are the teacher's, and its "
-                         f"merge refuses parts that do not name their producer")
+        raise ValueError(f"{path} is missing: phase D's word times are the base teacher's, and "
+                         f"its merge refuses parts that do not name their producer")
     record = json.loads(path.read_text(encoding="utf-8"))
     identity = record.get("identity") if isinstance(record, Mapping) else None
     fingerprint = record.get("fingerprint") if isinstance(record, Mapping) else None
-    if not isinstance(identity, Mapping) or not identity.get("model_ref"):
-        raise ValueError(f"{path} names no teacher identity: phase D's word times are the "
-                         f"teacher's")
-    if not isinstance(fingerprint, Mapping) or not fingerprint.get("mode"):
-        raise ValueError(f"{path} records no alignment fingerprint: phase D's word times are a "
-                         f"whole-clip teacher pass")
+    pinned = {"hub_revision": BASE_REVISION, "model_ref": BASE_MODEL}
+    found = ({name: identity.get(name) for name in pinned}
+             if isinstance(identity, Mapping) else None)
+    if found != pinned:
+        raise ValueError(f"{path} names {found}, not the pinned base teacher {pinned}: phase "
+                         f"D's word times are the teacher's alone")
+    mode = fingerprint.get("mode") if isinstance(fingerprint, Mapping) else None
+    if mode != SPANS:
+        raise ValueError(f"{path} records decode mode {mode!r}, not {SPANS!r}: phase D aligns a "
+                         f"whole clip in the teacher's one pinned pass")
     return record
 
 

@@ -518,6 +518,20 @@ def test_the_interval_is_deterministic(ci):
     assert ci.label_source_trust(rows) == ci.label_source_trust(list(rows))
 
 
+def test_the_difference_interval_resamples_shared_group_keys_together(ci):
+    """A group key both populations hold is one sampling unit: every whole-group resample gives
+    the same rate on both sides, so the difference is zero in every draw. Clustering on
+    ``(population, group_key)`` would let a draw keep one side and drop the other."""
+    rows = _trust_rows([[True, False]], population="gating", label="both") \
+        + _trust_rows([[True, False]], population="mined", label="identified")
+    for row in rows:
+        row["group_key"] = "shared"
+    trust = ci.label_source_trust(rows)
+    assert trust["gating"]["rate"] == trust["identified"]["rate"] == 0.5
+    assert trust["identified"]["difference_from_gating"] == 0.0
+    assert trust["identified"]["difference_ci95"] == [0.0, 0.0]
+
+
 # --- the catch-loss context -------------------------------------------------------------------------
 
 

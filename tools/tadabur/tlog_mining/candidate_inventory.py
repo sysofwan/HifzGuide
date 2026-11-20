@@ -26,7 +26,8 @@ Outputs (committed):
 
 Usage, from ``tools/``::
 
-    python -m tadabur.tlog_mining.candidate_inventory
+    python -m tadabur.tlog_mining.candidate_inventory             # grade and write everything
+    python -m tadabur.tlog_mining.candidate_inventory regenerate  # counts/doc from the export
 """
 
 from __future__ import annotations
@@ -442,15 +443,17 @@ def _interval(clusters: Sequence[Mapping]) -> list[float]:
 
 
 def _difference_interval(gating: Sequence[Mapping], source: Sequence[Mapping]) -> list[float]:
-    """The interval of ``rate(source) - rate(gating)``, resampling each population's group keys
-    (a cluster is ``(population, group_key)`` so the two never mix)."""
-    combined = [{**cluster, "cluster": (GATING, cluster["cluster"])} for cluster in gating] + \
-               [{**cluster, "cluster": (MINED, cluster["cluster"])} for cluster in source]
+    """The interval of ``rate(source) - rate(gating)``, resampling the **original** group keys:
+    a key shared by both populations is drawn once and its gating and mined words contribute to
+    both rates together. Population membership is not an independent sampling unit, so giving
+    the two a cluster of their own would treat one group's two observations as independent."""
+    combined = [{**cluster, "population": GATING} for cluster in gating] + \
+               [{**cluster, "population": MINED} for cluster in source]
 
     def statistic(sample):
         totals = {GATING: [0, 0], MINED: [0, 0]}
         for cluster in sample:
-            total = totals[cluster["cluster"][0]]
+            total = totals[cluster["population"]]
             total[0] += cluster["words"]
             total[1] += cluster["flagged"]
         return (totals[MINED][1] / totals[MINED][0] if totals[MINED][0] else 0.0) - \
@@ -784,11 +787,55 @@ def _assigned_label(row: Mapping) -> str | None:
     return row["assigned_label"]
 
 
+def _read_word_grades(path: Path) -> list[dict]:
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
+def regenerate(*, inventory_dir: Path = INVENTORY_DIR, doc_path: Path = DOC_PATH) -> dict:
+    """Rewrite ``summary.json`` and the doc from the committed word export: the counts, the
+    intervals and the population are recomputed from the exported rows, so a counting or
+    statistics fix needs no harness and no regrade. The harness record and the export's own
+    record are the committed ones; an export holding only the flagged words is refused, because
+    the counts cannot be rebuilt from it."""
+    inventory_dir = Path(inventory_dir)
+    summary_path = inventory_dir / "summary.json"
+    committed = json.loads(summary_path.read_text(encoding="utf-8"))
+    report = committed["word_grades"]
+    if not report.get("complete"):
+        raise ValueError(f"{summary_path}: the committed export is the flagged-word fallback "
+                         f"({report.get('clip_word_counts_file')}); the counts need every word")
+    rows = _read_word_grades(inventory_dir / report["file"])
+    decodes = _decode_lines(ROOT)
+    excluded = excluded_248(ROOT)
+    listed = listed_unphonetizable(ROOT)
+    manifests = {tranche: _manifest_rows(ROOT, tranche) for tranche in CONFIRM_TRANCHES}
+    decoded = {**decodes[GATING][BASE], **decodes[MINED][BASE]}
+    rows_by_tranche = {tranche: [row for row in manifest
+                                 if item_key(row["audio_path"]) in decoded]
+                       for tranche, manifest in manifests.items()}
+    clips = clip_table(rows_by_tranche, excluded=excluded, listed=listed)
+    summary = build_summary(
+        rows, inputs=dict(PINS), harness=committed["harness"],
+        exclusions={"gating_decoded": len(decodes[GATING][BASE]),
+                    "gating_excluded_248": len(excluded),
+                    "mined_decoded": len(decodes[MINED][BASE]),
+                    "listed_unphonetizable": len(listed)},
+        catch_loss=catch_loss_context(ROOT), word_grades=report, clips=clips)
+    write_json(summary, summary_path)
+    write_text_atomically(Path(doc_path), render(summary))
+    _progress(f"summary and doc regenerated from {len(rows)} committed word rows")
+    return summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.parse_args()
-    summary = build()
+    parser.add_argument("command", nargs="?", choices=("build", "regenerate"), default="build",
+                        help="build grades the decodes and writes everything; regenerate "
+                             "rewrites summary.json and the doc from the committed word export")
+    args = parser.parse_args()
+    summary = build() if args.command == "build" else regenerate()
     print(json.dumps({name: summary[name] for name in
                       ("population", "exclusions", "word_grades")},
                      ensure_ascii=False, indent=1))

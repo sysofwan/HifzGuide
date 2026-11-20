@@ -1893,7 +1893,7 @@ The strict-scoring flag rate per label source, against the gating rows (all `bot
 
 | label source | words | flagged words | rate | 95% interval | vs gating | difference 95% interval |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| both | 18769 | 5001 | 0.266 | [0.253, 0.281] | +0.078 | [+0.062, +0.093] |
+| both | 18769 | 5001 | 0.266 | [0.253, 0.281] | +0.078 | [+0.063, +0.093] |
 | filename | 2080 | 789 | 0.379 | [0.343, 0.416] | +0.191 | [+0.154, +0.228] |
 | gating | 44745 | 8437 | 0.189 | [0.182, 0.195] |  |  |
 | identified | 32476 | 10162 | 0.313 | [0.301, 0.325] | +0.124 | [+0.111, +0.138] |

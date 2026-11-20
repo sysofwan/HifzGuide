@@ -366,11 +366,11 @@ likelihoods separate the two:
 | D, `filename` | 2,355 | −5.97 | −3.38 | −2.12 | −1.20 |
 | D, `identified` | 3,968 | −8.83 | −3.83 | −1.52 | −0.46 |
 
-The `identified` source is the worst of the three at every percentile, and all three sit well
-below phase A's distribution. **The rule #264 applies:** a row whose `ll_per_frame` is below −3.5
-(phase A's aligned 5th percentile is −3.49) is treated exactly as `aligned: false` — play the
-whole clip. That is 1,861 of the 8,898 aligned rows (20.9%), so 3,605 of the 10,642 mined rows
-(33.9%) play whole at presentation.
+`identified` has the worst lower tail — p5 −8.83, p25 −3.83 — while `filename` has the lowest
+median (−2.12) and p75 (−1.20); all three sources sit well below phase A's distribution. **The
+rule #264 applies:** a row whose `ll_per_frame` is below −3.5 (phase A's aligned 5th percentile
+is −3.49) is treated exactly as `aligned: false` — play the whole clip. That is 1,861 of the 8,898
+aligned rows (20.9%), so 3,605 of the 10,642 mined rows (33.9%) play whole at presentation.
 
 **All 1,744 fallbacks have the same cause**: the posteriors are too short for the assigned
 ayah's transcript — CTC cannot place more labels than the clip has frames. A mined clip often
@@ -425,7 +425,7 @@ acquire: every non-blocking acquire found `/root/scratch/gpu.lock` free, i.e. ro
 for the whole run. Wall time was **5 h 28 m 48 s** (2026-11-20T08:33:21Z → 2026-11-20T14:02:09Z);
 the 685 s outside held-plus-yielded is the launch's selection and the merge's #248 phonetizer —
 each phonetizes both tranches, four tranche-passes, ≈160 s for both sites on this workstation —
-plus the merge's I/O over the 58 parts; the run instrumented neither this split nor the
+plus the merge's I/O over the 738 shard parts; the run instrumented neither this split nor the
 launch/merge boundary. The teacher loads are **not** here: an align worker folds its selection
 and `load_decoder()` into the budget it reports, so they are part of the 17,303 s.
 

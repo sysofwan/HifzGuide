@@ -43,6 +43,10 @@ Modules:
 ``give_way``
     The preemptible loop: the GPU lock taken non-blocking for one batch at a time, the PAUSE
     file and the disk/RAM floors checked at every batch boundary.
+``candidate_inventory``
+    The no-listening readout of the phase A-C decodes (#300): the four detectors' flags over
+    the gating and mined rows, by agreement, cause and substitution, with the label sources'
+    trust against gating and the catch-loss audits as context only. Mac harness; no GPU.
 ``__main__``
     The CLI the launcher runs on the box (``align``, ``decode``, ``run``, ``merge``).
 """

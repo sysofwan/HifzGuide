@@ -58,14 +58,21 @@ def _identified_span(row: Mapping, line: Mapping, words: Sequence[str]) -> Seque
     return (line.get("word_from") or 1, line.get("word_to") or len(words))
 
 
+def _filename_label(row: Mapping) -> str | None:
+    """The ayah a row is graded on by default: the label it claims in its filename."""
+    return row["filename_label"]
+
+
 def _items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_of,
            words_of: Callable[[str], list[str]],
            segment_of: Callable[[Mapping, Mapping, Sequence[str]], Sequence[int]],
-           stratum: str = GATING) -> tuple[list[ClipItem], list[str]]:
-    """One item per row of ``stratum``, in key order, over the words ``words_of`` gives its
-    filename ayah and the span ``segment_of`` cuts from them. A row with no committed decode is
-    refused (a dropped row would silently shrink the population); a clip the phonetizer cannot
-    handle, or one whose row names no ayah, is listed and left out."""
+           stratum: str = GATING,
+           label_of: Callable[[Mapping], str | None] = _filename_label
+           ) -> tuple[list[ClipItem], list[str]]:
+    """One item per row of ``stratum``, in key order, over the words ``words_of`` gives the ayah
+    ``label_of`` names and the span ``segment_of`` cuts from them. A row with no committed
+    decode is refused (a dropped row would silently shrink the population); a clip the
+    phonetizer cannot handle, or one whose row names no ayah, is listed and left out."""
     items, unsupported = [], []
     for row in sorted((row for row in rows if row["stratum"] == stratum),
                       key=lambda row: item_key(row["audio_path"])):
@@ -76,7 +83,7 @@ def _items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_o
         if any(line.get(field) != row[field] for field in ("split", "shard_file", "row")):
             raise ValueError(f"{key}: the decode is not the row's "
                              f"{row['split']}/{row['shard_file']}/{row['row']}")
-        label = row["filename_label"]
+        label = label_of(row)
         if label is None:
             unsupported.append(key)
             continue
@@ -97,12 +104,15 @@ def _items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_o
 
 
 def gating_items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_of,
-                 canonical_words: Callable[[str], list[str]] | None = None
+                 canonical_words: Callable[[str], list[str]] | None = None,
+                 label_of: Callable[[Mapping], str | None] = _filename_label
                  ) -> tuple[list[ClipItem], list[str]]:
-    """The gating rows' items, each graded on its filename ayah's full text, and the clips the
-    phonetizer cannot handle. ``lines`` are the committed decode records by item key."""
+    """The gating rows' items, each graded on the ayah ``label_of`` names in full (the filename
+    ayah by default), and the clips the phonetizer cannot handle. ``lines`` are the committed
+    decode records by item key."""
     return _items(rows, lines, reference_of=reference_of,
-                  words_of=canonical_words or _canonical_words, segment_of=_whole_ayah)
+                  words_of=canonical_words or _canonical_words, segment_of=_whole_ayah,
+                  label_of=label_of)
 
 
 def span_trimmed_items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_of,
@@ -116,10 +126,12 @@ def span_trimmed_items(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *,
 
 
 def reported_item_sets(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *, reference_of,
-                       canonical_words: Callable[[str], list[str]] | None = None
+                       canonical_words: Callable[[str], list[str]] | None = None,
+                       label_of: Callable[[Mapping], str | None] = _filename_label
                        ) -> dict[str, list[ClipItem]]:
-    """Each reported stratum's items, and gating's ``id_floor_ok`` sensitivity set: reported
-    only, never pooled into gating (round 2's pre-registration, "reported, not gating")."""
+    """Each reported stratum's items on the ayah ``label_of`` names (the filename ayah by
+    default), and gating's ``id_floor_ok`` sensitivity set: reported only, never pooled into
+    gating (round 2's pre-registration, "reported, not gating")."""
     words_of = canonical_words or _canonical_words
     names = sorted({row["stratum"] for row in rows
                     if row["stratum"].startswith(REPORTED_PREFIX)})
@@ -131,10 +143,10 @@ def reported_item_sets(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *,
             chosen = [row for row in rows
                       if row["stratum"] == GATING and row["id_floor_ok"] is True]
             sets[name] = _items(chosen, lines, reference_of=reference_of, words_of=words_of,
-                                segment_of=_whole_ayah)[0]
+                                segment_of=_whole_ayah, label_of=label_of)[0]
         else:
             sets[name] = _items(rows, lines, reference_of=reference_of, words_of=words_of,
-                                segment_of=_whole_ayah, stratum=name)[0]
+                                segment_of=_whole_ayah, stratum=name, label_of=label_of)[0]
     return sets
 
 

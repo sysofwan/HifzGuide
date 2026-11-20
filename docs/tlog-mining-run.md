@@ -335,7 +335,10 @@ null, for the same reason as phases A–C: #263 is the issue, not a PR.
 confirm.1/2 — aligned against each row's **`assigned_label`**, the reference phase B decodes and
 the dataset is built on. (The filename label is missing for a third of these rows and names
 another ayah for more, so phase A's filename reference would leave most of them unalignable.)
-Every aligned record is phase A's shape, unchanged.
+Every aligned record is phase A's shape, unchanged — so its `surah_ayah` is the **assigned**
+label, while phase B's record of the same `key` keeps that row's filename label (absent for 3,840
+of these keys, a different ayah for 1,633). A joiner takes `assigned_label` from phase B's record
+and never compares the two files' `surah_ayah`.
 
 | tranche | rows | aligned | fallback | fallback rate |
 |---|---|---|---|---|
@@ -346,6 +349,28 @@ Every aligned record is phase A's shape, unchanged.
 That is **88,140 words** with committed start/end times (9.9 per aligned clip on average); the
 median aligned record's frame is 40.06 ms and its per-frame forward alignment log-likelihood is
 −1.41.
+
+**Not every aligned row is usable by #264.** Phase A aligns a known-correct transcript, the
+gating clip's filename ayah. A mined row aligns its *assigned* ayah instead, and for the 5,473
+`identified` rows — 51% of the 10,642 — that assignment came from content identification, with
+no filename counterpart (3,840 rows) or a filename naming another ayah (1,633). Where the
+reference is wrong, a clip long enough to hold the transcript aligns inside it silently instead
+of falling back: `aligned: true` with a poor likelihood, never `aligned: false`. The committed
+likelihoods separate the two:
+
+| set | aligned rows | p5 | p25 | median | p75 |
+|---|---|---|---|---|---|
+| phase A, aligned | 8,342 | −3.49 | −0.65 | −0.23 | −0.07 |
+| D, aligned | 8,898 | −7.25 | −3.06 | −1.41 | −0.52 |
+| D, `both` | 2,575 | −4.86 | −1.64 | −0.75 | −0.32 |
+| D, `filename` | 2,355 | −5.97 | −3.38 | −2.12 | −1.20 |
+| D, `identified` | 3,968 | −8.83 | −3.83 | −1.52 | −0.46 |
+
+The `identified` source is the worst of the three at every percentile, and all three sit well
+below phase A's distribution. **The rule #264 applies:** a row whose `ll_per_frame` is below −3.5
+(phase A's aligned 5th percentile is −3.49) is treated exactly as `aligned: false` — play the
+whole clip. That is 1,861 of the 8,898 aligned rows (20.9%), so 3,605 of the 10,642 mined rows
+(33.9%) play whole at presentation.
 
 **All 1,744 fallbacks have the same cause**: the posteriors are too short for the assigned
 ayah's transcript — CTC cannot place more labels than the clip has frames. A mined clip often
@@ -394,12 +419,15 @@ and the only one that loses an in-flight row). The merge holds every row exactly
 records for 10,642 rows, the 26 listed and never fetched — so the 1,741 rows those batches wrote
 before being stopped are all in the committed files.
 
-**Time yielded to round 3: 1,740 s = 0.48 h**, 8.9% of the held-plus-yielded 19,043 s. That is
+**Time yielded to round 3: 1,740 s = 0.48 h**, 9.1% of the held-plus-yielded 19,043 s. That is
 exactly 58 × the 30 s `yield_seconds`, one sleep after each worker batch and none on a failed
 acquire: every non-blocking acquire found `/root/scratch/gpu.lock` free, i.e. round 3 was idle
 for the whole run. Wall time was **5 h 28 m 48 s** (2026-11-20T08:33:21Z → 2026-11-20T14:02:09Z);
-the 685 s outside held-plus-yielded is the driver's selection (the launch's #248 phonetizer,
-≈2 × 200 s), the teacher loads and the merge.
+the 685 s outside held-plus-yielded is the launch's selection and the merge's #248 phonetizer —
+each phonetizes both tranches, four tranche-passes, ≈160 s for both sites on this workstation —
+plus the merge's I/O over the 58 parts; the run instrumented neither this split nor the
+launch/merge boundary. The teacher loads are **not** here: an align worker folds its selection
+and `load_decoder()` into the budget it reports, so they are part of the 17,303 s.
 
 ### Audio
 
@@ -410,6 +438,13 @@ phase B/C's caches were gone, so no clip could be hardlinked. Nothing was delete
 
 ## Changelog
 
+- 2026-11-20: self-check r3 corrections. The phase D section now carries the per-label-source
+  `ll_per_frame` percentiles (D's median −1.41 against phase A's −0.23) and the bar #264 applies
+  — below phase A's aligned 5th percentile (−3.5) a row plays its whole clip, 3,605 of 10,642
+  rows (33.9%). The yielded share is 9.1% of held-plus-yielded, the 685 s outside it is the two
+  #248 phonetizer sites plus the merge's I/O (the teacher loads are lock-held), the two files'
+  `surah_ayah` are stated to differ or be absent for 5,473 keys, and phase D's three checksums
+  are pinned by `test_tlog_mining_phase_d_artifacts.py`.
 - 2026-11-20: phase D committed. The note records the `P=1` cap, 10,642 rows aligned against
   `assigned_label` (8,898 aligned, 1,744 fallback — all posteriors too short for the full ayah),
   the 26 #248 rows listed, 4.81 GPU-h held over 58 worker batches and 0.48 h yielded to an idle

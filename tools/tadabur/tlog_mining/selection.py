@@ -6,16 +6,19 @@ confirm tranches — the straddles, the identified, the below-bar and the unclea
 reference — and lists the rows whose ``assigned_label`` the phonetizer cannot read (#248) instead
 of decoding them. Phase C decodes the round-3 chosen weights over exactly what round 2's gating
 decodes and phase B's decode hold — the two row sets together — so its lines line up with
-base/C95/r2 line by line. Every other tranche — ``confirm.3``/``confirm.4`` (sealed for #266's pilot),
+base/C95/r2 line by line. Phase D aligns **phase B's rows** with phase A's teacher-only
+alignment, so #264 can snip a word from a mined clip: it reads the same rows and the same
+listing, and adds no alignment logic. Every other tranche — ``confirm.3``/``confirm.4`` (sealed for #266's pilot),
 ``train``, or a name that is no tranche at all — is refused before a file is opened.
 
-The mined phases (B and C) also require slice 1's amendment at its **pinned bytes**:
+The mined phases (B, C and D) also require slice 1's amendment at its **pinned bytes**:
 :func:`require_phase` hashes ``docs/tlog-mining-amendment.md`` and refuses a missing or changed
 file, so no exploit of the mined tranches can run under an amendment the principal architect did
 not cross-check. The pin is the file's SHA-256 after the Fable AGREE replaced its pending line;
 editing the amendment means re-pinning it here, deliberately. Phase C additionally requires
 round 3's committed choice — its candidate at the pinned checkpoint, see :func:`require_round3` —
 and round 3's passing verdict, so no round-3 decode runs under weights the round did not choose.
+Phase D reads no round-3 output and needs neither: it aligns the reference with the teacher.
 
 The rows come from :mod:`tadabur.tlog_eval_decode`'s own readers, so a confirm tranche still
 needs its committed claim and the committed ``choice.json``, and a row planted in another
@@ -47,8 +50,12 @@ PHASE_A = "A"
 PHASE_B = "B"
 #: Phase C: the round-3 chosen weights over the gating and mined rows, so round 3 lines up.
 PHASE_C = "C"
+#: Phase D: phase A's teacher-only word times over phase B's rows, so a mined clip can be snipped.
+PHASE_D = "D"
 #: The phases that decode into the mined parts; the CLI's default phase is A.
 MINED_PHASES = (PHASE_B, PHASE_C)
+#: The phases that read a mined tranche, so they require slice 1's amendment at its pinned bytes.
+AMENDMENT_PHASES = (PHASE_B, PHASE_C, PHASE_D)
 #: The phases this package implements; the CLI's default phase is A.
 PHASE = PHASE_A
 #: The tranches phase A reads, in the launcher's order.
@@ -57,6 +64,8 @@ PHASE_A_TRANCHES = (ted.LOOK, CONFIRM_TRANCHES[0], CONFIRM_TRANCHES[1])
 PHASE_B_TRANCHES = (CONFIRM_TRANCHES[0], CONFIRM_TRANCHES[1])
 #: Phase C reads the same two claimed confirm tranches as phase B.
 PHASE_C_TRANCHES = PHASE_B_TRANCHES
+#: Phase D aligns phase B's rows, so it reads the same two claimed confirm tranches.
+PHASE_D_TRANCHES = PHASE_B_TRANCHES
 #: The reported strata phase B decodes. ``reported:unclean`` joins them only when it carries a
 #: label source other than ``none`` (the 2,949 unlabelled unclean rows are skipped).
 PHASE_B_STRATA = ("reported:straddles", "reported:below_bar", "reported:identified")
@@ -73,20 +82,21 @@ def require_phase(phase: str, *, amendment_path: Path = MINING_AMENDMENT_PATH,
                   round3_dir: Path = ROUND3_DIR) -> None:
     """Refuse a phase this package does not run, or one whose pins do not hold.
 
-    ``B`` and ``C`` decode the mined tranches, so both need the amendment at its pinned bytes;
-    ``C`` also needs round 3's chosen weights and its passing verdict, since it decodes nothing
-    else and nothing may read its output before that verdict.
+    ``B``, ``C`` and ``D`` read a mined tranche, so all three need the amendment at its pinned
+    bytes; ``C`` also needs round 3's chosen weights and its passing verdict, since it decodes
+    nothing else and nothing may read its output before that verdict. ``D`` aligns the reference
+    with the teacher, so it reads no round-3 output and needs no round-3 pin.
     """
     if phase == PHASE_A:
         return
-    if phase in MINED_PHASES:
+    if phase in AMENDMENT_PHASES:
         _require_amendment(amendment_path)
         if phase == PHASE_C:
             require_round3(round3_dir)
         return
-    raise ValueError(f"phase {phase} is not a runnable phase: {PHASE_A}, {PHASE_B} under its "
-                     f"pinned amendment, or {PHASE_C} under round 3's committed choice and "
-                     f"pass verdict")
+    raise ValueError(f"phase {phase} is not a runnable phase: {PHASE_A}; {PHASE_B} and {PHASE_D} "
+                     f"under the mining amendment's pinned SHA-256; or {PHASE_C} under round 3's "
+                     f"committed choice and pass verdict")
 
 
 def require_round3(round3_dir: Path = ROUND3_DIR) -> None:
@@ -171,8 +181,8 @@ def phase_b_rows(tranche: str, *, tranches_dir: Path = TRANCHES_DIR,
     run can never silently drop one. The split-tree check covers both lists.
     """
     if tranche not in PHASE_B_TRANCHES:
-        raise ValueError(f"{tranche!r} is not a phase B tranche {list(PHASE_B_TRANCHES)}: "
-                         f"phase B decodes the labelled reported rows of confirm.1/2 only")
+        raise ValueError(f"{tranche!r} is not a mined tranche {list(PHASE_B_TRANCHES)}: the "
+                         f"mined phases read the labelled reported rows of confirm.1/2 only")
     rows = [row for row in _manifest_rows(tranche, tranches_dir, layout, spec)
             if _mineable(row)]
     _require_split_roles(rows, tranche, split_dir)
@@ -183,6 +193,21 @@ def phase_b_rows(tranche: str, *, tranches_dir: Path = TRANCHES_DIR,
         label = row.get("assigned_label")
         (decodable if label is not None and readable(label) else listed).append(row)
     return decodable, listed
+
+
+def phase_d_rows(tranche: str, *, tranches_dir: Path = TRANCHES_DIR,
+                 split_dir: Path = SPLIT_DIR, layout=None, spec: RoundSpec = CONSONANT2,
+                 phonetizable: Callable[[str], bool] | None = None
+                 ) -> tuple[list[dict], list[dict]]:
+    """``tranche``'s phase D rows: exactly :func:`phase_b_rows`' decodable rows and listing.
+
+    Phase D aligns phase B's rows against their ``assigned_label`` — the reference phase B decodes
+    and the mined dataset is built on — so it reads the identical set, through the identical
+    claim, committed-choice and split-tree checks. The listing is phase B's #248 refusal verbatim:
+    a listed row is in the meta, never in the committed word times.
+    """
+    return phase_b_rows(tranche, tranches_dir=tranches_dir, split_dir=split_dir, layout=layout,
+                        spec=spec, phonetizable=phonetizable)
 
 
 def phase_c_rows(tranche: str, *, tranches_dir: Path = TRANCHES_DIR,

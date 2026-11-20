@@ -65,10 +65,11 @@ def _select(round_, tranche, tmp_path, **tree):
                         layout=round_.layout, spec=round_.spec)
 
 
-def test_only_phases_a_b_and_c_are_runnable():
-    """B and C are runnable only under their pins (``test_tlog_mining_phase_b``, ``_phase_c``)."""
+def test_only_phases_a_through_d_are_runnable():
+    """B, C and D are runnable only under their pins (``test_tlog_mining_phase_b``, ``_phase_c``,
+    ``_phase_d``)."""
     require_phase("A")
-    for phase in ("D", "", "a b"):
+    for phase in ("E", "", "a b"):
         with pytest.raises(ValueError, match="phase"):
             require_phase(phase)
 

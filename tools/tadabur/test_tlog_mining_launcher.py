@@ -18,7 +18,7 @@ their arguments.
   It refuses (non-zero exit, nothing on stdout, ``not committed`` on stderr) when one of them is
   not committed and unchanged at HEAD. ``PARALLEL`` (default 2) sets the processes; ``ROUND_DIR``
   and ``TRANCHES_DIR`` are as in the confirm launcher. An unknown phase is refused by every
-  command that takes a phase (``plan``, ``launch``): ``phase D`` on stderr, nothing staged.
+  command that takes a phase (``plan``, ``launch``): ``phase E`` on stderr, nothing staged.
   Phase ``B`` is in ``test_tlog_mining_phase_b_launcher.py``, phase ``C`` in
   ``test_tlog_mining_phase_c_launcher.py``.
 * ``launch [PHASE]``: the same refusals, then stages the repository and starts ``run`` detached
@@ -137,7 +137,7 @@ def test_the_plan_lists_phase_a(tmp_path):
     assert _run("plan", round_, tmp_path, "A").stdout.splitlines() == PLAN
 
 
-@pytest.mark.parametrize("phase", ["D", "a"])
+@pytest.mark.parametrize("phase", ["E", "a"])
 @pytest.mark.parametrize("command", ["plan", "launch"])
 def test_an_unknown_phase_is_refused_before_anything_is_staged(tmp_path, command, phase):
     round_ = _round(tmp_path)

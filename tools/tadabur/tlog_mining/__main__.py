@@ -351,6 +351,7 @@ def merge(args: argparse.Namespace) -> int:
 
 def _merge_word_times_mined(args: argparse.Namespace) -> int:
     """Phase D's merge: phase A's word times over phase B's rows, and the counts its note cites."""
+    teacher = _require_teacher(args.parts_dir)
     rows: dict[str, list[dict]] = {}
     listed: dict[str, list[dict]] = {}
     for role in PHASE_D_TRANCHES:
@@ -359,7 +360,7 @@ def _merge_word_times_mined(args: argparse.Namespace) -> int:
     meta = merge_mined_word_times(
         args.parts_dir, args.out_dir, rows=rows, unphonetizable=listed,
         provenance={**provenance(args.code_sha or head_sha(), args.pull_request),
-                    **_teacher(args.parts_dir)})
+                    "teacher": teacher})
     _report_tranches(meta)
     _report_selection(rows, listed, PHASE_D_TRANCHES)
     return 0
@@ -610,6 +611,30 @@ def _teacher(parts_dir: Path) -> dict:
     if not path.exists():
         return {}
     return {"teacher": json.loads(path.read_text(encoding="utf-8"))}
+
+
+def _require_teacher(parts_dir: Path) -> dict:
+    """Phase D's producer record, required: its word times are the teacher's and must say so.
+
+    A standalone merge — or a resume whose parts are already complete — never loads the teacher,
+    so nothing else reads this record on that path: a parts directory restored without
+    ``teacher.json`` would otherwise publish a success-shaped artifact naming no producer at all.
+    The record must carry the worker's identity and the decode fingerprint it ran under.
+    """
+    path = Path(parts_dir) / TEACHER_RECORD
+    if not path.exists():
+        raise ValueError(f"{path} is missing: phase D's word times are the teacher's, and its "
+                         f"merge refuses parts that do not name their producer")
+    record = json.loads(path.read_text(encoding="utf-8"))
+    identity = record.get("identity") if isinstance(record, Mapping) else None
+    fingerprint = record.get("fingerprint") if isinstance(record, Mapping) else None
+    if not isinstance(identity, Mapping) or not identity.get("model_ref"):
+        raise ValueError(f"{path} names no teacher identity: phase D's word times are the "
+                         f"teacher's")
+    if not isinstance(fingerprint, Mapping) or not fingerprint.get("mode"):
+        raise ValueError(f"{path} records no alignment fingerprint: phase D's word times are a "
+                         f"whole-clip teacher pass")
+    return record
 
 
 def _free_disk_gb(path: Path) -> float:

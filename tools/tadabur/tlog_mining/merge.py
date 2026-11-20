@@ -21,8 +21,9 @@ phase B's rows, written as ``tlog.mined.<model>.jsonl.gz`` beside
 touched.
 
 Phase D (:func:`merge_mined_word_times`): phase A's word-times contract over phase B's rows,
-written as ``mined.<tranche>.jsonl.gz`` plus its **own** ``meta.mined.json``. Phase A's
-``meta.json`` and its three files are never touched.
+written as ``mined.<tranche>.jsonl.gz`` plus its **own** ``meta.mined.json``. Every record must
+also be its selected row's — the row's ``assigned_label`` and audio — because a resumed run
+reuses parts by key. Phase A's ``meta.json`` and its three files are never touched.
 """
 
 from __future__ import annotations
@@ -58,8 +59,9 @@ def merge_word_times(parts_dir: Path, out_dir: Path, *, manifests: Mapping[str, 
     expected = {tranche: {item_key(row["audio_path"]) for row in manifests[tranche]
                           if row["stratum"] == GATING}
                 for tranche in PHASE_A_TRANCHES}
-    return _merge_word_times(parts_dir, out_dir, expected=expected, prefix="",
-                             meta_name="meta.json", provenance=provenance, extra={})
+    tranches, counts = _pool_word_times(parts_dir, expected)
+    return _write_word_times(out_dir, tranches, counts, prefix="", meta_name="meta.json",
+                             provenance=provenance, extra={})
 
 
 def merge_mined_word_times(parts_dir: Path, out_dir: Path, *,
@@ -73,7 +75,9 @@ def merge_mined_word_times(parts_dir: Path, out_dir: Path, *,
     (``word_times.<shard>.jsonl``, the record shape phase D commits unchanged). Every decodable
     row must hold exactly one record: a missing, repeated, foreign or listed row, a clip in both
     tranches or a wrong tranche set is a ``ValueError`` before anything is written, so a partial
-    run never looks complete.
+    run never looks complete. Every record must also be **that row's** — its ``surah_ayah`` and
+    audio provenance — so a resumed run's parts, checked for completeness by key, cannot publish
+    timings for another ayah or clip.
 
     Writes **only** ``mined.<tranche>.jsonl.gz`` (sorted by key) and its own
     ``meta.mined.json``: the provenance, phase A's per-tranche counts, the row count per
@@ -88,21 +92,25 @@ def merge_mined_word_times(parts_dir: Path, out_dir: Path, *,
     _require_one_tranche_per_clip(manifests, PHASE_D_TRANCHES)
     label_sources = Counter(row["label_source"] for tranche in PHASE_D_TRANCHES
                             for row in manifests[tranche].values())
-    return _merge_word_times(
-        parts_dir, out_dir, expected={tranche: set(manifests[tranche])
-                                     for tranche in PHASE_D_TRANCHES},
-        prefix="mined.", meta_name="meta.mined.json", provenance=provenance,
+    tranches, counts = _pool_word_times(
+        parts_dir, {tranche: set(manifests[tranche]) for tranche in PHASE_D_TRANCHES})
+    for tranche in PHASE_D_TRANCHES:
+        for record in tranches[tranche]:
+            _require_record_of_row(record, manifests[tranche][record["key"]])
+    return _write_word_times(
+        out_dir, tranches, counts, prefix="mined.", meta_name="meta.mined.json",
+        provenance=provenance,
         extra={"label_sources": dict(label_sources),
                "unphonetizable": _listing(unphonetizable, PHASE_D_TRANCHES)})
 
 
-def _merge_word_times(parts_dir: Path, out_dir: Path, *, expected: Mapping[str, set[str]],
-                      prefix: str, meta_name: str, provenance: Mapping,
-                      extra: Mapping) -> dict:
-    """Validate each tranche's records against ``expected``, then write them and the meta.
+def _pool_word_times(parts_dir: Path, expected: Mapping[str, set[str]]
+                     ) -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """Each tranche's records and their counts, validated against ``expected``.
 
     A clip belongs to one tranche and holds exactly one record: a repeated, foreign, missing or
-    cross-tranche key is a ``ValueError`` before any output file is written.
+    cross-tranche key is a ``ValueError``, so a partial run never looks complete. The caller may
+    still refuse individual records before writing them.
     """
     owner: dict[str, str] = {}
     for tranche, keys in expected.items():
@@ -123,12 +131,36 @@ def _merge_word_times(parts_dir: Path, out_dir: Path, *, expected: Mapping[str, 
         rows = len(found)
         counts[tranche] = {"rows": rows, "aligned": aligned, "fallback": rows - aligned,
                            "fallback_rate": (rows - aligned) / rows if rows else 0.0}
+    return tranches, counts
+
+
+def _write_word_times(out_dir: Path, tranches: Mapping[str, Sequence[Mapping]],
+                      counts: Mapping[str, Mapping], *, prefix: str, meta_name: str,
+                      provenance: Mapping, extra: Mapping) -> dict:
+    """Write one sorted, gzipped file per tranche under ``prefix`` and the meta; returns the meta."""
     out_dir = Path(out_dir)
-    for tranche in expected:
-        write_shard(tranches[tranche], out_dir / f"{prefix}{tranche}.jsonl.gz")
+    for tranche, found in tranches.items():
+        write_shard(found, out_dir / f"{prefix}{tranche}.jsonl.gz")
     meta = {**provenance, "tranches": counts, **extra}
     write_json(meta, out_dir / meta_name)
     return meta
+
+
+#: The record fields that must repeat the manifest row the clip was aligned from.
+_ROW_FIELDS = ("split", "shard_file", "row", "audio_path", "audio_sha256")
+
+
+def _require_record_of_row(record: Mapping, row: Mapping) -> None:
+    """Refuse a record that is not this row's: another ayah's reference, another clip's audio.
+
+    The parts are resumed by key, so a part whose key is right but whose reference or audio is
+    another row's would otherwise publish timings for the wrong ayah, silently.
+    """
+    for name in (*_ROW_FIELDS, "surah_ayah"):
+        expected = row["assigned_label"] if name == "surah_ayah" else row[name]
+        if record.get(name) != expected:
+            raise ValueError(f"{record['key']}: the record's {name} is {record.get(name)!r}, "
+                             f"not the selected row's {expected!r}")
 
 
 def merge_mined_decodes(parts_dir: Path, out_dir: Path, *,

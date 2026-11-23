@@ -24,6 +24,7 @@ import difflib
 import gzip
 import json
 import os
+import shutil
 import subprocess
 import time
 from collections.abc import Mapping, Sequence
@@ -31,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.followalong_audit.assets import RELEASE, stage_assets
-from tadabur.followalong_audit.clips import verify_wav, wav_samples
+from tadabur.followalong_audit.clips import draw_record_path, verify_wav, wav_samples
 from tadabur.followalong_audit.oracle import OracleArm, oracle_checks
 from tadabur.followalong_audit.p1b import (
     LOG_OVERLAP_CHARACTERS,
@@ -86,6 +87,11 @@ class ClipRun:
     failure_count: int | None = None
     alignment_reason: str | None = None
     failure: str | None = None
+    #: The words any App check's own statuses graded, and the words the engine's ``final``
+    #: store kept (S0's per-word trace's population). A clip can differ: the stop's alignment
+    #: shows grades the store never kept when no window or hop advanced the reader.
+    check_graded_words: list[int] = field(default_factory=list)
+    final_words: int | None = None
     extra: dict = field(default_factory=dict)
 
 
@@ -274,6 +280,15 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
             if request is not None:
                 rows.extend({**row, "arm": arm}
                             for row in word_traces(request, results, AUDIT_SCORINGS))
+    for run in runs:
+        if run.app_request is None:
+            continue
+        written = {row["word"] for row in rows
+                   if row["arm"] == "app" and row["item"] == run.app_request["item"]}
+        run.final_words = len(written)
+        run.check_graded_words = sorted({
+            status["word"] for result in results if result["item"] == run.app_request["item"]
+            for check in result["checks"] for status in check["statuses"]})
 
     # Gate P1b: the App checks with each overlap cut to the 30 Characters a `.log` renders.
     clipped = [run for run in runs if run.app_request is not None]
@@ -325,15 +340,25 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
         "harness": record,
         "driver": str(driver),
     }
-    write_outputs(out, rows, runs, p1b, meta, latency_ms, draw, wav_manifest)
+    write_outputs(out, rows, runs, p1b, meta, latency_ms, draw, wav_manifest, clip_list)
     return {"words": len(rows), "changed": changed, "verdict": verdict,
             "complete": verdict != "incomplete", "failed": len(meta["failed"])}
 
 
 def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
                   p1b: Mapping, meta: Mapping, latency_ms: int,
-                  draw: Mapping | None, wav_manifest: Mapping[str, Mapping]) -> None:
-    """Write the per-word table, the decode text, the cadence, P1b, the WAV digests and the note."""
+                  draw: Mapping | None, wav_manifest: Mapping[str, Mapping],
+                  clip_list: Path) -> None:
+    """Write the tables and everything the committed output must state about itself.
+
+    The clip list is copied byte for byte (its digest in ``meta`` is of the drawn input), and the
+    selection record beside it, so the output directory holds the population and provenance the
+    tables were produced from.
+    """
+    out = Path(out)
+    shutil.copyfile(clip_list, out / clip_list.name)
+    if draw is not None:
+        write_json(draw_record_path(out / clip_list.name), draw)
     write_jsonl(Path(out) / "words.jsonl", rows)
     write_jsonl(Path(out) / "checks.jsonl",
                 [{"item": item_key(run.clip["audio_path"]), "arm": "app", "checks": run.app}
@@ -367,6 +392,8 @@ def clip_run_row(run: ClipRun) -> dict:
         "oracle_aligned": run.oracle.aligned if run.oracle is not None else None,
         "alignment_reason": run.alignment_reason,
         "app_checks": len(run.app) if run.app is not None else None,
+        "app_final_words": run.final_words,
+        "app_check_graded_words": run.check_graded_words,
         "oracle_checks": len(run.oracle.checks) if run.oracle is not None else None,
         "wall_seconds": run.wall_seconds,
         "second_wall_seconds": run.second_wall_seconds,
@@ -395,6 +422,9 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
         "Python schedule (decision 2), so its preview:window ratio is the ceiling the device "
         "cadence sits under.",
         "",
+        "App rows are the words Muraja's grade store kept (S0's `word_traces` population); the "
+        "Oracle arm covers every word of the ayah.",
+        "",
         "| clip | ayah | wall s | run 2 s | app preview:window | oracle preview:window | aligned |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
@@ -408,6 +438,12 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
     coverage = p1b["clips"]
     lines += ["", f"P1b: {p1b['verdict']} — {len(p1b['changed'])} changed word decision(s); "
                   f"{coverage['replayed']}/{coverage['drawn']} drawn clips replayed."]
+    unkept = [run for run in runs if run.final_words == 0 and run.check_graded_words]
+    lines += ([f"App tables hold the words the engine's grade store kept; {len(unkept)} clip(s) "
+               "graded words at a check but kept none (no window or hop advanced the reader):"]
+              if unkept else [])
+    lines += [f"- {run.clip['audio_path']}: checks graded words "
+              f"{run.check_graded_words}, `final` kept none" for run in unkept]
     failures = [run for run in runs if run.failure is not None]
     lines += ["", "Failures:"]
     lines += ([f"- {run.clip['audio_path']}: {run.failure}" for run in failures]

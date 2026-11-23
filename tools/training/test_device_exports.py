@@ -135,13 +135,14 @@ def test_the_report_and_doc_carry_no_log_text_device_info_or_settings():
         assert not re.search(r"iPhone\d|iOS \d|Device: |App Language|Pronunciation: |Started: ", text)
 
 
-def test_each_session_reproduces_the_device_in_exactly_one_mode_at_both_commits():
+def test_each_session_reproduces_the_device_in_exactly_one_mode_at_the_pin():
     assert {(s["page"], s["model"], s["app_version"]) for s in TARGETS} == {
         (4, "MuaalemStudent_h448_6BIT", "1.0.27"), (9, "MuaalemStudent_h448_6BIT", "1.0.27"),
         (42, "MuaalemStudent_h448_6BIT", "1.0.27")}
     for s in TARGETS:
-        for run in ("pin/lengthened", "main/lengthened"):
-            assert [m for m, p in s["parity"][run].items() if p["exact"]] == [s["mode"]]
+        # The pin reproduces the device exactly; at the audit's commit the 1.0.28 grading moves
+        # some decisions, each explained in `docs/followalong-audit-parity.md`.
+        assert [m for m, p in s["parity"]["pin/lengthened"].items() if p["exact"]] == [s["mode"]]
         assert not s["commit_parity"]["unexplained"]
     assert all(s["copy_of"] for s in REPORT["sessions"] if not s["target"])
 

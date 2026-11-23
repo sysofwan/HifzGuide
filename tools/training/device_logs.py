@@ -19,15 +19,17 @@ says is read here only as positions and counts (:class:`LogFacts`); no log text 
 **Replay.** ``muraja_harness/log_replay.swift`` runs Muraja's own ``tools/replay_log.swift``
 (``executeReplay``, the replay its ``run_log_tests.sh`` checks) once per log and engine
 configuration of :data:`training.muraja_policy.SCORINGS`, at the pin (:data:`MURAJA_COMMIT`) and
-at Muraja ``main`` (:data:`MURAJA_MAIN`), each on its own checkout's logs. **Parity comes first**:
-the shipped default must reproduce each log's committed ``baseline.json`` (every word's quality
-and the final position) at both commits, or nothing is reported.
+at the audit's commit (:data:`MURAJA_MAIN`, Muraja v1.0.28), each on its own checkout's logs.
+**Parity comes first**: the shipped default must reproduce the ``baseline.json`` that ships with
+each commit (every word's quality and the final position), or nothing is reported.
 
 **Attribution.** Each word a scoring shows as not correct (:func:`muraja_policy.displayed`) is
 attributed by :func:`training.word_flags.flag` to the errors of the grade the engine kept: the
 tashkeel mark and whether it was dropped or changed, a soft pair, a non-soft target pair
 (``ذ↔ظ``, ``س↔ش``, ``ط↔ق``), another consonant, a collapsed geminate, the engine's skip marking, or
-no recorded error. A word may carry several causes.
+no recorded error. A word may carry several causes. At :data:`MURAJA_COMMIT` an error's
+``groupIndex`` is the word scorer's own group number; at :data:`MURAJA_MAIN` it is the word's
+``phoneme_groups`` row (Muraja ``e0b8b18``), and the rows are passed to the flag.
 
 **Rates.** Per 1,000 graded words: each word a session kept a grade for stands for a word recited.
 Pooled over a model's included logs, with an interval from a bootstrap that resamples logs
@@ -42,10 +44,11 @@ logs replayed with each preview lengthened to the 40 Characters the transcriber'
 (``RealtimeTranscriber+iOS.swift:642``), and #90's simulated word sample regraded with its
 overlaps cut to 30 Characters.
 
-Usage (from ``tools/``, on a Mac, with the harness built at the pin and at Muraja ``main``)::
+Usage (from ``tools/``, on a Mac, with the harness built at the pin and at the audit's
+commit)::
 
     bash muraja_harness/build.sh
-    bash muraja_harness/build.sh 3a49a1c16d3f9391d8b43e51a5270524965237a2
+    bash muraja_harness/build.sh 028bc513eeb233caa7240a5c37c423da59f3d9d7
     python -m training.device_logs
 """
 
@@ -72,12 +75,15 @@ from training.acceptance_stats import ratio_interval
 from training.decoding import STOP, clusters, make_check
 from training.muraja_policy import (
     ALLOWANCES_ON,
+    AUDIT_SCORINGS,
     CORRECT,
+    CURRENT_COMMIT,
     HARNESS_ROOT,
     LOG_REPLAY_BINARY,
     MURAJA_COMMIT,
     SCORINGS,
     SHIPPED_DEFAULT,
+    STRICT,
     WORD_FLAGGED,
     Harness,
     MurajaText,
@@ -91,8 +97,9 @@ from training.site_outcomes import CORRECT_SIDE
 from training.tashkeel_eval import write_text_atomically
 from training.word_flags import CAUSES, flag
 
-#: Muraja ``main`` when this report was made; it differs from the pin only outside FollowAlong.
-MURAJA_MAIN = "3a49a1c16d3f9391d8b43e51a5270524965237a2"
+#: The audit's current commit (Muraja v1.0.28): the device logs, the owner's sessions and
+#: every rate the reports show are graded at it beside the frozen pin.
+MURAJA_MAIN = CURRENT_COMMIT
 DEVICE_LOGS_DIR = Path(__file__).parent.parent / "device_logs"
 INVENTORY_PATH = DEVICE_LOGS_DIR / "inventory.json"
 REPORT_PATH = DEVICE_LOGS_DIR / "report.json"
@@ -453,9 +460,15 @@ class WordGrade:
 
 
 def word_grades(
-    entry: LogEntry, replays: Mapping[str, Replay], scorings: Sequence[Scoring], text: MurajaText
+    entry: LogEntry, replays: Mapping[str, Replay], scorings: Sequence[Scoring], text: MurajaText,
+    commit: str = MURAJA_COMMIT,
 ) -> list[WordGrade]:
-    """Every graded word of a log under every scoring, attributed when shown as not correct."""
+    """Every graded word of a log under every scoring, attributed when shown as not correct.
+
+    ``commit`` is the build the replays came from: at :data:`CURRENT_COMMIT` (Muraja 028bc51) a
+    word's errors name its ``phoneme_groups`` rows (``e0b8b18``), so the rows go to
+    :func:`training.word_flags.flag`; at the pin they name the word scorer's own groups, and the
+    word's phonemes alone read them."""
     out = []
     for scoring in scorings:
         for word, status in sorted(replays[scoring.engine_name].words.items(), key=lambda w: position(w[0])):
@@ -463,7 +476,8 @@ def word_grades(
             surah, ayah, index = position(word)
             why = None if shown == CORRECT else flag(
                 SiteGrade("flagged", shown, tuple(status["errors"])),
-                text.phonemes(surah, ayah).split(" ")[index - 1])
+                text.phonemes(surah, ayah).split(" ")[index - 1],
+                rows=text.word_rows(surah, ayah, index) if commit == CURRENT_COMMIT else None)
             out.append(WordGrade(
                 entry.log, word, scoring.name, shown,
                 why.causes if why else (), why.marks if why else (), why.pairs if why else (),
@@ -707,7 +721,7 @@ def require(commit: str) -> Harness:
 
 
 def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
-    replayed = (*scorings, *PAIR_SCORINGS)
+    replayed = (*scorings, *PAIR_SCORINGS, STRICT)
     pin, main = require(MURAJA_COMMIT), require(MURAJA_MAIN)
     text = MurajaText(pin.quran_db)
     entries = [with_regions(e, lambda surah, ayah: len(text.phonemes(surah, ayah).split(" ")))
@@ -731,9 +745,13 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
             replays[name][e.log][SHIPPED_DEFAULT.engine_name],
             json.loads((directory / f"{e.log}.baseline.json").read_text(encoding="utf-8")))
             for e in entries}
+    # The pin's frozen gate: its own baselines, exactly. At the audit's commit Muraja rewrote
+    # its baselines with the 1.0.28 grading, so each commit is held to the baselines it ships.
     broken = {name: [log for log, diff in by_log.items() if diff] for name, by_log in parity.items()}
-    if any(broken.values()):
-        raise SystemExit(f"replay does not reproduce the committed baselines: {broken}")
+    if broken["pin"]:
+        raise SystemExit(f"the pin's replay does not reproduce its committed baselines: {broken['pin']}")
+    if broken["main"]:
+        raise SystemExit(f"the audit commit's replay does not reproduce its own baselines: {broken['main']}")
     main_differs = sorted(log for log in replays["pin"] if replays["pin"][log] != replays["main"][log])
 
     reported = [e for e in entries if e.included or e.exclusion == DOCUMENTED_MISTAKE]
@@ -743,9 +761,38 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
                            scorings) for group in GROUPS}
     mistakes = {model: views([g for e in reported if not e.included and e.model == model
                               for g in grades[e.log]], scorings) for model in MODELS}
+
+    current_grades = {e.log: word_grades(e, replays["main"][e.log], AUDIT_SCORINGS, text,
+                                         commit=CURRENT_COMMIT) for e in reported}
+
+    def kept(replay: Replay, word: str) -> str | None:
+        status = replay.words.get(word)
+        return status["quality"] if status is not None else None
+
+    changed = []
+    for e in reported:
+        for scoring in AUDIT_SCORINGS:
+            before = replays["pin"][e.log][scoring.engine_name]
+            after = replays["main"][e.log][scoring.engine_name]
+            for word in sorted(set(before.words) | set(after.words), key=position):
+                was, now = kept(before, word), kept(after, word)
+                if was != now:
+                    changed.append({"log": e.log, "word": word, "scoring": scoring.name,
+                                    "pin": was, "current": now})
+    changed.sort(key=lambda r: (r["log"], position(r["word"]),
+                                [s.name for s in AUDIT_SCORINGS].index(r["scoring"])))
+
     return {
         "muraja": {"pin": MURAJA_COMMIT, "main": MURAJA_MAIN, "builds": builds,
                    "main_differs_from_pin": main_differs},
+        "current": {
+            "commit": CURRENT_COMMIT,
+            "scorings": [s.name for s in AUDIT_SCORINGS],
+            "groups": {group: views([g for e in included if group in group_of(e, facts[e.log])
+                                     for g in current_grades[e.log]], AUDIT_SCORINGS) for group in GROUPS},
+            "rates": views([g for e in included for g in current_grades[e.log]], AUDIT_SCORINGS),
+            "changed_words": changed,
+        },
         "scorings": [s.as_dict() for s in scorings],
         "logs": [{
             "log": e.log, "commit": e.commit, "committed": e.committed, "model": e.model,

@@ -464,7 +464,8 @@ def _inventory_section(report: dict) -> list[str]:
         "so a version is given only where the docs name it. *Inference* is the median time the log",
         "records per inference (ms). *Start* is the log's Start line (word 0: the ayah, before its",
         "first word). *Ayat* are those the shipped-default replay graded. *Parity* is whether the",
-        "replay reproduces the log's committed `baseline.json` at the pin and at `main`.",
+        "replay reproduces the `baseline.json` that ships with each commit, pin then `main`: Muraja",
+        "rewrote its own at the audit's commit (its 1.0.28 grading).",
         "",
         *md_table(["log", "model", "app version", "committed", "protocol", "inference", "start", "pages",
                  "ayat", "parity", "status"], rows),
@@ -549,6 +550,31 @@ def _mistakes_section(report: dict) -> list[str]:
     return lines + ["Their flagged words:", "", *_word_table(report, logs, explained=False)]
 
 
+def _current_section(report: dict) -> list[str]:
+    """The included logs at the audit's commit: rates per group under strict and the shipped
+    default, and every word whose kept quality changed between the pins."""
+    current = report["current"]
+    names = current["scorings"]
+    groups = [[GROUP_TITLES[group], *(fmt_rate(current["groups"][group][name][UNEXPLAINED]["false_flags"])
+                                      for name in names)] for group in GROUPS]
+    changed = [[f"`{row['log']}`", row["word"], f"`{row['scoring']}`",
+                f"`{row['pin']}` → `{row['current']}`"] for row in current["changed_words"]]
+    lines = [
+        f"## At the audit's commit (`{current['commit'][:7]}`): strict and the shipped default",
+        "",
+        "The audit grades with today's app. The frozen pin's numbers above are replayed at the pin",
+        "and unchanged; these are the same included logs at the audit's commit, false flags per",
+        "1,000 graded words with explained words left out:",
+        "",
+        *md_table(["group", *(f"`{name}`" for name in names)], groups),
+        "Every word whose kept quality changed between the pins (the quality the engine kept,",
+        "pending and skipped included), by log, word and scoring:",
+        "",
+        *(md_table(["log", "word", "scoring", "pin → audit"], changed) if changed else ["None.", ""]),
+    ]
+    return lines
+
+
 def render(report: dict) -> str:
     muraja = report["muraja"]
     included = [e for e in report["logs"] if e["exclusion"] is None]
@@ -559,7 +585,7 @@ def render(report: dict) -> str:
     models = defaultdict(int)
     for e in included:
         models[e["model"]] += 1
-    parity_ok = all(all(e["parity"].values()) for e in report["logs"])
+    pin_ok = all(entry["parity"]["pin"] for entry in report["logs"])
     lines = [
         "# Device-log false flags: Muraja's own sessions, replayed (#151)",
         "",
@@ -590,14 +616,16 @@ def render(report: dict) -> str:
         "  `h448` sessions are excluded because their docs record a slip into another passage. The",
         "  labelled sensitivity *all sessions, slip regions excluded* is the `h448` evidence that remains;",
         "  their flags are also listed at the end. With so few sessions no `h448` rate has an interval.",
-        f"- **Parity holds{'' if parity_ok else ' only in part'}.** "
-        + ("Every log's shipped-default replay reproduces its committed `baseline.json` (every word's "
-           "quality and the final position) at the pin and at `main`." if parity_ok else
+        f"- **Parity holds at the pin.** "
+        + ("Every log's shipped-default replay reproduces its committed `baseline.json` (every "
+           "word's quality and the final position) at the pin." if pin_ok else
            "See the inventory's parity column."),
-        f"- **Muraja `main` ({muraja['main'][:7]}) grades every log as the pin ({muraja['pin'][:7]}) does**"
-        + (" under every scoring" if not muraja["main_differs_from_pin"] else
-           f" except {', '.join(muraja['main_differs_from_pin'])}")
-        + ": the two differ only outside the follow-along engine (voice search).",
+        f"- **The audit grades at `{muraja['main'][:7]}`** (Muraja v1.0.28), where the app's",
+        "  grading changed (madd alif, tanween at waqf, stop-pass anchoring, error indexing).",
+        f"  All {len(report['logs'])} of these logs replay their own baselines at that commit, as all",
+        "  74 of Muraja's logs do (`docs/followalong-audit-parity.md`);",
+        f"  {len(muraja['main_differs_from_pin'])} of them replay differently from the pin under at",
+        "  least one scoring, where those changes reach.",
         "- **A graded word stands for a recited word.** Explained words (skipped, re-read, never",
         "  recited) are reported both ways.",
         "",
@@ -606,6 +634,7 @@ def render(report: dict) -> str:
         H448_SHIP_EVIDENCE + _inference_evidence(report),
         *_scorings_section(report),
         *_rates_section(report),
+        *_current_section(report),
         "## The unexplained false flags, word by word",
         "",
         "Every word of an included log that some scoring shows as not correct and no doc explains;",

@@ -1,13 +1,13 @@
 {
  "muraja": {
   "pin": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
-  "main": "3a49a1c16d3f9391d8b43e51a5270524965237a2",
+  "main": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
   "builds": {
    "pin": {
     "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
     "harness": "tools/muraja_harness/log_replay.swift",
     "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
-    "protocol_version": 2,
+    "protocol_version": 3,
     "scoring_keys": [
      "name",
      "mode",
@@ -19,8 +19,8 @@
    "main": {
     "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
     "harness": "tools/muraja_harness/log_replay.swift",
-    "muraja_commit": "3a49a1c16d3f9391d8b43e51a5270524965237a2",
-    "protocol_version": 2,
+    "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+    "protocol_version": 3,
     "scoring_keys": [
      "name",
      "mode",
@@ -30,7 +30,1430 @@
     ]
    }
   },
-  "main_differs_from_pin": []
+  "main_differs_from_pin": [
+   "surah109_page603_basmallah",
+   "surah12_page236_ayah5_v2",
+   "surah2_page4_added_phrase",
+   "surah2_page4_session_start_taawwudh",
+   "surah2_page4_session_start_virtual",
+   "surah2_page4_skip_behind_entry",
+   "surah2_page7_ayah48_mutashabihat_freeze",
+   "surah30_page405_shared_opening_correction",
+   "surah36_page442_cross_ayah_skip",
+   "surah3_page50_ayah24",
+   "surah3_page53_ayah75",
+   "surah3_page58_far_reread_pause_residue",
+   "surah4_page100_ayah137_adjacent_repeat_skip",
+   "surah55_page532_false_backward_refrain",
+   "surah70_page569_ayah27_v2"
+  ]
+ },
+ "current": {
+  "commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+  "scorings": [
+   "strict",
+   "shipped_default"
+  ],
+  "groups": {
+   "h448": {
+    "strict": {
+     "all": {
+      "false_flags": {
+       "flags": 0,
+       "words": 0,
+       "logs": 0,
+       "per_1000": null,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "soft_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {},
+      "pairs": {}
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 0,
+       "words": 0,
+       "logs": 0,
+       "per_1000": null,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "soft_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {},
+      "pairs": {}
+     }
+    },
+    "shipped_default": {
+     "all": {
+      "false_flags": {
+       "flags": 0,
+       "words": 0,
+       "logs": 0,
+       "per_1000": null,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "soft_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {},
+      "pairs": {}
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 0,
+       "words": 0,
+       "logs": 0,
+       "per_1000": null,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "soft_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 0,
+        "logs": 0,
+        "per_1000": null,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {},
+      "pairs": {}
+     }
+    }
+   },
+   "teacher": {
+    "strict": {
+     "all": {
+      "false_flags": {
+       "flags": 259,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 114.19753086419752,
+       "lower": 57.599709350282026,
+       "upper": 188.77763333246224,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 8,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 3.527336860670194,
+        "lower": 0.9537207240180452,
+        "upper": 7.4042618402374485,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 8,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 3.527336860670194,
+        "lower": 1.2432013730424223,
+        "upper": 6.683434948402524,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 1,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.4409171075837742,
+        "lower": 0.0,
+        "upper": 1.558543019480518,
+        "method": "bootstrap"
+       },
+       "other_consonant": {
+        "flags": 28,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 12.345679012345679,
+        "lower": 7.590799992967468,
+        "upper": 18.637167190936545,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 3,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 1.3227513227513228,
+        "lower": 0.0,
+        "upper": 3.1323720983589554,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 214,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 94.35626102292768,
+        "lower": 39.42497404644208,
+        "upper": 164.55794480698165,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 6,
+       "fatha other": 1
+      },
+      "pairs": {
+       "ح↔ه": 6,
+       "س↔ش": 1,
+       "س↔ص": 1,
+       "ق↔ك": 1
+      }
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 43,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 21.068103870651644,
+       "lower": 13.871544127425251,
+       "upper": 31.992438196800776,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 7,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 3.4296913277804997,
+        "lower": 0.8015551294512255,
+        "upper": 7.579495999822731,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 8,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 3.9196472317491424,
+        "lower": 1.385427156430775,
+        "upper": 7.570563744362776,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 1,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.4899559039686428,
+        "lower": 0.0,
+        "upper": 1.7421602787456445,
+        "method": "bootstrap"
+       },
+       "other_consonant": {
+        "flags": 17,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 8.329250367466928,
+        "lower": 4.830917874396135,
+        "upper": 12.232415902140673,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 2,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.9799118079372856,
+        "lower": 0.0,
+        "upper": 2.7443124932147978,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 10,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 4.899559039686428,
+        "lower": 0.4664124743415788,
+        "upper": 12.716336757964271,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 6
+      },
+      "pairs": {
+       "ح↔ه": 6,
+       "س↔ش": 1,
+       "س↔ص": 1,
+       "ق↔ك": 1
+      }
+     }
+    },
+    "shipped_default": {
+     "all": {
+      "false_flags": {
+       "flags": 249,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 109.78835978835978,
+       "lower": 53.42467842746459,
+       "upper": 183.58929866362786,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 8,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 3.527336860670194,
+        "lower": 0.9537207240180452,
+        "upper": 7.4042618402374485,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 1,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.4409171075837742,
+        "lower": 0.0,
+        "upper": 1.3981247693236505,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 1,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.4409171075837742,
+        "lower": 0.0,
+        "upper": 1.558543019480518,
+        "method": "bootstrap"
+       },
+       "other_consonant": {
+        "flags": 28,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 12.345679012345679,
+        "lower": 7.590799992967468,
+        "upper": 18.637167190936545,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 1,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.4409171075837742,
+        "lower": 0.0,
+        "upper": 1.519776095834803,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 213,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 93.91534391534391,
+        "lower": 38.832813909444965,
+        "upper": 164.37254008738608,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 2268,
+        "logs": 47,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 6,
+       "fatha other": 1
+      },
+      "pairs": {
+       "ح↔ه": 1,
+       "س↔ش": 1
+      }
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 33,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 16.168544830965214,
+       "lower": 9.738505499391668,
+       "upper": 25.907365574692847,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 7,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 3.4296913277804997,
+        "lower": 0.8015551294512255,
+        "upper": 7.579495999822731,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 1,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.4899559039686428,
+        "lower": 0.0,
+        "upper": 1.5408518441685126,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 1,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.4899559039686428,
+        "lower": 0.0,
+        "upper": 1.7421602787456445,
+        "method": "bootstrap"
+       },
+       "other_consonant": {
+        "flags": 17,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 8.329250367466928,
+        "lower": 4.830917874396135,
+        "upper": 12.232415902140673,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 9,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 4.409603135717786,
+        "lower": 0.0,
+        "upper": 12.351154447338333,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 2041,
+        "logs": 47,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 6
+      },
+      "pairs": {
+       "ح↔ه": 1,
+       "س↔ش": 1
+      }
+     }
+    }
+   },
+   "teacher, 1 s hop": {
+    "strict": {
+     "all": {
+      "false_flags": {
+       "flags": 83,
+       "words": 1545,
+       "logs": 23,
+       "per_1000": 53.72168284789644,
+       "lower": 17.17885794168688,
+       "upper": 104.25028408463882,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 4,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 2.588996763754045,
+        "lower": 0.0,
+        "upper": 6.826084295386514,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 7,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 4.53074433656958,
+        "lower": 1.3708019191226868,
+        "upper": 9.314827939647264,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 13,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 8.414239482200648,
+        "lower": 5.053980799234703,
+        "upper": 12.277491778030697,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 3,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 1.941747572815534,
+        "lower": 0.0,
+        "upper": 4.735689410743742,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 58,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 37.54045307443366,
+        "lower": 0.7473841554559043,
+        "upper": 83.93512244065272,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 3
+      },
+      "pairs": {
+       "ح↔ه": 6,
+       "ق↔ك": 1
+      }
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 24,
+       "words": 1484,
+       "logs": 23,
+       "per_1000": 16.172506738544474,
+       "lower": 10.297369598736074,
+       "upper": 25.24426529330941,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 4,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 2.6954177897574128,
+        "lower": 0.0,
+        "upper": 7.12045457475057,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 7,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 4.716981132075471,
+        "lower": 1.4243498817966904,
+        "upper": 9.860312243221035,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 11,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 7.412398921832884,
+        "lower": 4.024010102139967,
+        "upper": 10.897651006711405,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 2,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 1.3477088948787064,
+        "lower": 0.0,
+        "upper": 3.802353710552053,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 1,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.6738544474393532,
+        "lower": 0.0,
+        "upper": 2.080128312696699,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 3
+      },
+      "pairs": {
+       "ح↔ه": 6,
+       "ق↔ك": 1
+      }
+     }
+    },
+    "shipped_default": {
+     "all": {
+      "false_flags": {
+       "flags": 74,
+       "words": 1545,
+       "logs": 23,
+       "per_1000": 47.896440129449836,
+       "lower": 11.66603501996269,
+       "upper": 95.92976000878677,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 4,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 2.588996763754045,
+        "lower": 0.0,
+        "upper": 6.826084295386514,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 1,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.6472491909385113,
+        "lower": 0.0,
+        "upper": 2.0380434782608696,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 13,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 8.414239482200648,
+        "lower": 5.053980799234703,
+        "upper": 12.277491778030697,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 1,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.6472491909385113,
+        "lower": 0.0,
+        "upper": 2.314814814814815,
+        "method": "bootstrap"
+       },
+       "skipped": {
+        "flags": 57,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 36.89320388349515,
+        "lower": 0.0,
+        "upper": 83.2796320775501,
+        "method": "bootstrap"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 1545,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 3
+      },
+      "pairs": {
+       "ح↔ه": 1
+      }
+     },
+     "unexplained": {
+      "false_flags": {
+       "flags": 15,
+       "words": 1484,
+       "logs": 23,
+       "per_1000": 10.107816711590296,
+       "lower": 5.799233127547099,
+       "upper": 16.44736842105263,
+       "method": "bootstrap"
+      },
+      "causes": {
+       "tashkeel": {
+        "flags": 4,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 2.6954177897574128,
+        "lower": 0.0,
+        "upper": 7.12045457475057,
+        "method": "bootstrap"
+       },
+       "soft_pair": {
+        "flags": 1,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.6738544474393532,
+        "lower": 0.0,
+        "upper": 2.1141649048625792,
+        "method": "bootstrap"
+       },
+       "target_pair": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "other_consonant": {
+        "flags": 11,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 7.412398921832884,
+        "lower": 4.024010102139967,
+        "upper": 10.897651006711405,
+        "method": "bootstrap"
+       },
+       "shaddah": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "skipped": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       },
+       "unrecorded": {
+        "flags": 0,
+        "words": 1484,
+        "logs": 23,
+        "per_1000": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none"
+       }
+      },
+      "marks": {
+       "damma dropped": 1,
+       "fatha dropped": 3
+      },
+      "pairs": {
+       "ح↔ه": 1
+      }
+     }
+    }
+   }
+  },
+  "rates": {
+   "strict": {
+    "all": {
+     "false_flags": {
+      "flags": 259,
+      "words": 2268,
+      "logs": 47,
+      "per_1000": 114.19753086419752,
+      "lower": 57.599709350282026,
+      "upper": 188.77763333246224,
+      "method": "bootstrap"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 8,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 3.527336860670194,
+       "lower": 0.9537207240180452,
+       "upper": 7.4042618402374485,
+       "method": "bootstrap"
+      },
+      "soft_pair": {
+       "flags": 8,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 3.527336860670194,
+       "lower": 1.2432013730424223,
+       "upper": 6.683434948402524,
+       "method": "bootstrap"
+      },
+      "target_pair": {
+       "flags": 1,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.4409171075837742,
+       "lower": 0.0,
+       "upper": 1.558543019480518,
+       "method": "bootstrap"
+      },
+      "other_consonant": {
+       "flags": 28,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 12.345679012345679,
+       "lower": 7.590799992967468,
+       "upper": 18.637167190936545,
+       "method": "bootstrap"
+      },
+      "shaddah": {
+       "flags": 3,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 1.3227513227513228,
+       "lower": 0.0,
+       "upper": 3.1323720983589554,
+       "method": "bootstrap"
+      },
+      "skipped": {
+       "flags": 214,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 94.35626102292768,
+       "lower": 39.42497404644208,
+       "upper": 164.55794480698165,
+       "method": "bootstrap"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "damma dropped": 1,
+      "fatha dropped": 6,
+      "fatha other": 1
+     },
+     "pairs": {
+      "ح↔ه": 6,
+      "س↔ش": 1,
+      "س↔ص": 1,
+      "ق↔ك": 1
+     }
+    },
+    "unexplained": {
+     "false_flags": {
+      "flags": 43,
+      "words": 2041,
+      "logs": 47,
+      "per_1000": 21.068103870651644,
+      "lower": 13.871544127425251,
+      "upper": 31.992438196800776,
+      "method": "bootstrap"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 7,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 3.4296913277804997,
+       "lower": 0.8015551294512255,
+       "upper": 7.579495999822731,
+       "method": "bootstrap"
+      },
+      "soft_pair": {
+       "flags": 8,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 3.9196472317491424,
+       "lower": 1.385427156430775,
+       "upper": 7.570563744362776,
+       "method": "bootstrap"
+      },
+      "target_pair": {
+       "flags": 1,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.4899559039686428,
+       "lower": 0.0,
+       "upper": 1.7421602787456445,
+       "method": "bootstrap"
+      },
+      "other_consonant": {
+       "flags": 17,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 8.329250367466928,
+       "lower": 4.830917874396135,
+       "upper": 12.232415902140673,
+       "method": "bootstrap"
+      },
+      "shaddah": {
+       "flags": 2,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.9799118079372856,
+       "lower": 0.0,
+       "upper": 2.7443124932147978,
+       "method": "bootstrap"
+      },
+      "skipped": {
+       "flags": 10,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 4.899559039686428,
+       "lower": 0.4664124743415788,
+       "upper": 12.716336757964271,
+       "method": "bootstrap"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "damma dropped": 1,
+      "fatha dropped": 6
+     },
+     "pairs": {
+      "ح↔ه": 6,
+      "س↔ش": 1,
+      "س↔ص": 1,
+      "ق↔ك": 1
+     }
+    }
+   },
+   "shipped_default": {
+    "all": {
+     "false_flags": {
+      "flags": 249,
+      "words": 2268,
+      "logs": 47,
+      "per_1000": 109.78835978835978,
+      "lower": 53.42467842746459,
+      "upper": 183.58929866362786,
+      "method": "bootstrap"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 8,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 3.527336860670194,
+       "lower": 0.9537207240180452,
+       "upper": 7.4042618402374485,
+       "method": "bootstrap"
+      },
+      "soft_pair": {
+       "flags": 1,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.4409171075837742,
+       "lower": 0.0,
+       "upper": 1.3981247693236505,
+       "method": "bootstrap"
+      },
+      "target_pair": {
+       "flags": 1,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.4409171075837742,
+       "lower": 0.0,
+       "upper": 1.558543019480518,
+       "method": "bootstrap"
+      },
+      "other_consonant": {
+       "flags": 28,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 12.345679012345679,
+       "lower": 7.590799992967468,
+       "upper": 18.637167190936545,
+       "method": "bootstrap"
+      },
+      "shaddah": {
+       "flags": 1,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.4409171075837742,
+       "lower": 0.0,
+       "upper": 1.519776095834803,
+       "method": "bootstrap"
+      },
+      "skipped": {
+       "flags": 213,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 93.91534391534391,
+       "lower": 38.832813909444965,
+       "upper": 164.37254008738608,
+       "method": "bootstrap"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 2268,
+       "logs": 47,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "damma dropped": 1,
+      "fatha dropped": 6,
+      "fatha other": 1
+     },
+     "pairs": {
+      "ح↔ه": 1,
+      "س↔ش": 1
+     }
+    },
+    "unexplained": {
+     "false_flags": {
+      "flags": 33,
+      "words": 2041,
+      "logs": 47,
+      "per_1000": 16.168544830965214,
+      "lower": 9.738505499391668,
+      "upper": 25.907365574692847,
+      "method": "bootstrap"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 7,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 3.4296913277804997,
+       "lower": 0.8015551294512255,
+       "upper": 7.579495999822731,
+       "method": "bootstrap"
+      },
+      "soft_pair": {
+       "flags": 1,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.4899559039686428,
+       "lower": 0.0,
+       "upper": 1.5408518441685126,
+       "method": "bootstrap"
+      },
+      "target_pair": {
+       "flags": 1,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.4899559039686428,
+       "lower": 0.0,
+       "upper": 1.7421602787456445,
+       "method": "bootstrap"
+      },
+      "other_consonant": {
+       "flags": 17,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 8.329250367466928,
+       "lower": 4.830917874396135,
+       "upper": 12.232415902140673,
+       "method": "bootstrap"
+      },
+      "shaddah": {
+       "flags": 0,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "skipped": {
+       "flags": 9,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 4.409603135717786,
+       "lower": 0.0,
+       "upper": 12.351154447338333,
+       "method": "bootstrap"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 2041,
+       "logs": 47,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "damma dropped": 1,
+      "fatha dropped": 6
+     },
+     "pairs": {
+      "ح↔ه": 1,
+      "س↔ش": 1
+     }
+    }
+   }
+  },
+  "changed_words": [
+   {
+    "log": "surah12_page236_ayah5_v2",
+    "word": "12:7:6",
+    "scoring": "strict",
+    "pin": "skipped",
+    "current": "correct"
+   },
+   {
+    "log": "surah12_page236_ayah5_v2",
+    "word": "12:7:6",
+    "scoring": "shipped_default",
+    "pin": "skipped",
+    "current": "correct"
+   },
+   {
+    "log": "surah2_page4_session_start_virtual",
+    "word": "2:22:10",
+    "scoring": "strict",
+    "pin": "correct",
+    "current": null
+   },
+   {
+    "log": "surah2_page4_session_start_virtual",
+    "word": "2:22:10",
+    "scoring": "shipped_default",
+    "pin": "correct",
+    "current": null
+   },
+   {
+    "log": "surah3_page50_ayah24",
+    "word": "3:26:2",
+    "scoring": "strict",
+    "pin": "skipped",
+    "current": "correct"
+   },
+   {
+    "log": "surah3_page50_ayah24",
+    "word": "3:26:2",
+    "scoring": "shipped_default",
+    "pin": "skipped",
+    "current": "correct"
+   }
+  ]
  },
  "scorings": [
   {

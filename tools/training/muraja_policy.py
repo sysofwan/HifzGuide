@@ -119,7 +119,12 @@ from training.site_outcomes import TASHKEEL, family
 if TYPE_CHECKING:
     from tadabur.word_sample import SampledWord
 
+#: The frozen pin: the Muraja build the committed readouts (#151, #153, round 2, round 3, #300)
+#: were recorded with, and the default every caller that does not name a commit still gets.
 MURAJA_COMMIT = "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
+#: The commit the follow-along audit grades with (Muraja ``main``, v1.0.28, issue #306). New
+#: work passes it explicitly; the frozen readouts stay on :data:`MURAJA_COMMIT`.
+CURRENT_COMMIT = "028bc513eeb233caa7240a5c37c423da59f3d9d7"
 #: Where ``tools/muraja_harness/build.sh`` puts the checkout, the binary and ``harness.json``.
 HARNESS_ROOT = Path(os.environ.get("MURAJA_HARNESS_DIR", Path.home() / ".cache/hifzguide/muraja-harness"))
 BUILD_SCRIPT = Path(__file__).parent.parent / "muraja_harness" / "build.sh"
@@ -175,10 +180,11 @@ class Scoring:
         name = f"{self.mode}|soft_pairs={self.soft_pairs_enabled}|shaddah={self.shaddah_suppression}"
         return name + (f"|not_forgiven={','.join(self.soft_pairs_disabled)}" if self.soft_pairs_disabled else "")
 
-    def as_dict(self) -> dict:
+    def as_dict(self, commit: str = MURAJA_COMMIT) -> dict:
+        """The scoring as a report records it, at the Muraja commit it was graded with."""
         return {
             "name": self.name,
-            "muraja_commit": MURAJA_COMMIT,
+            "muraja_commit": commit,
             "mode": self.mode,
             "soft_pairs_enabled": self.soft_pairs_enabled,
             "shaddah_suppression": self.shaddah_suppression,
@@ -189,6 +195,13 @@ class Scoring:
 
 #: The app as shipped: balanced, tashkeel detection on.
 SHIPPED_DEFAULT = Scoring("shipped_default")
+#: Muraja's own strict mode: no soft-pair or shaddah forgiveness, the phoneme gate on and haraka
+#: drops counted (``ScoringParameters.strict``, ``FollowAlong/FollowAlongTypes.swift:111-139``).
+#: Every flag is the mode's own, so this is not one of :data:`SCORINGS`' allowance runs.
+STRICT = Scoring("strict", mode="strict")
+#: What the follow-along audit reports at :data:`CURRENT_COMMIT`: Muraja's own strict mode and
+#: the shipped default. Not part of :data:`SCORINGS`, whose runs the frozen readouts pin.
+AUDIT_SCORINGS: tuple[Scoring, ...] = (STRICT, SHIPPED_DEFAULT)
 #: Balanced with ADR-0012's three allowances on: soft pairs, shaddah suppression, tashkeel hidden.
 ALLOWANCES_ON = Scoring("allowances_on", tashkeel_shown=False)
 
@@ -469,6 +482,16 @@ class MurajaText:
             )
         )
 
+    def word_rows(self, surah: int, ayah: int, word: int) -> list[str]:
+        """A phoneme word's ``phoneme_groups`` rows, in order: the row a ``WordError.groupIndex``
+        names from Muraja 028bc51 (``e0b8b18``), through the first printed word the phoneme word
+        is drawn on, as :meth:`word_groups` does."""
+        return [row[0] for row in self._db.execute(
+            "SELECT group_text FROM phoneme_groups WHERE surah=? AND ayah=? AND uthmani_word=? "
+            "ORDER BY ph_start",
+            (surah, ayah, self._text_word(surah, ayah, word)),
+        )]
+
     def locate(self, site: TruthSite) -> MurajaSite | None:
         """The site on Muraja's reference: its word from the carrier, or, when the carrier has
         no counterpart, from its anchored neighbours (:meth:`_word_of`); ``None`` when neither
@@ -578,6 +601,10 @@ class Harness:
         request order. Each request is its own session, so the requests are split into
         ``workers`` contiguous runs graded by as many binaries at once. ``env`` is added to each
         binary's environment (the log replay reads its scoring mode from ``REPLAY_MODE``)."""
+        if self.build.get("muraja_commit") != self.muraja_commit:
+            raise ValueError(
+                f"the binary's build record names {self.build.get('muraja_commit')}, not "
+                f"{self.muraja_commit}: rebuild it with `bash {BUILD_SCRIPT} {self.muraja_commit}`")
         requests = list(requests)
         self.check(requests)
         size = max(1, -(-len(requests) // workers))
@@ -600,10 +627,11 @@ class Harness:
         return build, results
 
 
-def require_harness() -> Harness:
-    harness = Harness.locate()
+def require_harness(commit: str = MURAJA_COMMIT) -> Harness:
+    harness = Harness.locate(commit=commit)
     if harness is None:
-        raise SystemExit(f"no Muraja harness under {HARNESS_ROOT}; build it with `bash {BUILD_SCRIPT}`")
+        raise SystemExit(f"no Muraja harness for {commit} under {HARNESS_ROOT}; "
+                         f"build it with `bash {BUILD_SCRIPT} {commit}`")
     return harness
 
 
@@ -730,6 +758,53 @@ def setting_checks(checks: Sequence[dict], word: int, kept: dict | None) -> tupl
     return tuple(i for i, check in enumerate(checks) for status in check["statuses"]
                  if status["word"] == word
                  and (status.get("withheld") or status["quality"], status["score"], status["errors"]) == same)
+
+
+def word_traces(
+    request: Mapping, results: Iterable[dict], scorings: Sequence[Scoring]
+) -> list[dict]:
+    """One row per graded word per scoring: the kept grade, the letters the app marks for its
+    errors (:func:`highlights`' mapping), every check's own pre-ratchet status of the word with
+    that check's hop and overlap text (the request's own, never a device log's clipped preview),
+    and the checks that set the kept grade (:func:`setting_checks`).
+
+    ``results`` is the run that graded ``request``: a batch of requests keys each result by item
+    and scoring, and a trace never reads another item's result (a missing one raises). Rows follow
+    ``scorings``' order; a scoring whose engine run another also reads (the Tashkeel toggle is
+    display only) repeats that run's row, differing only in ``scoring``."""
+    by_engine = {(result["item"], result["scoring"]): result for result in results}
+    rows: list[dict] = []
+    for scoring in scorings:
+        result = by_engine.get((request["item"], scoring.engine_name))
+        if result is None:
+            raise ValueError(f"no harness result for {request['item']} under {scoring.name}: "
+                             "trace a request against the run that graded it")
+        letters = {word["word"]: word for word in result.get("letters", ())}
+        for kept in result["final"]:
+            word = kept["word"]
+            marks = highlights(letters[word]) if word in letters else ()
+            rows.append({
+                "item": request["item"],
+                "scoring": scoring.name,
+                "word": word,
+                "quality": kept["quality"],
+                "score": kept["score"],
+                "withheld": kept.get("withheld"),
+                "errors": kept["errors"],
+                "marked": sorted({letter for error in kept["errors"]
+                                  if error["group_index"] < len(marks)
+                                  for letter in marks[error["group_index"]]}),
+                "checks": [{
+                    "hop": check.get("hop", ""),
+                    "overlap": check.get("overlap", ""),
+                    "flush": check["flush"],
+                    **({"stop": True} if check.get("stop") else {}),
+                    "status": next((status for status in result["checks"][i]["statuses"]
+                                    if status["word"] == word), None),
+                } for i, check in enumerate(request["checks"])],
+                "setting_checks": list(setting_checks(result["checks"], word, kept)),
+            })
+    return rows
 
 
 def read_results(

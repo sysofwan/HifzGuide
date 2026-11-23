@@ -15,9 +15,12 @@ mistake. The owner gave a verdict on every word the phone showed as not correct.
 
 - **3 target sessions, all `h448` on app 1.0.27:** page 4 (69#1, balanced, 134 words); page 9 (70#2, strict, 125 words); page 42 (71#2, strict, 147 words). The other sessions
   in the exports are truncated tails of these.
-- **Parity is exact.** With each preview lengthened to the transcriber's
+- **Parity is exact at the pin.** With each preview lengthened to the transcriber's
   own 40-Character line, the replay reproduces every grade decision the device logged, in
-  order, at the pin and at `main`. It does so in one mode per session, the mode reported.
+  order, at the pin `99c326f`, in one mode per session (the mode reported). At the audit's
+  commit the same mode differs only where a named 1.0.28 grading change reaches: the parity
+  note (`docs/followalong-audit-parity.md`) lists every differing decision with its change,
+  and *At the audit's commit* below lists every word whose kept quality moved.
   Replayed as logged, with each overlap cut as the app logs it, it misses 79 of 2281
   decisions. The kept grades also equal the device's committed grades, except where the
   device regraded a word after committing it.
@@ -86,32 +89,34 @@ The word scorer logs every end-word grade it decides (`Grade end word …`,
 (`muraja_harness/log_replay.swift`). Each cell gives the device's decisions that the replay
 reproduces, in order (longest common subsequence), out of the device's total. ✓ means the
 two sequences are identical. Each session is replayed in every mode with the shipped flags,
-at the pin `99c326f` and at Muraja `main` `3a49a1c`, from its log as logged and with each
-preview lengthened. App 1.0.27 was built from neither commit exactly. The exports log
-voice search's *the Arabic speech recognizer is available* line, which Muraja first logs in
-`ca4d665`, after the 1.0.27 version bump `99c326f`. The two commits differ only in voice
-search.
+at the pin `99c326f` and at the audit's commit `028bc51`, from its log as logged and with each
+preview lengthened. App 1.0.27 was built from the pin. The exports log voice search's *the
+Arabic speech recognizer is available* line, which Muraja first logs in `ca4d665`, after the
+1.0.27 version bump `99c326f`. At the audit's commit the app's grading changed (madd alif,
+tanween at waqf, stop-pass anchoring, error indexing), so a replay there differs from the
+device exactly where those changes reach; every differing decision is listed in
+`docs/followalong-audit-parity.md`.
 
 | session | replay | `strict` | `balanced` | `lenient` |
 |---|---|---|---|---|
 | 69#1 | `pin/logged` | 854 / 907, 31 words differ | 898 / 907, 5 words differ | 779 / 907, 56 words differ |
 | 69#1 | `pin/lengthened` | 863 / 907, 27 words differ | 907 / 907 ✓ | 786 / 907, 52 words differ |
-| 69#1 | `main/logged` | 854 / 907, 31 words differ | 898 / 907, 5 words differ | 779 / 907, 56 words differ |
-| 69#1 | `main/lengthened` | 863 / 907, 27 words differ | 907 / 907 ✓ | 786 / 907, 52 words differ |
+| 69#1 | `main/logged` | 853 / 907, 32 words differ | 897 / 907, 6 words differ | 779 / 907, 56 words differ |
+| 69#1 | `main/lengthened` | 862 / 907, 28 words differ | 906 / 907, 1 word differ | 786 / 907, 52 words differ |
 | 70#2 | `pin/logged` | 593 / 638, 23 words differ | 547 / 638, 51 words differ | 449 / 638, 77 words differ |
 | 70#2 | `pin/lengthened` | 638 / 638 ✓ | 592 / 638, 34 words differ | 483 / 638, 66 words differ |
-| 70#2 | `main/logged` | 593 / 638, 23 words differ | 547 / 638, 51 words differ | 449 / 638, 77 words differ |
-| 70#2 | `main/lengthened` | 638 / 638 ✓ | 592 / 638, 34 words differ | 483 / 638, 66 words differ |
+| 70#2 | `main/logged` | 580 / 638, 26 words differ | 537 / 638, 52 words differ | 444 / 638, 77 words differ |
+| 70#2 | `main/lengthened` | 625 / 638, 3 words differ | 582 / 638, 35 words differ | 478 / 638, 66 words differ |
 | 71#2 | `pin/logged` | 711 / 736, 19 words differ | 665 / 736, 50 words differ | 571 / 736, 84 words differ |
 | 71#2 | `pin/lengthened` | 736 / 736 ✓ | 687 / 736, 37 words differ | 586 / 736, 75 words differ |
-| 71#2 | `main/logged` | 711 / 736, 19 words differ | 665 / 736, 50 words differ | 571 / 736, 84 words differ |
-| 71#2 | `main/lengthened` | 736 / 736 ✓ | 687 / 736, 37 words differ | 586 / 736, 75 words differ |
+| 71#2 | `main/logged` | 705 / 736, 22 words differ | 659 / 736, 52 words differ | 571 / 736, 84 words differ |
+| 71#2 | `main/lengthened` | 730 / 736, 3 words differ | 681 / 736, 39 words differ | 586 / 736, 75 words differ |
 
 **Replayed as logged, no mode reproduces the device.** The app logs each update's overlap
 cut to 30 Characters (`FollowAlongManager+iOS.swift:744`). For a preview, the
 transcriber's own line keeps 40 (`RealtimeTranscriber+iOS.swift:642`;
 `device_logs.lengthened_previews`). **With the previews lengthened, exactly one mode
-reproduces every grade decision the device logged for every word, at both commits.**
+reproduces every grade decision the device logged for every word, at the pin.**
 That mode is each session's mode. All reported numbers below come from that replay at the
 pin. The decisions the as-logged replay gets wrong in the session's own mode:
 
@@ -194,6 +199,25 @@ marks and pairs behind them below):
 | — fatha other | 0 | 0 | 0 | 1 | 1 | 1 |
 | — ح↔ه | 0 | 1 | 0 | 0 | 1 | 0 |
 | — ق↔ك | 0 | 1 | 0 | 0 | 1 | 0 |
+
+## At the audit's commit (`028bc51`): strict and the shipped default
+
+The audit grades with today's app; the pin's numbers above are unchanged. These sessions
+were recorded on app 1.0.27, so a decision at the audit's commit may differ, each by a
+named 1.0.28 grading change (`docs/followalong-audit-parity.md`). False flags per 1,000
+graded words:
+
+| scoring | every graded word | owner's mistakes left out |
+|---|---|---|
+| `strict` | 9 / 406 · 22.2 (n/c) | 7 / 381 · 18.4 (n/c) |
+| `shipped_default` | 7 / 406 · 17.2 (n/c) | 5 / 381 · 13.1 (n/c) |
+
+Every word whose kept quality changed between the pins, by session, word and scoring:
+
+| session | word | scoring | pin → audit |
+|---|---|---|---|
+| `70#2` | 2:61:30 | `strict` | `minor` → `correct` |
+| `70#2` | 2:61:30 | `shipped_default` | `minor` → `correct` |
 
 ## What the phone showed, and the owner's verdicts
 
@@ -472,8 +496,8 @@ Flags added when one allowance is off, against #151:
 ```bash
 # from tools/, on a Mac: build the harness at the pin and at Muraja main, then report
 bash muraja_harness/build.sh
-bash muraja_harness/build.sh 3a49a1c16d3f9391d8b43e51a5270524965237a2
+bash muraja_harness/build.sh 028bc513eeb233caa7240a5c37c423da59f3d9d7
 python -m training.device_exports ~/Downloads/muraja-bug-report\ {69,70,71}.txt
 ```
 
-Harness builds: pin `99c326f` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)); main `3a49a1c` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)).
+Harness builds: pin `99c326f` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)); main `028bc51` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)).

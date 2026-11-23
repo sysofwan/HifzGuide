@@ -134,7 +134,9 @@ def letters(word: str) -> list[str]:
     return [unit[0] for unit in units(word)]
 
 
-def deleted_run(word: str, letter: str, group: int) -> int | None:
+def deleted_run(
+    word: str, letter: str, group: int, rows: Sequence[str] | None = None
+) -> int | None:
     """The length of the geminate run of ``letter`` the deletion at ``group`` took a letter
     from: a run of that consonant joined with **no haraka between them** (a bare letter
     followed by the same letter, as the phonetizer writes a geminate), so ``عَدَدَ`` holds
@@ -143,8 +145,19 @@ def deleted_run(word: str, letter: str, group: int) -> int | None:
     The deleted occurrence is the unit ``group`` names when that unit is ``letter`` (a
     collapsed geminate whose gap comes first is reported on its first half, at the group the
     scorer would give it, ``WordScoring.swift:478-489, 626-636``); otherwise, when every run of
-    ``letter`` in the word has one length, that length; otherwise ``None`` (unidentified)."""
-    held = units(word)
+    ``letter`` in the word has one length, that length; otherwise ``None`` (unidentified).
+
+    ``rows`` is the word's ``phoneme_groups`` rows when the commit numbers errors by row
+    (Muraja 028bc51, ``e0b8b18``): ``group`` then names a row (a geminate is one row, ``للِ``),
+    and only that row's text is read."""
+    if rows is None:
+        held, index = units(word), group
+    elif 0 <= group < len(rows):
+        held, index = units(rows[group]), 0
+    else:
+        return None
+    if not held:
+        return None
 
     def joined(i: int) -> bool:
         """Unit ``i`` and the next are one geminate: the same letter, no mark on the first."""
@@ -158,15 +171,16 @@ def deleted_run(word: str, letter: str, group: int) -> int | None:
             end += 1
         return end - start + 1
 
-    if 0 <= group < len(held) and held[group][0] == letter:
-        return run_at(group)
+    if 0 <= index < len(held) and held[index][0] == letter:
+        return run_at(index)
     runs = {run_at(i) for i, unit in enumerate(held) if unit[0] == letter}
     return runs.pop() if len(runs) == 1 else None
 
 
-def consonant_cause(error: dict, word: str) -> str | None:
+def consonant_cause(error: dict, word: str, rows: Sequence[str] | None = None) -> str | None:
     """The cause of one consonant error (a mismatch or a deletion) in a word whose Muraja
-    reference phonemes are ``word``; ``None`` for a tashkeel error."""
+    reference phonemes are ``word``, its ``phoneme_groups`` ``rows`` where the commit numbers
+    errors by row (:func:`deleted_run`); ``None`` for a tashkeel error."""
     kind = error["kind"]
     if kind["type"] == "mismatch":
         pair = _pair(kind["expected"], kind["heard"])
@@ -174,7 +188,7 @@ def consonant_cause(error: dict, word: str) -> str | None:
             else OTHER_CONSONANT
     if kind["type"] == "deletion":
         letter = kind["expected"]
-        run = deleted_run(word, letter, error["group_index"]) if letter in CONSONANTS else None
+        run = deleted_run(word, letter, error["group_index"], rows) if letter in CONSONANTS else None
         return SHADDAH_CAUSE if run is not None and run >= 2 else OTHER_CONSONANT
     return None
 
@@ -189,10 +203,14 @@ def substitution(error: dict) -> str:
     return f"{kind['expected']}→{kind.get('heard') or DELETED}"
 
 
-def consonant_errors(errors: Sequence[dict], word: str) -> tuple[tuple[str, str], ...]:
+def consonant_errors(
+    errors: Sequence[dict], word: str, rows: Sequence[str] | None = None
+) -> tuple[tuple[str, str], ...]:
     """Each consonant error of a kept grade (a mismatch or a deletion, in a word whose Muraja
-    reference phonemes are ``word``) as ``(cause, substitution)``."""
-    return tuple((cause, substitution(e)) for e in errors if (cause := consonant_cause(e, word)) is not None)
+    reference phonemes are ``word``, its ``phoneme_groups`` ``rows`` where the commit numbers
+    errors by row) as ``(cause, substitution)``."""
+    return tuple((cause, substitution(e)) for e in errors
+                 if (cause := consonant_cause(e, word, rows)) is not None)
 
 
 def error_of(description: str) -> dict | None:
@@ -229,8 +247,9 @@ def log_description(error: dict) -> str:
     return f"g{group}:tash"
 
 
-def flag(grade: SiteGrade, word: str) -> Flag:
-    """Why a flagged word is flagged (module docstring)."""
+def flag(grade: SiteGrade, word: str, rows: Sequence[str] | None = None) -> Flag:
+    """Why a flagged word is flagged (module docstring), reading the errors' group indices by
+    row where ``rows`` are given (:func:`deleted_run`)."""
     tashkeel = [e for e in grade.errors if e["kind"]["type"] == "tashkeel"]
     pairs: set[str] = set()
     consonants: tuple[tuple[str, str], ...] = ()
@@ -239,7 +258,7 @@ def flag(grade: SiteGrade, word: str) -> Flag:
     elif grade.quality == TASHKEEL_ERROR:
         causes = {TASHKEEL} if tashkeel else set()
     else:
-        consonants = consonant_errors(grade.errors, word)
+        consonants = consonant_errors(grade.errors, word, rows)
         causes = {cause for cause, _ in consonants}
         pairs = {pair for e in grade.errors if e["kind"]["type"] == "mismatch"
                  and (pair := _pair(e["kind"]["expected"], e["kind"]["heard"])) in TARGET_PAIRS}

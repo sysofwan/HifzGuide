@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import copy
 
-import pytest
-
 from tadabur.followalong_audit.p1b import changed_decisions, clip_overlaps
 from training.decoding import clusters
 
@@ -73,7 +71,22 @@ def test_identical_decisions_report_nothing_whatever_the_row_order():
     assert changed_decisions(full, list(reversed(full))) == []
 
 
-def test_a_word_graded_in_only_one_run_is_refused():
+def test_a_word_the_clipped_run_leaves_ungraded_is_a_difference_not_an_error():
+    full = [row("c1", "strict", 1, "correct"), row("c1", "strict", 2, "minor")]
+    clipped = [row("c1", "strict", 1, "correct")]
+    assert changed_decisions(full, clipped) == [
+        {"item": "c1", "scoring": "strict", "word": 2, "full": "minor", "clipped": None}]
+
+
+def test_a_word_only_the_clipped_run_grades_is_a_difference_not_an_error():
     full = [row("c1", "strict", 1, "correct")]
-    with pytest.raises(ValueError, match="c1"):
-        changed_decisions(full, [])
+    clipped = [row("c1", "strict", 1, "correct"), row("c1", "strict", 2, "minor")]
+    assert changed_decisions(full, clipped) == [
+        {"item": "c1", "scoring": "strict", "word": 2, "full": None, "clipped": "minor"}]
+
+
+def test_differences_come_in_item_scoring_word_order_whichever_run_lacks_the_word():
+    full = [row("c2", "strict", 1, "minor"), row("c1", "shipped_default", 3, "correct")]
+    clipped = [row("c1", "strict", 2, "correct"), row("c2", "strict", 1, "correct")]
+    assert [(d["item"], d["scoring"], d["word"]) for d in changed_decisions(full, clipped)] == [
+        ("c1", "shipped_default", 3), ("c1", "strict", 2), ("c2", "strict", 1)]

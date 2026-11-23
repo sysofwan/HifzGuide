@@ -14,8 +14,9 @@
 The WAVs are named ``<audio_sha256>.wav`` and live outside the repo; the run writes only
 decode text and provenance. The release cache holds the verified ``models.zip``,
 ``mel_filters.bin`` and ``window.bin``; the run expands them into a staging directory (never
-the repo) and hands that to the driver. The exit status is non-zero when fewer clips were
-replayed than drawn: an incomplete run is not a verdict.
+the repo) and hands that to the driver. The exit status is non-zero unless every drawn clip
+produced both arms with no preparation failure: a one-arm or failed run is not a result, even
+when gate P1b's App-only coverage passes.
 """
 
 from __future__ import annotations

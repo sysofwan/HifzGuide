@@ -319,10 +319,15 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
         "log_overlap_characters": LOG_OVERLAP_CHARACTERS,
         "changed": changed,
     }
+    both_arms = sum(1 for run in runs if run.app is not None and run.oracle is not None)
+    # P1b's verdict is the gate's own App-only coverage; a run is complete only when every
+    # drawn clip produced both arms, so an Oracle failure cannot pass as a finished run.
+    complete = bool(clips) and both_arms == len(clips) and not any(
+        run.failure is not None for run in runs)
     meta = {
         "issue": 307,
         "clips": len(clips),
-        "both_arms": sum(1 for run in runs if run.app is not None and run.oracle is not None),
+        "both_arms": both_arms,
         "failed": [{"item": item_key(run.clip["audio_path"]), "reason": run.failure}
                    for run in runs if run.failure is not None],
         "clip_list": clip_list.name,
@@ -342,7 +347,7 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
     }
     write_outputs(out, rows, runs, p1b, meta, latency_ms, draw, wav_manifest, clip_list)
     return {"words": len(rows), "changed": changed, "verdict": verdict,
-            "complete": verdict != "incomplete", "failed": len(meta["failed"])}
+            "complete": complete, "failed": len(meta["failed"])}
 
 
 def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
@@ -353,10 +358,11 @@ def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
 
     The clip list is copied byte for byte (its digest in ``meta`` is of the drawn input), and the
     selection record beside it, so the output directory holds the population and provenance the
-    tables were produced from.
+    tables were produced from. A list that already lives in the output directory is left as is.
     """
     out = Path(out)
-    shutil.copyfile(clip_list, out / clip_list.name)
+    if Path(clip_list).resolve() != (out / clip_list.name).resolve():
+        shutil.copyfile(clip_list, out / clip_list.name)
     if draw is not None:
         write_json(draw_record_path(out / clip_list.name), draw)
     write_jsonl(Path(out) / "words.jsonl", rows)
@@ -365,13 +371,14 @@ def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
                  for run in runs if run.app is not None]
                 + [{"item": item_key(run.clip["audio_path"]), "arm": "oracle",
                     "checks": run.oracle.checks} for run in runs if run.oracle is not None])
-    write_jsonl(Path(out) / "clip_runs.jsonl", [clip_run_row(run) for run in runs])
+    run_rows = [clip_run_row(run) for run in runs]
+    write_jsonl(Path(out) / "clip_runs.jsonl", run_rows)
     write_json(Path(out) / "p1b.json", p1b)
     wav_manifest_path = Path(out) / "wav_sha256.json"
     write_json(wav_manifest_path, wav_manifest)
     write_json(Path(out) / "meta.json",
                {**meta, "wav_manifest_sha256": sha256_file(wav_manifest_path)})
-    (Path(out) / "run_note.md").write_text(run_note(runs, p1b, latency_ms, draw),
+    (Path(out) / "run_note.md").write_text(run_note(run_rows, p1b, latency_ms, draw),
                                            encoding="utf-8")
 
 
@@ -406,21 +413,27 @@ def clip_run_row(run: ClipRun) -> dict:
     }
 
 
-def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
+def run_note(rows: Sequence[Mapping], p1b: Mapping, latency_ms: int,
              draw: Mapping | None = None) -> str:
-    """The short run note: per-clip wall time (S3 sizing), cadence, selection, and failures."""
-    both_arms = sum(1 for run in runs if run.failure is None)
+    """The short run note: per-clip wall time (S3 sizing), cadence, selection, and failures.
+
+    ``rows`` are :func:`clip_run_row`'s records, the same ones ``clip_runs.jsonl`` holds, so the
+    note can be regenerated from the committed run without the WAVs or the driver.
+    """
+    both_arms = sum(1 for row in rows if row["failure"] is None
+                    and row["app_checks"] is not None and row["oracle_checks"] is not None)
     lines = [
         "# S1 tracer run (#307)",
         "",
-        f"{both_arms}/{len(runs)} clips produced both arms.",
+        f"{both_arms}/{len(rows)} clips produced both arms.",
         "",
         _selection_line(draw),
         "",
         f"The App arm ran Muraja's transcriber at {latency_ms} ms per inference; the Oracle arm "
-        "places the reference on the phase A teacher word times and is cut on the zero-latency "
-        "Python schedule (decision 2), so its preview:window ratio is the ceiling the device "
-        "cadence sits under.",
+        "fills the clip's reference phonemes onto the phase A teacher word times and is cut on "
+        "the zero-latency Python schedule (decision 2). The arms also differ in their own audio "
+        "and output gates and silence handling, so the preview:window ratios below are not a "
+        "latency-only comparison and neither bounds the other.",
         "",
         "App rows are the words Muraja's grade store kept (S0's `word_traces` population); the "
         "Oracle arm covers every word of the ayah.",
@@ -428,8 +441,7 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
         "| clip | ayah | wall s | run 2 s | app preview:window | oracle preview:window | aligned |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
-    for run in runs:
-        row = clip_run_row(run)
+    for row in rows:
         lines.append(
             f"| {row['item']} | {row['filename_label']} | {_seconds(row['wall_seconds'])} | "
             f"{_seconds(row['second_wall_seconds'])} | "
@@ -438,21 +450,21 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
     coverage = p1b["clips"]
     lines += ["", f"P1b: {p1b['verdict']} — {len(p1b['changed'])} changed word decision(s); "
                   f"{coverage['replayed']}/{coverage['drawn']} drawn clips replayed."]
-    unkept = [run for run in runs if run.final_words == 0 and run.check_graded_words]
+    unkept = [row for row in rows if row["app_final_words"] == 0 and row["app_check_graded_words"]]
     lines += ([f"App tables hold the words the engine's grade store kept; {len(unkept)} clip(s) "
                "graded words at a check but kept none (no window or hop advanced the reader):"]
               if unkept else [])
-    lines += [f"- {run.clip['audio_path']}: checks graded words "
-              f"{run.check_graded_words}, `final` kept none" for run in unkept]
-    failures = [run for run in runs if run.failure is not None]
+    lines += [f"- {row['audio_path']}: checks graded words "
+              f"{row['app_check_graded_words']}, `final` kept none" for row in unkept]
+    failures = [row for row in rows if row["failure"] is not None]
     lines += ["", "Failures:"]
-    lines += ([f"- {run.clip['audio_path']}: {run.failure}" for run in failures]
+    lines += ([f"- {row['audio_path']}: {row['failure']}" for row in failures]
               if failures else ["- none"])
-    flaky = [run for run in runs if run.deterministic is False]
+    flaky = [row for row in rows if row["deterministic"] is False]
     if flaky:
         lines += ["", "Non-deterministic driver runs (CoreML; Muraja not patched — decision 5):"]
-        for run in flaky[:3]:
-            lines += [f"- {run.clip['audio_path']}", "```", *(run.determinism_diff or []), "```"]
+        for row in flaky[:3]:
+            lines += [f"- {row['audio_path']}", "```", *(row["determinism_diff"] or []), "```"]
     return "\n".join(lines) + "\n"
 
 

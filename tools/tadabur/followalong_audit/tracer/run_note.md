@@ -4,7 +4,7 @@
 
 Selection: seed 7, 20 clips from 5,742 of 5,762 phase A gating rows; #248's exclusion left out 20 clips of 7 ayat (106:1, 106:2, 106:3, 106:4, 55:17, 90:10, 90:8).
 
-The App arm ran Muraja's transcriber at 40 ms per inference; the Oracle arm places the reference on the phase A teacher word times and is cut on the zero-latency Python schedule (decision 2), so its preview:window ratio is the ceiling the device cadence sits under.
+The App arm ran Muraja's transcriber at 40 ms per inference; the Oracle arm fills the clip's reference phonemes onto the phase A teacher word times and is cut on the zero-latency Python schedule (decision 2). The arms also differ in their own audio and output gates and silence handling, so the preview:window ratios below are not a latency-only comparison and neither bounds the other.
 
 App rows are the words Muraja's grade store kept (S0's `word_traces` population); the Oracle arm covers every word of the ayah.
 

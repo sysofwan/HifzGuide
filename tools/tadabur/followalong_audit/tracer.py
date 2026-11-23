@@ -30,7 +30,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tadabur.followalong_audit.assets import RELEASE, sha256_file, verify_assets
+from tadabur.followalong_audit.assets import RELEASE, stage_assets
 from tadabur.followalong_audit.clips import wav_samples
 from tadabur.followalong_audit.oracle import OracleArm, oracle_checks
 from tadabur.followalong_audit.p1b import (
@@ -39,6 +39,7 @@ from tadabur.followalong_audit.p1b import (
     clip_overlaps,
 )
 from tadabur.followalong_audit.session import preview_window_ratio, session_request
+from tadabur.tlog_index import sha256_file
 from tadabur.waqf_segments import hafs_word_reference
 from training.muraja_policy import (
     AUDIT_SCORINGS,
@@ -57,6 +58,10 @@ DEVICE_LATENCY_MS = 40
 
 #: The committed phase A word times (``tadabur/tlog_mining/word_times``), one shard per tranche.
 WORD_TIMES_DIR = Path(__file__).resolve().parents[1] / "tlog_mining" / "word_times"
+
+#: Where the verified release is expanded for the driver. Outside the repo, and never
+#: committed: the model is tens of megabytes.
+DEFAULT_STAGING = Path.home() / ".cache/hifzguide/followalong-audit" / f"assets-{RELEASE}"
 
 
 @dataclass
@@ -228,9 +233,20 @@ def arm_requests(run: ClipRun) -> list[dict]:
 
 def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, assets_dir: Path,
                manifest: Mapping, out: Path,
-               latency_ms: int = DEVICE_LATENCY_MS) -> dict:
-    """Run both arms and gate P1b over ``clips``; write the tables under ``out``."""
-    verify_assets(Path(assets_dir), manifest)
+               latency_ms: int = DEVICE_LATENCY_MS, staging_dir: Path | None = None,
+               draw: Mapping | None = None) -> dict:
+    """Run both arms and gate P1b over ``clips``; write the tables under ``out``.
+
+    ``assets_dir`` is the release cache holding the verified files; the driver is handed a
+    staging directory built from them (:func:`tadabur.followalong_audit.assets.stage_assets`),
+    so the model it loads is the manifest's bytes. ``draw`` is the clip list's selection
+    record, written into the run's metadata and note.
+    """
+    record = harness_record()
+    if record.get("hifzguide_release") != RELEASE:
+        raise SystemExit(f"the harness was built against {record.get('hifzguide_release')}, not "
+                         f"{RELEASE}: the App arm would run weights the app does not ship")
+    staged = stage_assets(Path(assets_dir), manifest, staging_dir or DEFAULT_STAGING)
     driver = driver_path()
     harness = Harness.locate(commit=CURRENT_COMMIT)
     if harness is None:
@@ -240,7 +256,7 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
 
-    runs = [prepare_clip(clip, driver, Path(wav_dir), Path(assets_dir), word_times, text,
+    runs = [prepare_clip(clip, driver, Path(wav_dir), staged.directory, word_times, text,
                          latency_ms) for clip in clips]
     requests = [request for run in runs for request in arm_requests(run)]
     _, results = harness.run(requests)
@@ -264,16 +280,19 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
                     for row in word_traces(request, clipped_results, AUDIT_SCORINGS)]
     app_rows = [row for row in rows if row["arm"] == "app"]
     changed = changed_decisions(app_rows, clipped_rows)
-    if changed:
+    coverage = {"drawn": len(clips), "replayed": len(clipped)}
+    if coverage["replayed"] != coverage["drawn"]:
+        verdict = "incomplete"
+    elif changed:
         verdict = "pass"
-    elif len(clipped) < 100:
+    elif coverage["drawn"] < 100:
         verdict = "extend-to-100"
     else:
         verdict = "fail-no-difference"
 
     p1b = {
         "gate": "P1b",
-        "clips": len(clipped),
+        "clips": coverage,
         "verdict": verdict,
         "log_overlap_characters": LOG_OVERLAP_CHARACTERS,
         "changed": changed,
@@ -286,19 +305,27 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
                    for run in runs if run.failure is not None],
         "clip_list": clip_list.name,
         "clip_list_sha256": sha256_file(clip_list),
+        "draw": dict(draw) if draw is not None else None,
         "latency_ms": latency_ms,
         "scorings": [scoring.name for scoring in AUDIT_SCORINGS],
-        "assets_release": RELEASE,
-        "harness": harness_record(),
+        "assets": {
+            "release": RELEASE,
+            "staging_dir": str(staged.directory),
+            "model": staged.model,
+            "model_sha256": staged.model_sha256,
+            "checksums": staged.checksums,
+        },
+        "harness": record,
         "driver": str(driver),
     }
-    write_outputs(out, rows, runs, p1b, meta, latency_ms)
+    write_outputs(out, rows, runs, p1b, meta, latency_ms, draw)
     return {"words": len(rows), "changed": changed, "verdict": verdict,
-            "failed": len(meta["failed"])}
+            "complete": verdict != "incomplete", "failed": len(meta["failed"])}
 
 
 def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
-                  p1b: Mapping, meta: Mapping, latency_ms: int) -> None:
+                  p1b: Mapping, meta: Mapping, latency_ms: int,
+                  draw: Mapping | None) -> None:
     """Write the per-word table, the decode text, the per-clip cadence, P1b and the run note."""
     write_jsonl(Path(out) / "words.jsonl", rows)
     write_jsonl(Path(out) / "checks.jsonl",
@@ -309,7 +336,8 @@ def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
     write_jsonl(Path(out) / "clip_runs.jsonl", [clip_run_row(run) for run in runs])
     write_json(Path(out) / "p1b.json", p1b)
     write_json(Path(out) / "meta.json", meta)
-    (Path(out) / "run_note.md").write_text(run_note(runs, p1b, latency_ms), encoding="utf-8")
+    (Path(out) / "run_note.md").write_text(run_note(runs, p1b, latency_ms, draw),
+                                           encoding="utf-8")
 
 
 def clip_run_row(run: ClipRun) -> dict:
@@ -341,12 +369,16 @@ def clip_run_row(run: ClipRun) -> dict:
     }
 
 
-def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int) -> str:
-    """The short run note: per-clip wall time (S3 sizing), cadence, and every failure."""
+def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int,
+             draw: Mapping | None = None) -> str:
+    """The short run note: per-clip wall time (S3 sizing), cadence, selection, and failures."""
+    both_arms = sum(1 for run in runs if run.failure is None)
     lines = [
         "# S1 tracer run (#307)",
         "",
-        f"{sum(1 for run in runs if run.failure is None)}/{len(runs)} clips produced both arms.",
+        f"{both_arms}/{len(runs)} clips produced both arms.",
+        "",
+        _selection_line(draw),
         "",
         f"The App arm ran Muraja's transcriber at {latency_ms} ms per inference; the Oracle arm "
         "places the reference on the phase A teacher word times and is cut on the zero-latency "
@@ -363,7 +395,9 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int) -> str:
             f"{_seconds(row['second_wall_seconds'])} | "
             f"{_ratio(row['app_preview_window'])} | {_ratio(row['oracle_preview_window'])} | "
             f"{row['oracle_aligned']} |")
-    lines += ["", f"P1b: {p1b['verdict']} — {len(p1b['changed'])} changed word decision(s)."]
+    coverage = p1b["clips"]
+    lines += ["", f"P1b: {p1b['verdict']} — {len(p1b['changed'])} changed word decision(s); "
+                  f"{coverage['replayed']}/{coverage['drawn']} drawn clips replayed."]
     failures = [run for run in runs if run.failure is not None]
     lines += ["", "Failures:"]
     lines += ([f"- {run.clip['audio_path']}: {run.failure}" for run in failures]
@@ -374,6 +408,17 @@ def run_note(runs: Sequence[ClipRun], p1b: Mapping, latency_ms: int) -> str:
         for run in flaky[:3]:
             lines += [f"- {run.clip['audio_path']}", "```", *(run.determinism_diff or []), "```"]
     return "\n".join(lines) + "\n"
+
+
+def _selection_line(draw: Mapping | None) -> str:
+    """What the draw selected from, or that the run cannot say."""
+    if draw is None:
+        return ("Selection: not recorded (run the `draw` command beside the clip list so it "
+                "writes `clips.draw.json`).")
+    return (f"Selection: seed {draw['seed']}, {draw['size']} clips from "
+            f"{draw['eligible_rows']:,} of {draw['phase_a_rows']:,} phase A gating rows; "
+            f"#248's exclusion left out {draw['excluded_rows']} clips of "
+            f"{len(draw['excluded_ayat'])} ayat ({', '.join(draw['excluded_ayat'])}).")
 
 
 def _seconds(value: float | None) -> str:

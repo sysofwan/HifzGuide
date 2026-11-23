@@ -26,6 +26,7 @@ from training.decoding import (
     WINDOW,
     check_schedule,
     clusters,
+    committed_text,
     make_check,
 )
 from training.muraja_policy import single_decode_checks
@@ -107,4 +108,9 @@ def oracle_checks(
             check = make_check(FLUSH, text(span.start, span.end), "")
         if check is not None:
             checks.append(check)
+    committed = committed_text(checks)
+    if committed != reference:
+        raise ValueError(
+            f"the checks commit {len(clusters(committed))} of the reference's "
+            f"{len(clusters(reference))} Characters: the word times run past the clip")
     return OracleArm(checks, aligned=True)

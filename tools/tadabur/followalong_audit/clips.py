@@ -66,8 +66,12 @@ def oracle_eligible(rows: Iterable[Mapping], word_times: Mapping[str, Mapping]) 
 
     A clip whose ayah the phonetizer cannot read has no reference to place, so it can never
     produce an Oracle table; the draw leaves it out rather than report a clip that is bound to
-    fail. A clip whose alignment failed for another reason (posteriors too short) keeps its
-    reference and stays eligible: its Oracle arm falls back to the even spread, marked.
+    fail. This is exactly #248's exclusion — the twenty clips of seven ayat (``55:17``,
+    ``90:8``, ``90:10``, ``106:1``–``106:4``) that
+    ``tadabur/consonant2_readout/report.json``'s ``coverage.graded.excluded_clips`` pins at
+    SHA-256 ``2149ea0f…``, measured on the same phase A population. A clip whose alignment
+    failed for another reason (posteriors too short) keeps its reference and stays eligible:
+    its Oracle arm falls back to the even spread, marked.
     """
     from training.nonpro_decode import item_key
 
@@ -82,6 +86,30 @@ def oracle_eligible(rows: Iterable[Mapping], word_times: Mapping[str, Mapping]) 
     return eligible
 
 
+def selection_record(rows: Iterable[Mapping], eligible: Iterable[Mapping], *,
+                     size: int, seed: int) -> dict:
+    """What a draw selected from: the population, #248's exclusion, and the seed.
+
+    Written beside the clip list, so the committed output states its own selection instead of
+    leaving ``--seed``/``--size`` to a shell history.
+    """
+    from training.nonpro_decode import item_key
+
+    rows = list(rows)
+    kept = {item_key(row["audio_path"]) for row in eligible}
+    excluded = [row for row in rows if item_key(row["audio_path"]) not in kept]
+    return {
+        "seed": seed,
+        "size": size,
+        "phase_a_rows": len(rows),
+        "eligible_rows": len(kept),
+        "excluded_rows": len(excluded),
+        "excluded_ayat": sorted({row["filename_label"] for row in excluded}),
+        "excluded_items": sorted(item_key(row["audio_path"]) for row in excluded),
+        "exclusion": "#248, tadabur/consonant2_readout/report.json coverage.graded.excluded_clips",
+    }
+
+
 def write_clips(clips: Sequence[Mapping], path: Path) -> None:
     """Write ``clips`` as one JSON object per line, keys sorted, UTF-8."""
     path = Path(path)
@@ -93,6 +121,11 @@ def write_clips(clips: Sequence[Mapping], path: Path) -> None:
 def read_clips(path: Path) -> list[dict]:
     """The clip list ``write_clips`` wrote."""
     return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line]
+
+
+def draw_record_path(clip_list: Path) -> Path:
+    """Where a clip list's selection record sits: ``clips.jsonl`` → ``clips.draw.json``."""
+    return Path(clip_list).with_suffix(".draw.json")
 
 
 def wav_samples(path: Path) -> int:

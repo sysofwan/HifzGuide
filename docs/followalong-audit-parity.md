@@ -127,8 +127,8 @@ audit's commit.
 ## The changes that explain a difference
 
 Each explanation comes from a mechanical rule in `training/followalong_parity.py`
-(`explain`), one rule per change, applied in the order below. A difference no rule
-explains raises instead of being labelled.
+(`explain`), one rule per change. A difference no rule explains raises instead of being
+labelled.
 
 - **madd alif** (`c4f3a98`) — a gap on an alif is a shortened madd, not a missing letter: it adds no deletion error and does not trip the phoneme gate (`ios/HifzGuide/FollowAlong/QuranFollowAlong+WordScoring.swift:696-703`, the `.gap` case). A word's decision differs here when the pin counted more gaps than the audit's commit.
 - **tanween at waqf** (`b052c26`) — the reference trims the trailing nun of a tanween at a pause, read from the printed word's tanween mark (`PhonemeIndex.swift:94-103`), so a reader who stopped there is not graded as missing it (`QuranFollowAlong+WordScoring.swift:93-110`). The decision differs here when the word's coverage rose and the printed word carries a tanween.

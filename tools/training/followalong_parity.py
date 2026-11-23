@@ -117,23 +117,26 @@ def explain(
     pin_gap = max(_field(pin_lines, "gap"), default=0)
     current_gap = max(_field(current_lines, "gap"), default=0)
     dropped = pin_gap - current_gap
-    if (dropped > 0 and _alifs(phonemes) >= dropped
-            and _without(pin_lines, "gap") == _without(current_lines, "gap")):
-        # c4f3a98: a gap on an alif is a shortened madd, no deletion error and no gate trip
-        return "madd_alif"
-    pin_cov = max(_field(pin_lines, "cov"), default=0)
-    current_cov = max(_field(current_lines, "cov"), default=0)
     last_row = word_flags.units(rows[-1]) if rows else []
-    if (current_cov > pin_cov and last_row and last_row[0][0] in "نں"
-            and any(ord(char) in _TANWEEN for char in text.printed(surah, ayah, index))):
+    # Tried in this order: the stop pass only says nothing else moved, so a rule that names the
+    # moved field goes first and keeps its word even when the stop pass could also claim it.
+    matched = {
+        # c4f3a98: a gap on an alif is a shortened madd, no deletion error and no gate trip
+        "madd_alif": (dropped > 0 and _alifs(phonemes) >= dropped
+                      and _without(pin_lines, "gap") == _without(current_lines, "gap")),
         # b052c26: the reference trims a trailing nun of a tanween at a pause
-        return "tanween_at_waqf"
-    if _row_indexed((pin or {}).get("errors", ()), (current or {}).get("errors", ()), phonemes, rows):
+        "tanween_at_waqf": (max(_field(current_lines, "cov"), default=0) > max(_field(pin_lines, "cov"), default=0)
+                            and bool(last_row) and last_row[0][0] in "نں"
+                            and any(ord(char) in _TANWEEN for char in text.printed(surah, ayah, index))),
         # e0b8b18: WordError.groupIndex is the phoneme_groups row, one error per row
-        return "error_indexing"
-    if list(pin_lines) == list(current_lines):
+        "error_indexing": _row_indexed((pin or {}).get("errors", ()), (current or {}).get("errors", ()),
+                                       phonemes, rows),
         # f06530c, baf4726: the stop pass regrades the words it reaches after the last check
-        return "stop_pass"
+        "stop_pass": list(pin_lines) == list(current_lines),
+    }
+    for name, applies in matched.items():
+        if applies:
+            return name
     raise SystemExit(
         f"{session}: {word}: no named 1.0.28 change explains the difference: "
         f"pin {pin} / current {current}")

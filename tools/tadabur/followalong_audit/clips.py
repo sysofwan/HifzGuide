@@ -66,21 +66,27 @@ def oracle_eligible(rows: Iterable[Mapping], word_times: Mapping[str, Mapping]) 
 
     A clip whose ayah the phonetizer cannot read has no reference to place, so it can never
     produce an Oracle table; the draw leaves it out rather than report a clip that is bound to
-    fail. This is exactly #248's exclusion — the twenty clips of seven ayat (``55:17``,
-    ``90:8``, ``90:10``, ``106:1``–``106:4``) that
-    ``tadabur/consonant2_readout/report.json``'s ``coverage.graded.excluded_clips`` pins at
-    SHA-256 ``2149ea0f…``, measured on the same phase A population. A clip whose alignment
-    failed for another reason (posteriors too short) keeps its reference and stays eligible:
-    its Oracle arm falls back to the even spread, marked.
+    fail. #248's exclusion is pinned once in
+    ``tadabur/consonant2_readout/report.json`` (``coverage.graded.excluded_clips``, read by
+    :func:`tadabur.tlog_mining.candidate_inventory.excluded_248`): the twenty clips of seven ayat
+    (``55:17``, ``90:8``, ``90:10``, ``106:1``–``106:4``) measured on this same phase A
+    population. The committed word times record the same exclusion as a reason, so a row either
+    source refuses is left out: the pin cannot be edited away, and a word time that has no
+    reference cannot be graded whatever the report says. A clip whose alignment failed for
+    another reason (posteriors too short) keeps its reference and stays eligible: its Oracle arm
+    falls back to the even spread, marked.
     """
+    from tadabur.tlog_mining.candidate_inventory import excluded_248
     from training.nonpro_decode import item_key
 
+    excluded = excluded_248()
     eligible = []
     for row in rows:
-        record = word_times.get(item_key(row["audio_path"]))
+        key = item_key(row["audio_path"])
+        record = word_times.get(key)
         if record is None:
             continue
-        if str(record.get("reason") or "").startswith(UNREADABLE_REFERENCE):
+        if key in excluded or str(record.get("reason") or "").startswith(UNREADABLE_REFERENCE):
             continue
         eligible.append(row)
     return eligible
@@ -92,23 +98,14 @@ def app_arm_rows(records: Mapping[str, Mapping] | None = None) -> list[dict]:
     #248's twenty clips (seven ayat the phonetizer cannot read) are left out, exactly as the
     tracer's draw does — they have no reference at all, so no arm can grade them. ``records`` is
     the committed word-times table (``{item: {"reason": ...}}``), read from the committed phase A
-    shards when omitted; a row with no record is left out too. The tranche reader is
-    :func:`gating_rows`, so an unclaimed tranche stops the population instead of shrinking it.
+    shards when omitted. The tranche reader is :func:`gating_rows`, so an unclaimed tranche stops
+    the population instead of shrinking it.
     """
-    from training.nonpro_decode import item_key
-
-    rows = gating_rows()
     if records is None:
         from tadabur.followalong_audit.tracer import load_word_times
 
-        return oracle_eligible(rows, load_word_times())
-    kept = []
-    for row in rows:
-        record = records.get(item_key(row["audio_path"]))
-        if record is None or str(record.get("reason") or "").startswith(UNREADABLE_REFERENCE):
-            continue
-        kept.append(row)
-    return kept
+        records = load_word_times()
+    return oracle_eligible(gating_rows(), records)
 
 
 def selection_record(rows: Iterable[Mapping], eligible: Iterable[Mapping], *,

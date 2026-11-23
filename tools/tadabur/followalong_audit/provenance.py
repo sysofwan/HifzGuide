@@ -15,6 +15,8 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from tadabur.followalong_audit.atomic import write_bytes_atomically
+
 #: The committed manifest: beside the run's other tables, one gzipped JSON line per clip.
 PROVENANCE_PATH = Path(__file__).parent / "app_arm" / "audio_manifest.jsonl.gz"
 
@@ -91,6 +93,4 @@ def read_provenance(path: Path = PROVENANCE_PATH) -> list[dict]:
 def write_provenance(lines: Sequence[Mapping], path: Path = PROVENANCE_PATH) -> None:
     """Write the lines as one gzipped JSON object each, keys sorted, fixed mtime: byte-identical."""
     body = "".join(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n" for line in lines)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(gzip.compress(body.encode("utf-8"), mtime=0))
+    write_bytes_atomically(Path(path), gzip.compress(body.encode("utf-8"), mtime=0))

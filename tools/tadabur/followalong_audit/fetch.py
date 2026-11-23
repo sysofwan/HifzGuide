@@ -7,36 +7,33 @@ population is written to ``<wav_dir>/<audio_sha256>.wav`` — 16 kHz mono PCM_16
 :func:`tadabur.followalong_audit.clips.verify_wav` checks the run's WAVs against.
 
 A shard is streamed **once** for all of its rows (the tlog stream downloads the shard and deletes
-it once read: cuda-dev's disk is the binding constraint), so ``stream`` is called once per
-``shard_file`` even when several clips live in it. The gain is the WAVs: about 1.6 GB for the
-5,742-clip population. A clip already in the manifest is not fetched again, so an interrupted
-fetch resumes where it stopped, and a run that fetches more clips keeps the entries it had.
+it once read: cuda-dev's disk is the binding constraint), through the canonical
+:func:`tadabur.tlog_eval_decode.shard_items`, so a source that numbers rows differently from the
+manifest is matched by the clip's recorded checksum and a wanted row the shard does not hold is
+an error. The gain is the WAVs: about 1.6 GB for the 5,742-clip population. A clip whose manifest
+entry names a WAV that is no longer on disk is fetched again, so an interrupted or cleaned
+directory resumes honestly; a run that fetches more clips keeps the entries it had.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
-import os
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
 
+from tadabur.followalong_audit.atomic import write_bytes_atomically
 from tadabur.followalong_audit.clips import SAMPLE_RATE
 from tadabur.nonpro_sources import audio_sha256
+from tadabur.tlog_eval_decode import shard_items
 from tadabur.tlog_index import sha256_file
 from tadabur.tlog_mining.mined_decode import grouped_by_shard
 
 #: The manifest's name in the WAV directory: what the run reads by default.
 MANIFEST_NAME = "wav_sha256.json"
-
-
-def _atomic_write(path: Path, data: bytes) -> None:
-    """Bytes to a sibling temporary file, then over ``path``: a killed fetch leaves no torn file."""
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_bytes(data)
-    os.replace(temporary, path)
 
 
 def write_wav(path: Path, samples: Sequence[float] | np.ndarray) -> int:
@@ -55,8 +52,8 @@ def write_wav(path: Path, samples: Sequence[float] | np.ndarray) -> int:
 
 def write_manifest(path: Path, manifest: Mapping[str, Mapping]) -> None:
     """The digest manifest, sorted so the same fetch writes the same bytes."""
-    _atomic_write(Path(path),
-                  (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+    write_bytes_atomically(Path(path),
+                           (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
 
 
 def read_manifest(path: Path) -> dict[str, dict]:
@@ -87,7 +84,8 @@ def fetch_clips(rows: Sequence[Mapping], wav_dir: Path, *,
     wav_dir = Path(wav_dir)
     wav_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = wav_dir / MANIFEST_NAME
-    manifest = read_manifest(manifest_path)
+    manifest = {key: value for key, value in read_manifest(manifest_path).items()
+                if (wav_dir / f"{key}.wav").is_file()}
     wanted = [row for row in rows if row["audio_sha256"] not in manifest]
     by_shard = grouped_by_shard(wanted)
     if workers > 1 and stream is not None:
@@ -153,23 +151,20 @@ def _merge_manifest(path: Path, entries: Mapping[str, Mapping], lock_path: Path)
 def _fetch_shard(shard_file: str, rows: Sequence[Mapping], wav_dir: Path,
                  stream: Callable[[str], object],
                  load_audio: Callable[[bytes], object]) -> dict[str, dict]:
-    """One stream pass of a shard, writing every wanted row's verified WAV."""
-    pending = {row["row"]: row for row in rows}
-    found: dict[str, dict] = {}
-    for index, item in enumerate(stream(f"data/{shard_file}.parquet")):
-        row = pending.pop(index, None)
-        if row is None:
-            continue
-        data = item["audio"]["bytes"]
-        digest = audio_sha256(data)
-        if digest != row["audio_sha256"]:
-            raise ValueError(f"{row['audio_path']} is {digest}, not the recorded "
-                             f"{row['audio_sha256']}")
-        wav = wav_dir / f"{row['audio_sha256']}.wav"
-        samples = write_wav(wav, load_audio(data))
-        found[row["audio_sha256"]] = {"wav_sha256": sha256_file(wav), "samples": samples}
-    if pending:
-        raise ValueError(f"{shard_file} does not hold {len(pending)} wanted row(s), e.g. "
-                         f"{sorted(pending.values(), key=lambda row: row['row'])[0]['audio_path']}")
-    return found
+    """One stream pass of a shard, writing every wanted row's verified WAV.
 
+    ``shard_items`` owns the one-pass row matching; closing it on any exception (a checksum that
+    does not match, a disk that fills) drops the downloaded shard through the stream's own
+    ``finally`` instead of leaving it for the next run to find.
+    """
+    found: dict[str, dict] = {}
+    with contextlib.closing(shard_items(rows, stream=stream)) as items:
+        for row, data in items:
+            digest = audio_sha256(data)
+            if digest != row["audio_sha256"]:
+                raise ValueError(f"{row['audio_path']} is {digest}, not the recorded "
+                                 f"{row['audio_sha256']}")
+            wav = wav_dir / f"{row['audio_sha256']}.wav"
+            samples = write_wav(wav, load_audio(data))
+            found[row["audio_sha256"]] = {"wav_sha256": sha256_file(wav), "samples": samples}
+    return found

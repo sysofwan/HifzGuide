@@ -33,10 +33,12 @@ def test_the_wav_the_fetch_wrote_is_accepted_and_returns_its_digest(tmp_path):
     assert verify_wav(path, expected) == sha256_file(path)
 
 
-def test_other_bytes_are_refused(tmp_path):
-    path = write_wav(tmp_path / "clip.wav", fill=b"\x01\x00")
+def test_other_bytes_of_the_fetched_length_are_refused(tmp_path):
+    path = write_wav(tmp_path / "clip.wav")
+    fetched = {"wav_sha256": sha256_file(path), "samples": FRAMES}
+    write_wav(path, fill=b"\x01\x00")
     with pytest.raises(ValueError, match="not the fetched"):
-        verify_wav(path, {"wav_sha256": sha256_file(path), "samples": FRAMES - 1})
+        verify_wav(path, fetched)
 
 
 def test_a_different_length_than_the_fetch_recorded_is_refused(tmp_path):

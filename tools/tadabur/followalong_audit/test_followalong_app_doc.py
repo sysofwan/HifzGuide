@@ -89,9 +89,16 @@ def test_p2_below_the_bar_is_reported_with_its_number_and_every_disagreeing_word
 
 
 def test_p2_at_the_bar_does_not_claim_a_shortfall():
-    met, short = render(summary()), render(summary(p2_subset=SHIFTED))
-    assert "100.0%" in met
-    assert met.lower().count("below") < short.lower().count("below")
+    # 97 of 100 words agree: exactly the bar, which is met, not below it.
+    at_bar = rows_of("c#0", [cell()] * 100)
+    flagged = [{**row, "strict": cell(True, True, "tashkeel") if row["word"] <= 3 else row["strict"]}
+               for row in at_bar]
+    subset = agreement(flagged, at_bar)
+    assert subset["rate"] == 0.97 and bridge_verdict(subset["rate"]) == "met"
+    met = {**summary(), "p2": {**summary()["p2"], "verdict": "met", "subset": subset, "all": subset}}
+    text, short = render(met), render(summary(p2_subset=SHIFTED))
+    assert "97.0%" in text
+    assert text.lower().count("below") < short.lower().count("below")
 
 
 def test_p2_states_it_reuses_the_committed_pytorch_decode_and_names_it():

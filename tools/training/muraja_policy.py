@@ -768,12 +768,17 @@ def word_traces(
     that check's hop and overlap text (the request's own, never a device log's clipped preview),
     and the checks that set the kept grade (:func:`setting_checks`).
 
-    Rows follow ``scorings``' order; a scoring whose engine run another also reads (the Tashkeel
-    toggle is display only) repeats that run's row, differing only in ``scoring``."""
-    by_engine = {result["scoring"]: result for result in results}
+    ``results`` is the run that graded ``request``: a batch of requests keys each result by item
+    and scoring, and a trace never reads another item's result (a missing one raises). Rows follow
+    ``scorings``' order; a scoring whose engine run another also reads (the Tashkeel toggle is
+    display only) repeats that run's row, differing only in ``scoring``."""
+    by_engine = {(result["item"], result["scoring"]): result for result in results}
     rows: list[dict] = []
     for scoring in scorings:
-        result = by_engine[scoring.engine_name]
+        result = by_engine.get((request["item"], scoring.engine_name))
+        if result is None:
+            raise ValueError(f"no harness result for {request['item']} under {scoring.name}: "
+                             "trace a request against the run that graded it")
         letters = {word["word"]: word for word in result.get("letters", ())}
         for kept in result["final"]:
             word = kept["word"]

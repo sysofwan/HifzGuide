@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.followalong_audit.assets import RELEASE, stage_assets
-from tadabur.followalong_audit.clips import wav_samples
+from tadabur.followalong_audit.clips import verify_wav, wav_samples
 from tadabur.followalong_audit.oracle import OracleArm, oracle_checks
 from tadabur.followalong_audit.p1b import (
     LOG_OVERLAP_CHARACTERS,
@@ -167,15 +167,20 @@ def _json_diff(first: bytes, second: bytes) -> list[str]:
 
 def prepare_clip(clip: Mapping, driver: Path, wav_dir: Path, assets_dir: Path,
                  word_times: Mapping[str, dict], text: MurajaText,
-                 latency_ms: int) -> ClipRun:
-    """Read one clip's WAV, run both arms, and keep whatever failed on the record."""
+                 wav_manifest: Mapping[str, Mapping], latency_ms: int) -> ClipRun:
+    """Read one clip's WAV, run both arms, and keep whatever failed on the record.
+
+    The WAV must be the file the fetch wrote (:func:`tadabur.followalong_audit.clips.verify_wav`):
+    its bytes are what the App arm grades, so a truncated or substituted copy fails the clip
+    rather than entering the table.
+    """
     run = ClipRun(clip=dict(clip))
     try:
         key = item_key(clip["audio_path"])
         run.surah, run.ayah = (int(part) for part in clip["filename_label"].split(":"))
         wav = Path(wav_dir) / f"{clip['audio_sha256']}.wav"
         run.samples = wav_samples(wav)
-        run.wav_sha256 = sha256_file(wav)
+        run.wav_sha256 = verify_wav(wav, wav_manifest.get(clip["audio_sha256"]))
         run.word_count = len(text.phonemes(run.surah, run.ayah).split(" "))
     except (OSError, ValueError, KeyError) as error:
         run.failure = f"clip setup: {error}"
@@ -232,15 +237,17 @@ def arm_requests(run: ClipRun) -> list[dict]:
 
 
 def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, assets_dir: Path,
-               manifest: Mapping, out: Path,
+               manifest: Mapping, wav_manifest: Mapping[str, Mapping], out: Path,
                latency_ms: int = DEVICE_LATENCY_MS, staging_dir: Path | None = None,
                draw: Mapping | None = None) -> dict:
     """Run both arms and gate P1b over ``clips``; write the tables under ``out``.
 
     ``assets_dir`` is the release cache holding the verified files; the driver is handed a
     staging directory built from them (:func:`tadabur.followalong_audit.assets.stage_assets`),
-    so the model it loads is the manifest's bytes. ``draw`` is the clip list's selection
-    record, written into the run's metadata and note.
+    so the model it loads is the manifest's bytes. ``wav_manifest`` is the fetch's digest
+    record of the WAVs; every clip is verified against it before it is run and the record is
+    written beside the tables. ``draw`` is the clip list's selection record, written into the
+    run's metadata and note.
     """
     record = harness_record()
     if record.get("hifzguide_release") != RELEASE:
@@ -257,7 +264,7 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
     out.mkdir(parents=True, exist_ok=True)
 
     runs = [prepare_clip(clip, driver, Path(wav_dir), staged.directory, word_times, text,
-                         latency_ms) for clip in clips]
+                         wav_manifest, latency_ms) for clip in clips]
     requests = [request for run in runs for request in arm_requests(run)]
     _, results = harness.run(requests)
 
@@ -318,15 +325,15 @@ def run_tracer(clips: Sequence[Mapping], *, clip_list: Path, wav_dir: Path, asse
         "harness": record,
         "driver": str(driver),
     }
-    write_outputs(out, rows, runs, p1b, meta, latency_ms, draw)
+    write_outputs(out, rows, runs, p1b, meta, latency_ms, draw, wav_manifest)
     return {"words": len(rows), "changed": changed, "verdict": verdict,
             "complete": verdict != "incomplete", "failed": len(meta["failed"])}
 
 
 def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
                   p1b: Mapping, meta: Mapping, latency_ms: int,
-                  draw: Mapping | None) -> None:
-    """Write the per-word table, the decode text, the per-clip cadence, P1b and the run note."""
+                  draw: Mapping | None, wav_manifest: Mapping[str, Mapping]) -> None:
+    """Write the per-word table, the decode text, the cadence, P1b, the WAV digests and the note."""
     write_jsonl(Path(out) / "words.jsonl", rows)
     write_jsonl(Path(out) / "checks.jsonl",
                 [{"item": item_key(run.clip["audio_path"]), "arm": "app", "checks": run.app}
@@ -335,7 +342,10 @@ def write_outputs(out: Path, rows: Sequence[Mapping], runs: Sequence[ClipRun],
                     "checks": run.oracle.checks} for run in runs if run.oracle is not None])
     write_jsonl(Path(out) / "clip_runs.jsonl", [clip_run_row(run) for run in runs])
     write_json(Path(out) / "p1b.json", p1b)
-    write_json(Path(out) / "meta.json", meta)
+    wav_manifest_path = Path(out) / "wav_sha256.json"
+    write_json(wav_manifest_path, wav_manifest)
+    write_json(Path(out) / "meta.json",
+               {**meta, "wav_manifest_sha256": sha256_file(wav_manifest_path)})
     (Path(out) / "run_note.md").write_text(run_note(runs, p1b, latency_ms, draw),
                                            encoding="utf-8")
 

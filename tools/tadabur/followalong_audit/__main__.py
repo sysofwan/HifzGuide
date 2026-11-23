@@ -54,6 +54,8 @@ def main() -> int:
     run = commands.add_parser("run", help="run both arms and gate P1b")
     run.add_argument("--clips", type=Path, required=True)
     run.add_argument("--wav-dir", type=Path, required=True)
+    run.add_argument("--wav-manifest", type=Path,
+                     help="the fetch's WAV digest manifest (default: <wav-dir>/wav_sha256.json)")
     run.add_argument("--assets-dir", type=Path, required=True)
     run.add_argument("--manifest", type=Path, required=True)
     run.add_argument("--out", type=Path, required=True)
@@ -78,10 +80,12 @@ def main() -> int:
         raise SystemExit("--latency-ms must be >= 0")
     draw_record = args.draw or draw_record_path(args.clips)
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    wav_manifest_path = args.wav_manifest or (args.wav_dir / "wav_sha256.json")
     summary = run_tracer(
         read_clips(args.clips), clip_list=args.clips, wav_dir=args.wav_dir,
-        assets_dir=args.assets_dir, manifest=manifest, out=args.out,
-        latency_ms=args.latency_ms, staging_dir=args.staging_dir,
+        assets_dir=args.assets_dir, manifest=manifest,
+        wav_manifest=json.loads(wav_manifest_path.read_text(encoding="utf-8")),
+        out=args.out, latency_ms=args.latency_ms, staging_dir=args.staging_dir,
         draw=json.loads(draw_record.read_text(encoding="utf-8"))
         if draw_record.is_file() else None)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))

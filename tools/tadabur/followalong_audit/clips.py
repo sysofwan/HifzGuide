@@ -140,3 +140,24 @@ def wav_samples(path: Path) -> int:
         if source.getnchannels() != 1 or source.getsampwidth() != 2:
             raise ValueError(f"{path} is not mono 16-bit PCM")
         return source.getnframes()
+
+
+def verify_wav(path: Path, expected: Mapping | None) -> str:
+    """Refuse a WAV whose bytes or length differ from the fetch's digest manifest; its SHA-256.
+
+    The manifest is written where the audio was fetched (``<sha>.wav`` → WAV SHA-256 and sample
+    count) and committed with the run, so a truncated rsync, a re-encode or a substituted file
+    cannot enter the table the audit reports. The clip list's own ``audio_sha256`` names the
+    source clip; the WAV is a different container and is bound by this manifest.
+    """
+    if expected is None:
+        raise ValueError(f"{path} has no entry in the fetch's digest manifest")
+    from tadabur.tlog_index import sha256_file
+
+    found = sha256_file(path)
+    if found != expected.get("wav_sha256"):
+        raise ValueError(f"{path} is {found}, not the fetched {expected.get('wav_sha256')}")
+    frames = wav_samples(path)
+    if expected.get("samples") is not None and frames != expected["samples"]:
+        raise ValueError(f"{path} holds {frames} samples, not the fetched {expected['samples']}")
+    return found

@@ -129,27 +129,46 @@ def load_word_times(directory: Path = WORD_TIMES_DIR,
     return keyed
 
 
-def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
-    """One clip through the driver: its full checks, wall times, and two-run determinism.
-
-    Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
-    """
+def _driver_once(driver: Path, wav: Path, latency_ms: int,
+                 assets_dir: Path) -> tuple[bytes, float]:
+    """One driver process over one WAV: its stdout and wall time, or its own failure."""
     env = {
         **os.environ,
         "HIFZGUIDE_ASSETS_DIR": str(assets_dir),
         "TRANSCRIBE_INFERENCE_LATENCY_MS": str(latency_ms),
     }
+    started = time.perf_counter()
+    done = subprocess.run([str(driver), str(wav)], capture_output=True, env=env, check=False)
+    elapsed = time.perf_counter() - started
+    if done.returncode != 0:
+        raise RuntimeError(done.stderr.decode("utf-8", "replace").strip())
+    return done.stdout, elapsed
 
-    def once() -> tuple[bytes, float]:
-        started = time.perf_counter()
-        done = subprocess.run([str(driver), str(wav)], capture_output=True, env=env, check=False)
-        elapsed = time.perf_counter() - started
-        if done.returncode != 0:
-            raise RuntimeError(done.stderr.decode("utf-8", "replace").strip())
-        return done.stdout, elapsed
 
-    first, wall = once()
-    second, second_wall = once()
+def driver_checks(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
+    """One clip through the driver: its full checks and timing, without the determinism rerun.
+
+    The S3 App-arm run is 5,742 clips, so it pays for one driver run per clip and re-runs only
+    its seeded determinism subset (:func:`tadabur.followalong_audit.app_arm.determinism_report`).
+    """
+    stdout, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    payload = json.loads(stdout)
+    return {
+        "checks": payload["checks"],
+        "wall_seconds": wall,
+        "inference_count": payload.get("inference_count"),
+        "failure_count": payload.get("failure_count"),
+        "inference_latency_ms": payload.get("inference_latency_ms"),
+    }
+
+
+def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
+    """One clip through the driver: its full checks, wall times, and two-run determinism.
+
+    Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
+    """
+    first, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    second, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
     payload = json.loads(first)
     deterministic = first == second
     return {

@@ -1,0 +1,67 @@
+{
+  "changed": [
+    {
+      "clipped": "minor",
+      "full": "correct",
+      "item": "3_193_undefined.flac#0/app",
+      "scoring": "shipped_default",
+      "word": 8
+    },
+    {
+      "clipped": "minor",
+      "full": "correct",
+      "item": "3_193_undefined.flac#0/app",
+      "scoring": "strict",
+      "word": 8
+    },
+    {
+      "clipped": "minor",
+      "full": "correct",
+      "item": "3_193_undefined.flac#0/app",
+      "scoring": "strict",
+      "word": 11
+    },
+    {
+      "clipped": "skipped",
+      "full": "minor",
+      "item": "78_38_8626214945.flac#0/app",
+      "scoring": "shipped_default",
+      "word": 10
+    },
+    {
+      "clipped": "correct",
+      "full": "minor",
+      "item": "78_38_8626214945.flac#0/app",
+      "scoring": "shipped_default",
+      "word": 13
+    },
+    {
+      "clipped": "skipped",
+      "full": "minor",
+      "item": "78_38_8626214945.flac#0/app",
+      "scoring": "strict",
+      "word": 10
+    },
+    {
+      "clipped": "correct",
+      "full": "minor",
+      "item": "78_38_8626214945.flac#0/app",
+      "scoring": "strict",
+      "word": 13
+    },
+    {
+      "clipped": "minor",
+      "full": "correct",
+      "item": "78_38_8626214945.flac#0/app",
+      "scoring": "strict",
+      "word": 14
+    }
+  ],
+  "clips": {
+    "drawn": 20,
+    "replayed": 20
+  },
+  "gate": "P1b",
+  "log_overlap_characters": 30,
+  "verdict": "pass"
+}

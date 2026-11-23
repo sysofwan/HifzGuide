@@ -1,0 +1,76 @@
+{
+  "assets": {
+    "checksums": {
+      "mel_filters.bin": "6971fb56fbd4a23b5c56df099fda1aa34a6e1daa060a7437f47d07d1663ce355",
+      "models.zip": "f8dc3311fe4506c505b22c4a205d30fdcf8c3b7a45b9cd1ae9008d1f7b12c439",
+      "window.bin": "36444c5814867e099a289b76c2a6adc4c7fe721bb64edc54910dc74607a7ca6f"
+    },
+    "model": "MuaalemStudent_h448_6BIT.mlmodelc",
+    "model_sha256": "79cd36a2b155a738876f04a5a96051710ea9962d5637586dddb074edc9732654",
+    "release": "v1.0.7",
+    "staging_dir": "/Users/sysofwan/.cache/hifzguide/followalong-audit/assets-v1.0.7"
+  },
+  "both_arms": 20,
+  "clip_list": "clips.jsonl",
+  "clip_list_sha256": "d0fbe530be5951209622cb436809c0bf2044019800cbe4c789c8130c9ba136a1",
+  "clips": 20,
+  "draw": {
+    "eligible_rows": 5742,
+    "excluded_ayat": [
+      "106:1",
+      "106:2",
+      "106:3",
+      "106:4",
+      "55:17",
+      "90:10",
+      "90:8"
+    ],
+    "excluded_items": [
+      "106_1_1120059094.flac#0",
+      "106_1_1867724027.flac#0",
+      "106_1_5166055538.flac#0",
+      "106_1_6712074310.flac#0",
+      "106_1_8149234267.flac#0",
+      "106_2_4899974765.flac#0",
+      "106_2_5959601854.flac#0",
+      "106_2_6019593613.flac#0",
+      "106_2_7809676148.flac#0",
+      "106_3_2657851723.flac#0",
+      "106_3_5456853368.flac#0",
+      "106_4_1708901254.flac#0",
+      "106_4_3409575285.flac#0",
+      "106_4_4070109245.flac#0",
+      "55_17_2482154935.flac#0",
+      "90_10_1410612816.flac#0",
+      "90_10_2556015565.flac#0",
+      "90_10_4520336054.flac#0",
+      "90_8_3852198404.flac#0",
+      "90_8_9835558478.flac#0"
+    ],
+    "excluded_rows": 20,
+    "exclusion": "#248, tadabur/consonant2_readout/report.json coverage.graded.excluded_clips",
+    "phase_a_rows": 5762,
+    "seed": 7,
+    "size": 20
+  },
+  "driver": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/build/transcribe_checks",
+  "failed": [],
+  "harness": {
+    "binary": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/build/muraja_harness",
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+    "hifzguide_release": "v1.0.7",
+    "layout_db": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/muraja/ios/HifzGuide/AssetPackRoot/layouts/madani-qcf2-v1/layout.db",
+    "log_replay_binary": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/build/muraja_log_replay",
+    "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+    "quran_db": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/muraja/ios/HifzGuide/Bundled/quran.db",
+    "quran_db_sha256": "7189c886c23f51ed289e7bb9133299233c153fdc729230a14e019c6bd3c2dddd",
+    "transcribe_checks_binary": "/Users/sysofwan/.cache/hifzguide/muraja-harness/028bc513eeb233caa7240a5c37c423da59f3d9d7/build/transcribe_checks"
+  },
+  "issue": 307,
+  "latency_ms": 40,
+  "scorings": [
+    "strict",
+    "shipped_default"
+  ],
+  "wav_manifest_sha256": "aa50289e7ee2a255bc417d9ef518e0f00edf5ebdfbed4385b455cadaf7b4cd58"
+}

@@ -6,10 +6,14 @@
 #
 #   bash tools/muraja_harness/build.sh [<muraja commit, full sha>]   (default: the pin below)
 #
-# Two binaries, each compiled with this directory's scoring.swift:
+# Three binaries:
 #   muraja_harness      main.swift: one item's checks, a fresh session per scoring;
 #   muraja_log_replay   log_replay.swift: one of Muraja's device-session logs through Muraja's own
-#                       tools/replay_log.swift, as its tools/run_log_tests.sh replays it.
+#                       tools/replay_log.swift, as its tools/run_log_tests.sh replays it;
+#   transcribe_checks   transcribe_checks.swift: Muraja's offline transcriber over the app's
+#                       CoreML model, emitting each update's full hop and overlap as checks
+#                       (the follow-along audit's app arm, #307; the `.log` it renders cuts
+#                       every overlap to 30 Characters).
 #
 # Steps:
 #   1. fetch sysofwan/Muraja at the commit into $MURAJA_HARNESS_DIR/<commit>/muraja (gh auth);
@@ -19,11 +23,13 @@
 #      Data/QuranDatabase.swift, into a scratch directory per binary; the log replay also takes
 #      the analysis sources and tools/replay_log.swift with the reports it calls and, from
 #      Muraja 028bc51 on, tools/replay_session.swift, the set tools/run_log_tests.sh compiles;
+#      transcribe_checks instead takes the transcriber's own sources plus the `+iOS` model files
+#      verbatim (the linux_sources filter drops those), as Muraja's tools/run_transcribe.sh does;
 #   4. rename ScoringParameters.forMode to shippedForMode and isSoftMismatch to
-#      shippedIsSoftMismatch in each scratch copy (scoring.swift replaces both); in the log
-#      replay's, drop replay_log.swift's @main (log_replay.swift is the entry point) and point the
-#      word scorer's logger at log_replay.swift's GradeLineLogger, which keeps the grade lines a
-#      device log holds; each edit must happen exactly once;
+#      shippedIsSoftMismatch in each grading scratch copy (scoring.swift replaces both); in the
+#      log replay's, drop replay_log.swift's @main (log_replay.swift is the entry point) and point
+#      the word scorer's logger at log_replay.swift's GradeLineLogger, which keeps the grade lines
+#      a device log holds; each edit must happen exactly once; transcribe_checks takes no edit;
 #   5. compile with -DTEST_HARNESS -swift-version 6, as Muraja's tools/run_replay_log.sh does;
 #   6. write harness.json (binaries, databases, commit, compiler) next to the binaries.
 #
@@ -113,12 +119,42 @@ REPLAY_TOOLS+=("$CHECKOUT/tools/oracle_report.swift" "$CHECKOUT/tools/frontier_r
   "$CHECKOUT/tools/reread_scoreboard.swift")
 build_binary muraja_log_replay log_replay.swift "$ANALYSIS"/*.swift "${REPLAY_TOOLS[@]}"
 
+# The app arm (#307) runs Muraja's offline transcriber over the app's own CoreML model, so its
+# sources include the `+iOS` files lib/linux_sources.sh drops — and no scoring, so no edit.
+# tools/run_transcribe.sh's source list is the model: WAV, assets, the Muaalem seam, the cadence
+# scheduler and the publish policy, all unchanged. Nothing here imports CoreML at build time;
+# the CoreML assets are staged at run time (HIFZGUIDE_ASSETS_DIR).
+TRANSCRIBE_SOURCES=(
+  "$CHECKOUT/ios/HifzGuide/Models/PhonemeVocabulary.swift"
+  "$CHECKOUT/ios/HifzGuide/Models/MelFeatureExtractor+iOS.swift"
+  "$CHECKOUT/ios/HifzGuide/Models/CTCDecoder+iOS.swift"
+  "$CHECKOUT/ios/HifzGuide/Models/MuaalemInference+iOS.swift"
+  "$CHECKOUT/ios/HifzGuide/FollowAlong/PerformanceSignposts+iOS.swift"
+  "$CHECKOUT/tools/TranscribeAssets.swift"
+  "$CHECKOUT/tools/TranscribeWAV.swift"
+  "$CHECKOUT/tools/TranscribeInference.swift"
+  "$CHECKOUT/tools/TranscribeLog.swift"
+  "$CHECKOUT/tools/TranscribeScheduler.swift"
+  "$CHECKOUT/tools/TranscribeOutput.swift"
+)
+TRANSCRIBE_SRC="$BUILD/transcribe_checks-src"
+rm -rf "$TRANSCRIBE_SRC"
+mkdir -p "$TRANSCRIBE_SRC"
+for source in "${TRANSCRIBE_SOURCES[@]}"; do
+  test -f "$source"
+  sed -e 's/^@testable import HifzGuide$//' "$source" > "$TRANSCRIBE_SRC/$(basename "$source")"
+done
+cp "$HERE/transcribe_checks.swift" "$TRANSCRIBE_SRC/transcribe_checks.swift"
+swiftc -O -DTEST_HARNESS -swift-version 6 -o "$BUILD/transcribe_checks" \
+  "$TRANSCRIBE_SRC"/*.swift -framework Foundation -framework Accelerate -framework CoreML
+
 cat > "$ROOT/harness.json" <<EOF
 {
   "muraja_commit": "$MURAJA_COMMIT",
   "compiler": "$COMPILER",
   "binary": "$BUILD/muraja_harness",
   "log_replay_binary": "$BUILD/muraja_log_replay",
+  "transcribe_checks_binary": "$BUILD/transcribe_checks",
   "quran_db": "$CORE_DB",
   "layout_db": "$LAYOUT_DB",
   "hifzguide_release": "$HIFZGUIDE_RELEASE_TAG",

@@ -130,18 +130,20 @@ def _parity_section(report: dict) -> list[str]:
         "(`muraja_harness/log_replay.swift`). Each cell gives the device's decisions that the replay",
         "reproduces, in order (longest common subsequence), out of the device's total. ✓ means the",
         "two sequences are identical. Each session is replayed in every mode with the shipped flags,",
-        f"at the pin `{pin}` and at Muraja `main` `{main}`, from its log as logged and with each",
-        "preview lengthened. App 1.0.27 was built from neither commit exactly. The exports log",
-        "voice search's *the Arabic speech recognizer is available* line, which Muraja first logs in",
-        "`ca4d665`, after the 1.0.27 version bump `99c326f`. The two commits differ only in voice",
-        "search.",
+        f"at the pin `{pin}` and at the audit's commit `{main}`, from its log as logged and with each",
+        "preview lengthened. App 1.0.27 was built from the pin. The exports log voice search's *the",
+        "Arabic speech recognizer is available* line, which Muraja first logs in `ca4d665`, after the",
+        "1.0.27 version bump `99c326f`. At the audit's commit the app's grading changed (madd alif,",
+        "tanween at waqf, stop-pass anchoring, error indexing), so a replay there differs from the",
+        "device exactly where those changes reach; every differing decision is listed in",
+        "`docs/followalong-audit-parity.md`.",
         "",
         *md_table(["session", "replay", *(f"`{m}`" for m in MODES)], rows),
         "**Replayed as logged, no mode reproduces the device.** The app logs each update's overlap",
         "cut to 30 Characters (`FollowAlongManager+iOS.swift:744`). For a preview, the",
         "transcriber's own line keeps 40 (`RealtimeTranscriber+iOS.swift:642`;",
         "`device_logs.lengthened_previews`). **With the previews lengthened, exactly one mode",
-        "reproduces every grade decision the device logged for every word, at both commits.**",
+        "reproduces every grade decision the device logged for every word, at the pin.**",
         "That mode is each session's mode. All reported numbers below come from that replay at the",
         "pin. The decisions the as-logged replay gets wrong in the session's own mode:",
         "",
@@ -482,7 +484,8 @@ def _comparison_section(report: dict) -> list[str]:
 def _summary(report: dict) -> list[str]:
     targets = _targets(report)
     rates = report["rates"]
-    exact = all(s["parity"][run][s["mode"]]["exact"] for s in targets for run in ("pin/lengthened", "main/lengthened"))
+    exact = all(s["parity"]["pin/lengthened"][s["mode"]]["exact"] for s in targets)
+    pin = report["muraja"]["pin"]
     sessions = "; ".join(f"page {s['page']} ({s['session']}, {s['mode']}, {s['words']} words)" for s in targets)
     as_logged = sum(s["parity"]["pin/logged"][s["mode"]]["device"] - s["parity"]["pin/logged"][s["mode"]]["matched"]
                     for s in targets)
@@ -506,9 +509,12 @@ def _summary(report: dict) -> list[str]:
         "",
         f"- **{len(targets)} target sessions, all `h448` on app 1.0.27:** {sessions}. The other sessions",
         "  in the exports are truncated tails of these.",
-        f"- **Parity {'is exact' if exact else 'is not exact'}.** With each preview lengthened to the transcriber's",
+        f"- **Parity {'is exact' if exact else 'is not exact'} at the pin.** With each preview lengthened to the transcriber's",
         "  own 40-Character line, the replay reproduces every grade decision the device logged, in",
-        "  order, at the pin and at `main`. It does so in one mode per session, the mode reported.",
+        f"  order, at the pin `{pin[:7]}`, in one mode per session (the mode reported). At the audit's",
+        "  commit the same mode differs only where a named 1.0.28 grading change reaches: the parity",
+        "  note (`docs/followalong-audit-parity.md`) lists every differing decision with its change,",
+        "  and *At the audit's commit* below lists every word whose kept quality moved.",
         f"  Replayed as logged, with each overlap cut as the app logs it, it misses {as_logged} of {decisions}",
         "  decisions. The kept grades also equal the device's committed grades, except where the",
         "  device regraded a word after committing it.",
@@ -527,6 +533,31 @@ def _summary(report: dict) -> list[str]:
         "  other session's end is not in the export.",
         "- No recommendation on allowances or thresholds.",
         "",
+    ]
+
+
+def _current_section(report: dict) -> list[str]:
+    """The sessions at the audit's commit: strict and the shipped default, and every word whose
+    kept quality changed between the pins."""
+    current = report["current"]
+    names = current["scorings"]
+    rates = current["rates"]
+    rows = [[f"`{name}`", fmt_rate(rates[name][ALL_WORDS]["false_flags"]),
+             fmt_rate(rates[name][UNEXPLAINED]["false_flags"])] for name in names]
+    changed = [[f"`{row['session']}`", row["word"], f"`{row['scoring']}`",
+                f"`{row['pin']}` → `{row['current']}`"] for row in current["changed_words"]]
+    return [
+        f"## At the audit's commit (`{current['commit'][:7]}`): strict and the shipped default",
+        "",
+        "The audit grades with today's app; the pin's numbers above are unchanged. These sessions",
+        "were recorded on app 1.0.27, so a decision at the audit's commit may differ, each by a",
+        "named 1.0.28 grading change (`docs/followalong-audit-parity.md`). False flags per 1,000",
+        "graded words:",
+        "",
+        *md_table(["scoring", "every graded word", "owner's mistakes left out"], rows),
+        "Every word whose kept quality changed between the pins, by session, word and scoring:",
+        "",
+        *(md_table(["session", "word", "scoring", "pin → audit"], changed) if changed else ["None.", ""]),
     ]
 
 
@@ -552,6 +583,7 @@ def render(report: dict) -> str:
         *_parity_section(report),
         *_scorings_section(report),
         *_rates_section(report),
+        *_current_section(report),
         *_phone_section(report),
         *_words_section(report),
         *_allowances_section(report),

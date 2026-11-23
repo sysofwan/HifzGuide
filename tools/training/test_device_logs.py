@@ -244,9 +244,11 @@ def test_every_session_whose_docs_record_a_slip_is_out_of_the_headline():
         assert next(e for e in d.load_inventory() if e.log == log).exclusion == d.DOCUMENTED_MISTAKE
 
 
-def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline():
+def test_the_report_covers_the_inventory_and_every_log_reproduces_its_pin_baseline():
     assert [e["log"] for e in REPORT["logs"]] == [e.log for e in d.load_inventory()]
-    assert all(e["parity"] == {"pin": True, "main": True} for e in REPORT["logs"])
+    # The pin's baselines are the frozen gate; at the audit's commit Muraja ships rewritten
+    # baselines, replayed against their own commit in `docs/followalong-audit-parity.md`.
+    assert all(e["parity"]["pin"] for e in REPORT["logs"])
     assert (REPORT["muraja"]["pin"], REPORT["muraja"]["main"]) == (MURAJA_COMMIT, d.MURAJA_MAIN)
 
 

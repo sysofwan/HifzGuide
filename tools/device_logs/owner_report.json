@@ -1,7 +1,7 @@
 {
  "muraja": {
   "pin": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
-  "main": "3a49a1c16d3f9391d8b43e51a5270524965237a2",
+  "main": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
   "builds": {
    "pin": {
     "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
@@ -19,7 +19,7 @@
    "main": {
     "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
     "harness": "tools/muraja_harness/log_replay.swift",
-    "muraja_commit": "3a49a1c16d3f9391d8b43e51a5270524965237a2",
+    "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
     "protocol_version": 3,
     "scoring_keys": [
      "name",
@@ -30,6 +30,361 @@
     ]
    }
   }
+ },
+ "current": {
+  "commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+  "scorings": [
+   "strict",
+   "shipped_default"
+  ],
+  "rates": {
+   "strict": {
+    "all": {
+     "false_flags": {
+      "flags": 9,
+      "words": 406,
+      "logs": 3,
+      "per_1000": 22.167487684729064,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 1,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 2.4630541871921183,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "soft_pair": {
+       "flags": 2,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 4.926108374384237,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "target_pair": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "other_consonant": {
+       "flags": 6,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 14.778325123152708,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "shaddah": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "skipped": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "fatha other": 1
+     },
+     "pairs": {
+      "ح↔ه": 1,
+      "ق↔ك": 1
+     }
+    },
+    "unexplained": {
+     "false_flags": {
+      "flags": 7,
+      "words": 381,
+      "logs": 3,
+      "per_1000": 18.37270341207349,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 1,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 2.6246719160104988,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "soft_pair": {
+       "flags": 2,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 5.2493438320209975,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "target_pair": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "other_consonant": {
+       "flags": 4,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 10.498687664041995,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "shaddah": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "skipped": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "fatha other": 1
+     },
+     "pairs": {
+      "ح↔ه": 1,
+      "ق↔ك": 1
+     }
+    }
+   },
+   "shipped_default": {
+    "all": {
+     "false_flags": {
+      "flags": 7,
+      "words": 406,
+      "logs": 3,
+      "per_1000": 17.241379310344826,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 1,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 2.4630541871921183,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "soft_pair": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "target_pair": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "other_consonant": {
+       "flags": 6,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 14.778325123152708,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "shaddah": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "skipped": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 406,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "fatha other": 1
+     },
+     "pairs": {}
+    },
+    "unexplained": {
+     "false_flags": {
+      "flags": 5,
+      "words": 381,
+      "logs": 3,
+      "per_1000": 13.123359580052494,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "causes": {
+      "tashkeel": {
+       "flags": 1,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 2.6246719160104988,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "soft_pair": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "target_pair": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "other_consonant": {
+       "flags": 4,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 10.498687664041995,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "shaddah": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "skipped": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      },
+      "unrecorded": {
+       "flags": 0,
+       "words": 381,
+       "logs": 3,
+       "per_1000": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none"
+      }
+     },
+     "marks": {
+      "fatha other": 1
+     },
+     "pairs": {}
+    }
+   }
+  },
+  "changed_words": [
+   {
+    "session": "70#2",
+    "word": "2:61:30",
+    "scoring": "strict",
+    "pin": "minor",
+    "current": "correct"
+   },
+   {
+    "session": "70#2",
+    "word": "2:61:30",
+    "scoring": "shipped_default",
+    "pin": "minor",
+    "current": "correct"
+   }
+  ]
  },
  "statements": [
   {
@@ -334,7 +689,7 @@
      "strict": {
       "device": 907,
       "replay": 907,
-      "matched": 854,
+      "matched": 853,
       "exact": false,
       "words": 134,
       "differing_words": [
@@ -344,6 +699,7 @@
        "2:17:13",
        "2:18:3",
        "2:19:2",
+       "2:19:14",
        "2:19:15",
        "2:20:4",
        "2:20:11",
@@ -374,10 +730,11 @@
      "balanced": {
       "device": 907,
       "replay": 907,
-      "matched": 898,
+      "matched": 897,
       "exact": false,
       "words": 134,
       "differing_words": [
+       "2:19:14",
        "2:23:8",
        "2:23:9",
        "2:23:10",
@@ -455,7 +812,7 @@
      "strict": {
       "device": 907,
       "replay": 907,
-      "matched": 863,
+      "matched": 862,
       "exact": false,
       "words": 134,
       "differing_words": [
@@ -465,6 +822,7 @@
        "2:17:13",
        "2:18:3",
        "2:19:2",
+       "2:19:14",
        "2:19:15",
        "2:20:4",
        "2:20:11",
@@ -491,10 +849,12 @@
      "balanced": {
       "device": 907,
       "replay": 907,
-      "matched": 907,
-      "exact": true,
+      "matched": 906,
+      "exact": false,
       "words": 134,
-      "differing_words": []
+      "differing_words": [
+       "2:19:14"
+      ]
      },
      "lenient": {
       "device": 907,
@@ -1021,7 +1381,7 @@
      "strict": {
       "device": 638,
       "replay": 638,
-      "matched": 593,
+      "matched": 580,
       "exact": false,
       "words": 123,
       "differing_words": [
@@ -1040,9 +1400,12 @@
        "2:61:13",
        "2:61:14",
        "2:61:15",
+       "2:61:19",
+       "2:61:21",
        "2:61:27",
        "2:61:28",
        "2:61:29",
+       "2:61:30",
        "2:61:49",
        "2:61:50",
        "2:61:51",
@@ -1053,7 +1416,7 @@
      "balanced": {
       "device": 638,
       "replay": 638,
-      "matched": 547,
+      "matched": 537,
       "exact": false,
       "words": 123,
       "differing_words": [
@@ -1098,6 +1461,7 @@
        "2:61:27",
        "2:61:28",
        "2:61:29",
+       "2:61:30",
        "2:61:31",
        "2:61:32",
        "2:61:36",
@@ -1113,7 +1477,7 @@
      "lenient": {
       "device": 638,
       "replay": 638,
-      "matched": 449,
+      "matched": 444,
       "exact": false,
       "words": 123,
       "differing_words": [
@@ -1201,15 +1565,19 @@
      "strict": {
       "device": 638,
       "replay": 638,
-      "matched": 638,
-      "exact": true,
+      "matched": 625,
+      "exact": false,
       "words": 123,
-      "differing_words": []
+      "differing_words": [
+       "2:61:19",
+       "2:61:21",
+       "2:61:30"
+      ]
      },
      "balanced": {
       "device": 638,
       "replay": 638,
-      "matched": 592,
+      "matched": 582,
       "exact": false,
       "words": 123,
       "differing_words": [
@@ -1241,6 +1609,7 @@
        "2:61:20",
        "2:61:21",
        "2:61:22",
+       "2:61:30",
        "2:61:31",
        "2:61:32",
        "2:61:36",
@@ -1252,7 +1621,7 @@
      "lenient": {
       "device": 638,
       "replay": 638,
-      "matched": 483,
+      "matched": 478,
       "exact": false,
       "words": 123,
       "differing_words": [
@@ -1798,13 +2167,15 @@
      "strict": {
       "device": 736,
       "replay": 736,
-      "matched": 711,
+      "matched": 705,
       "exact": false,
       "words": 144,
       "differing_words": [
        "2:253:19",
        "2:253:20",
        "2:253:21",
+       "2:253:24",
+       "2:253:49",
        "2:254:5",
        "2:254:6",
        "2:254:8",
@@ -1817,6 +2188,7 @@
        "2:255:34",
        "2:255:35",
        "2:255:36",
+       "2:256:2",
        "2:256:8",
        "2:256:9",
        "2:256:15",
@@ -1826,7 +2198,7 @@
      "balanced": {
       "device": 736,
       "replay": 736,
-      "matched": 665,
+      "matched": 659,
       "exact": false,
       "words": 144,
       "differing_words": [
@@ -1836,12 +2208,14 @@
        "2:253:19",
        "2:253:20",
        "2:253:21",
+       "2:253:24",
        "2:253:33",
        "2:253:34",
        "2:253:35",
        "2:253:37",
        "2:253:42",
        "2:253:48",
+       "2:253:49",
        "2:254:1",
        "2:254:2",
        "2:254:4",
@@ -1980,15 +2354,19 @@
      "strict": {
       "device": 736,
       "replay": 736,
-      "matched": 736,
-      "exact": true,
+      "matched": 730,
+      "exact": false,
       "words": 144,
-      "differing_words": []
+      "differing_words": [
+       "2:253:24",
+       "2:253:49",
+       "2:256:2"
+      ]
      },
      "balanced": {
       "device": 736,
       "replay": 736,
-      "matched": 687,
+      "matched": 681,
       "exact": false,
       "words": 144,
       "differing_words": [
@@ -1997,12 +2375,14 @@
        "2:253:18",
        "2:253:19",
        "2:253:20",
+       "2:253:24",
        "2:253:33",
        "2:253:34",
        "2:253:35",
        "2:253:37",
        "2:253:42",
        "2:253:48",
+       "2:253:49",
        "2:254:1",
        "2:254:2",
        "2:254:4",

@@ -17,8 +17,8 @@
 #      downloads the pinned HifzGuide release and verifies its checksum);
 #   3. collect the FollowAlong sources with Muraja's own tools/lib/linux_sources.sh, plus
 #      Data/QuranDatabase.swift, into a scratch directory per binary; the log replay also takes
-#      the analysis sources and tools/replay_log.swift with the reports it calls, the set
-#      tools/run_log_tests.sh compiles;
+#      the analysis sources and tools/replay_log.swift with the reports it calls and, from
+#      Muraja 028bc51 on, tools/replay_session.swift, the set tools/run_log_tests.sh compiles;
 #   4. rename ScoringParameters.forMode to shippedForMode and isSoftMismatch to
 #      shippedIsSoftMismatch in each scratch copy (scoring.swift replaces both); in the log
 #      replay's, drop replay_log.swift's @main (log_replay.swift is the entry point) and point the
@@ -103,9 +103,15 @@ build_binary muraja_harness main.swift
 ANALYSIS="$BUILD/analysis-src"
 mkdir -p "$ANALYSIS"
 collect_analysis_sources "$CHECKOUT/ios" "$ANALYSIS"
-build_binary muraja_log_replay log_replay.swift "$ANALYSIS"/*.swift \
-  "$CHECKOUT/tools/replay_log.swift" "$CHECKOUT/tools/oracle_report.swift" \
-  "$CHECKOUT/tools/frontier_report.swift" "$CHECKOUT/tools/reread_scoreboard.swift"
+REPLAY_TOOLS=("$CHECKOUT/tools/replay_log.swift")
+# From Muraja 028bc51 the replay driver opens its session through tools/replay_session.swift,
+# which the checkout at the earlier pin does not have.
+if [ -f "$CHECKOUT/tools/replay_session.swift" ]; then
+  REPLAY_TOOLS+=("$CHECKOUT/tools/replay_session.swift")
+fi
+REPLAY_TOOLS+=("$CHECKOUT/tools/oracle_report.swift" "$CHECKOUT/tools/frontier_report.swift"
+  "$CHECKOUT/tools/reread_scoreboard.swift")
+build_binary muraja_log_replay log_replay.swift "$ANALYSIS"/*.swift "${REPLAY_TOOLS[@]}"
 
 cat > "$ROOT/harness.json" <<EOF
 {

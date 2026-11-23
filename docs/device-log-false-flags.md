@@ -24,8 +24,13 @@ scored the same way, are in `docs/owner-device-sessions.md` (#153).
   `h448` sessions are excluded because their docs record a slip into another passage. The
   labelled sensitivity *all sessions, slip regions excluded* is the `h448` evidence that remains;
   their flags are also listed at the end. With so few sessions no `h448` rate has an interval.
-- **Parity holds.** Every log's shipped-default replay reproduces its committed `baseline.json` (every word's quality and the final position) at the pin and at `main`.
-- **Muraja `main` (3a49a1c) grades every log as the pin (99c326f) does** under every scoring: the two differ only outside the follow-along engine (voice search).
+- **Parity holds at the pin.** Every log's shipped-default replay reproduces its committed `baseline.json` (every word's quality and the final position) at the pin.
+- **The audit grades at `028bc51`** (Muraja v1.0.28), where the app's
+  grading changed (madd alif, tanween at waqf, stop-pass anchoring, error indexing).
+  All 66 of these logs replay their own baselines at that commit, as all
+  74 of Muraja's logs do (`docs/followalong-audit-parity.md`);
+  15 of them replay differently from the pin under at
+  least one scoring, where those changes reach.
 - **A graded word stands for a recited word.** Explained words (skipped, re-read, never
   recited) are reported both ways.
 
@@ -244,6 +249,30 @@ consonant flags.
 | — fatha dropped | 0 | 0 | 0 | 3 | 3 |
 | — ح↔ه | 1 | 6 | 1 | 1 | 6 |
 | — ق↔ك | 0 | 0 | 0 | 0 | 1 |
+
+## At the audit's commit (`028bc51`): strict and the shipped default
+
+The audit grades with today's app. The frozen pin's numbers above are replayed at the pin
+and unchanged; these are the same included logs at the audit's commit, false flags per
+1,000 graded words with explained words left out:
+
+| group | `strict` | `shipped_default` |
+|---|---|---|
+| `h448` | – | – |
+| the six-chunk teacher | 43 / 2041 · 21.1 [13.9, 32.0] | 33 / 2041 · 16.2 [9.7, 25.9] |
+| the six-chunk teacher, 1 s-hop sessions only | 24 / 1484 · 16.2 [10.3, 25.2] | 15 / 1484 · 10.1 [5.8, 16.4] |
+
+Every word whose kept quality changed between the pins (the quality the engine kept,
+pending and skipped included), by log, word and scoring:
+
+| log | word | scoring | pin → audit |
+|---|---|---|---|
+| `surah12_page236_ayah5_v2` | 12:7:6 | `strict` | `skipped` → `correct` |
+| `surah12_page236_ayah5_v2` | 12:7:6 | `shipped_default` | `skipped` → `correct` |
+| `surah2_page4_session_start_virtual` | 2:22:10 | `strict` | `correct` → `None` |
+| `surah2_page4_session_start_virtual` | 2:22:10 | `shipped_default` | `correct` → `None` |
+| `surah3_page50_ayah24` | 3:26:2 | `strict` | `skipped` → `correct` |
+| `surah3_page50_ayah24` | 3:26:2 | `shipped_default` | `skipped` → `correct` |
 
 ## The unexplained false flags, word by word
 
@@ -806,8 +835,8 @@ Their flagged words:
 ```bash
 # from tools/, on a Mac: build the harness at the pin and at Muraja main, then report
 bash muraja_harness/build.sh
-bash muraja_harness/build.sh 3a49a1c16d3f9391d8b43e51a5270524965237a2
+bash muraja_harness/build.sh 028bc513eeb233caa7240a5c37c423da59f3d9d7
 python -m training.device_logs
 ```
 
-Harness builds: pin `99c326f` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)); main `3a49a1c` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)).
+Harness builds: pin `99c326f` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)); main `028bc51` (Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)).

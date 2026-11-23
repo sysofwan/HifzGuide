@@ -403,13 +403,22 @@ number this work is accountable for. See ADR-0010.
 
 - **`device_logs`** — the #151 false flags in Muraja's own device sessions. Replays every
   non-generated log of Muraja's `tools/test_logs` through Muraja's `tools/replay_log.swift`
-  (`muraja_harness/log_replay.swift`) under every scoring, at the pin and at Muraja `main`,
-  after proving each log reproduces its committed `baseline.json`; attributes each flag with
+  (`muraja_harness/log_replay.swift`) under every scoring, at the pin and at the audit's commit
+  (`muraja_policy.CURRENT_COMMIT`, Muraja v1.0.28), after proving each replay reproduces the
+  `baseline.json` that ships with its own commit; attributes each flag with
   `word_flags`, against the hand-written inventory `device_logs/inventory.json` (model per log,
   exclusions, explained words), and compares with #90's word sample. Adds an `h448` sensitivity
-  over every session with its slip region left out, and the flags each allowance adds alone
-  (each soft pair through the harness's one-pair switch). No log text is written out. On a Mac with the harness built at both commits. Report: `docs/device-log-false-flags.md`
-  (`device_logs_doc`).
+  over every session with its slip region left out, the flags each allowance adds alone
+  (each soft pair through the harness's one-pair switch), and a `current` section: strict and the
+  shipped default at the audit's commit, with every word whose kept grade moved between the pins.
+  No log text is written out. On a Mac with the harness built at both commits. Report:
+  `docs/device-log-false-flags.md` (`device_logs_doc`).
+
+- **`followalong_parity`** — gate P1 of the follow-along audit (#306): all 74 of Muraja's device
+  logs at the audit's commit reproduce their own `baseline.json`, and the owner's three sessions
+  reproduce every device decision at the pin with each 1.0.28 difference explained by a named
+  grading change (a mechanical rule per change; an unexplained difference stops the report).
+  Report: `docs/followalong-audit-parity.md` (`followalong_parity_doc`).
 
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.

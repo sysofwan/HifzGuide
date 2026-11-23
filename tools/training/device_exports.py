@@ -78,7 +78,9 @@ from training.device_logs import (
     position,
 )
 from training.muraja_policy import (
+    AUDIT_SCORINGS,
     CORRECT,
+    CURRENT_COMMIT,
     MURAJA_COMMIT,
     SCORINGS,
     SHIPPED_DEFAULT,
@@ -255,6 +257,27 @@ def parity(device: Sequence[str], replay: Sequence[str]) -> dict:
 
 _COMMIT = re.compile(r"\[ScoreCollector\] Commit (\d+:\d+:\d+) quality=(\w+)")
 _UPGRADED = re.compile(r"\[FollowAlong\] Upgraded: (\d+:\d+:\d+) ")
+
+
+def changed_words(
+    runs: Mapping, entries: Sequence[LogEntry], scorings: Sequence[Scoring]
+) -> list[dict]:
+    """Every word whose kept quality differs between the pin and the audit's commit, under each
+    scoring, from the lengthened-preview replays the rates are read from: a word's ``pin`` and
+    ``current`` are the qualities the engine kept (``None`` when it graded none)."""
+    rows = []
+    for entry in entries:
+        for scoring in scorings:
+            before = runs[("pin", "lengthened")][entry.log][scoring.engine_name]
+            after = runs[("main", "lengthened")][entry.log][scoring.engine_name]
+            for word in sorted(set(before.words) | set(after.words), key=position):
+                was = before.words[word]["quality"] if word in before.words else None
+                now = after.words[word]["quality"] if word in after.words else None
+                if was != now:
+                    rows.append({"session": entry.log, "word": word, "scoring": scoring.name,
+                                 "pin": was, "current": now})
+    rows.sort(key=lambda r: (r["session"], position(r["word"]), [s.name for s in scorings].index(r["scoring"])))
+    return rows
 
 
 def commit_parity(text: str, replay: Replay) -> dict:
@@ -650,6 +673,16 @@ def build_report(paths: Sequence[Path]) -> dict:
     texts = {s.name: s.text for s in targets}
     report151 = json.loads(dl.REPORT_PATH.read_text(encoding="utf-8"))
 
+    current_grades = {e.log: dl.word_grades(e, parity_runs[("main", "lengthened")][e.log],
+                                            AUDIT_SCORINGS, text, commit=CURRENT_COMMIT)
+                      for e in entries}
+    current = {
+        "commit": CURRENT_COMMIT,
+        "scorings": [s.name for s in AUDIT_SCORINGS],
+        "rates": dl.views([g for e in entries for g in current_grades[e.log]], AUDIT_SCORINGS),
+        "changed_words": changed_words(parity_runs, entries, AUDIT_SCORINGS),
+    }
+
     session_rows = []
     for s in sessions:
         row = {"session": s.name, "export": s.export, "whole": s.whole, "copy_of": s.copy_of, "page": s.page,
@@ -698,6 +731,7 @@ def build_report(paths: Sequence[Path]) -> dict:
     catch = catch_side(entries, grades)
     return {
         "muraja": {"pin": MURAJA_COMMIT, "main": dl.MURAJA_MAIN, "builds": builds},
+        "current": current,
         "statements": list(notes.statements.values()),
         "exports": exports,
         "sessions": session_rows,

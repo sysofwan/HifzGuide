@@ -127,12 +127,13 @@ audit's commit.
 ## The changes that explain a difference
 
 Each explanation comes from a mechanical rule in `training/followalong_parity.py`
-(`explain`), one rule per change. A difference no rule explains raises instead of being
-labelled.
+(`explain`), one rule per change, tried in this order: madd alif, tanween at waqf, error
+indexing, stop pass. A word may be touched by more than one change; the label names the
+first rule that matches. A difference no rule explains raises instead of being labelled.
 
-- **madd alif** (`c4f3a98`) — a gap on an alif is a shortened madd, not a missing letter: it adds no deletion error and does not trip the phoneme gate (`ios/HifzGuide/FollowAlong/QuranFollowAlong+WordScoring.swift:696-703`, the `.gap` case). A word's decision differs here when the pin counted more gaps than the audit's commit.
-- **tanween at waqf** (`b052c26`) — the reference trims the trailing nun of a tanween at a pause, read from the printed word's tanween mark (`PhonemeIndex.swift:94-103`), so a reader who stopped there is not graded as missing it (`QuranFollowAlong+WordScoring.swift:93-110`). The decision differs here when the word's coverage rose and the printed word carries a tanween.
-- **stop pass** (`f06530c`, `baf4726`) — the stop's decode replaces the last preview and the pass is anchored at the confirmed cursor, so the words the final flush regrades can keep a different score. The decision differs here when every logged check's decision for the word is identical and only the settled status moved.
+- **madd alif** (`c4f3a98`) — a gap on an alif is a shortened madd, not a missing letter: it adds no deletion error and does not trip the phoneme gate (`ios/HifzGuide/FollowAlong/QuranFollowAlong+WordScoring.swift:696-703`, the `.gap` case). A word's decision differs here when the pin counted more gaps than the audit's commit, every other counted field of its grade line held, the dropped count does not exceed the word's alif units, and any deletion the pin recorded at the word is of an alif. The grade line counts gaps, not where they fell, so the alif test is a bound on the explanation, not a proof of each gap's position.
+- **tanween at waqf** (`b052c26`) — the reference trims the trailing nun of a tanween at a pause, read from the printed word's tanween mark (`PhonemeIndex.swift:94-103`), so a reader who stopped there is not graded as missing it (`QuranFollowAlong+WordScoring.swift:93-110`). The decision differs here when the word's coverage rose, the printed word carries a tanween and a trailing nun, and the reader stopped there: the word carries a waqf sign (U+06D6-U+06DB) or is the ayah's last.
+- **stop pass** (`f06530c`, `baf4726`) — the stop's decode replaces the last preview and the pass is anchored at the confirmed cursor, so the words the final flush regrades can keep a different score. The decision differs here when every logged check's decision for the word is identical, its errors held unchanged, and only the settled status moved. A word with no grade line, or with errors that moved and no rule above names, raises.
 - **error indexing** (`e0b8b18`) — `WordError.groupIndex` is the word's `phoneme_groups` row, one error per row, where the pin used the scorer's own group numbering. The decision differs here when re-reading the pin's errors at their rows (and collapsing the rows' duplicates) gives the audit commit's errors.
 
 ## Re-running

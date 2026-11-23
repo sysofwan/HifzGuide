@@ -46,6 +46,8 @@ _FIELD = {"cov": r"cov=([\d.]+)", "gap": r"gap=(\d+)"}
 #: The tanween marks Muraja's ``wordHasTanween`` reads (``PhonemeIndex.swift:94-103``):
 #: U+064B-U+064D and U+08F0-U+08F2.
 _TANWEEN = frozenset(range(0x064B, 0x064E)) | frozenset(range(0x08F0, 0x08F3))
+#: The waqf (pause) signs a printed word may end with (``PhonemeIndex.swift:88-91``): U+06D6-U+06DB.
+_WAQF = frozenset(range(0x06D6, 0x06DC))
 
 
 def grade_lines(replay) -> list[str]:
@@ -112,8 +114,11 @@ def explain(
     """The 1.0.28 change that explains why ``word``'s decision differs, by a mechanical rule per
     change; a difference none of them explains stops the report."""
     surah, ayah, index = device.position(word)
-    phonemes = text.phonemes(surah, ayah).split(" ")[index - 1]
+    words = text.phonemes(surah, ayah).split(" ")
+    phonemes = words[index - 1]
     rows = text.word_rows(surah, ayah, index)
+    printed = text.printed(surah, ayah, index)
+    pin_errors = (pin or {}).get("errors", ())
     pin_gap = max(_field(pin_lines, "gap"), default=0)
     current_gap = max(_field(current_lines, "gap"), default=0)
     dropped = pin_gap - current_gap
@@ -121,18 +126,29 @@ def explain(
     # Tried in this order: the stop pass only says nothing else moved, so a rule that names the
     # moved field goes first and keeps its word even when the stop pass could also claim it.
     matched = {
-        # c4f3a98: a gap on an alif is a shortened madd, no deletion error and no gate trip
+        # c4f3a98: a gap on an alif is a shortened madd, no deletion error and no gate trip. The
+        # grade line counts gaps, not where they fell, so the alif bound is the strongest check
+        # available; a deletion the pin did record must be of an alif for this to explain it.
         "madd_alif": (dropped > 0 and _alifs(phonemes) >= dropped
+                      and all(error["kind"].get("expected") == "ا"
+                              for error in pin_errors if error["kind"]["type"] == "deletion")
                       and _without(pin_lines, "gap") == _without(current_lines, "gap")),
-        # b052c26: the reference trims a trailing nun of a tanween at a pause
+        # b052c26: the reference trims a trailing nun of a tanween at a pause, only where the
+        # reader stopped (``QuranFollowAlong+WordScoring.swift:447-456``): the word carries a
+        # waqf sign or is the ayah's last.
         "tanween_at_waqf": (max(_field(current_lines, "cov"), default=0) > max(_field(pin_lines, "cov"), default=0)
                             and bool(last_row) and last_row[0][0] in "نں"
-                            and any(ord(char) in _TANWEEN for char in text.printed(surah, ayah, index))),
+                            and any(ord(char) in _TANWEEN for char in text.printed(surah, ayah, index))
+                            and (index == len(words)
+                                 or any(ord(char) in _WAQF for char in text.printed(surah, ayah, index)))),
         # e0b8b18: WordError.groupIndex is the phoneme_groups row, one error per row
-        "error_indexing": _row_indexed((pin or {}).get("errors", ()), (current or {}).get("errors", ()),
-                                       phonemes, rows),
-        # f06530c, baf4726: the stop pass regrades the words it reaches after the last check
-        "stop_pass": list(pin_lines) == list(current_lines),
+        "error_indexing": _row_indexed(pin_errors, (current or {}).get("errors", ()), phonemes, rows),
+        # f06530c, baf4726: the stop pass regrades the words it reaches after the last check. Its
+        # evidence is that the logged decisions and the errors held and only the settled
+        # score/quality moved: no line at all, or errors this word's change does not explain,
+        # raise instead.
+        "stop_pass": (bool(pin_lines) and list(pin_lines) == list(current_lines)
+                      and pin_errors == (current or {}).get("errors", ())),
     }
     for name, applies in matched.items():
         if applies:

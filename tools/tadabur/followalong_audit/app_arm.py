@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import gzip
 import json
-import os
+import shutil
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -28,7 +28,8 @@ from pathlib import Path
 
 from tadabur.followalong_audit import tracer
 from tadabur.followalong_audit.app_run import determinism_keys, run_clips, word_grade_rows
-from tadabur.followalong_audit.clips import verify_wav, wav_samples
+from tadabur.followalong_audit.atomic import write_bytes_atomically, write_text_atomically
+from tadabur.followalong_audit.clips import verify_wav
 from tadabur.followalong_audit.fetch import read_manifest
 from tadabur.followalong_audit.session import session_request
 from training.muraja_policy import (
@@ -38,6 +39,7 @@ from training.muraja_policy import (
     Harness,
     MurajaText,
     SiteGrade,
+    displayed,
     word_traces,
 )
 from training.nonpro_decode import item_key
@@ -69,7 +71,6 @@ class AppArm:
         key = item_key(clip["audio_path"])
         surah, ayah = (int(part) for part in clip["filename_label"].split(":"))
         wav = Path(self.wav_dir) / f"{clip['audio_sha256']}.wav"
-        wav_samples(wav)
         verify_wav(wav, _manifest(str(self.wav_manifest_path)).get(clip["audio_sha256"]))
         text = _text(str(self.quran_db))
         word_count = len(text.phonemes(surah, ayah).split(" "))
@@ -84,11 +85,18 @@ class AppArm:
 
 
 def causes_of(text: MurajaText, surah: int, ayah: int) -> Callable[[Mapping], Sequence[str]]:
-    """Read a trace row's flag causes with :func:`training.word_flags.flag`'s rule."""
+    """Read a trace row's flag causes with :func:`training.word_flags.flag`'s rule.
+
+    The grade the rule sees is the quality **as that scoring displays it** — the same
+    :func:`training.muraja_policy.displayed` the engine's own outcome uses — so a scoring that
+    hides tashkeel errors cannot be attributed causes from a grade it never showed.
+    """
     phonemes = text.phonemes(surah, ayah).split(" ")
+    scorings = {scoring.name: scoring for scoring in AUDIT_SCORINGS}
 
     def causes(trace: Mapping) -> Sequence[str]:
-        grade = SiteGrade(FLAGGED, trace["quality"], tuple(trace["errors"]))
+        shown = displayed(trace["quality"], scorings[trace["scoring"]])
+        grade = SiteGrade(FLAGGED, shown, tuple(trace["errors"]))
         return flag(grade, phonemes[trace["word"] - 1]).causes
 
     return causes
@@ -115,12 +123,9 @@ def _text(quran_db: str) -> MurajaText:
 
 def _write_traces(traces_dir: Path, audio_sha256: str, traces: Sequence[Mapping]) -> None:
     """A subset clip's full per-check traces, one JSON line per word per scoring."""
-    traces_dir.mkdir(parents=True, exist_ok=True)
-    path = traces_dir / f"{audio_sha256}.jsonl"
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_text("".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
-                                 for row in traces), encoding="utf-8")
-    os.replace(temporary, path)
+    write_text_atomically(traces_dir / f"{audio_sha256}.jsonl",
+                          "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+                                  for row in traces))
 
 
 # --- the run's tables ---------------------------------------------------------------------------
@@ -134,9 +139,7 @@ def grades_from_results(results: Sequence[Mapping]) -> list[dict]:
 def write_grades(rows: Sequence[Mapping], path: Path) -> None:
     """``word_grades.jsonl.gz``, in #300's style: sorted keys, fixed mtime, byte-identical."""
     body = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(gzip.compress(body.encode("utf-8"), mtime=0))
+    write_bytes_atomically(Path(path), gzip.compress(body.encode("utf-8"), mtime=0))
 
 
 def read_grades(path: Path) -> list[dict]:
@@ -170,10 +173,8 @@ def clip_run_rows(clips: Sequence[Mapping], results: Sequence[Mapping]) -> list[
 
 def write_jsonl(rows: Sequence[Mapping], path: Path) -> None:
     """One sorted-key JSON object per line."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
-                            for row in rows), encoding="utf-8")
+    write_text_atomically(Path(path), "".join(json.dumps(row, ensure_ascii=False, sort_keys=True)
+                                              + "\n" for row in rows))
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -191,11 +192,15 @@ def determinism_report(clips: Sequence[Mapping], arm: AppArm, out_root: Path, *,
 
     The comparison is the whole per-clip result (the graded rows), which is byte-identical only
     if the driver's checks and the engine's grading both are. Clips whose runs differ are listed
-    by item, never smoothed over.
+    by item, never smoothed over. Both directories are cleared first: a resumable cache would
+    otherwise answer the second check from the first invocation's results and "agree" with
+    itself, so a determinism rerun after a failure would prove nothing.
     """
     keys = determinism_keys(clips, size, seed=seed)
     subset = [clip for clip in clips if item_key(clip["audio_path"]) in keys]
     out_root = Path(out_root)
+    for name in ("run1", "run2"):
+        shutil.rmtree(out_root / name, ignore_errors=True)
     first = run_clips(subset, arm, out_root / "run1", workers=workers)
     second = run_clips(subset, arm, out_root / "run2", workers=workers)
     differing = [left["item"] for left, right in zip(first, second) if left != right]

@@ -61,8 +61,7 @@ def _outcomes(rows: Sequence[Mapping], scoring: str) -> dict[tuple[str, int], st
 
 #: The latency settings the App arm is run at for P3: the no-latency floor and a slow device.
 P3_LATENCIES = (0, 130)
-#: The seeded clip subset P3 runs on (the issue's 500 clips).
-P3_CLIPS = 500
+#: The seed the P3 subset is drawn under (the issue's 500-clip subset; ``app-run --size 500``).
 P3_SEED = 309
 
 
@@ -96,14 +95,26 @@ def owner_ratios(paths: Sequence[Path], notes) -> dict[str, float | None]:
 def p3_section(zero: Sequence[Mapping], other: Sequence[Mapping], *,
                device_ratios: Mapping[str, float | None],
                latencies: Sequence[int] = P3_LATENCIES,
-               clips: int = P3_CLIPS) -> dict:
-    """The P3 readout: the device ratios and the two latency runs' changed outcomes."""
+               seed: int | None = None) -> dict:
+    """The P3 readout: the device ratios and the two latency runs' changed outcomes.
+
+    A clip one latency run failed has no rows, so it is left out of the comparison and listed in
+    ``skipped`` rather than aborting the report; ``cadence_report`` itself still refuses two runs
+    whose word sets differ, since comparing a subset silently would read better than it is.
+    """
     from training.muraja_policy import AUDIT_SCORINGS
 
+    zero_items = {row["item"] for row in zero}
+    other_items = {row["item"] for row in other}
+    common = zero_items & other_items
+    zero = [row for row in zero if row["item"] in common]
+    other = [row for row in other if row["item"] in common]
     return {
         "device_ratios": dict(sorted(device_ratios.items())),
         "latencies_ms": list(latencies),
-        "clips": clips,
+        "clips": len(common),
+        "seed": seed,
+        "skipped": sorted(zero_items ^ other_items),
         "cadence": {scoring.name: cadence_report(zero, other, scoring.name)
                     for scoring in AUDIT_SCORINGS},
     }

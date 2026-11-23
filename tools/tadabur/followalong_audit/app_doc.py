@@ -11,10 +11,10 @@ silent divergence.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from tadabur.followalong_audit.atomic import write_text_atomically
 from training.word_flags import CAUSES
 
 #: Where the run's summary and the doc it renders live.
@@ -46,12 +46,15 @@ def render(summary: Mapping) -> str:
         "`python -m tadabur.followalong_audit report`; never edited by hand.",
         "",
     ]
+    run = summary.get("run")
     lines += _population(summary["population"])
-    lines += _rates(summary["rates"])
+    lines += _run_identity(run)
+    lines += _rates(summary["rates"], run)
     lines += _oracle(summary.get("oracle"))
     lines += _p2(summary["p2"])
     lines += _p3(summary["p3"])
-    lines += _pools(summary["pools"], summary["s1_by_cause_and_base"])
+    lines += _pools(summary["pools"], summary["s1_by_cause_and_base"],
+                    summary.get("catch_loss"))
     return "\n".join(_trim(lines)) + "\n"
 
 
@@ -71,11 +74,32 @@ def _population(population: Mapping) -> list[str]:
     return [*lines, ""]
 
 
-def _rates(rates: Mapping) -> list[str]:
+def _run_identity(run: Mapping | None) -> list[str]:
+    """What produced the numbers: weights, engine, latency, seeds and the tables' digests."""
+    if run is None:
+        return []
+    harness = run.get("harness") or {}
+    seeds = run.get("seeds") or {}
+    return [
+        "## Run identity",
+        "",
+        f"- Muraja harness commit `{run['muraja_commit']}`; assets release `{run['release']}`.",
+        f"- App-arm latency {run['latency_ms']} ms per inference; P2 seed {seeds.get('p2')};"
+        f" P3 seed {seeds.get('p3')}.",
+        f"- Driver sha256 `{run['driver_sha256']}`; harness binary sha256"
+        f" `{harness.get('binary_sha256', '—')}`.",
+        f"- `audio_manifest.jsonl.gz` sha256 `{run['audio_manifest_sha256']}`;"
+        f" `word_grades.jsonl.gz` sha256 `{run['word_grades_sha256']}`.",
+        "",
+    ]
+
+
+def _rates(rates: Mapping, run: Mapping | None = None) -> list[str]:
+    latency = f" at {run['latency_ms']} ms per inference" if run is not None else ""
     lines = [
         "## Flags per 1,000 graded words",
         "",
-        "The App arm ran the app's own CoreML decoder at 40 ms per inference; **strict** is"
+        f"The App arm ran the app's own CoreML decoder{latency}; **strict** is"
         " Muraja's strict mode, **balanced** its shipped default. The denominator is the graded"
         " words (an ungraded word is stratum S5, not a pass); each interval resamples whole clips.",
         "",
@@ -133,11 +157,18 @@ def _p2(p2: Mapping) -> list[str]:
                 if entry["app"] == "flagged" and entry["pytorch"] != "flagged"]
     torch_only = [entry for entry in disagreements
                   if entry["app"] != "flagged" and entry["pytorch"] == "flagged"]
-    lines += ["", f"Disagreeing words: {len(disagreements)}.",
+    presence = [entry for entry in disagreements
+                if (entry["app"] == "ungraded") != (entry["pytorch"] == "ungraded")]
+    lines += ["", f"Disagreeing words: {len(disagreements)} (the table below is exhaustive).",
               f"- the App arm flags what PyTorch passes: {len(app_only)}",
               f"- PyTorch flags what the App arm passes: {len(torch_only)}"
               + (" — the App arm's flag is below the PyTorch decode at these words."
-                 if torch_only else "")]
+                 if torch_only else ""),
+              f"- graded on one side only (ungraded against a grade): {len(presence)}"]
+    skipped = p2.get("skipped") or []
+    if skipped:
+        lines += ["", f"Skipped (no word table): {len(skipped)} clip(s): "
+                      + ", ".join(skipped[:20]) + ("…" if len(skipped) > 20 else "") + "."]
     if disagreements:
         lines += ["", "| item | word | App arm | PyTorch |", "| --- | ---: | --- | --- |"]
         lines += [f"| {entry['item']} | {entry['word']} | {entry['app']} | {entry['pytorch']} |"
@@ -152,7 +183,10 @@ def _p3(p3: Mapping) -> list[str]:
         ratio = p3["device_ratios"][log]
         lines.append(f"| {log} | {'—' if ratio is None else f'{ratio:.2f}'} |")
     latencies = ", ".join(f"{value} ms" for value in p3["latencies_ms"])
-    lines += ["", f"The App arm ran at {latencies} per inference on {p3['clips']:,} clips.", "",
+    clips = f"{p3['clips']:,} clips"
+    if p3.get("seed") is not None:
+        clips += f" (seed {p3['seed']})"
+    lines += ["", f"The App arm ran at {latencies} per inference on {clips}.", "",
               "| scoring | words | changed | share |", "| --- | ---: | ---: | ---: |"]
     for scoring, label in SCORING_LABELS.items():
         report = p3["cadence"][scoring]
@@ -167,10 +201,15 @@ def _p3(p3: Mapping) -> list[str]:
     else:
         lines.append("No scoring changes more than 2% of word outcomes between the latency"
                      " settings.")
+    skipped = p3.get("skipped") or []
+    if skipped:
+        lines += ["", f"Skipped (no rows in one latency run): {len(skipped)} clip(s): "
+                      + ", ".join(skipped[:20]) + ("…" if len(skipped) > 20 else "") + "."]
     return [*lines, ""]
 
 
-def _pools(pools: Mapping, s1: Sequence[Mapping]) -> list[str]:
+def _pools(pools: Mapping, s1: Sequence[Mapping],
+           catch_loss: Mapping | None = None) -> list[str]:
     lines = ["## Candidate strata", "",
              "| stratum | words | catch-loss words |", "| --- | ---: | ---: |"]
     for stratum in sorted(pools["strata"]):
@@ -182,6 +221,11 @@ def _pools(pools: Mapping, s1: Sequence[Mapping]) -> list[str]:
               "| cause | base detector flags | words |", "| --- | --- | ---: |"]
     lines += [f"| {entry['cause']} | {entry['base_flags']} | {entry['words']:,} |"
               for entry in s1]
+    if catch_loss is not None:
+        lines += ["", f"Round 2's catch-loss worklist (A5b) marks {catch_loss['marked']} words;"
+                      f" {catch_loss['matched']} of them are in this population. The worklist's"
+                      " words are look-tranche rows, so a confirm.1/confirm.2 population can"
+                      " match none."]
     return [*lines, ""]
 
 
@@ -209,6 +253,4 @@ def write_doc(summary: Mapping, path: Path = DOC_PATH) -> None:
 
 
 def _write(path: Path, text: str) -> None:
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(text, encoding="utf-8")
-    os.replace(temporary, path)
+    write_text_atomically(path, text)

@@ -61,29 +61,35 @@ P2_CLIPS = 200
 P2_SEED = 319
 
 
-def p2_section(population, app_grades, *, harness, source: str = R3_SOURCE,
+def p2_section(population, app_grades, *, harness,
                subset_size: int = P2_CLIPS, seed: int = P2_SEED,
-               all_clips: bool = False) -> dict:
+               all_clips: bool = False, failed: Sequence[str] = ()) -> dict:
     """The P2 readout: the App arm against the committed PyTorch decode, word by word.
 
     The commit decision reuses the committed decode instead of spending GPU hours re-deriving
     the same weights: v1.0.7 ships the round-3 candidate EMA, so the two sides differ in the
     decoder (CoreML 6-bit against PyTorch), not in the weights. The bar is read on the seeded
-    subset; ``all_clips`` adds the whole-population agreement as the secondary line.
+    subset of the **graded** clips; ``all_clips`` adds the whole-population agreement as the
+    secondary line. A clip the App run failed has no word table, so it is left out of the draw
+    and listed in ``skipped`` instead of aborting the report.
     """
     from tadabur.followalong_audit.clips import draw_clips
-    from tadabur.followalong_audit.pinned import pinned_records
+    from tadabur.tlog_mining.candidate_inventory import GATING, R3, load_decodes
     from training.nonpro_decode import item_key
 
-    checks = {record["key"]: record["checks"] for record in pinned_records(source)}
-    chosen = draw_clips(population, subset_size, seed=seed)
+    checks = load_decodes()[GATING][R3]
+    graded = {row["item"] for row in app_grades}
+    clip_of = {item_key(clip["audio_path"]): clip for clip in population}
+    available = [clip_of[key] for key in clip_of if key in graded]
+    chosen = draw_clips(available, subset_size, seed=seed)
     keys = {item_key(clip["audio_path"]) for clip in chosen}
     subset = agreement([row for row in app_grades if row["item"] in keys],
                        grade_checked_clips(chosen, checks, harness))
-    everything = (agreement(app_grades, grade_checked_clips(population, checks, harness))
+    everything = (agreement(app_grades, grade_checked_clips(available, checks, harness))
                   if all_clips else None)
-    return {"bar": P2_BAR, "verdict": bridge_verdict(subset["rate"]), "source": source,
-            "seed": seed, "subset_clips": len(chosen), "subset": subset, "all": everything}
+    return {"bar": P2_BAR, "verdict": bridge_verdict(subset["rate"]), "source": R3_SOURCE,
+            "seed": seed, "subset_clips": len(chosen), "graded_clips": len(available),
+            "skipped": sorted(set(failed) & set(clip_of)), "subset": subset, "all": everything}
 
 
 def grade_checked_clips(clips, checks, harness) -> list[dict]:

@@ -16,13 +16,13 @@ another's; ``run_one`` must then be picklable.
 from __future__ import annotations
 
 import json
-import os
 import random
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from training.muraja_policy import AUDIT_SCORINGS, CORRECT, PENDING
+from tadabur.followalong_audit.atomic import write_text_atomically
+from training.muraja_policy import AUDIT_SCORINGS, CORRECT, PENDING, Scoring, displayed
 
 
 def word_grade_rows(item: str, word_count: int, traces: Sequence[Mapping],
@@ -47,17 +47,22 @@ def word_grade_rows(item: str, word_count: int, traces: Sequence[Mapping],
     for word in range(1, word_count + 1):
         row = {"item": item, "word": word}
         for scoring in AUDIT_SCORINGS:
-            row[scoring.name] = _cell(by_word.get((scoring.name, word)), causes_of)
+            row[scoring.name] = _cell(by_word.get((scoring.name, word)), scoring, causes_of)
         rows.append(row)
     return rows
 
 
-def _cell(trace: Mapping | None,
+def _cell(trace: Mapping | None, scoring: Scoring,
           causes_of: Callable[[Mapping], Sequence[str]]) -> dict:
-    """One scoring's outcome for one word: ungraded, graded and passed, or graded and flagged."""
+    """One scoring's outcome for one word: ungraded, graded and passed, or graded and flagged.
+
+    "Flagged" is read the engine's way, through :func:`training.muraja_policy.displayed`: the
+    quality as this scoring shows it, so a scoring that hides tashkeel errors or runs lenient is
+    graded by its own rule instead of by ``quality != correct``.
+    """
     if trace is None or trace["quality"] == PENDING:
         return {"graded": False, "flagged": False, "causes": []}
-    if trace["quality"] == CORRECT:
+    if displayed(trace["quality"], scoring) == CORRECT:
         return {"graded": True, "flagged": False, "causes": []}
     return {"graded": True, "flagged": True, "causes": list(causes_of(trace))}
 
@@ -73,10 +78,7 @@ def _cache_path(out_dir: Path, clip: Mapping) -> Path:
 
 
 def _write_result(path: Path, result: Mapping) -> None:
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n",
-                         encoding="utf-8")
-    os.replace(temporary, path)
+    write_text_atomically(path, json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 def _run_cached(job: tuple[dict, Callable, str]) -> dict:
@@ -102,11 +104,40 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
     return result
 
 
+#: The run-identity record's name: what a cache directory was produced by.
+IDENTITY_NAME = "run_identity.json"
+
+
+def check_identity(out_dir: Path, identity: Mapping | None) -> None:
+    """Refuse a cache directory that a run with another identity already filled.
+
+    A cache keyed by the clip alone would silently answer a 130 ms run from a 40 ms one, a new
+    harness or new assets; the identity record makes the directory belong to exactly one
+    configuration, so the P3 comparison cannot read identical rows from both sides.
+    """
+    if identity is None:
+        return
+    path = Path(out_dir) / IDENTITY_NAME
+    identity = dict(identity)
+    if path.is_file():
+        found = json.loads(path.read_text(encoding="utf-8"))
+        if found != identity:
+            differing = sorted(key for key in set(found) | set(identity)
+                               if found.get(key) != identity.get(key))
+            raise ValueError(f"{out_dir} holds another run's results ({', '.join(differing)}): "
+                             "give each configuration its own --out directory")
+        return
+    write_text_atomically(path, json.dumps(identity, ensure_ascii=False, indent=2,
+                                           sort_keys=True) + "\n")
+
+
 def run_clips(clips: Sequence[Mapping], run_one: Callable[[Mapping], list[dict]],
-              out_dir: Path, *, workers: int = 1) -> list[dict]:
+              out_dir: Path, *, workers: int = 1,
+              identity: Mapping | None = None) -> list[dict]:
     """Run every clip, in the input's order, keeping each finished result under ``out_dir``."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    check_identity(out_dir, identity)
     jobs = [(clip, run_one, str(out_dir)) for clip in clips]
     if workers > 1:
         with ProcessPoolExecutor(max_workers=workers) as pool:

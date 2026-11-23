@@ -22,12 +22,19 @@ S3's App arm over the whole population:
     # the App arm at 40 ms, resumable and parallel, then the committed tables
     python -m tadabur.followalong_audit app-run --out <scratch>/app40 --wav-dir <scratch>/wav \
         --assets-dir <release v1.0.7 cache> --manifest <manifest.json> --workers 4
-    python -m tadabur.followalong_audit app-run --out <scratch>/app0 --latency-ms 0 ... \
-        --grades-out tadabur/followalong_audit/app_arm/word_grades.0ms.jsonl.gz
 
-    # determinism on the seeded subset, the detectors' strata, then the summary and doc
+    # P3 at 0 ms and 130 ms on one seeded 500-clip subset (the same --size/--seed both times)
+    python -m tadabur.followalong_audit app-run --out <scratch>/app0 --size 500 --seed 309 \
+        --latency-ms 0 ... --grades-out tadabur/followalong_audit/app_arm/word_grades.0ms.jsonl.gz \
+        --traces-dir tadabur/followalong_audit/app_arm/traces/p3_0
+    python -m tadabur.followalong_audit app-run --out <scratch>/app130 --size 500 --seed 309 \
+        --latency-ms 130 ... --grades-out .../word_grades.130ms.jsonl.gz --traces-dir ...
+
+    # determinism on the seeded subset, the detectors' strata, then the summary and doc.
+    # Each cache directory records its identity (latency, weights, harness, driver, audio and
+    # clip set) and refuses a run that would reuse another configuration's results.
     python -m tadabur.followalong_audit determinism --out-root <scratch>/determinism ...
-    python -m tadabur.followalong_audit strata
+    python -m tadabur.followalong_audit strata            # S2: add --oracle <word table>
     python -m tadabur.followalong_audit report
 
 The WAVs are named ``<audio_sha256>.wav`` and live outside the repo; the run writes only decode
@@ -102,6 +109,12 @@ def main() -> int:
                          help="the resumable run's per-clip result cache")
     app_run.add_argument("--workers", type=int, default=1)
     app_run.add_argument("--latency-ms", type=int, default=DEVICE_LATENCY_MS)
+    app_run.add_argument("--clips", type=Path,
+                         help="grade this clip list instead of the whole population")
+    app_run.add_argument("--size", type=int,
+                         help="grade a seeded draw of this many clips (P3's 500-clip subset)")
+    app_run.add_argument("--seed", type=int, default=_p3_seed(),
+                         help="the draw's seed (default: P3's)")
     app_run.add_argument("--grades-out", type=Path,
                          help="the committed word table (default: the run directory's)")
     app_run.add_argument("--clip-runs-out", type=Path,
@@ -119,6 +132,10 @@ def main() -> int:
 
     strata = commands.add_parser("strata", help="re-grade the detectors and size the pools")
     strata.add_argument("--grades", type=Path, default=_app_arm("word_grades.jsonl.gz"))
+    strata.add_argument("--clip-runs", type=Path, default=_app_arm("clip_runs.jsonl"),
+                        help="the run's per-clip table: its failures are excluded, not S5")
+    strata.add_argument("--oracle", type=Path,
+                        help="S2's word table, when #308 has run (same shape as --grades)")
     strata.add_argument("--pools-out", type=Path, default=_app_arm("pools.json"))
 
     report = commands.add_parser("report", help="write the summary and the generated doc")
@@ -129,8 +146,10 @@ def main() -> int:
     report.add_argument("--p3-130", type=Path, default=_app_arm("word_grades.130ms.jsonl.gz"))
     report.add_argument("--exports-dir", type=Path, default=Path.home() / "Downloads")
     report.add_argument("--oracle", type=Path, help="S2's oracle summary, when #308 has run")
-    report.add_argument("--p2-clips", type=int, default=200)
-    report.add_argument("--p2-seed", type=int, default=319)
+    report.add_argument("--p2-clips", type=int, default=_p2_clips())
+    report.add_argument("--p2-seed", type=int, default=_p2_seed())
+    report.add_argument("--p3-seed", type=int, default=_p3_seed())
+    report.add_argument("--latency-ms", type=int, default=DEVICE_LATENCY_MS)
     report.add_argument("--no-all-clips", action="store_true",
                         help="skip the whole-population P2 agreement (default: report it)")
     report.add_argument("--summary-out", type=Path, default=_app_arm("summary.json"))
@@ -162,6 +181,24 @@ def _assets_arguments(command: argparse.ArgumentParser) -> None:
                          help="where to expand the verified release (default: ~/.cache)")
 
 
+def _p2_clips() -> int:
+    from tadabur.followalong_audit.bridge import P2_CLIPS
+
+    return P2_CLIPS
+
+
+def _p2_seed() -> int:
+    from tadabur.followalong_audit.bridge import P2_SEED
+
+    return P2_SEED
+
+
+def _p3_seed() -> int:
+    from tadabur.followalong_audit.cadence import P3_SEED
+
+    return P3_SEED
+
+
 def _app_arm(name: str) -> Path:
     from tadabur.followalong_audit.app_doc import APP_ARM_DIR
 
@@ -176,6 +213,70 @@ def _doc_path() -> Path:
 
 def _wav_manifest_path(args) -> Path:
     return args.wav_manifest or (args.wav_dir / "wav_sha256.json")
+
+
+def _selected_clips(args) -> list[dict]:
+    """The clips an App-arm run grades: the whole population, a named list, or a seeded draw."""
+    clips = app_arm_rows()
+    if getattr(args, "clips", None) is not None:
+        return read_clips(args.clips)
+    if getattr(args, "size", None) is not None:
+        return draw_clips(clips, args.size, seed=args.seed)
+    return clips
+
+
+def _clips_sha256(clips) -> str:
+    """A digest of the clip set a cache directory was filled from, order-independent."""
+    import hashlib
+
+    from training.nonpro_decode import item_key
+
+    body = "\n".join(sorted(item_key(clip["audio_path"]) for clip in clips)) + "\n"
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _run_identity(args, staged, driver, harness, clips) -> dict:
+    """What a run cache directory belongs to: weights, engine, driver, audio and clips."""
+    from tadabur.tlog_index import sha256_file
+    from training.muraja_policy import CURRENT_COMMIT
+
+    return {
+        "version": 1,
+        "latency_ms": args.latency_ms,
+        "release": RELEASE,
+        "model_sha256": staged.model_sha256,
+        "muraja_commit": CURRENT_COMMIT,
+        "harness_build": json.dumps(harness.build, sort_keys=True),
+        "driver_sha256": sha256_file(Path(driver)),
+        "wav_manifest_sha256": sha256_file(_wav_manifest_path(args)),
+        "clips_sha256": _clips_sha256(clips),
+    }
+
+
+def _failed_items(path: Path) -> set[str]:
+    """The items an App-arm run recorded a failure for (its per-clip table)."""
+    from tadabur.followalong_audit.app_arm import read_jsonl
+
+    return {row["item"] for row in read_jsonl(path) if row["failure"] is not None}
+
+
+def _report_run(args, harness) -> dict:
+    """The summary's run block: the identity every number in the doc hangs from."""
+    from tadabur.followalong_audit.provenance import PROVENANCE_PATH
+    from tadabur.tlog_index import sha256_file
+    from training.aug_readout_gate import harness_identity
+    from training.muraja_policy import CURRENT_COMMIT
+
+    return {
+        "muraja_commit": CURRENT_COMMIT,
+        "harness": harness_identity(harness),
+        "release": RELEASE,
+        "latency_ms": args.latency_ms,
+        "seeds": {"p2": args.p2_seed, "p3": args.p3_seed},
+        "driver_sha256": sha256_file(driver_path()),
+        "audio_manifest_sha256": sha256_file(PROVENANCE_PATH),
+        "word_grades_sha256": sha256_file(args.grades),
+    }
 
 
 def _staged(args):
@@ -247,11 +348,12 @@ def _app_run(args) -> int:
     from tadabur.followalong_audit.app_run import require_accounted, run_clips
 
     staged, driver, harness = _staged(args)
-    clips = app_arm_rows()
+    clips = _selected_clips(args)
     arm = AppArm(driver=driver, assets_dir=staged.directory, wav_dir=args.wav_dir,
                  wav_manifest_path=_wav_manifest_path(args), quran_db=harness.quran_db,
                  latency_ms=args.latency_ms, traces_dir=args.traces_dir)
-    results = run_clips(clips, arm, args.out, workers=args.workers)
+    results = run_clips(clips, arm, args.out, workers=args.workers,
+                        identity=_run_identity(args, staged, driver, harness, clips))
     require_accounted(clips, results)
     rows = grades_from_results(results)
     grades_out = args.grades_out or Path(args.out) / f"word_grades.{args.latency_ms}ms.jsonl.gz"
@@ -259,7 +361,8 @@ def _app_run(args) -> int:
     clip_runs_out = args.clip_runs_out or Path(args.out) / "clip_runs.jsonl"
     write_jsonl(clip_run_rows(clips, results), clip_runs_out)
     failed = sum(1 for result in results if result["failure"] is not None)
-    print(json.dumps({"clips": len(clips), "failed": failed, "words": len(rows),
+    print(json.dumps({"clips": len(clips), "size": args.size, "seed": args.seed,
+                      "failed": failed, "words": len(rows),
                       "grades": str(grades_out), "clip_runs": str(clip_runs_out)},
                      sort_keys=True))
     return 0 if not failed else 1
@@ -282,10 +385,12 @@ def _determinism(args) -> int:
 
 
 def _strata(args) -> int:
-    from tadabur.followalong_audit.app_arm import read_grades
+    from tadabur.followalong_audit.app_arm import read_grades, read_jsonl
     from tadabur.followalong_audit.strata_run import candidate_pools, write_pools
 
-    pools = candidate_pools(app_arm_rows(), read_grades(args.grades))
+    oracle = read_grades(args.oracle) if args.oracle is not None else None
+    pools = candidate_pools(app_arm_rows(), read_grades(args.grades), oracle=oracle,
+                            failed=_failed_items(args.clip_runs))
     write_pools(pools, args.pools_out)
     print(json.dumps({"clips": pools["clips"], "words": pools["words"],
                       "pools": pools["pools"], "catch_loss": pools["catch_loss"]},
@@ -303,23 +408,25 @@ def _report(args) -> int:
     from training.muraja_policy import CURRENT_COMMIT, MurajaText, require_harness
 
     population = app_arm_rows()
+    clip_runs = read_jsonl(args.clip_runs)
     failed = [{"item": row["item"], "reason": row["failure"]}
-              for row in read_jsonl(args.clip_runs) if row["failure"] is not None]
+              for row in clip_runs if row["failure"] is not None]
+    failed_items = {row["item"] for row in clip_runs if row["failure"] is not None}
     grades = read_grades(args.grades)
     harness = require_harness(commit=CURRENT_COMMIT)
     oracle = (json.loads(args.oracle.read_text(encoding="utf-8"))
               if args.oracle is not None else None)
     p2 = p2_section(population, grades, harness=harness, subset_size=args.p2_clips,
-                    seed=args.p2_seed, all_clips=not args.no_all_clips)
+                    seed=args.p2_seed, all_clips=not args.no_all_clips, failed=failed_items)
     zero, other = read_grades(args.p3_zero), read_grades(args.p3_130)
     notes = load_annotations(MurajaText(harness.quran_db))
     exports = [Path(args.exports_dir) / name for name in sorted(notes.exports)]
     ratios = {**h448_ratios(), **owner_ratios(exports, notes)}
-    p3 = p3_section(zero, other, device_ratios=ratios,
-                    clips=len({row["item"] for row in zero}))
+    p3 = p3_section(zero, other, device_ratios=ratios, seed=args.p3_seed)
+    pools = json.loads(args.pools.read_text(encoding="utf-8"))
     summary = build_summary(grades, clips=len(population), failed=failed, p2=p2, p3=p3,
-                            pools=json.loads(args.pools.read_text(encoding="utf-8")),
-                            oracle=oracle)
+                            pools=pools, oracle=oracle,
+                            run=_report_run(args, harness))
     write_summary(summary, args.summary_out)
     write_doc(json.loads(args.summary_out.read_text(encoding="utf-8")), args.doc_out)
     print(json.dumps({"clips": len(population), "failed": len(failed),

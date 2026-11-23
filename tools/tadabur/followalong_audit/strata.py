@@ -67,11 +67,17 @@ def assign_stratum(word: Mapping) -> str:
 
 def stratify(words: Iterable[Mapping],
              catch_loss: Iterable[tuple[str, int]] = ()) -> list[dict]:
-    """Each word with its stratum and whether round 2's catch-loss audit marked it (A5b)."""
+    """Each word with its stratum and whether round 2's catch-loss audit marked it (A5b).
+
+    ``catch_loss`` is keyed ``(item key, word_index)`` — the 0-based canonical word the worklist
+    names. A word with no ``word_index`` (a fixture without one) is matched on its ``position``,
+    the same coordinate only where one printed word is one phoneme word.
+    """
     marked = set(catch_loss)
     return [{**word,
              "stratum": assign_stratum(word),
-             "catch_loss": (word["key"], word["position"]) in marked}
+             "catch_loss": (word["key"], word["word_index"] if "word_index" in word
+                            else word["position"]) in marked}
             for word in words]
 
 

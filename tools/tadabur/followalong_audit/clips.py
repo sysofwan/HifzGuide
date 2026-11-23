@@ -86,6 +86,31 @@ def oracle_eligible(rows: Iterable[Mapping], word_times: Mapping[str, Mapping]) 
     return eligible
 
 
+def app_arm_rows(records: Mapping[str, Mapping] | None = None) -> list[dict]:
+    """The App-arm population: the claim-gated gating rows of confirm.1/2 the audit can grade.
+
+    #248's twenty clips (seven ayat the phonetizer cannot read) are left out, exactly as the
+    tracer's draw does — they have no reference at all, so no arm can grade them. ``records`` is
+    the committed word-times table (``{item: {"reason": ...}}``), read from the committed phase A
+    shards when omitted; a row with no record is left out too. The tranche reader is
+    :func:`gating_rows`, so an unclaimed tranche stops the population instead of shrinking it.
+    """
+    from training.nonpro_decode import item_key
+
+    rows = gating_rows()
+    if records is None:
+        from tadabur.followalong_audit.tracer import load_word_times
+
+        return oracle_eligible(rows, load_word_times())
+    kept = []
+    for row in rows:
+        record = records.get(item_key(row["audio_path"]))
+        if record is None or str(record.get("reason") or "").startswith(UNREADABLE_REFERENCE):
+            continue
+        kept.append(row)
+    return kept
+
+
 def selection_record(rows: Iterable[Mapping], eligible: Iterable[Mapping], *,
                      size: int, seed: int) -> dict:
     """What a draw selected from: the population, #248's exclusion, and the seed.

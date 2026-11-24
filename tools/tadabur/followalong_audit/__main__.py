@@ -38,7 +38,11 @@ S3's App arm over the whole population:
     python -m tadabur.followalong_audit determinism-probe --item <clip item key> \
         --out-root <scratch>/probe --runs 20 ...
     python -m tadabur.followalong_audit strata            # S2: add --oracle <word table>
-    python -m tadabur.followalong_audit report
+    python -m tadabur.followalong_audit report            # S2: add --oracle <summary>
+
+S2's oracle and planted-mistake sweeps (CPU only, no audio):
+
+    python -m tadabur.followalong_audit oracle-sweep
 
 The WAVs are named ``<audio_sha256>.wav`` and live outside the repo; the run writes only decode
 text and provenance. The release cache holds the verified ``models.zip``, ``mel_filters.bin``
@@ -166,6 +170,9 @@ def main() -> int:
                         help="one clip repeated, quoted beside the seeded pair when it varies")
     report.add_argument("--exports-dir", type=Path, default=Path.home() / "Downloads")
     report.add_argument("--oracle", type=Path, help="S2's oracle summary, when #308 has run")
+    report.add_argument("--reuse-p2-p3", type=Path,
+                        help="an existing summary whose P2/P3 to keep (an unchanged App-arm"
+                             " run, when only S2's oracle sections are being filled)")
     report.add_argument("--p2-clips", type=int, default=_p2_clips())
     report.add_argument("--p2-seed", type=int, default=_p2_seed())
     report.add_argument("--p3-seed", type=int, default=_p3_seed())
@@ -174,6 +181,18 @@ def main() -> int:
                         help="skip the whole-population P2 agreement (default: report it)")
     report.add_argument("--summary-out", type=Path, default=_app_arm("summary.json"))
     report.add_argument("--doc-out", type=Path, default=_doc_path())
+
+    oracle = commands.add_parser("oracle-sweep",
+                                 help="run the clean and planted oracle sweeps")
+    oracle.add_argument("--seed", type=int, default=_sweep_seed())
+    oracle.add_argument("--report-out", type=Path, default=_sweep_report())
+    oracle.add_argument("--doc-out", type=Path, default=_sweep_doc())
+    oracle.add_argument("--word-grades-out", type=Path,
+                        default=_oracle_sweep_dir() / "word_grades.jsonl.gz")
+    oracle.add_argument("--summary-out", type=Path,
+                        default=_oracle_sweep_dir() / "summary.json")
+    oracle.add_argument("--run-note-out", type=Path,
+                        default=_oracle_sweep_dir() / "run_note.md")
 
     args = parser.parse_args()
     if args.command == "draw":
@@ -190,6 +209,8 @@ def main() -> int:
         return _strata(args)
     if args.command == "report":
         return _report(args)
+    if args.command == "oracle-sweep":
+        return _oracle_sweep(args)
     return _run(args)
 
 
@@ -229,6 +250,30 @@ def _app_arm(name: str) -> Path:
 
 def _doc_path() -> Path:
     from tadabur.followalong_audit.app_doc import DOC_PATH
+
+    return DOC_PATH
+
+
+def _sweep_seed() -> int:
+    from tadabur.followalong_audit.sweep import SWEEP_SEED
+
+    return SWEEP_SEED
+
+
+def _oracle_sweep_dir() -> Path:
+    from tadabur.followalong_audit.sweep import ORACLE_SWEEP_DIR
+
+    return ORACLE_SWEEP_DIR
+
+
+def _sweep_report() -> Path:
+    from tadabur.followalong_audit.sweep_doc import REPORT_PATH
+
+    return REPORT_PATH
+
+
+def _sweep_doc() -> Path:
+    from tadabur.followalong_audit.sweep_doc import DOC_PATH
 
     return DOC_PATH
 
@@ -483,22 +528,56 @@ def _report(args) -> int:
     harness = require_harness(commit=CURRENT_COMMIT)
     oracle = (json.loads(args.oracle.read_text(encoding="utf-8"))
               if args.oracle is not None else None)
-    p2 = p2_section(population, grades, harness=harness, subset_size=args.p2_clips,
-                    seed=args.p2_seed, all_clips=not args.no_all_clips, failed=failed_items)
-    zero, other = read_grades(args.p3_zero), read_grades(args.p3_130)
-    notes = load_annotations(MurajaText(harness.quran_db))
-    exports = [Path(args.exports_dir) / name for name in sorted(notes.exports)]
-    ratios = {**h448_ratios(), **owner_ratios(exports, notes)}
-    p3 = p3_section(zero, other, device_ratios=ratios, seed=args.p3_seed,
-                    app_cadence=_app_cadence(args.traces_root, args.latency_ms))
+    reused = (json.loads(args.reuse_p2_p3.read_text(encoding="utf-8"))
+              if args.reuse_p2_p3 is not None else None)
+    if reused is not None:
+        p2, p3, run = reused["p2"], reused["p3"], reused.get("run")
+    else:
+        p2 = p2_section(population, grades, harness=harness, subset_size=args.p2_clips,
+                        seed=args.p2_seed, all_clips=not args.no_all_clips,
+                        failed=failed_items)
+        zero, other = read_grades(args.p3_zero), read_grades(args.p3_130)
+        notes = load_annotations(MurajaText(harness.quran_db))
+        exports = [Path(args.exports_dir) / name for name in sorted(notes.exports)]
+        ratios = {**h448_ratios(), **owner_ratios(exports, notes)}
+        p3 = p3_section(zero, other, device_ratios=ratios, seed=args.p3_seed,
+                        app_cadence=_app_cadence(args.traces_root, args.latency_ms))
+        run = _report_run(args, harness)
     pools = json.loads(args.pools.read_text(encoding="utf-8"))
     summary = build_summary(grades, clips=len(population), failed=failed, p2=p2, p3=p3,
-                            pools=pools, oracle=oracle,
-                            run=_report_run(args, harness))
+                            pools=pools, oracle=oracle, run=run)
     write_summary(summary, args.summary_out)
     write_doc(json.loads(args.summary_out.read_text(encoding="utf-8")), args.doc_out)
     print(json.dumps({"clips": len(population), "failed": len(failed),
                       "p2": p2["verdict"], "doc": str(args.doc_out)}, sort_keys=True))
+    return 0
+
+
+def _oracle_sweep(args) -> int:
+    from tadabur.followalong_audit.app_arm import read_grades, write_grades
+    from tadabur.followalong_audit.sweep import oracle_summary, run_sweep
+    from tadabur.followalong_audit.sweep_doc import render
+    from tadabur.followalong_audit.atomic import write_text_atomically
+    from training.muraja_policy import CURRENT_COMMIT, require_harness
+
+    harness = require_harness(commit=CURRENT_COMMIT)
+    result = run_sweep(harness, seed=args.seed,
+                       log=lambda message: print(message, file=sys.stderr, flush=True))
+    write_json(Path(args.report_out), result.report)
+    write_text_atomically(Path(args.doc_out), render(result.report))
+    write_grades(result.word_rows, args.word_grades_out)
+    summary = oracle_summary(result.word_rows, read_grades(_app_arm("word_grades.jsonl.gz")))
+    write_json(Path(args.summary_out), summary)
+    write_text_atomically(Path(args.run_note_out), result.run_note)
+    print(json.dumps({
+        "seed": args.seed,
+        "tlog_clips": result.report["clean"]["tlog"]["clips"],
+        "mushaf_ayat": result.report["clean"]["mushaf"]["ayat"],
+        "patterns": len(result.report["patterns"]),
+        "candidates": sum(1 for p in result.report["patterns"] if p["candidate"]),
+        "oracle_share": summary["share"],
+        "doc": str(args.doc_out),
+    }, sort_keys=True))
     return 0
 
 

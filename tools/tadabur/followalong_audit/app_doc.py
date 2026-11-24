@@ -54,7 +54,7 @@ def render(summary: Mapping) -> str:
     lines += _p2(summary["p2"])
     lines += _p3(summary["p3"])
     lines += _pools(summary["pools"], summary["s1_by_cause_and_base"],
-                    summary.get("catch_loss"))
+                    summary.get("catch_loss"), oracle_pending=summary.get("oracle") is None)
     return "\n".join(_trim(lines)) + "\n"
 
 
@@ -305,15 +305,17 @@ def _app_cadence(entries: Sequence[Mapping]) -> list[str]:
 
 
 def _pools(pools: Mapping, s1: Sequence[Mapping],
-           catch_loss: Mapping | None = None) -> list[str]:
+           catch_loss: Mapping | None = None, *, oracle_pending: bool = True) -> list[str]:
     lines = ["## Candidate strata", "",
              "| stratum | words | catch-loss words |", "| --- | ---: | ---: |"]
     for stratum in sorted(pools["strata"]):
         size = pools["strata"][stratum]
         lines.append(f"| {stratum}: {STRATUM_LABELS[stratum]} | {size:,} | "
                      f"{pools['catch_loss'][stratum]:,} |")
+    pending = (" and S1-pending — pending S2 (#308)"
+               if oracle_pending else ", with S1-pending emptied by S2's oracle grades")
     lines += ["", "The App-flag pool by cause and base-detector agreement — strata S1 (the App"
-                  " flags and the oracle passes) and S1-pending — pending S2 (#308):", "",
+                  f" flags and the oracle passes){pending}:", "",
               "| cause | base detector flags | words |", "| --- | --- | ---: |"]
     lines += [f"| {entry['cause']} | {entry['base_flags']} | {entry['words']:,} |"
               for entry in s1]

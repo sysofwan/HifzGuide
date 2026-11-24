@@ -12,8 +12,9 @@
           },
           "position": {
             "first": 0.0,
-            "last": 0.34048348655090227,
-            "middle": 0.0
+            "last": 0.34019391052900155,
+            "middle": 0.0,
+            "waqf": 0.0
           }
         },
         "strict": {
@@ -23,19 +24,21 @@
           },
           "position": {
             "first": 0.0,
-            "last": 0.34118048447628796,
-            "middle": 0.0
+            "last": 0.34088972217487645,
+            "middle": 0.0,
+            "waqf": 0.0
           }
         }
       },
+      "findings": 4,
       "graded": 6228,
       "graded_words": {
         "shipped_default": 76622,
         "strict": 76610
       },
       "not_graded": {
-        "shipped_default": 782,
-        "strict": 794
+        "shipped_default": 776,
+        "strict": 788
       },
       "unreadable": 8,
       "unreadable_ayat": [
@@ -74,14 +77,16 @@
       ],
       "words_by_position": {
         "shipped_default": {
-          "first": 5951,
-          "last": 5874,
-          "middle": 64797
+          "first": 5912,
+          "last": 5879,
+          "middle": 60560,
+          "waqf": 4271
         },
         "strict": {
-          "first": 5951,
-          "last": 5862,
-          "middle": 64797
+          "first": 5912,
+          "last": 5867,
+          "middle": 60560,
+          "waqf": 4271
         }
       }
     },
@@ -96,8 +101,9 @@
           },
           "position": {
             "first": 0.0,
-            "last": 0.17761989342806395,
-            "middle": 0.0215633423180593
+            "last": 0.1775883502042266,
+            "middle": 0.022950518681722206,
+            "waqf": 0.0
           }
         },
         "strict": {
@@ -108,32 +114,40 @@
           },
           "position": {
             "first": 0.0,
-            "last": 0.17803097739006588,
-            "middle": 0.021564272313630777
+            "last": 0.17799928800284798,
+            "middle": 0.022951572182694516,
+            "waqf": 0.0
           }
         }
       },
+      "findings": 4,
       "graded_words": {
         "shipped_default": 57705,
         "strict": 57690
       },
       "not_graded": {
-        "shipped_default": 231,
-        "strict": 246
+        "shipped_default": 230,
+        "strict": 245
       },
       "words_by_position": {
         "shipped_default": {
-          "first": 5700,
-          "last": 5630,
-          "middle": 46375
+          "first": 5662,
+          "last": 5631,
+          "middle": 43572,
+          "waqf": 2840
         },
         "strict": {
-          "first": 5700,
-          "last": 5617,
-          "middle": 46373
+          "first": 5662,
+          "last": 5618,
+          "middle": 43570,
+          "waqf": 2840
         }
       }
     }
+  },
+  "evidence": {
+    "clean_findings": "clean_findings.jsonl.gz",
+    "planted_rows": "planted_rows.jsonl.gz"
   },
   "modes": [
     "strict",
@@ -1949,10 +1963,10 @@
         "kind": "add_word",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 21,
+        "n": 19,
         "not_graded": 4,
         "position": "first",
-        "rate": 0.047619047619047616
+        "rate": 0.05263157894736842
       },
       {
         "caught": 0,
@@ -1969,7 +1983,7 @@
         "kind": "add_word",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 361,
+        "n": 360,
         "not_graded": 16,
         "position": "first",
         "rate": 0.0
@@ -1979,10 +1993,10 @@
         "kind": "add_word",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 302,
+        "n": 298,
         "not_graded": 22,
         "position": "first",
-        "rate": 0.0033112582781456954
+        "rate": 0.003355704697986577
       },
       {
         "caught": 0,
@@ -2039,7 +2053,7 @@
         "kind": "add_word",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 59,
+        "n": 50,
         "not_graded": 3,
         "position": "middle",
         "rate": 0.0
@@ -2049,30 +2063,70 @@
         "kind": "add_word",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 1149,
+        "n": 1128,
         "not_graded": 34,
         "position": "middle",
-        "rate": 0.020887728459530026
+        "rate": 0.02127659574468085
       },
       {
         "caught": 11,
         "kind": "add_word",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1216,
+        "n": 1163,
         "not_graded": 37,
         "position": "middle",
-        "rate": 0.009046052631578948
+        "rate": 0.009458297506448839
       },
       {
         "caught": 3,
         "kind": "add_word",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 962,
+        "n": 892,
         "not_graded": 36,
         "position": "middle",
-        "rate": 0.0031185031185031187
+        "rate": 0.0033632286995515697
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 54,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 74,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
       },
       {
         "caught": 0,
@@ -2089,10 +2143,10 @@
         "kind": "add_word",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 21,
+        "n": 19,
         "not_graded": 4,
         "position": "first",
-        "rate": 0.047619047619047616
+        "rate": 0.05263157894736842
       },
       {
         "caught": 0,
@@ -2109,7 +2163,7 @@
         "kind": "add_word",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 361,
+        "n": 360,
         "not_graded": 16,
         "position": "first",
         "rate": 0.0
@@ -2119,10 +2173,10 @@
         "kind": "add_word",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 302,
+        "n": 298,
         "not_graded": 22,
         "position": "first",
-        "rate": 0.0033112582781456954
+        "rate": 0.003355704697986577
       },
       {
         "caught": 0,
@@ -2179,7 +2233,7 @@
         "kind": "add_word",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 59,
+        "n": 50,
         "not_graded": 3,
         "position": "middle",
         "rate": 0.0
@@ -2189,30 +2243,70 @@
         "kind": "add_word",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 1149,
+        "n": 1128,
         "not_graded": 34,
         "position": "middle",
-        "rate": 0.020887728459530026
+        "rate": 0.02127659574468085
       },
       {
         "caught": 11,
         "kind": "add_word",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1216,
+        "n": 1163,
         "not_graded": 37,
         "position": "middle",
-        "rate": 0.009046052631578948
+        "rate": 0.009458297506448839
       },
       {
         "caught": 3,
         "kind": "add_word",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 962,
+        "n": 892,
         "not_graded": 36,
         "position": "middle",
-        "rate": 0.0031185031185031187
+        "rate": 0.0033632286995515697
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 54,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 74,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
       },
       {
         "caught": 0,
@@ -2309,7 +2403,7 @@
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 124,
+        "n": 106,
         "not_graded": 0,
         "position": "middle",
         "rate": 0.0
@@ -2319,7 +2413,7 @@
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 337,
+        "n": 331,
         "not_graded": 4,
         "position": "middle",
         "rate": 0.0
@@ -2329,20 +2423,60 @@
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1146,
+        "n": 1108,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.016579406631762654
+        "rate": 0.017148014440433214
       },
       {
         "caught": 13,
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 1205,
+        "n": 1080,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.010788381742738589
+        "rate": 0.012037037037037037
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 18,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 38,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 125,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
       },
       {
         "caught": 17,
@@ -2435,44 +2569,84 @@
         "rate": 0.8571428571428571
       },
       {
-        "caught": 69,
+        "caught": 58,
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 122,
+        "n": 104,
         "not_graded": 2,
         "position": "middle",
-        "rate": 0.5655737704918032
+        "rate": 0.5576923076923077
       },
       {
-        "caught": 190,
+        "caught": 187,
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 324,
+        "n": 318,
         "not_graded": 17,
         "position": "middle",
-        "rate": 0.5864197530864198
+        "rate": 0.5880503144654088
       },
       {
-        "caught": 682,
+        "caught": 660,
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1111,
+        "n": 1073,
         "not_graded": 39,
         "position": "middle",
-        "rate": 0.6138613861386139
+        "rate": 0.6150978564771669
       },
       {
-        "caught": 679,
+        "caught": 624,
         "kind": "consonant_pair:ت↔ط",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 1194,
+        "n": 1069,
         "not_graded": 15,
         "position": "middle",
-        "rate": 0.568676716917923
+        "rate": 0.5837231057062675
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 18,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6111111111111112
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 38,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5789473684210527
+      },
+      {
+        "caught": 55,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 125,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.44
       },
       {
         "caught": 0,
@@ -2519,7 +2693,7 @@
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 198,
+        "n": 197,
         "not_graded": 5,
         "position": "first",
         "rate": 0.0
@@ -2569,17 +2743,17 @@
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "1-2",
         "mode": "shipped_default",
-        "n": 215,
+        "n": 209,
         "not_graded": 7,
         "position": "middle",
-        "rate": 0.004651162790697674
+        "rate": 0.004784688995215311
       },
       {
         "caught": 0,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 94,
+        "n": 83,
         "not_graded": 0,
         "position": "middle",
         "rate": 0.0
@@ -2589,30 +2763,80 @@
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 716,
+        "n": 683,
         "not_graded": 7,
         "position": "middle",
         "rate": 0.0
       },
       {
-        "caught": 65,
+        "caught": 62,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1418,
-        "not_graded": 9,
+        "n": 1324,
+        "not_graded": 8,
         "position": "middle",
-        "rate": 0.045839210155148094
+        "rate": 0.04682779456193353
       },
       {
-        "caught": 22,
+        "caught": 18,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 976,
+        "n": 863,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.022540983606557378
+        "rate": 0.02085747392815759
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 33,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 94,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.031914893617021274
+      },
+      {
+        "caught": 4,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 114,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.03508771929824561
       },
       {
         "caught": 10,
@@ -2655,14 +2879,14 @@
         "rate": 0.9492753623188406
       },
       {
-        "caught": 163,
+        "caught": 162,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 197,
+        "n": 196,
         "not_graded": 6,
         "position": "first",
-        "rate": 0.8274111675126904
+        "rate": 0.826530612244898
       },
       {
         "caught": 2,
@@ -2705,54 +2929,104 @@
         "rate": 0.4868913857677903
       },
       {
-        "caught": 181,
+        "caught": 175,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "1-2",
         "mode": "strict",
-        "n": 199,
+        "n": 193,
         "not_graded": 23,
         "position": "middle",
-        "rate": 0.9095477386934674
+        "rate": 0.9067357512953368
       },
       {
-        "caught": 42,
+        "caught": 39,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 94,
+        "n": 83,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.44680851063829785
+        "rate": 0.46987951807228917
       },
       {
-        "caught": 489,
+        "caught": 476,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 692,
+        "n": 659,
         "not_graded": 31,
         "position": "middle",
-        "rate": 0.7066473988439307
+        "rate": 0.7223065250379362
       },
       {
-        "caught": 751,
+        "caught": 705,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1386,
-        "not_graded": 41,
+        "n": 1292,
+        "not_graded": 40,
         "position": "middle",
-        "rate": 0.5418470418470418
+        "rate": 0.5456656346749226
       },
       {
-        "caught": 567,
+        "caught": 499,
         "kind": "consonant_pair:ح↔ه",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 963,
+        "n": 850,
         "not_graded": 17,
         "position": "middle",
-        "rate": 0.5887850467289719
+        "rate": 0.5870588235294117
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.2727272727272727
+      },
+      {
+        "caught": 14,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 33,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.42424242424242425
+      },
+      {
+        "caught": 46,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 94,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.48936170212765956
+      },
+      {
+        "caught": 69,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 114,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6052631578947368
       },
       {
         "caught": 0,
@@ -2789,7 +3063,7 @@
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 210,
+        "n": 206,
         "not_graded": 2,
         "position": "first",
         "rate": 0.0
@@ -2799,7 +3073,7 @@
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 197,
+        "n": 196,
         "not_graded": 1,
         "position": "first",
         "rate": 0.0
@@ -2869,17 +3143,17 @@
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 284,
+        "n": 279,
         "not_graded": 2,
         "position": "middle",
-        "rate": 0.007042253521126761
+        "rate": 0.007168458781362007
       },
       {
         "caught": 0,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1249,
+        "n": 1224,
         "not_graded": 6,
         "position": "middle",
         "rate": 0.0
@@ -2889,9 +3163,39 @@
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 514,
+        "n": 476,
         "not_graded": 1,
         "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 39,
+        "not_graded": 0,
+        "position": "waqf",
         "rate": 0.0
       },
       {
@@ -2925,24 +3229,24 @@
         "rate": 0.9803921568627451
       },
       {
-        "caught": 204,
+        "caught": 200,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 210,
+        "n": 206,
         "not_graded": 2,
         "position": "first",
-        "rate": 0.9714285714285714
+        "rate": 0.970873786407767
       },
       {
-        "caught": 189,
+        "caught": 188,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 197,
+        "n": 196,
         "not_graded": 1,
         "position": "first",
-        "rate": 0.9593908629441624
+        "rate": 0.9591836734693877
       },
       {
         "caught": 2,
@@ -3005,34 +3309,64 @@
         "rate": 0.9047619047619048
       },
       {
-        "caught": 215,
+        "caught": 213,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 272,
+        "n": 267,
         "not_graded": 14,
         "position": "middle",
-        "rate": 0.7904411764705882
+        "rate": 0.797752808988764
       },
       {
-        "caught": 1037,
+        "caught": 1016,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1231,
+        "n": 1206,
         "not_graded": 24,
         "position": "middle",
-        "rate": 0.8424045491470349
+        "rate": 0.8424543946932007
       },
       {
-        "caught": 452,
+        "caught": 415,
         "kind": "consonant_pair:ذ↔ز",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 512,
+        "n": 474,
         "not_graded": 3,
         "position": "middle",
-        "rate": 0.8828125
+        "rate": 0.8755274261603375
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8620689655172413
+      },
+      {
+        "caught": 38,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 39,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9743589743589743
       },
       {
         "caught": 44,
@@ -3065,14 +3399,14 @@
         "rate": 0.9915254237288136
       },
       {
-        "caught": 223,
+        "caught": 220,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 229,
+        "n": 226,
         "not_graded": 2,
         "position": "first",
-        "rate": 0.9737991266375546
+        "rate": 0.9734513274336283
       },
       {
         "caught": 192,
@@ -3135,44 +3469,84 @@
         "rate": 0.423728813559322
       },
       {
-        "caught": 20,
+        "caught": 19,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 22,
+        "n": 21,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.9090909090909091
+        "rate": 0.9047619047619048
       },
       {
-        "caught": 192,
+        "caught": 190,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 264,
+        "n": 253,
         "not_graded": 11,
         "position": "middle",
-        "rate": 0.7272727272727273
+        "rate": 0.7509881422924901
       },
       {
-        "caught": 843,
+        "caught": 819,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1074,
+        "n": 1049,
         "not_graded": 21,
         "position": "middle",
-        "rate": 0.7849162011173184
+        "rate": 0.780743565300286
       },
       {
-        "caught": 341,
+        "caught": 316,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 418,
+        "n": 391,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.8157894736842105
+        "rate": 0.8081841432225064
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 27,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9642857142857143
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 27,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9259259259259259
       },
       {
         "caught": 44,
@@ -3205,14 +3579,14 @@
         "rate": 0.9915254237288136
       },
       {
-        "caught": 223,
+        "caught": 220,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 229,
+        "n": 226,
         "not_graded": 2,
         "position": "first",
-        "rate": 0.9737991266375546
+        "rate": 0.9734513274336283
       },
       {
         "caught": 194,
@@ -3275,44 +3649,84 @@
         "rate": 0.423728813559322
       },
       {
-        "caught": 21,
+        "caught": 20,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 22,
+        "n": 21,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.9545454545454546
+        "rate": 0.9523809523809523
       },
       {
-        "caught": 194,
+        "caught": 192,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 264,
+        "n": 253,
         "not_graded": 11,
         "position": "middle",
-        "rate": 0.7348484848484849
+        "rate": 0.758893280632411
       },
       {
-        "caught": 931,
+        "caught": 907,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1074,
+        "n": 1049,
         "not_graded": 21,
         "position": "middle",
-        "rate": 0.866852886405959
+        "rate": 0.8646329837940896
       },
       {
-        "caught": 351,
+        "caught": 325,
         "kind": "consonant_pair:ذ↔ظ",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 418,
+        "n": 391,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.8397129186602871
+        "rate": 0.8312020460358056
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 27,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9642857142857143
+      },
+      {
+        "caught": 26,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 27,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9629629629629629
       },
       {
         "caught": 8,
@@ -3405,44 +3819,84 @@
         "rate": 1.0
       },
       {
-        "caught": 57,
+        "caught": 56,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 70,
+        "n": 68,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.8142857142857143
+        "rate": 0.8235294117647058
       },
       {
-        "caught": 334,
+        "caught": 322,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 412,
+        "n": 397,
         "not_graded": 22,
         "position": "middle",
-        "rate": 0.8106796116504854
+        "rate": 0.8110831234256927
       },
       {
-        "caught": 602,
+        "caught": 544,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 705,
+        "n": 638,
         "not_graded": 7,
         "position": "middle",
-        "rate": 0.8539007092198582
+        "rate": 0.8526645768025078
       },
       {
-        "caught": 794,
+        "caught": 688,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 1008,
-        "not_graded": 19,
+        "n": 879,
+        "not_graded": 16,
         "position": "middle",
-        "rate": 0.7876984126984127
+        "rate": 0.782707622298066
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8
+      },
+      {
+        "caught": 58,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 67,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8656716417910447
+      },
+      {
+        "caught": 106,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 129,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8217054263565892
       },
       {
         "caught": 8,
@@ -3535,44 +3989,84 @@
         "rate": 1.0
       },
       {
-        "caught": 61,
+        "caught": 60,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 70,
+        "n": 68,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.8714285714285714
+        "rate": 0.8823529411764706
       },
       {
-        "caught": 355,
+        "caught": 343,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 412,
+        "n": 397,
         "not_graded": 22,
         "position": "middle",
-        "rate": 0.8616504854368932
+        "rate": 0.8639798488664987
       },
       {
-        "caught": 635,
+        "caught": 575,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 705,
+        "n": 638,
         "not_graded": 7,
         "position": "middle",
-        "rate": 0.900709219858156
+        "rate": 0.9012539184952978
       },
       {
-        "caught": 820,
+        "caught": 705,
         "kind": "consonant_pair:س↔ش",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 1008,
-        "not_graded": 19,
+        "n": 879,
+        "not_graded": 16,
         "position": "middle",
-        "rate": 0.8134920634920635
+        "rate": 0.8020477815699659
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 15,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8
+      },
+      {
+        "caught": 60,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 67,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8955223880597015
+      },
+      {
+        "caught": 115,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 129,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8914728682170543
       },
       {
         "caught": 0,
@@ -3609,7 +4103,7 @@
         "kind": "consonant_pair:س↔ص",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 105,
+        "n": 102,
         "not_graded": 6,
         "position": "first",
         "rate": 0.0
@@ -3669,7 +4163,7 @@
         "kind": "consonant_pair:س↔ص",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 62,
+        "n": 57,
         "not_graded": 0,
         "position": "middle",
         "rate": 0.0
@@ -3679,7 +4173,7 @@
         "kind": "consonant_pair:س↔ص",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 357,
+        "n": 349,
         "not_graded": 7,
         "position": "middle",
         "rate": 0.0
@@ -3689,7 +4183,7 @@
         "kind": "consonant_pair:س↔ص",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 714,
+        "n": 664,
         "not_graded": 3,
         "position": "middle",
         "rate": 0.0
@@ -3699,9 +4193,49 @@
         "kind": "consonant_pair:س↔ص",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 1115,
-        "not_graded": 4,
+        "n": 1000,
+        "not_graded": 2,
         "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 8,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 50,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 118,
+        "not_graded": 2,
+        "position": "waqf",
         "rate": 0.0
       },
       {
@@ -3735,14 +4269,14 @@
         "rate": 0.96
       },
       {
-        "caught": 104,
+        "caught": 101,
         "kind": "consonant_pair:س↔ص",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 105,
+        "n": 102,
         "not_graded": 6,
         "position": "first",
-        "rate": 0.9904761904761905
+        "rate": 0.9901960784313726
       },
       {
         "caught": 42,
@@ -3795,44 +4329,84 @@
         "rate": 1.0
       },
       {
-        "caught": 54,
+        "caught": 51,
         "kind": "consonant_pair:س↔ص",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 62,
+        "n": 57,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.8709677419354839
+        "rate": 0.8947368421052632
       },
       {
-        "caught": 270,
+        "caught": 263,
         "kind": "consonant_pair:س↔ص",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 344,
+        "n": 336,
         "not_graded": 20,
         "position": "middle",
-        "rate": 0.7848837209302325
+        "rate": 0.7827380952380952
       },
       {
-        "caught": 574,
+        "caught": 529,
         "kind": "consonant_pair:س↔ص",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 700,
+        "n": 650,
         "not_graded": 17,
         "position": "middle",
-        "rate": 0.82
+        "rate": 0.8138461538461539
       },
       {
-        "caught": 886,
+        "caught": 784,
         "kind": "consonant_pair:س↔ص",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 1097,
-        "not_graded": 22,
+        "n": 983,
+        "not_graded": 19,
         "position": "middle",
-        "rate": 0.8076572470373746
+        "rate": 0.797558494404883
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 8,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.875
+      },
+      {
+        "caught": 45,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 50,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9
+      },
+      {
+        "caught": 105,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 117,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8974358974358975
       },
       {
         "caught": 0,
@@ -3929,7 +4503,7 @@
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 358,
+        "n": 330,
         "not_graded": 0,
         "position": "middle",
         "rate": 0.0
@@ -3939,7 +4513,7 @@
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 320,
+        "n": 269,
         "not_graded": 0,
         "position": "middle",
         "rate": 0.0
@@ -3949,9 +4523,39 @@
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 296,
+        "n": 276,
         "not_graded": 0,
         "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 51,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 20,
+        "not_graded": 0,
+        "position": "waqf",
         "rate": 0.0
       },
       {
@@ -4045,34 +4649,64 @@
         "rate": 0.7333333333333333
       },
       {
-        "caught": 170,
+        "caught": 165,
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 350,
+        "n": 322,
         "not_graded": 8,
         "position": "middle",
-        "rate": 0.4857142857142857
+        "rate": 0.5124223602484472
       },
       {
-        "caught": 195,
+        "caught": 184,
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 316,
+        "n": 265,
         "not_graded": 4,
         "position": "middle",
-        "rate": 0.6170886075949367
+        "rate": 0.6943396226415094
       },
       {
-        "caught": 250,
+        "caught": 232,
         "kind": "consonant_pair:ض↔ظ",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 294,
+        "n": 274,
         "not_graded": 2,
         "position": "middle",
-        "rate": 0.8503401360544217
+        "rate": 0.8467153284671532
+      },
+      {
+        "caught": 5,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.17857142857142858
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 51,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.21568627450980393
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 20,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9
       },
       {
         "caught": 1,
@@ -4115,14 +4749,14 @@
         "rate": 0.8695652173913043
       },
       {
-        "caught": 88,
+        "caught": 87,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 104,
+        "n": 102,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.8461538461538461
+        "rate": 0.8529411764705882
       },
       {
         "caught": 5,
@@ -4175,44 +4809,84 @@
         "rate": 0.8333333333333334
       },
       {
-        "caught": 27,
+        "caught": 26,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 45,
+        "n": 34,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.6
+        "rate": 0.7647058823529411
       },
       {
-        "caught": 340,
+        "caught": 322,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 467,
+        "n": 439,
         "not_graded": 17,
         "position": "middle",
-        "rate": 0.728051391862955
+        "rate": 0.7334851936218679
       },
       {
-        "caught": 592,
+        "caught": 563,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 736,
+        "n": 690,
         "not_graded": 27,
         "position": "middle",
-        "rate": 0.8043478260869565
+        "rate": 0.8159420289855073
       },
       {
-        "caught": 589,
+        "caught": 521,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 687,
+        "n": 600,
         "not_graded": 7,
         "position": "middle",
-        "rate": 0.8573508005822417
+        "rate": 0.8683333333333333
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.09090909090909091
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6428571428571429
+      },
+      {
+        "caught": 29,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 46,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6304347826086957
+      },
+      {
+        "caught": 70,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 89,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7865168539325843
       },
       {
         "caught": 1,
@@ -4255,14 +4929,14 @@
         "rate": 0.8739130434782608
       },
       {
-        "caught": 88,
+        "caught": 87,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 104,
+        "n": 102,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.8461538461538461
+        "rate": 0.8529411764705882
       },
       {
         "caught": 11,
@@ -4315,44 +4989,84 @@
         "rate": 0.8333333333333334
       },
       {
-        "caught": 30,
+        "caught": 28,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 45,
+        "n": 34,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.6666666666666666
+        "rate": 0.8235294117647058
       },
       {
-        "caught": 347,
+        "caught": 329,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 467,
+        "n": 439,
         "not_graded": 17,
         "position": "middle",
-        "rate": 0.7430406852248393
+        "rate": 0.7494305239179955
       },
       {
-        "caught": 618,
+        "caught": 589,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 736,
+        "n": 690,
         "not_graded": 27,
         "position": "middle",
-        "rate": 0.8396739130434783
+        "rate": 0.8536231884057971
       },
       {
-        "caught": 609,
+        "caught": 538,
         "kind": "consonant_pair:ط↔ق",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 687,
+        "n": 600,
         "not_graded": 7,
         "position": "middle",
-        "rate": 0.8864628820960698
+        "rate": 0.8966666666666666
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6428571428571429
+      },
+      {
+        "caught": 29,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 46,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6304347826086957
+      },
+      {
+        "caught": 73,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 89,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8202247191011236
       },
       {
         "caught": 2,
@@ -4389,20 +5103,20 @@
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 288,
+        "n": 285,
         "not_graded": 4,
         "position": "first",
-        "rate": 0.017361111111111112
+        "rate": 0.017543859649122806
       },
       {
         "caught": 1,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 190,
+        "n": 186,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.005263157894736842
+        "rate": 0.005376344086021506
       },
       {
         "caught": 0,
@@ -4459,7 +5173,7 @@
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 51,
+        "n": 48,
         "not_graded": 1,
         "position": "middle",
         "rate": 0.0
@@ -4469,7 +5183,7 @@
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 813,
+        "n": 785,
         "not_graded": 9,
         "position": "middle",
         "rate": 0.0
@@ -4479,20 +5193,60 @@
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1172,
+        "n": 1109,
         "not_graded": 6,
         "position": "middle",
-        "rate": 0.031569965870307165
+        "rate": 0.033363390441839495
       },
       {
-        "caught": 13,
+        "caught": 11,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 915,
+        "n": 840,
         "not_graded": 8,
         "position": "middle",
-        "rate": 0.014207650273224045
+        "rate": 0.013095238095238096
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 3,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 66,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.015151515151515152
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.02531645569620253
       },
       {
         "caught": 81,
@@ -4525,24 +5279,24 @@
         "rate": 0.9743589743589743
       },
       {
-        "caught": 268,
+        "caught": 266,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 288,
+        "n": 285,
         "not_graded": 4,
         "position": "first",
-        "rate": 0.9305555555555556
+        "rate": 0.9333333333333333
       },
       {
-        "caught": 182,
+        "caught": 178,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 190,
+        "n": 186,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.9578947368421052
+        "rate": 0.956989247311828
       },
       {
         "caught": 6,
@@ -4595,44 +5349,84 @@
         "rate": 0.5789473684210527
       },
       {
-        "caught": 34,
+        "caught": 33,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 51,
+        "n": 48,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.6666666666666666
+        "rate": 0.6875
       },
       {
-        "caught": 571,
+        "caught": 555,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 785,
+        "n": 757,
         "not_graded": 37,
         "position": "middle",
-        "rate": 0.7273885350318471
+        "rate": 0.7331571994715984
       },
       {
-        "caught": 934,
+        "caught": 896,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1143,
+        "n": 1080,
         "not_graded": 35,
         "position": "middle",
-        "rate": 0.8171478565179353
+        "rate": 0.8296296296296296
       },
       {
-        "caught": 646,
+        "caught": 586,
         "kind": "consonant_pair:ق↔ك",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 882,
-        "not_graded": 41,
+        "n": 808,
+        "not_graded": 40,
         "position": "middle",
-        "rate": 0.7324263038548753
+        "rate": 0.7252475247524752
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 3,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 16,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 41,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 66,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6212121212121212
+      },
+      {
+        "caught": 64,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 78,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.8205128205128205
       },
       {
         "caught": 37,
@@ -4645,14 +5439,14 @@
         "rate": 0.6379310344827587
       },
       {
-        "caught": 17,
+        "caught": 14,
         "kind": "consonant_random",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 22,
+        "n": 19,
         "not_graded": 0,
         "position": "first",
-        "rate": 0.7727272727272727
+        "rate": 0.7368421052631579
       },
       {
         "caught": 142,
@@ -4675,14 +5469,14 @@
         "rate": 0.6738544474393531
       },
       {
-        "caught": 190,
+        "caught": 187,
         "kind": "consonant_random",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 278,
+        "n": 271,
         "not_graded": 12,
         "position": "first",
-        "rate": 0.6834532374100719
+        "rate": 0.6900369003690037
       },
       {
         "caught": 15,
@@ -4729,50 +5523,100 @@
         "kind": "consonant_random",
         "length_bin": "1-2",
         "mode": "shipped_default",
-        "n": 230,
+        "n": 229,
         "not_graded": 25,
         "position": "middle",
-        "rate": 0.6434782608695652
+        "rate": 0.6462882096069869
       },
       {
-        "caught": 33,
+        "caught": 29,
         "kind": "consonant_random",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 64,
+        "n": 56,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.515625
+        "rate": 0.5178571428571429
       },
       {
-        "caught": 776,
+        "caught": 755,
         "kind": "consonant_random",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 1067,
+        "n": 1037,
         "not_graded": 91,
         "position": "middle",
-        "rate": 0.7272727272727273
+        "rate": 0.7280617164898746
       },
       {
-        "caught": 865,
+        "caught": 822,
         "kind": "consonant_random",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1291,
+        "n": 1229,
         "not_graded": 53,
         "position": "middle",
-        "rate": 0.6700232378001549
+        "rate": 0.6688364524003255
       },
       {
-        "caught": 578,
+        "caught": 534,
         "kind": "consonant_random",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 918,
-        "not_graded": 33,
+        "n": 849,
+        "not_graded": 31,
         "position": "middle",
-        "rate": 0.6296296296296297
+        "rate": 0.6289752650176679
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6363636363636364
+      },
+      {
+        "caught": 21,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 30,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7
+      },
+      {
+        "caught": 43,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 62,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6935483870967742
+      },
+      {
+        "caught": 47,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 76,
+        "not_graded": 2,
+        "position": "waqf",
+        "rate": 0.618421052631579
       },
       {
         "caught": 37,
@@ -4785,14 +5629,14 @@
         "rate": 0.6379310344827587
       },
       {
-        "caught": 18,
+        "caught": 15,
         "kind": "consonant_random",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 22,
+        "n": 19,
         "not_graded": 0,
         "position": "first",
-        "rate": 0.8181818181818182
+        "rate": 0.7894736842105263
       },
       {
         "caught": 170,
@@ -4815,14 +5659,14 @@
         "rate": 0.6846361185983828
       },
       {
-        "caught": 194,
+        "caught": 191,
         "kind": "consonant_random",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 278,
+        "n": 271,
         "not_graded": 12,
         "position": "first",
-        "rate": 0.697841726618705
+        "rate": 0.7047970479704797
       },
       {
         "caught": 15,
@@ -4869,50 +5713,100 @@
         "kind": "consonant_random",
         "length_bin": "1-2",
         "mode": "strict",
-        "n": 230,
+        "n": 229,
         "not_graded": 25,
         "position": "middle",
-        "rate": 0.6434782608695652
+        "rate": 0.6462882096069869
       },
       {
-        "caught": 37,
+        "caught": 33,
         "kind": "consonant_random",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 64,
+        "n": 56,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.578125
+        "rate": 0.5892857142857143
       },
       {
-        "caught": 806,
+        "caught": 784,
         "kind": "consonant_random",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 1066,
+        "n": 1036,
         "not_graded": 92,
         "position": "middle",
-        "rate": 0.7560975609756098
+        "rate": 0.7567567567567568
       },
       {
-        "caught": 898,
+        "caught": 854,
         "kind": "consonant_random",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1290,
+        "n": 1228,
         "not_graded": 54,
         "position": "middle",
-        "rate": 0.6961240310077519
+        "rate": 0.6954397394136808
       },
       {
-        "caught": 628,
+        "caught": 580,
         "kind": "consonant_random",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 918,
-        "not_graded": 33,
+        "n": 849,
+        "not_graded": 31,
         "position": "middle",
-        "rate": 0.6840958605664488
+        "rate": 0.6831566548881036
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6363636363636364
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 30,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7333333333333333
+      },
+      {
+        "caught": 44,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 62,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7096774193548387
+      },
+      {
+        "caught": 51,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 76,
+        "not_graded": 2,
+        "position": "waqf",
+        "rate": 0.6710526315789473
       },
       {
         "caught": 40,
@@ -4929,20 +5823,20 @@
         "kind": "haraka_drop",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 18,
+        "n": 16,
         "not_graded": 0,
         "position": "first",
-        "rate": 0.5555555555555556
+        "rate": 0.625
       },
       {
-        "caught": 138,
+        "caught": 137,
         "kind": "haraka_drop",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 210,
+        "n": 209,
         "not_graded": 3,
         "position": "first",
-        "rate": 0.6571428571428571
+        "rate": 0.6555023923444976
       },
       {
         "caught": 201,
@@ -4955,14 +5849,14 @@
         "rate": 0.5317460317460317
       },
       {
-        "caught": 177,
+        "caught": 173,
         "kind": "haraka_drop",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 296,
+        "n": 290,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.597972972972973
+        "rate": 0.596551724137931
       },
       {
         "caught": 29,
@@ -5005,54 +5899,104 @@
         "rate": 0.46395563770794823
       },
       {
-        "caught": 111,
+        "caught": 109,
         "kind": "haraka_drop",
         "length_bin": "1-2",
         "mode": "shipped_default",
-        "n": 270,
+        "n": 268,
         "not_graded": 11,
         "position": "middle",
-        "rate": 0.4111111111111111
+        "rate": 0.40671641791044777
       },
       {
-        "caught": 29,
+        "caught": 28,
         "kind": "haraka_drop",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 59,
+        "n": 55,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.4915254237288136
+        "rate": 0.509090909090909
       },
       {
-        "caught": 625,
+        "caught": 611,
         "kind": "haraka_drop",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 1137,
-        "not_graded": 60,
+        "n": 1102,
+        "not_graded": 59,
         "position": "middle",
-        "rate": 0.5496921723834652
+        "rate": 0.5544464609800362
       },
       {
-        "caught": 682,
+        "caught": 649,
         "kind": "haraka_drop",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1249,
+        "n": 1189,
         "not_graded": 47,
         "position": "middle",
-        "rate": 0.5460368294635709
+        "rate": 0.5458368376787216
       },
       {
-        "caught": 439,
+        "caught": 411,
         "kind": "haraka_drop",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 888,
+        "n": 829,
         "not_graded": 28,
         "position": "middle",
-        "rate": 0.49436936936936937
+        "rate": 0.4957780458383595
+      },
+      {
+        "caught": 2,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 1,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.16666666666666666
+      },
+      {
+        "caught": 15,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 36,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.4166666666666667
+      },
+      {
+        "caught": 33,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 60,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.55
+      },
+      {
+        "caught": 32,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 65,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.49230769230769234
       },
       {
         "caught": 40,
@@ -5069,20 +6013,20 @@
         "kind": "haraka_drop",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 18,
+        "n": 16,
         "not_graded": 0,
         "position": "first",
-        "rate": 0.6111111111111112
+        "rate": 0.6875
       },
       {
-        "caught": 141,
+        "caught": 140,
         "kind": "haraka_drop",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 210,
+        "n": 209,
         "not_graded": 3,
         "position": "first",
-        "rate": 0.6714285714285714
+        "rate": 0.6698564593301436
       },
       {
         "caught": 251,
@@ -5095,14 +6039,14 @@
         "rate": 0.6640211640211641
       },
       {
-        "caught": 201,
+        "caught": 196,
         "kind": "haraka_drop",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 296,
+        "n": 290,
         "not_graded": 5,
         "position": "first",
-        "rate": 0.6790540540540541
+        "rate": 0.6758620689655173
       },
       {
         "caught": 35,
@@ -5145,54 +6089,104 @@
         "rate": 0.5380333951762524
       },
       {
-        "caught": 111,
+        "caught": 109,
         "kind": "haraka_drop",
         "length_bin": "1-2",
         "mode": "strict",
-        "n": 270,
+        "n": 268,
         "not_graded": 11,
         "position": "middle",
-        "rate": 0.4111111111111111
+        "rate": 0.40671641791044777
       },
       {
-        "caught": 32,
+        "caught": 31,
         "kind": "haraka_drop",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 59,
+        "n": 55,
         "not_graded": 0,
         "position": "middle",
-        "rate": 0.5423728813559322
+        "rate": 0.5636363636363636
       },
       {
-        "caught": 660,
+        "caught": 646,
         "kind": "haraka_drop",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 1131,
-        "not_graded": 66,
+        "n": 1096,
+        "not_graded": 65,
         "position": "middle",
-        "rate": 0.583554376657825
+        "rate": 0.5894160583941606
       },
       {
-        "caught": 753,
+        "caught": 717,
         "kind": "haraka_drop",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1246,
+        "n": 1186,
         "not_graded": 50,
         "position": "middle",
-        "rate": 0.6043338683788122
+        "rate": 0.6045531197301856
       },
       {
-        "caught": 511,
+        "caught": 481,
         "kind": "haraka_drop",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 887,
+        "n": 828,
         "not_graded": 29,
         "position": "middle",
-        "rate": 0.5760992108229989
+        "rate": 0.5809178743961353
+      },
+      {
+        "caught": 2,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 1,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.16666666666666666
+      },
+      {
+        "caught": 15,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 36,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.4166666666666667
+      },
+      {
+        "caught": 36,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 60,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6
+      },
+      {
+        "caught": 35,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 65,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5384615384615384
       },
       {
         "caught": 67,
@@ -5205,24 +6199,24 @@
         "rate": 1.0
       },
       {
-        "caught": 17,
+        "caught": 16,
         "kind": "haraka_swap",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 18,
+        "n": 17,
         "not_graded": 1,
         "position": "first",
-        "rate": 0.9444444444444444
+        "rate": 0.9411764705882353
       },
       {
-        "caught": 208,
+        "caught": 207,
         "kind": "haraka_swap",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 220,
+        "n": 219,
         "not_graded": 1,
         "position": "first",
-        "rate": 0.9454545454545454
+        "rate": 0.9452054794520548
       },
       {
         "caught": 351,
@@ -5235,14 +6229,14 @@
         "rate": 0.9285714285714286
       },
       {
-        "caught": 250,
+        "caught": 247,
         "kind": "haraka_swap",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 279,
+        "n": 272,
         "not_graded": 10,
         "position": "first",
-        "rate": 0.8960573476702509
+        "rate": 0.9080882352941176
       },
       {
         "caught": 26,
@@ -5295,44 +6289,84 @@
         "rate": 0.6235294117647059
       },
       {
-        "caught": 33,
+        "caught": 30,
         "kind": "haraka_swap",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 55,
+        "n": 49,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.6
+        "rate": 0.6122448979591837
       },
       {
-        "caught": 763,
+        "caught": 751,
         "kind": "haraka_swap",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 1102,
+        "n": 1074,
         "not_graded": 73,
         "position": "middle",
-        "rate": 0.6923774954627949
+        "rate": 0.6992551210428305
       },
       {
-        "caught": 933,
+        "caught": 893,
         "kind": "haraka_swap",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1277,
+        "n": 1219,
         "not_graded": 42,
         "position": "middle",
-        "rate": 0.73061863743148
+        "rate": 0.7325676784249385
       },
       {
-        "caught": 650,
+        "caught": 600,
         "kind": "haraka_swap",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 930,
+        "n": 855,
         "not_graded": 28,
         "position": "middle",
-        "rate": 0.6989247311827957
+        "rate": 0.7017543859649122
+      },
+      {
+        "caught": 4,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 7,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 13,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4482758620689655
+      },
+      {
+        "caught": 41,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 58,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7068965517241379
+      },
+      {
+        "caught": 53,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 82,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6463414634146342
       },
       {
         "caught": 67,
@@ -5345,24 +6379,24 @@
         "rate": 1.0
       },
       {
-        "caught": 17,
+        "caught": 16,
         "kind": "haraka_swap",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 18,
+        "n": 17,
         "not_graded": 1,
         "position": "first",
-        "rate": 0.9444444444444444
+        "rate": 0.9411764705882353
       },
       {
-        "caught": 210,
+        "caught": 209,
         "kind": "haraka_swap",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 220,
+        "n": 219,
         "not_graded": 1,
         "position": "first",
-        "rate": 0.9545454545454546
+        "rate": 0.954337899543379
       },
       {
         "caught": 351,
@@ -5375,14 +6409,14 @@
         "rate": 0.9285714285714286
       },
       {
-        "caught": 254,
+        "caught": 251,
         "kind": "haraka_swap",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 279,
+        "n": 272,
         "not_graded": 10,
         "position": "first",
-        "rate": 0.910394265232975
+        "rate": 0.9227941176470589
       },
       {
         "caught": 26,
@@ -5435,324 +6469,404 @@
         "rate": 0.6235294117647059
       },
       {
-        "caught": 36,
+        "caught": 33,
         "kind": "haraka_swap",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 55,
+        "n": 49,
         "not_graded": 1,
         "position": "middle",
-        "rate": 0.6545454545454545
+        "rate": 0.673469387755102
       },
       {
-        "caught": 776,
+        "caught": 763,
         "kind": "haraka_swap",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 1102,
+        "n": 1074,
         "not_graded": 73,
         "position": "middle",
-        "rate": 0.7041742286751361
+        "rate": 0.7104283054003724
       },
       {
-        "caught": 971,
+        "caught": 930,
         "kind": "haraka_swap",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1277,
+        "n": 1219,
         "not_graded": 42,
         "position": "middle",
-        "rate": 0.7603758809710258
+        "rate": 0.7629204265791633
       },
       {
-        "caught": 700,
+        "caught": 646,
         "kind": "haraka_swap",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 930,
+        "n": 855,
         "not_graded": 28,
         "position": "middle",
-        "rate": 0.7526881720430108
+        "rate": 0.7555555555555555
+      },
+      {
+        "caught": 4,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 7,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 14,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4827586206896552
+      },
+      {
+        "caught": 42,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 58,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7241379310344828
+      },
+      {
+        "caught": 57,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 82,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6951219512195121
+      },
+      {
+        "caught": 21,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.75
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 56,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.07142857142857142
+      },
+      {
+        "caught": 13,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 391,
+        "not_graded": 9,
+        "position": "first",
+        "rate": 0.03324808184143223
+      },
+      {
+        "caught": 155,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 380,
+        "not_graded": 8,
+        "position": "first",
+        "rate": 0.40789473684210525
+      },
+      {
+        "caught": 2,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.02531645569620253
       },
       {
         "caught": 0,
         "kind": "shaddah_drop",
-        "length_bin": "1-2",
+        "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 17,
+        "n": 2,
         "not_graded": 0,
-        "position": "first",
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 177,
+        "not_graded": 27,
+        "position": "last",
+        "rate": 0.022598870056497175
+      },
+      {
+        "caught": 15,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 315,
+        "not_graded": 20,
+        "position": "last",
+        "rate": 0.047619047619047616
+      },
+      {
+        "caught": 13,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.16455696202531644
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 647,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.0061823802163833074
+      },
+      {
+        "caught": 20,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1682,
+        "not_graded": 8,
+        "position": "middle",
+        "rate": 0.011890606420927468
+      },
+      {
+        "caught": 228,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 1013,
+        "not_graded": 15,
+        "position": "middle",
+        "rate": 0.2250740375123396
+      },
+      {
+        "caught": 1,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 9,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.1111111111111111
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 12,
+        "not_graded": 0,
+        "position": "waqf",
         "rate": 0.0
       },
       {
         "caught": 0,
         "kind": "shaddah_drop",
-        "length_bin": "11+",
+        "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 22,
+        "n": 92,
         "not_graded": 0,
-        "position": "first",
+        "position": "waqf",
         "rate": 0.0
       },
       {
         "caught": 14,
         "kind": "shaddah_drop",
-        "length_bin": "3-4",
-        "mode": "shipped_default",
-        "n": 261,
-        "not_graded": 7,
-        "position": "first",
-        "rate": 0.05363984674329502
-      },
-      {
-        "caught": 1,
-        "kind": "shaddah_drop",
-        "length_bin": "5-6",
-        "mode": "shipped_default",
-        "n": 328,
-        "not_graded": 2,
-        "position": "first",
-        "rate": 0.003048780487804878
-      },
-      {
-        "caught": 1,
-        "kind": "shaddah_drop",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 237,
-        "not_graded": 6,
-        "position": "first",
-        "rate": 0.004219409282700422
+        "n": 92,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.15217391304347827
       },
       {
-        "caught": 0,
+        "caught": 28,
         "kind": "shaddah_drop",
         "length_bin": "11+",
-        "mode": "shipped_default",
-        "n": 55,
-        "not_graded": 0,
-        "position": "last",
-        "rate": 0.0
-      },
-      {
-        "caught": 0,
-        "kind": "shaddah_drop",
-        "length_bin": "3-4",
-        "mode": "shipped_default",
-        "n": 91,
-        "not_graded": 16,
-        "position": "last",
-        "rate": 0.0
-      },
-      {
-        "caught": 4,
-        "kind": "shaddah_drop",
-        "length_bin": "5-6",
-        "mode": "shipped_default",
-        "n": 157,
-        "not_graded": 19,
-        "position": "last",
-        "rate": 0.025477707006369428
-      },
-      {
-        "caught": 1,
-        "kind": "shaddah_drop",
-        "length_bin": "7-10",
-        "mode": "shipped_default",
-        "n": 292,
-        "not_graded": 14,
-        "position": "last",
-        "rate": 0.003424657534246575
-      },
-      {
-        "caught": 1,
-        "kind": "shaddah_drop",
-        "length_bin": "1-2",
-        "mode": "shipped_default",
-        "n": 270,
-        "not_graded": 2,
-        "position": "middle",
-        "rate": 0.003703703703703704
-      },
-      {
-        "caught": 0,
-        "kind": "shaddah_drop",
-        "length_bin": "11+",
-        "mode": "shipped_default",
-        "n": 41,
-        "not_graded": 0,
-        "position": "middle",
-        "rate": 0.0
-      },
-      {
-        "caught": 3,
-        "kind": "shaddah_drop",
-        "length_bin": "3-4",
-        "mode": "shipped_default",
-        "n": 1408,
-        "not_graded": 5,
-        "position": "middle",
-        "rate": 0.002130681818181818
-      },
-      {
-        "caught": 1,
-        "kind": "shaddah_drop",
-        "length_bin": "5-6",
-        "mode": "shipped_default",
-        "n": 1288,
-        "not_graded": 8,
-        "position": "middle",
-        "rate": 0.0007763975155279503
-      },
-      {
-        "caught": 4,
-        "kind": "shaddah_drop",
-        "length_bin": "7-10",
-        "mode": "shipped_default",
-        "n": 621,
-        "not_graded": 0,
-        "position": "middle",
-        "rate": 0.00644122383252818
-      },
-      {
-        "caught": 15,
-        "kind": "shaddah_drop",
-        "length_bin": "1-2",
         "mode": "strict",
-        "n": 17,
+        "n": 28,
         "not_graded": 0,
         "position": "first",
-        "rate": 0.8823529411764706
+        "rate": 1.0
+      },
+      {
+        "caught": 47,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 56,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.8392857142857143
+      },
+      {
+        "caught": 382,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 391,
+        "not_graded": 9,
+        "position": "first",
+        "rate": 0.9769820971867008
+      },
+      {
+        "caught": 358,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 378,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9470899470899471
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 79,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.05063291139240506
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 59,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 177,
+        "not_graded": 27,
+        "position": "last",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 141,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 313,
+        "not_graded": 22,
+        "position": "last",
+        "rate": 0.4504792332268371
+      },
+      {
+        "caught": 51,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 79,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.6455696202531646
+      },
+      {
+        "caught": 340,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 619,
+        "not_graded": 32,
+        "position": "middle",
+        "rate": 0.5492730210016155
+      },
+      {
+        "caught": 668,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1656,
+        "not_graded": 34,
+        "position": "middle",
+        "rate": 0.4033816425120773
+      },
+      {
+        "caught": 546,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 999,
+        "not_graded": 29,
+        "position": "middle",
+        "rate": 0.5465465465465466
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 9,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4444444444444444
       },
       {
         "caught": 5,
         "kind": "shaddah_drop",
-        "length_bin": "11+",
-        "mode": "strict",
-        "n": 22,
-        "not_graded": 0,
-        "position": "first",
-        "rate": 0.22727272727272727
-      },
-      {
-        "caught": 102,
-        "kind": "shaddah_drop",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 261,
-        "not_graded": 7,
-        "position": "first",
-        "rate": 0.39080459770114945
+        "n": 12,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4166666666666667
       },
       {
-        "caught": 234,
+        "caught": 29,
         "kind": "shaddah_drop",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 328,
-        "not_graded": 2,
-        "position": "first",
-        "rate": 0.7134146341463414
-      },
-      {
-        "caught": 110,
-        "kind": "shaddah_drop",
-        "length_bin": "7-10",
-        "mode": "strict",
-        "n": 235,
-        "not_graded": 8,
-        "position": "first",
-        "rate": 0.46808510638297873
-      },
-      {
-        "caught": 0,
-        "kind": "shaddah_drop",
-        "length_bin": "11+",
-        "mode": "strict",
-        "n": 55,
+        "n": 92,
         "not_graded": 0,
-        "position": "last",
-        "rate": 0.0
+        "position": "waqf",
+        "rate": 0.31521739130434784
       },
       {
-        "caught": 25,
-        "kind": "shaddah_drop",
-        "length_bin": "3-4",
-        "mode": "strict",
-        "n": 91,
-        "not_graded": 16,
-        "position": "last",
-        "rate": 0.27472527472527475
-      },
-      {
-        "caught": 62,
-        "kind": "shaddah_drop",
-        "length_bin": "5-6",
-        "mode": "strict",
-        "n": 157,
-        "not_graded": 19,
-        "position": "last",
-        "rate": 0.39490445859872614
-      },
-      {
-        "caught": 103,
+        "caught": 40,
         "kind": "shaddah_drop",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 290,
-        "not_graded": 16,
-        "position": "last",
-        "rate": 0.35517241379310344
-      },
-      {
-        "caught": 166,
-        "kind": "shaddah_drop",
-        "length_bin": "1-2",
-        "mode": "strict",
-        "n": 259,
-        "not_graded": 13,
-        "position": "middle",
-        "rate": 0.640926640926641
-      },
-      {
-        "caught": 16,
-        "kind": "shaddah_drop",
-        "length_bin": "11+",
-        "mode": "strict",
-        "n": 41,
+        "n": 92,
         "not_graded": 0,
-        "position": "middle",
-        "rate": 0.3902439024390244
-      },
-      {
-        "caught": 436,
-        "kind": "shaddah_drop",
-        "length_bin": "3-4",
-        "mode": "strict",
-        "n": 1383,
-        "not_graded": 30,
-        "position": "middle",
-        "rate": 0.3152566883586406
-      },
-      {
-        "caught": 449,
-        "kind": "shaddah_drop",
-        "length_bin": "5-6",
-        "mode": "strict",
-        "n": 1263,
-        "not_graded": 33,
-        "position": "middle",
-        "rate": 0.3555027711797308
-      },
-      {
-        "caught": 157,
-        "kind": "shaddah_drop",
-        "length_bin": "7-10",
-        "mode": "strict",
-        "n": 618,
-        "not_graded": 3,
-        "position": "middle",
-        "rate": 0.2540453074433657
+        "position": "waqf",
+        "rate": 0.43478260869565216
       },
       {
         "caught": 0,
@@ -5770,7 +6884,7 @@
         "length_bin": "11+",
         "mode": "shipped_default",
         "n": 0,
-        "not_graded": 15,
+        "not_graded": 14,
         "position": "first",
         "rate": null
       },
@@ -5790,7 +6904,7 @@
         "length_bin": "5-6",
         "mode": "shipped_default",
         "n": 0,
-        "not_graded": 375,
+        "not_graded": 373,
         "position": "first",
         "rate": null
       },
@@ -5800,7 +6914,7 @@
         "length_bin": "7-10",
         "mode": "shipped_default",
         "n": 1,
-        "not_graded": 280,
+        "not_graded": 278,
         "position": "first",
         "rate": 1.0
       },
@@ -5845,54 +6959,104 @@
         "rate": null
       },
       {
-        "caught": 220,
+        "caught": 218,
         "kind": "skip_word",
         "length_bin": "1-2",
         "mode": "shipped_default",
-        "n": 225,
+        "n": 223,
         "not_graded": 65,
         "position": "middle",
-        "rate": 0.9777777777777777
+        "rate": 0.9775784753363229
       },
       {
-        "caught": 61,
+        "caught": 57,
         "kind": "skip_word",
         "length_bin": "11+",
         "mode": "shipped_default",
-        "n": 61,
+        "n": 57,
         "not_graded": 13,
         "position": "middle",
         "rate": 1.0
       },
       {
-        "caught": 819,
+        "caught": 793,
         "kind": "skip_word",
         "length_bin": "3-4",
         "mode": "shipped_default",
-        "n": 820,
-        "not_graded": 333,
+        "n": 794,
+        "not_graded": 332,
         "position": "middle",
-        "rate": 0.998780487804878
+        "rate": 0.9987405541561712
       },
       {
-        "caught": 1041,
+        "caught": 983,
         "kind": "skip_word",
         "length_bin": "5-6",
         "mode": "shipped_default",
-        "n": 1042,
-        "not_graded": 289,
+        "n": 983,
+        "not_graded": 286,
         "position": "middle",
-        "rate": 0.9990403071017274
+        "rate": 1.0
       },
       {
-        "caught": 739,
+        "caught": 675,
         "kind": "skip_word",
         "length_bin": "7-10",
         "mode": "shipped_default",
-        "n": 740,
-        "not_graded": 227,
+        "n": 676,
+        "not_graded": 224,
         "position": "middle",
-        "rate": 0.9986486486486487
+        "rate": 0.9985207100591716
+      },
+      {
+        "caught": 2,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 4,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 26,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 26,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 58,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 59,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 0.9830508474576272
+      },
+      {
+        "caught": 64,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 64,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 1.0
       },
       {
         "caught": 0,
@@ -5910,7 +7074,7 @@
         "length_bin": "11+",
         "mode": "strict",
         "n": 0,
-        "not_graded": 15,
+        "not_graded": 14,
         "position": "first",
         "rate": null
       },
@@ -5930,7 +7094,7 @@
         "length_bin": "5-6",
         "mode": "strict",
         "n": 0,
-        "not_graded": 375,
+        "not_graded": 373,
         "position": "first",
         "rate": null
       },
@@ -5940,7 +7104,7 @@
         "length_bin": "7-10",
         "mode": "strict",
         "n": 1,
-        "not_graded": 280,
+        "not_graded": 278,
         "position": "first",
         "rate": 1.0
       },
@@ -5985,54 +7149,104 @@
         "rate": null
       },
       {
-        "caught": 220,
+        "caught": 218,
         "kind": "skip_word",
         "length_bin": "1-2",
         "mode": "strict",
-        "n": 225,
+        "n": 223,
         "not_graded": 65,
         "position": "middle",
-        "rate": 0.9777777777777777
+        "rate": 0.9775784753363229
       },
       {
-        "caught": 61,
+        "caught": 57,
         "kind": "skip_word",
         "length_bin": "11+",
         "mode": "strict",
-        "n": 61,
+        "n": 57,
         "not_graded": 13,
         "position": "middle",
         "rate": 1.0
       },
       {
-        "caught": 819,
+        "caught": 793,
         "kind": "skip_word",
         "length_bin": "3-4",
         "mode": "strict",
-        "n": 820,
-        "not_graded": 333,
+        "n": 794,
+        "not_graded": 332,
         "position": "middle",
-        "rate": 0.998780487804878
+        "rate": 0.9987405541561712
       },
       {
-        "caught": 1041,
+        "caught": 983,
         "kind": "skip_word",
         "length_bin": "5-6",
         "mode": "strict",
-        "n": 1042,
-        "not_graded": 289,
+        "n": 983,
+        "not_graded": 286,
         "position": "middle",
-        "rate": 0.9990403071017274
+        "rate": 1.0
       },
       {
-        "caught": 739,
+        "caught": 675,
         "kind": "skip_word",
         "length_bin": "7-10",
         "mode": "strict",
-        "n": 740,
-        "not_graded": 227,
+        "n": 676,
+        "not_graded": 224,
         "position": "middle",
-        "rate": 0.9986486486486487
+        "rate": 0.9985207100591716
+      },
+      {
+        "caught": 2,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 4,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 26,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 26,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 58,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 59,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 0.9830508474576272
+      },
+      {
+        "caught": 64,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 64,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 1.0
       }
     ],
     "inserted_split": [
@@ -6096,7 +7310,7 @@
         "rate": 0.014340344168260038
       }
     ],
-    "rows": 128070,
+    "rows": 128026,
     "unplantable": {
       "consonant_pair:ت↔ط": 1637,
       "consonant_pair:ح↔ه": 1254,
@@ -6107,7 +7321,7 @@
       "consonant_pair:ض↔ظ": 4413,
       "consonant_pair:ط↔ق": 2497,
       "consonant_pair:ق↔ك": 1291,
-      "shaddah_drop": 575,
+      "shaddah_drop": 597,
       "skip_word": 4
     }
   },

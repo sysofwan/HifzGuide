@@ -39,7 +39,7 @@ The App arm ran the app's own CoreML decoder at 40 ms per inference; **strict** 
 
 ## Oracle-explained share
 
-pending S2 (#308): S2's oracle word grades fill in the App flags the oracle shares and the per-cause share it explains.
+The oracle's perfect decode flags 2 words of its own; the App also flags 1 of them: the oracle explains 0.019% of the App arm's 5,157 flagged words.
 
 ## P2: the CoreML-vs-PyTorch bridge
 
@@ -130,15 +130,15 @@ No scoring changes more than 2% of word outcomes between the latency settings.
 
 | stratum | words | catch-loss words |
 | --- | ---: | ---: |
-| S1: the App flags and the oracle passes | 0 | 0 |
-| S1-pending: the App flags, oracle pending S2 (#308) | 5,157 | 0 |
+| S1: the App flags and the oracle passes | 5,151 | 0 |
+| S1-pending: the App flags, no oracle verdict for the word | 5 | 0 |
 | S3: the App passes and the base or two detectors flag | 1,459 | 0 |
 | S4: nothing flags | 38,598 | 0 |
 | S5: the App left the word ungraded | 9,342 | 0 |
-| oracle-explained: the App flags and the oracle flags too | 0 | 0 |
+| oracle-explained: the App flags and the oracle flags too | 1 | 0 |
 | residual: the App passes and one non-base detector flags | 3,379 | 0 |
 
-The App-flag pool by cause and base-detector agreement — strata S1 (the App flags and the oracle passes) and S1-pending — pending S2 (#308):
+The App-flag pool by cause and base-detector agreement — strata S1 (the App flags and the oracle passes) and S1-pending (the App flags, no oracle verdict):
 
 | cause | base detector flags | words |
 | --- | --- | ---: |
@@ -146,7 +146,7 @@ The App-flag pool by cause and base-detector agreement — strata S1 (the App fl
 | other_consonant | True | 1,698 |
 | shaddah | False | 77 |
 | shaddah | True | 223 |
-| skipped | False | 148 |
+| skipped | False | 147 |
 | skipped | True | 296 |
 | soft_pair | False | 130 |
 | soft_pair | True | 346 |

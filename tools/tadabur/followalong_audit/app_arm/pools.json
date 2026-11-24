@@ -39,12 +39,12 @@
       "residual": 0
     },
     "strata": {
-      "S1": 0,
-      "S1-pending": 5157,
+      "S1": 5151,
+      "S1-pending": 5,
       "S3": 1459,
       "S4": 38598,
       "S5": 9342,
-      "oracle-explained": 0,
+      "oracle-explained": 1,
       "residual": 3379
     }
   },
@@ -72,7 +72,7 @@
     {
       "base_flags": false,
       "cause": "skipped",
-      "words": 148
+      "words": 147
     },
     {
       "base_flags": true,

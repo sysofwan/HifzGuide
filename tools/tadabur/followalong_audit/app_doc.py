@@ -15,6 +15,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from tadabur.followalong_audit.atomic import write_text_atomically
+from tadabur.followalong_audit.strata import S1_PENDING
 from training.word_flags import CAUSES
 
 #: Where the run's summary and the doc it renders live.
@@ -29,7 +30,7 @@ SCORING_LABELS = {"strict": "strict", "shipped_default": "balanced (shipped defa
 STRATUM_LABELS = {
     "S5": "the App left the word ungraded",
     "S1": "the App flags and the oracle passes",
-    "S1-pending": "the App flags, oracle pending S2 (#308)",
+    "S1-pending": "the App flags, no oracle verdict for the word",
     "oracle-explained": "the App flags and the oracle flags too",
     "S3": "the App passes and the base or two detectors flag",
     "S4": "nothing flags",
@@ -54,7 +55,7 @@ def render(summary: Mapping) -> str:
     lines += _p2(summary["p2"])
     lines += _p3(summary["p3"])
     lines += _pools(summary["pools"], summary["s1_by_cause_and_base"],
-                    summary.get("catch_loss"))
+                    summary.get("catch_loss"), oracle_pending=summary.get("oracle") is None)
     return "\n".join(_trim(lines)) + "\n"
 
 
@@ -189,8 +190,10 @@ def _oracle(oracle: Mapping | None) -> list[str]:
                 "pending S2 (#308): S2's oracle word grades fill in the App flags the oracle"
                 " shares and the per-cause share it explains.", ""]
     return ["## Oracle-explained share", "",
-            f"The oracle flags {oracle['flagged']:,} of the App arm's {oracle['app_flagged']:,}"
-            f" flagged words: {oracle['share']:.1%} of the App flags are oracle-explained.", ""]
+            f"The oracle's perfect decode flags {oracle['flagged']:,} words of its own; the"
+            f" App also flags {oracle['shared']:,} of them: the oracle explains"
+            f" {oracle['share']:.3%} of the App arm's {oracle['app_flagged']:,} flagged words.",
+            ""]
 
 
 def _p2(p2: Mapping) -> list[str]:
@@ -305,15 +308,21 @@ def _app_cadence(entries: Sequence[Mapping]) -> list[str]:
 
 
 def _pools(pools: Mapping, s1: Sequence[Mapping],
-           catch_loss: Mapping | None = None) -> list[str]:
+           catch_loss: Mapping | None = None, *, oracle_pending: bool = True) -> list[str]:
     lines = ["## Candidate strata", "",
              "| stratum | words | catch-loss words |", "| --- | ---: | ---: |"]
     for stratum in sorted(pools["strata"]):
         size = pools["strata"][stratum]
-        lines.append(f"| {stratum}: {STRATUM_LABELS[stratum]} | {size:,} | "
+        label = STRATUM_LABELS[stratum]
+        if stratum == S1_PENDING and oracle_pending:
+            label = "the App flags, oracle pending S2 (#308)"
+        lines.append(f"| {stratum}: {label} | {size:,} | "
                      f"{pools['catch_loss'][stratum]:,} |")
+    pending = (" and S1-pending — pending S2 (#308)"
+               if oracle_pending
+               else " and S1-pending (the App flags, no oracle verdict)")
     lines += ["", "The App-flag pool by cause and base-detector agreement — strata S1 (the App"
-                  " flags and the oracle passes) and S1-pending — pending S2 (#308):", "",
+                  f" flags and the oracle passes){pending}:", "",
               "| cause | base detector flags | words |", "| --- | --- | ---: |"]
     lines += [f"| {entry['cause']} | {entry['base_flags']} | {entry['words']:,} |"
               for entry in s1]

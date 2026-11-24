@@ -4,7 +4,14 @@
     "matched": 0,
     "worklist": "consonant2_readout/catch_loss/worklist.jsonl"
   },
-  "oracle": null,
+  "oracle": {
+    "app_flagged": 5157,
+    "flagged": 2,
+    "oracle_table": "oracle_sweep/word_grades.jsonl.gz",
+    "scoring": "strict",
+    "share": 0.00019391118867558658,
+    "shared": 1
+  },
   "p2": {
     "all": {
       "agree": 56768,
@@ -7307,12 +7314,12 @@
       "residual": 0
     },
     "strata": {
-      "S1": 0,
-      "S1-pending": 5157,
+      "S1": 5151,
+      "S1-pending": 5,
       "S3": 1459,
       "S4": 38598,
       "S5": 9342,
-      "oracle-explained": 0,
+      "oracle-explained": 1,
       "residual": 3379
     }
   },
@@ -7660,7 +7667,7 @@
     {
       "base_flags": false,
       "cause": "skipped",
-      "words": 148
+      "words": 147
     },
     {
       "base_flags": true,

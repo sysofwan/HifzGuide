@@ -1,0 +1,7329 @@
+{
+  "clean": {
+    "mushaf": {
+      "ayat": 6236,
+      "characters_per_second": 7.167860300467559,
+      "clips": 6228,
+      "false_flags_per_1000": {
+        "shipped_default": {
+          "all": 0.026102163869384774,
+          "error_kind": {
+            "tashkeel": 0.026102163869384774
+          },
+          "position": {
+            "first": 0.0,
+            "last": 0.34019391052900155,
+            "middle": 0.0,
+            "waqf": 0.0
+          }
+        },
+        "strict": {
+          "all": 0.026106252447461165,
+          "error_kind": {
+            "tashkeel": 0.026106252447461165
+          },
+          "position": {
+            "first": 0.0,
+            "last": 0.34088972217487645,
+            "middle": 0.0,
+            "waqf": 0.0
+          }
+        }
+      },
+      "findings": 4,
+      "graded": 6228,
+      "graded_words": {
+        "shipped_default": 76622,
+        "strict": 76610
+      },
+      "not_graded": {
+        "shipped_default": 776,
+        "strict": 788
+      },
+      "unreadable": 8,
+      "unreadable_ayat": [
+        {
+          "ayah": "55:17",
+          "reason": "KeyError: 'ن'"
+        },
+        {
+          "ayah": "90:8",
+          "reason": "KeyError: 'ن'"
+        },
+        {
+          "ayah": "90:9",
+          "reason": "KeyError: 'ن'"
+        },
+        {
+          "ayah": "90:10",
+          "reason": "KeyError: 'ن'"
+        },
+        {
+          "ayah": "106:1",
+          "reason": "KeyError: 'ش'"
+        },
+        {
+          "ayah": "106:2",
+          "reason": "KeyError: 'ف'"
+        },
+        {
+          "ayah": "106:3",
+          "reason": "KeyError: 'ت'"
+        },
+        {
+          "ayah": "106:4",
+          "reason": "KeyError: 'ف'"
+        }
+      ],
+      "words_by_position": {
+        "shipped_default": {
+          "first": 5912,
+          "last": 5879,
+          "middle": 60560,
+          "waqf": 4271
+        },
+        "strict": {
+          "first": 5912,
+          "last": 5867,
+          "middle": 60560,
+          "waqf": 4271
+        }
+      }
+    },
+    "tlog": {
+      "clips": 5742,
+      "false_flags_per_1000": {
+        "shipped_default": {
+          "all": 0.034659041677497615,
+          "error_kind": {
+            "skipped": 0.017329520838748808,
+            "tashkeel": 0.017329520838748808
+          },
+          "position": {
+            "first": 0.0,
+            "last": 0.1775883502042266,
+            "middle": 0.022950518681722206,
+            "waqf": 0.0
+          }
+        },
+        "strict": {
+          "all": 0.03466805338880222,
+          "error_kind": {
+            "skipped": 0.01733402669440111,
+            "tashkeel": 0.01733402669440111
+          },
+          "position": {
+            "first": 0.0,
+            "last": 0.17799928800284798,
+            "middle": 0.022951572182694516,
+            "waqf": 0.0
+          }
+        }
+      },
+      "findings": 4,
+      "graded_words": {
+        "shipped_default": 57705,
+        "strict": 57690
+      },
+      "not_graded": {
+        "shipped_default": 230,
+        "strict": 245
+      },
+      "words_by_position": {
+        "shipped_default": {
+          "first": 5662,
+          "last": 5631,
+          "middle": 43572,
+          "waqf": 2840
+        },
+        "strict": {
+          "first": 5662,
+          "last": 5618,
+          "middle": 43570,
+          "waqf": 2840
+        }
+      }
+    }
+  },
+  "evidence": {
+    "clean_findings": "clean_findings.jsonl.gz",
+    "planted_rows": "planted_rows.jsonl.gz"
+  },
+  "modes": [
+    "strict",
+    "shipped_default"
+  ],
+  "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+  "pace": {
+    "basis": "speech_span_median",
+    "characters_per_second": 7.167860300467559,
+    "clips": 5575
+  },
+  "patterns": [
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 21,
+          "boundary": null,
+          "error_kind": "tashkeel",
+          "form": "ممممَحِۦۦص",
+          "item": "14_21_9560314089.flac#0",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            }
+          ],
+          "surah": 14,
+          "word": 34
+        },
+        {
+          "ayah": 22,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:22",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        },
+        {
+          "ayah": 40,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:40",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        }
+      ],
+      "findings": 6,
+      "key": {
+        "error_kind": "tashkeel"
+      },
+      "words": 3
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 45,
+          "boundary": true,
+          "error_kind": "skipped",
+          "form": "لمَلَااااءِكَتُ",
+          "item": "3_45_5388395839.flac#0",
+          "mode": "shipped_default",
+          "position": "middle",
+          "quality": "skipped",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.9,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 3,
+          "word": 3
+        }
+      ],
+      "findings": 2,
+      "key": {
+        "error_kind": "skipped"
+      },
+      "words": 1
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 21,
+          "boundary": null,
+          "error_kind": "tashkeel",
+          "form": "ممممَحِۦۦص",
+          "item": "14_21_9560314089.flac#0",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            }
+          ],
+          "surah": 14,
+          "word": 34
+        },
+        {
+          "ayah": 22,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:22",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        },
+        {
+          "ayah": 40,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:40",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        }
+      ],
+      "findings": 6,
+      "key": {
+        "error_kind": "tashkeel",
+        "position": "last"
+      },
+      "words": 3
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 45,
+          "boundary": true,
+          "error_kind": "skipped",
+          "form": "لمَلَااااءِكَتُ",
+          "item": "3_45_5388395839.flac#0",
+          "mode": "shipped_default",
+          "position": "middle",
+          "quality": "skipped",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.9,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 3,
+          "word": 3
+        }
+      ],
+      "findings": 2,
+      "key": {
+        "error_kind": "skipped",
+        "position": "middle"
+      },
+      "words": 1
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 22,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:22",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        },
+        {
+          "ayah": 40,
+          "boundary": false,
+          "error_kind": "tashkeel",
+          "form": "ممممُددَكِر",
+          "item": "54:40",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "ُ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 7
+            },
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 54,
+          "word": 7
+        }
+      ],
+      "findings": 4,
+      "key": {
+        "boundary": false,
+        "error_kind": "tashkeel"
+      },
+      "words": 2
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 21,
+          "boundary": null,
+          "error_kind": "tashkeel",
+          "form": "ممممَحِۦۦص",
+          "item": "14_21_9560314089.flac#0",
+          "mode": "shipped_default",
+          "position": "last",
+          "quality": "tashkeelError",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            },
+            {
+              "errors": [
+                {
+                  "group_index": 0,
+                  "kind": {
+                    "expected": "َ",
+                    "heard": null,
+                    "type": "tashkeel"
+                  }
+                }
+              ],
+              "quality": "pending",
+              "score": 1,
+              "withheld": "tashkeelError",
+              "word": 34
+            }
+          ],
+          "surah": 14,
+          "word": 34
+        }
+      ],
+      "findings": 2,
+      "key": {
+        "boundary": null,
+        "error_kind": "tashkeel"
+      },
+      "words": 1
+    },
+    {
+      "candidate": false,
+      "examples": [
+        {
+          "ayah": 45,
+          "boundary": true,
+          "error_kind": "skipped",
+          "form": "لمَلَااااءِكَتُ",
+          "item": "3_45_5388395839.flac#0",
+          "mode": "shipped_default",
+          "position": "middle",
+          "quality": "skipped",
+          "statuses": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.9,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 1,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            {
+              "errors": [],
+              "quality": "correct",
+              "score": 0.7,
+              "word": 3
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "surah": 3,
+          "word": 3
+        }
+      ],
+      "findings": 2,
+      "key": {
+        "boundary": true,
+        "error_kind": "skipped"
+      },
+      "words": 1
+    }
+  ],
+  "planted": {
+    "catch_rates": [
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 83,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 19,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.05263157894736842
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 221,
+        "not_graded": 11,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 360,
+        "not_graded": 16,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 298,
+        "not_graded": 22,
+        "position": "first",
+        "rate": 0.003355704697986577
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 50,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 49,
+        "not_graded": 3,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 268,
+        "not_graded": 43,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 466,
+        "not_graded": 49,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 271,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 50,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 24,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 1128,
+        "not_graded": 34,
+        "position": "middle",
+        "rate": 0.02127659574468085
+      },
+      {
+        "caught": 11,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1163,
+        "not_graded": 37,
+        "position": "middle",
+        "rate": 0.009458297506448839
+      },
+      {
+        "caught": 3,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 892,
+        "not_graded": 36,
+        "position": "middle",
+        "rate": 0.0033632286995515697
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 54,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 74,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 83,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 19,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.05263157894736842
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 221,
+        "not_graded": 11,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 360,
+        "not_graded": 16,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 298,
+        "not_graded": 22,
+        "position": "first",
+        "rate": 0.003355704697986577
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 50,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 48,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 266,
+        "not_graded": 45,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 465,
+        "not_graded": 50,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 271,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 50,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 24,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 1128,
+        "not_graded": 34,
+        "position": "middle",
+        "rate": 0.02127659574468085
+      },
+      {
+        "caught": 11,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1163,
+        "not_graded": 37,
+        "position": "middle",
+        "rate": 0.009458297506448839
+      },
+      {
+        "caught": 3,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 892,
+        "not_graded": 36,
+        "position": "middle",
+        "rate": 0.0033632286995515697
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 54,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "add_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 74,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 46,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 196,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 178,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 46,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 26,
+        "not_graded": 7,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 114,
+        "not_graded": 11,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 560,
+        "not_graded": 41,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 106,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 331,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 19,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1108,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.017148014440433214
+      },
+      {
+        "caught": 13,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 1080,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.012037037037037037
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 18,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 38,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 125,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 17,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 27,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.6296296296296297
+      },
+      {
+        "caught": 45,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 46,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.9782608695652174
+      },
+      {
+        "caught": 183,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 196,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.9336734693877551
+      },
+      {
+        "caught": 149,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 178,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.8370786516853933
+      },
+      {
+        "caught": 43,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 46,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.9347826086956522
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 24,
+        "not_graded": 9,
+        "position": "last",
+        "rate": 0.5
+      },
+      {
+        "caught": 68,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 112,
+        "not_graded": 13,
+        "position": "last",
+        "rate": 0.6071428571428571
+      },
+      {
+        "caught": 477,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 558,
+        "not_graded": 43,
+        "position": "last",
+        "rate": 0.8548387096774194
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.8571428571428571
+      },
+      {
+        "caught": 58,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 104,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 0.5576923076923077
+      },
+      {
+        "caught": 187,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 318,
+        "not_graded": 17,
+        "position": "middle",
+        "rate": 0.5880503144654088
+      },
+      {
+        "caught": 660,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1073,
+        "not_graded": 39,
+        "position": "middle",
+        "rate": 0.6150978564771669
+      },
+      {
+        "caught": 624,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 1069,
+        "not_graded": 15,
+        "position": "middle",
+        "rate": 0.5837231057062675
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 18,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6111111111111112
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 38,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5789473684210527
+      },
+      {
+        "caught": 55,
+        "kind": "consonant_pair:ت↔ط",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 125,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.44
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 16,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 125,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 138,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.007246376811594203
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 197,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 9,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 69,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 163,
+        "not_graded": 24,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 268,
+        "not_graded": 9,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 209,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.004784688995215311
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 83,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 683,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 62,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1324,
+        "not_graded": 8,
+        "position": "middle",
+        "rate": 0.04682779456193353
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 863,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.02085747392815759
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 33,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 94,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.031914893617021274
+      },
+      {
+        "caught": 4,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 114,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.03508771929824561
+      },
+      {
+        "caught": 10,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.9090909090909091
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 16,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.75
+      },
+      {
+        "caught": 124,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 125,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.992
+      },
+      {
+        "caught": 131,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 138,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.9492753623188406
+      },
+      {
+        "caught": 162,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 196,
+        "not_graded": 6,
+        "position": "first",
+        "rate": 0.826530612244898
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 9,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.2222222222222222
+      },
+      {
+        "caught": 58,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 68,
+        "not_graded": 5,
+        "position": "last",
+        "rate": 0.8529411764705882
+      },
+      {
+        "caught": 100,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 153,
+        "not_graded": 34,
+        "position": "last",
+        "rate": 0.6535947712418301
+      },
+      {
+        "caught": 130,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 267,
+        "not_graded": 10,
+        "position": "last",
+        "rate": 0.4868913857677903
+      },
+      {
+        "caught": 175,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 193,
+        "not_graded": 23,
+        "position": "middle",
+        "rate": 0.9067357512953368
+      },
+      {
+        "caught": 39,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 83,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.46987951807228917
+      },
+      {
+        "caught": 476,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 659,
+        "not_graded": 31,
+        "position": "middle",
+        "rate": 0.7223065250379362
+      },
+      {
+        "caught": 705,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1292,
+        "not_graded": 40,
+        "position": "middle",
+        "rate": 0.5456656346749226
+      },
+      {
+        "caught": 499,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 850,
+        "not_graded": 17,
+        "position": "middle",
+        "rate": 0.5870588235294117
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.2727272727272727
+      },
+      {
+        "caught": 14,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 33,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.42424242424242425
+      },
+      {
+        "caught": 46,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 94,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.48936170212765956
+      },
+      {
+        "caught": 69,
+        "kind": "consonant_pair:ح↔ه",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 114,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6052631578947368
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 45,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 102,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 206,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 196,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 8,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 8,
+        "not_graded": 3,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 71,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 156,
+        "not_graded": 36,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 62,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.11290322580645161
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 279,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 0.007168458781362007
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1224,
+        "not_graded": 6,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 476,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 39,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 45,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 45,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 100,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 102,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9803921568627451
+      },
+      {
+        "caught": 200,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 206,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.970873786407767
+      },
+      {
+        "caught": 188,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 196,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9591836734693877
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 8,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.25
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 7,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 0.8571428571428571
+      },
+      {
+        "caught": 60,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 70,
+        "not_graded": 2,
+        "position": "last",
+        "rate": 0.8571428571428571
+      },
+      {
+        "caught": 116,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 155,
+        "not_graded": 37,
+        "position": "last",
+        "rate": 0.7483870967741936
+      },
+      {
+        "caught": 23,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 62,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.3709677419354839
+      },
+      {
+        "caught": 19,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.9047619047619048
+      },
+      {
+        "caught": 213,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 267,
+        "not_graded": 14,
+        "position": "middle",
+        "rate": 0.797752808988764
+      },
+      {
+        "caught": 1016,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1206,
+        "not_graded": 24,
+        "position": "middle",
+        "rate": 0.8424543946932007
+      },
+      {
+        "caught": 415,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 474,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.8755274261603375
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8620689655172413
+      },
+      {
+        "caught": 38,
+        "kind": "consonant_pair:ذ↔ز",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 39,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9743589743589743
+      },
+      {
+        "caught": 44,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 44,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 4,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 117,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 118,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9915254237288136
+      },
+      {
+        "caught": 220,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 226,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.9734513274336283
+      },
+      {
+        "caught": 192,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 203,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9458128078817734
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 4,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 7,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 54,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 76,
+        "not_graded": 8,
+        "position": "last",
+        "rate": 0.7105263157894737
+      },
+      {
+        "caught": 100,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 137,
+        "not_graded": 33,
+        "position": "last",
+        "rate": 0.7299270072992701
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 59,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.423728813559322
+      },
+      {
+        "caught": 19,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.9047619047619048
+      },
+      {
+        "caught": 190,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 253,
+        "not_graded": 11,
+        "position": "middle",
+        "rate": 0.7509881422924901
+      },
+      {
+        "caught": 819,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1049,
+        "not_graded": 21,
+        "position": "middle",
+        "rate": 0.780743565300286
+      },
+      {
+        "caught": 316,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 391,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.8081841432225064
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 27,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9642857142857143
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 27,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9259259259259259
+      },
+      {
+        "caught": 44,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 44,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 4,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 117,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 118,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9915254237288136
+      },
+      {
+        "caught": 220,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 226,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.9734513274336283
+      },
+      {
+        "caught": 194,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 203,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9556650246305419
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 5,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.8333333333333334
+      },
+      {
+        "caught": 62,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 75,
+        "not_graded": 9,
+        "position": "last",
+        "rate": 0.8266666666666667
+      },
+      {
+        "caught": 103,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 137,
+        "not_graded": 33,
+        "position": "last",
+        "rate": 0.7518248175182481
+      },
+      {
+        "caught": 25,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 59,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.423728813559322
+      },
+      {
+        "caught": 20,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.9523809523809523
+      },
+      {
+        "caught": 192,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 253,
+        "not_graded": 11,
+        "position": "middle",
+        "rate": 0.758893280632411
+      },
+      {
+        "caught": 907,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1049,
+        "not_graded": 21,
+        "position": "middle",
+        "rate": 0.8646329837940896
+      },
+      {
+        "caught": 325,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 391,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.8312020460358056
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 27,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9642857142857143
+      },
+      {
+        "caught": 26,
+        "kind": "consonant_pair:ذ↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 27,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9629629629629629
+      },
+      {
+        "caught": 8,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 9,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.8888888888888888
+      },
+      {
+        "caught": 20,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 32,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.625
+      },
+      {
+        "caught": 57,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 76,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.75
+      },
+      {
+        "caught": 71,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 88,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.8068181818181818
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 46,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.8043478260869565
+      },
+      {
+        "caught": 30,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 30,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 1.0
+      },
+      {
+        "caught": 127,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 157,
+        "not_graded": 24,
+        "position": "last",
+        "rate": 0.8089171974522293
+      },
+      {
+        "caught": 446,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 610,
+        "not_graded": 21,
+        "position": "last",
+        "rate": 0.7311475409836066
+      },
+      {
+        "caught": 16,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 16,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 56,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 68,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.8235294117647058
+      },
+      {
+        "caught": 322,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 397,
+        "not_graded": 22,
+        "position": "middle",
+        "rate": 0.8110831234256927
+      },
+      {
+        "caught": 544,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 638,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.8526645768025078
+      },
+      {
+        "caught": 688,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 879,
+        "not_graded": 16,
+        "position": "middle",
+        "rate": 0.782707622298066
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8
+      },
+      {
+        "caught": 58,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 67,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8656716417910447
+      },
+      {
+        "caught": 106,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 129,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8217054263565892
+      },
+      {
+        "caught": 8,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 9,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.8888888888888888
+      },
+      {
+        "caught": 20,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 32,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.625
+      },
+      {
+        "caught": 57,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 76,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.75
+      },
+      {
+        "caught": 72,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 88,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.8181818181818182
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 46,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.8043478260869565
+      },
+      {
+        "caught": 30,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 30,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 1.0
+      },
+      {
+        "caught": 140,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 156,
+        "not_graded": 25,
+        "position": "last",
+        "rate": 0.8974358974358975
+      },
+      {
+        "caught": 454,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 610,
+        "not_graded": 21,
+        "position": "last",
+        "rate": 0.7442622950819672
+      },
+      {
+        "caught": 16,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 16,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 60,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 68,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.8823529411764706
+      },
+      {
+        "caught": 343,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 397,
+        "not_graded": 22,
+        "position": "middle",
+        "rate": 0.8639798488664987
+      },
+      {
+        "caught": 575,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 638,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.9012539184952978
+      },
+      {
+        "caught": 705,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 879,
+        "not_graded": 16,
+        "position": "middle",
+        "rate": 0.8020477815699659
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5
+      },
+      {
+        "caught": 12,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 15,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8
+      },
+      {
+        "caught": 60,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 67,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8955223880597015
+      },
+      {
+        "caught": 115,
+        "kind": "consonant_pair:س↔ش",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 129,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8914728682170543
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 45,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 150,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 102,
+        "not_graded": 6,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 49,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 22,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 173,
+        "not_graded": 15,
+        "position": "last",
+        "rate": 0.005780346820809248
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 568,
+        "not_graded": 13,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 57,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 349,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 664,
+        "not_graded": 3,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 1000,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 8,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 50,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 118,
+        "not_graded": 2,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 41,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 45,
+        "not_graded": 2,
+        "position": "first",
+        "rate": 0.9111111111111111
+      },
+      {
+        "caught": 144,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 150,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.96
+      },
+      {
+        "caught": 101,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 102,
+        "not_graded": 6,
+        "position": "first",
+        "rate": 0.9901960784313726
+      },
+      {
+        "caught": 42,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 49,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.8571428571428571
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 22,
+        "not_graded": 4,
+        "position": "last",
+        "rate": 1.0
+      },
+      {
+        "caught": 147,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 165,
+        "not_graded": 23,
+        "position": "last",
+        "rate": 0.8909090909090909
+      },
+      {
+        "caught": 422,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 564,
+        "not_graded": 17,
+        "position": "last",
+        "rate": 0.74822695035461
+      },
+      {
+        "caught": 13,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 13,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 51,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 57,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.8947368421052632
+      },
+      {
+        "caught": 263,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 336,
+        "not_graded": 20,
+        "position": "middle",
+        "rate": 0.7827380952380952
+      },
+      {
+        "caught": 529,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 650,
+        "not_graded": 17,
+        "position": "middle",
+        "rate": 0.8138461538461539
+      },
+      {
+        "caught": 784,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 983,
+        "not_graded": 19,
+        "position": "middle",
+        "rate": 0.797558494404883
+      },
+      {
+        "caught": 3,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 5,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 8,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.875
+      },
+      {
+        "caught": 45,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 50,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9
+      },
+      {
+        "caught": 105,
+        "kind": "consonant_pair:س↔ص",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 117,
+        "not_graded": 3,
+        "position": "waqf",
+        "rate": 0.8974358974358975
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 18,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 44,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 96,
+        "not_graded": 11,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 133,
+        "not_graded": 8,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 3,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 330,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 269,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 276,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 51,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 20,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 15,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 15,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 17,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 18,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.9444444444444444
+      },
+      {
+        "caught": 26,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 44,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.5909090909090909
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 1.0
+      },
+      {
+        "caught": 76,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 89,
+        "not_graded": 18,
+        "position": "last",
+        "rate": 0.8539325842696629
+      },
+      {
+        "caught": 85,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 132,
+        "not_graded": 9,
+        "position": "last",
+        "rate": 0.6439393939393939
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 3,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.6666666666666666
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 15,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.7333333333333333
+      },
+      {
+        "caught": 165,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 322,
+        "not_graded": 8,
+        "position": "middle",
+        "rate": 0.5124223602484472
+      },
+      {
+        "caught": 184,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 265,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.6943396226415094
+      },
+      {
+        "caught": 232,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 274,
+        "not_graded": 2,
+        "position": "middle",
+        "rate": 0.8467153284671532
+      },
+      {
+        "caught": 5,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.17857142857142858
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 51,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.21568627450980393
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ض↔ظ",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 20,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.9
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 104,
+        "not_graded": 15,
+        "position": "first",
+        "rate": 0.009615384615384616
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 42,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 150,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.28
+      },
+      {
+        "caught": 200,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 230,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.8695652173913043
+      },
+      {
+        "caught": 87,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 102,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.8529411764705882
+      },
+      {
+        "caught": 5,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 21,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.23809523809523808
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 38,
+        "not_graded": 7,
+        "position": "last",
+        "rate": 0.5789473684210527
+      },
+      {
+        "caught": 84,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 144,
+        "not_graded": 22,
+        "position": "last",
+        "rate": 0.5833333333333334
+      },
+      {
+        "caught": 161,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 365,
+        "not_graded": 11,
+        "position": "last",
+        "rate": 0.4410958904109589
+      },
+      {
+        "caught": 30,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 36,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.8333333333333334
+      },
+      {
+        "caught": 26,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 34,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.7647058823529411
+      },
+      {
+        "caught": 322,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 439,
+        "not_graded": 17,
+        "position": "middle",
+        "rate": 0.7334851936218679
+      },
+      {
+        "caught": 563,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 690,
+        "not_graded": 27,
+        "position": "middle",
+        "rate": 0.8159420289855073
+      },
+      {
+        "caught": 521,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 600,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.8683333333333333
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.09090909090909091
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6428571428571429
+      },
+      {
+        "caught": 29,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 46,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6304347826086957
+      },
+      {
+        "caught": 70,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 89,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7865168539325843
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 104,
+        "not_graded": 15,
+        "position": "first",
+        "rate": 0.009615384615384616
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 47,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 150,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.31333333333333335
+      },
+      {
+        "caught": 201,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 230,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.8739130434782608
+      },
+      {
+        "caught": 87,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 102,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.8529411764705882
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 21,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.5238095238095238
+      },
+      {
+        "caught": 23,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 38,
+        "not_graded": 7,
+        "position": "last",
+        "rate": 0.6052631578947368
+      },
+      {
+        "caught": 105,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 142,
+        "not_graded": 24,
+        "position": "last",
+        "rate": 0.7394366197183099
+      },
+      {
+        "caught": 173,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 365,
+        "not_graded": 11,
+        "position": "last",
+        "rate": 0.473972602739726
+      },
+      {
+        "caught": 30,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 36,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.8333333333333334
+      },
+      {
+        "caught": 28,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 34,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.8235294117647058
+      },
+      {
+        "caught": 329,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 439,
+        "not_graded": 17,
+        "position": "middle",
+        "rate": 0.7494305239179955
+      },
+      {
+        "caught": 589,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 690,
+        "not_graded": 27,
+        "position": "middle",
+        "rate": 0.8536231884057971
+      },
+      {
+        "caught": 538,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 600,
+        "not_graded": 7,
+        "position": "middle",
+        "rate": 0.8966666666666666
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.18181818181818182
+      },
+      {
+        "caught": 18,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6428571428571429
+      },
+      {
+        "caught": 29,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 46,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6304347826086957
+      },
+      {
+        "caught": 73,
+        "kind": "consonant_pair:ط↔ق",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 89,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.8202247191011236
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 82,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.024390243902439025
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 10,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 117,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.008547008547008548
+      },
+      {
+        "caught": 5,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 285,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.017543859649122806
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 186,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.005376344086021506
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 15,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 27,
+        "not_graded": 8,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 167,
+        "not_graded": 15,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 415,
+        "not_graded": 29,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 99,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.010101010101010102
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 48,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 785,
+        "not_graded": 9,
+        "position": "middle",
+        "rate": 0.0
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1109,
+        "not_graded": 6,
+        "position": "middle",
+        "rate": 0.033363390441839495
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 840,
+        "not_graded": 8,
+        "position": "middle",
+        "rate": 0.013095238095238096
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 3,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 66,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.015151515151515152
+      },
+      {
+        "caught": 2,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.02531645569620253
+      },
+      {
+        "caught": 81,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 82,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.9878048780487805
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 10,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.7
+      },
+      {
+        "caught": 114,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 117,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.9743589743589743
+      },
+      {
+        "caught": 266,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 285,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.9333333333333333
+      },
+      {
+        "caught": 178,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 186,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.956989247311828
+      },
+      {
+        "caught": 6,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 15,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.4
+      },
+      {
+        "caught": 11,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 26,
+        "not_graded": 9,
+        "position": "last",
+        "rate": 0.4230769230769231
+      },
+      {
+        "caught": 122,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 164,
+        "not_graded": 18,
+        "position": "last",
+        "rate": 0.7439024390243902
+      },
+      {
+        "caught": 241,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 413,
+        "not_graded": 31,
+        "position": "last",
+        "rate": 0.5835351089588378
+      },
+      {
+        "caught": 55,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 95,
+        "not_graded": 5,
+        "position": "middle",
+        "rate": 0.5789473684210527
+      },
+      {
+        "caught": 33,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 48,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.6875
+      },
+      {
+        "caught": 555,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 757,
+        "not_graded": 37,
+        "position": "middle",
+        "rate": 0.7331571994715984
+      },
+      {
+        "caught": 896,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1080,
+        "not_graded": 35,
+        "position": "middle",
+        "rate": 0.8296296296296296
+      },
+      {
+        "caught": 586,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 808,
+        "not_graded": 40,
+        "position": "middle",
+        "rate": 0.7252475247524752
+      },
+      {
+        "caught": 1,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 3,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 16,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 41,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 66,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6212121212121212
+      },
+      {
+        "caught": 64,
+        "kind": "consonant_pair:ق↔ك",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 78,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.8205128205128205
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 58,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.6379310344827587
+      },
+      {
+        "caught": 14,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 19,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.7368421052631579
+      },
+      {
+        "caught": 142,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 211,
+        "not_graded": 8,
+        "position": "first",
+        "rate": 0.6729857819905213
+      },
+      {
+        "caught": 250,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 371,
+        "not_graded": 12,
+        "position": "first",
+        "rate": 0.6738544474393531
+      },
+      {
+        "caught": 187,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 271,
+        "not_graded": 12,
+        "position": "first",
+        "rate": 0.6900369003690037
+      },
+      {
+        "caught": 15,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 38,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.39473684210526316
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 61,
+        "not_graded": 7,
+        "position": "last",
+        "rate": 0.6065573770491803
+      },
+      {
+        "caught": 157,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 299,
+        "not_graded": 46,
+        "position": "last",
+        "rate": 0.5250836120401338
+      },
+      {
+        "caught": 273,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 507,
+        "not_graded": 34,
+        "position": "last",
+        "rate": 0.5384615384615384
+      },
+      {
+        "caught": 148,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 229,
+        "not_graded": 25,
+        "position": "middle",
+        "rate": 0.6462882096069869
+      },
+      {
+        "caught": 29,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 56,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.5178571428571429
+      },
+      {
+        "caught": 755,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 1037,
+        "not_graded": 91,
+        "position": "middle",
+        "rate": 0.7280617164898746
+      },
+      {
+        "caught": 822,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1229,
+        "not_graded": 53,
+        "position": "middle",
+        "rate": 0.6688364524003255
+      },
+      {
+        "caught": 534,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 849,
+        "not_graded": 31,
+        "position": "middle",
+        "rate": 0.6289752650176679
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6363636363636364
+      },
+      {
+        "caught": 21,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 30,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7
+      },
+      {
+        "caught": 43,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 62,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6935483870967742
+      },
+      {
+        "caught": 47,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 76,
+        "not_graded": 2,
+        "position": "waqf",
+        "rate": 0.618421052631579
+      },
+      {
+        "caught": 37,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 58,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 0.6379310344827587
+      },
+      {
+        "caught": 15,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 19,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.7894736842105263
+      },
+      {
+        "caught": 170,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 211,
+        "not_graded": 8,
+        "position": "first",
+        "rate": 0.8056872037914692
+      },
+      {
+        "caught": 254,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 371,
+        "not_graded": 12,
+        "position": "first",
+        "rate": 0.6846361185983828
+      },
+      {
+        "caught": 191,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 271,
+        "not_graded": 12,
+        "position": "first",
+        "rate": 0.7047970479704797
+      },
+      {
+        "caught": 15,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 38,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.39473684210526316
+      },
+      {
+        "caught": 41,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 61,
+        "not_graded": 7,
+        "position": "last",
+        "rate": 0.6721311475409836
+      },
+      {
+        "caught": 183,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 298,
+        "not_graded": 47,
+        "position": "last",
+        "rate": 0.6140939597315436
+      },
+      {
+        "caught": 291,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 505,
+        "not_graded": 36,
+        "position": "last",
+        "rate": 0.5762376237623762
+      },
+      {
+        "caught": 148,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 229,
+        "not_graded": 25,
+        "position": "middle",
+        "rate": 0.6462882096069869
+      },
+      {
+        "caught": 33,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 56,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.5892857142857143
+      },
+      {
+        "caught": 784,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 1036,
+        "not_graded": 92,
+        "position": "middle",
+        "rate": 0.7567567567567568
+      },
+      {
+        "caught": 854,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1228,
+        "not_graded": 54,
+        "position": "middle",
+        "rate": 0.6954397394136808
+      },
+      {
+        "caught": 580,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 849,
+        "not_graded": 31,
+        "position": "middle",
+        "rate": 0.6831566548881036
+      },
+      {
+        "caught": 0,
+        "kind": "consonant_random",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 7,
+        "kind": "consonant_random",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 11,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6363636363636364
+      },
+      {
+        "caught": 22,
+        "kind": "consonant_random",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 30,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7333333333333333
+      },
+      {
+        "caught": 44,
+        "kind": "consonant_random",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 62,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7096774193548387
+      },
+      {
+        "caught": 51,
+        "kind": "consonant_random",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 76,
+        "not_graded": 2,
+        "position": "waqf",
+        "rate": 0.6710526315789473
+      },
+      {
+        "caught": 40,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 61,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.6557377049180327
+      },
+      {
+        "caught": 10,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 16,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.625
+      },
+      {
+        "caught": 137,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 209,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.6555023923444976
+      },
+      {
+        "caught": 201,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 378,
+        "not_graded": 7,
+        "position": "first",
+        "rate": 0.5317460317460317
+      },
+      {
+        "caught": 173,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 290,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.596551724137931
+      },
+      {
+        "caught": 29,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 68,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.4264705882352941
+      },
+      {
+        "caught": 42,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 61,
+        "not_graded": 1,
+        "position": "last",
+        "rate": 0.6885245901639344
+      },
+      {
+        "caught": 175,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 312,
+        "not_graded": 17,
+        "position": "last",
+        "rate": 0.5608974358974359
+      },
+      {
+        "caught": 251,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 541,
+        "not_graded": 15,
+        "position": "last",
+        "rate": 0.46395563770794823
+      },
+      {
+        "caught": 109,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 268,
+        "not_graded": 11,
+        "position": "middle",
+        "rate": 0.40671641791044777
+      },
+      {
+        "caught": 28,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 55,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.509090909090909
+      },
+      {
+        "caught": 611,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 1102,
+        "not_graded": 59,
+        "position": "middle",
+        "rate": 0.5544464609800362
+      },
+      {
+        "caught": 649,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1189,
+        "not_graded": 47,
+        "position": "middle",
+        "rate": 0.5458368376787216
+      },
+      {
+        "caught": 411,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 829,
+        "not_graded": 28,
+        "position": "middle",
+        "rate": 0.4957780458383595
+      },
+      {
+        "caught": 2,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 1,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.16666666666666666
+      },
+      {
+        "caught": 15,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 36,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.4166666666666667
+      },
+      {
+        "caught": 33,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 60,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.55
+      },
+      {
+        "caught": 32,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 65,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.49230769230769234
+      },
+      {
+        "caught": 40,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 61,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.6557377049180327
+      },
+      {
+        "caught": 11,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 16,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.6875
+      },
+      {
+        "caught": 140,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 209,
+        "not_graded": 3,
+        "position": "first",
+        "rate": 0.6698564593301436
+      },
+      {
+        "caught": 251,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 378,
+        "not_graded": 7,
+        "position": "first",
+        "rate": 0.6640211640211641
+      },
+      {
+        "caught": 196,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 290,
+        "not_graded": 5,
+        "position": "first",
+        "rate": 0.6758620689655173
+      },
+      {
+        "caught": 35,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 68,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.5147058823529411
+      },
+      {
+        "caught": 43,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 59,
+        "not_graded": 3,
+        "position": "last",
+        "rate": 0.7288135593220338
+      },
+      {
+        "caught": 195,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 311,
+        "not_graded": 18,
+        "position": "last",
+        "rate": 0.6270096463022508
+      },
+      {
+        "caught": 290,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 539,
+        "not_graded": 17,
+        "position": "last",
+        "rate": 0.5380333951762524
+      },
+      {
+        "caught": 109,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 268,
+        "not_graded": 11,
+        "position": "middle",
+        "rate": 0.40671641791044777
+      },
+      {
+        "caught": 31,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 55,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.5636363636363636
+      },
+      {
+        "caught": 646,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 1096,
+        "not_graded": 65,
+        "position": "middle",
+        "rate": 0.5894160583941606
+      },
+      {
+        "caught": 717,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1186,
+        "not_graded": 50,
+        "position": "middle",
+        "rate": 0.6045531197301856
+      },
+      {
+        "caught": 481,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 828,
+        "not_graded": 29,
+        "position": "middle",
+        "rate": 0.5809178743961353
+      },
+      {
+        "caught": 2,
+        "kind": "haraka_drop",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 1,
+        "kind": "haraka_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 6,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.16666666666666666
+      },
+      {
+        "caught": 15,
+        "kind": "haraka_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 36,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 0.4166666666666667
+      },
+      {
+        "caught": 36,
+        "kind": "haraka_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 60,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6
+      },
+      {
+        "caught": 35,
+        "kind": "haraka_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 65,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5384615384615384
+      },
+      {
+        "caught": 67,
+        "kind": "haraka_swap",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 67,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 16,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 17,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9411764705882353
+      },
+      {
+        "caught": 207,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 219,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9452054794520548
+      },
+      {
+        "caught": 351,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 378,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9285714285714286
+      },
+      {
+        "caught": 247,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 272,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9080882352941176
+      },
+      {
+        "caught": 26,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 43,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.6046511627906976
+      },
+      {
+        "caught": 52,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 60,
+        "not_graded": 2,
+        "position": "last",
+        "rate": 0.8666666666666667
+      },
+      {
+        "caught": 201,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 307,
+        "not_graded": 17,
+        "position": "last",
+        "rate": 0.6547231270358306
+      },
+      {
+        "caught": 321,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 527,
+        "not_graded": 14,
+        "position": "last",
+        "rate": 0.6091081593927894
+      },
+      {
+        "caught": 159,
+        "kind": "haraka_swap",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 255,
+        "not_graded": 21,
+        "position": "middle",
+        "rate": 0.6235294117647059
+      },
+      {
+        "caught": 30,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 49,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.6122448979591837
+      },
+      {
+        "caught": 751,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 1074,
+        "not_graded": 73,
+        "position": "middle",
+        "rate": 0.6992551210428305
+      },
+      {
+        "caught": 893,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1219,
+        "not_graded": 42,
+        "position": "middle",
+        "rate": 0.7325676784249385
+      },
+      {
+        "caught": 600,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 855,
+        "not_graded": 28,
+        "position": "middle",
+        "rate": 0.7017543859649122
+      },
+      {
+        "caught": 4,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 7,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 13,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4482758620689655
+      },
+      {
+        "caught": 41,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 58,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7068965517241379
+      },
+      {
+        "caught": 53,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 82,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6463414634146342
+      },
+      {
+        "caught": 67,
+        "kind": "haraka_swap",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 67,
+        "not_graded": 4,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 16,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 17,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.9411764705882353
+      },
+      {
+        "caught": 209,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 219,
+        "not_graded": 1,
+        "position": "first",
+        "rate": 0.954337899543379
+      },
+      {
+        "caught": 351,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 378,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9285714285714286
+      },
+      {
+        "caught": 251,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 272,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9227941176470589
+      },
+      {
+        "caught": 26,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 43,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.6046511627906976
+      },
+      {
+        "caught": 54,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 59,
+        "not_graded": 3,
+        "position": "last",
+        "rate": 0.9152542372881356
+      },
+      {
+        "caught": 235,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 306,
+        "not_graded": 18,
+        "position": "last",
+        "rate": 0.7679738562091504
+      },
+      {
+        "caught": 344,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 527,
+        "not_graded": 14,
+        "position": "last",
+        "rate": 0.6527514231499051
+      },
+      {
+        "caught": 159,
+        "kind": "haraka_swap",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 255,
+        "not_graded": 21,
+        "position": "middle",
+        "rate": 0.6235294117647059
+      },
+      {
+        "caught": 33,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 49,
+        "not_graded": 1,
+        "position": "middle",
+        "rate": 0.673469387755102
+      },
+      {
+        "caught": 763,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 1074,
+        "not_graded": 73,
+        "position": "middle",
+        "rate": 0.7104283054003724
+      },
+      {
+        "caught": 930,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1219,
+        "not_graded": 42,
+        "position": "middle",
+        "rate": 0.7629204265791633
+      },
+      {
+        "caught": 646,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 855,
+        "not_graded": 28,
+        "position": "middle",
+        "rate": 0.7555555555555555
+      },
+      {
+        "caught": 4,
+        "kind": "haraka_swap",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 7,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.5714285714285714
+      },
+      {
+        "caught": 14,
+        "kind": "haraka_swap",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 29,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4827586206896552
+      },
+      {
+        "caught": 42,
+        "kind": "haraka_swap",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 58,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.7241379310344828
+      },
+      {
+        "caught": 57,
+        "kind": "haraka_swap",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 82,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.6951219512195121
+      },
+      {
+        "caught": 21,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 28,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.75
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 56,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.07142857142857142
+      },
+      {
+        "caught": 13,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 391,
+        "not_graded": 9,
+        "position": "first",
+        "rate": 0.03324808184143223
+      },
+      {
+        "caught": 155,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 380,
+        "not_graded": 8,
+        "position": "first",
+        "rate": 0.40789473684210525
+      },
+      {
+        "caught": 2,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.02531645569620253
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 177,
+        "not_graded": 27,
+        "position": "last",
+        "rate": 0.022598870056497175
+      },
+      {
+        "caught": 15,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 315,
+        "not_graded": 20,
+        "position": "last",
+        "rate": 0.047619047619047616
+      },
+      {
+        "caught": 13,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 79,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.16455696202531644
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 647,
+        "not_graded": 4,
+        "position": "middle",
+        "rate": 0.0061823802163833074
+      },
+      {
+        "caught": 20,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 1682,
+        "not_graded": 8,
+        "position": "middle",
+        "rate": 0.011890606420927468
+      },
+      {
+        "caught": 228,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 1013,
+        "not_graded": 15,
+        "position": "middle",
+        "rate": 0.2250740375123396
+      },
+      {
+        "caught": 1,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 9,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.1111111111111111
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 12,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 92,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.0
+      },
+      {
+        "caught": 14,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 92,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.15217391304347827
+      },
+      {
+        "caught": 28,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 28,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 47,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 56,
+        "not_graded": 0,
+        "position": "first",
+        "rate": 0.8392857142857143
+      },
+      {
+        "caught": 382,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 391,
+        "not_graded": 9,
+        "position": "first",
+        "rate": 0.9769820971867008
+      },
+      {
+        "caught": 358,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 378,
+        "not_graded": 10,
+        "position": "first",
+        "rate": 0.9470899470899471
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 79,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.05063291139240506
+      },
+      {
+        "caught": 0,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "last",
+        "rate": 0.0
+      },
+      {
+        "caught": 59,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 177,
+        "not_graded": 27,
+        "position": "last",
+        "rate": 0.3333333333333333
+      },
+      {
+        "caught": 141,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 313,
+        "not_graded": 22,
+        "position": "last",
+        "rate": 0.4504792332268371
+      },
+      {
+        "caught": 51,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 79,
+        "not_graded": 0,
+        "position": "middle",
+        "rate": 0.6455696202531646
+      },
+      {
+        "caught": 340,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 619,
+        "not_graded": 32,
+        "position": "middle",
+        "rate": 0.5492730210016155
+      },
+      {
+        "caught": 668,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 1656,
+        "not_graded": 34,
+        "position": "middle",
+        "rate": 0.4033816425120773
+      },
+      {
+        "caught": 546,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 999,
+        "not_graded": 29,
+        "position": "middle",
+        "rate": 0.5465465465465466
+      },
+      {
+        "caught": 4,
+        "kind": "shaddah_drop",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 9,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4444444444444444
+      },
+      {
+        "caught": 5,
+        "kind": "shaddah_drop",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 12,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.4166666666666667
+      },
+      {
+        "caught": 29,
+        "kind": "shaddah_drop",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 92,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.31521739130434784
+      },
+      {
+        "caught": 40,
+        "kind": "shaddah_drop",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 92,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 0.43478260869565216
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 70,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 14,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 240,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 373,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 1,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 1,
+        "not_graded": 278,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 46,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 52,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 309,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 0,
+        "not_graded": 535,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 218,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 223,
+        "not_graded": 65,
+        "position": "middle",
+        "rate": 0.9775784753363229
+      },
+      {
+        "caught": 57,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 57,
+        "not_graded": 13,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 793,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 794,
+        "not_graded": 332,
+        "position": "middle",
+        "rate": 0.9987405541561712
+      },
+      {
+        "caught": 983,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 983,
+        "not_graded": 286,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 675,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 676,
+        "not_graded": 224,
+        "position": "middle",
+        "rate": 0.9985207100591716
+      },
+      {
+        "caught": 2,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "shipped_default",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "shipped_default",
+        "n": 4,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 26,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "shipped_default",
+        "n": 26,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 58,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "shipped_default",
+        "n": 59,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 0.9830508474576272
+      },
+      {
+        "caught": 64,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "shipped_default",
+        "n": 64,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 70,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 14,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 240,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 373,
+        "position": "first",
+        "rate": null
+      },
+      {
+        "caught": 1,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 1,
+        "not_graded": 278,
+        "position": "first",
+        "rate": 1.0
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 46,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 52,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 309,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 0,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 0,
+        "not_graded": 535,
+        "position": "last",
+        "rate": null
+      },
+      {
+        "caught": 218,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 223,
+        "not_graded": 65,
+        "position": "middle",
+        "rate": 0.9775784753363229
+      },
+      {
+        "caught": 57,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 57,
+        "not_graded": 13,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 793,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 794,
+        "not_graded": 332,
+        "position": "middle",
+        "rate": 0.9987405541561712
+      },
+      {
+        "caught": 983,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 983,
+        "not_graded": 286,
+        "position": "middle",
+        "rate": 1.0
+      },
+      {
+        "caught": 675,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 676,
+        "not_graded": 224,
+        "position": "middle",
+        "rate": 0.9985207100591716
+      },
+      {
+        "caught": 2,
+        "kind": "skip_word",
+        "length_bin": "1-2",
+        "mode": "strict",
+        "n": 2,
+        "not_graded": 0,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 4,
+        "kind": "skip_word",
+        "length_bin": "11+",
+        "mode": "strict",
+        "n": 4,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 26,
+        "kind": "skip_word",
+        "length_bin": "3-4",
+        "mode": "strict",
+        "n": 26,
+        "not_graded": 1,
+        "position": "waqf",
+        "rate": 1.0
+      },
+      {
+        "caught": 58,
+        "kind": "skip_word",
+        "length_bin": "5-6",
+        "mode": "strict",
+        "n": 59,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 0.9830508474576272
+      },
+      {
+        "caught": 64,
+        "kind": "skip_word",
+        "length_bin": "7-10",
+        "mode": "strict",
+        "n": 64,
+        "not_graded": 5,
+        "position": "waqf",
+        "rate": 1.0
+      }
+    ],
+    "inserted_split": [
+      {
+        "caught": 40,
+        "caught_on_copied": 27,
+        "caught_on_following": 13,
+        "kind": "add_word",
+        "mode": "shipped_default",
+        "n": 5478,
+        "not_graded": 264,
+        "rate": 0.007301935012778387
+      },
+      {
+        "caught": 40,
+        "caught_on_copied": 27,
+        "caught_on_following": 13,
+        "kind": "add_word",
+        "mode": "strict",
+        "n": 5474,
+        "not_graded": 268,
+        "rate": 0.007307270734380708
+      }
+    ],
+    "observed_exemptions": [],
+    "protected_split": [
+      {
+        "caught": 2948,
+        "kind": "haraka_drop",
+        "mode": "shipped_default",
+        "n": 4499,
+        "not_graded": 181,
+        "protected": false,
+        "rate": 0.6552567237163814
+      },
+      {
+        "caught": 1,
+        "kind": "haraka_drop",
+        "mode": "shipped_default",
+        "n": 1049,
+        "not_graded": 13,
+        "protected": true,
+        "rate": 0.0009532888465204957
+      },
+      {
+        "caught": 3259,
+        "kind": "haraka_drop",
+        "mode": "strict",
+        "n": 4487,
+        "not_graded": 193,
+        "protected": false,
+        "rate": 0.7263204813906842
+      },
+      {
+        "caught": 15,
+        "kind": "haraka_drop",
+        "mode": "strict",
+        "n": 1046,
+        "not_graded": 16,
+        "protected": true,
+        "rate": 0.014340344168260038
+      }
+    ],
+    "rows": 128026,
+    "unplantable": {
+      "consonant_pair:ت↔ط": 1637,
+      "consonant_pair:ح↔ه": 1254,
+      "consonant_pair:ذ↔ز": 2747,
+      "consonant_pair:ذ↔ظ": 2995,
+      "consonant_pair:س↔ش": 2376,
+      "consonant_pair:س↔ص": 2306,
+      "consonant_pair:ض↔ظ": 4413,
+      "consonant_pair:ط↔ق": 2497,
+      "consonant_pair:ق↔ك": 1291,
+      "shaddah_drop": 597,
+      "skip_word": 4
+    }
+  },
+  "seed": 308
+}

@@ -49,18 +49,23 @@ def fake_driver(tmp_path, body: str):
     return path
 
 
-def test_a_zero_exit_with_no_payload_names_the_bytes_it_wrote(tmp_path):
-    driver = fake_driver(tmp_path, "exit 0\n")
-    with pytest.raises(RuntimeError, match="exited 0 with 0 bytes"):
-        tracer.driver_checks(driver, tmp_path / "clip.wav", 40, tmp_path)
-
-
-def test_a_zero_exit_with_stdout_that_is_not_json_names_the_head_and_stderr(tmp_path):
-    driver = fake_driver(tmp_path, "echo 'warning: no model'; echo 'note' >&2; exit 0\n")
+def test_a_zero_exit_whose_stdout_is_runtime_noise_names_the_bytes(tmp_path):
+    """The CoreML cache race: E5RT prints its diagnostics and the driver never prints a payload."""
+    driver = fake_driver(
+        tmp_path,
+        "echo 'E5RT encountered an STL exception. msg = filesystem error: in rename: Directory "
+        "not empty'; echo 'note' >&2; exit 0\n")
     with pytest.raises(RuntimeError) as raised:
         tracer.driver_checks(driver, tmp_path / "clip.wav", 40, tmp_path)
     message = str(raised.value)
-    assert "not JSON" in message and "warning: no model" in message and "note" in message
+    assert "is not the payload" in message
+    assert "E5RT encountered" in message and "note" in message
+
+
+def test_a_zero_exit_with_nothing_on_stdout_names_the_byte_count(tmp_path):
+    driver = fake_driver(tmp_path, "exit 0\n")
+    with pytest.raises(RuntimeError, match="exited 0 with 0 bytes"):
+        tracer.driver_checks(driver, tmp_path / "clip.wav", 40, tmp_path)
 
 
 # --- the bounded retries -------------------------------------------------------------------------

@@ -122,10 +122,15 @@ def _text(quran_db: str) -> MurajaText:
 
 
 def _write_traces(traces_dir: Path, audio_sha256: str, traces: Sequence[Mapping]) -> None:
-    """A subset clip's full per-check traces, one JSON line per word per scoring."""
-    write_text_atomically(traces_dir / f"{audio_sha256}.jsonl",
-                          "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
-                                  for row in traces))
+    """A subset clip's full per-check traces, one gzipped JSON line per word per scoring.
+
+    Each row repeats the clip's whole check list, so the text is large and compresses ~25×: 1,200
+    subset clips are 261 MB raw and 10 MB gzipped. Fixed mtime, so the file is byte-identical
+    across runs.
+    """
+    body = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in traces)
+    write_bytes_atomically(Path(traces_dir) / f"{audio_sha256}.jsonl.gz",
+                           gzip.compress(body.encode("utf-8"), mtime=0))
 
 
 # --- the run's tables ---------------------------------------------------------------------------

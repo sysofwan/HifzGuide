@@ -148,15 +148,19 @@ def _driver_once(driver: Path, wav: Path, latency_ms: int,
 def _driver_payload(stdout: bytes, stderr: bytes) -> dict:
     """The driver's JSON payload, or an error naming what it wrote instead.
 
-    The driver exits 0 only after printing its payload, so a zero exit whose stdout is not JSON
-    is the one failure whose cause is invisible from the exception alone: the reason carries the
-    byte count, the bytes it wrote and the stderr the run would otherwise drop (#309).
+    The driver prints one JSON object and exits 0 only after printing it, so a zero exit whose
+    stdout is not the payload is the one failure whose cause is invisible from the exception
+    alone. It is real: CoreML's runtime writes its own diagnostics to **stdout** when its
+    compiled-model cache is contended (`E5RT encountered an STL exception ... rename: Directory
+    not empty`, `Failed to find file for memory-mapping: ...com.apple.e5rt.e5bundlecache`), and
+    those runs print no payload at all — the transcript never ran (#309). The reason carries the
+    byte count, the bytes written and the stderr the run would otherwise drop.
     """
     try:
         return json.loads(stdout)
     except json.JSONDecodeError as error:
         raise RuntimeError(
-            f"exited 0 with {len(stdout)} bytes of stdout that is not JSON ({error}): "
+            f"exited 0 with {len(stdout)} bytes of stdout that is not the payload ({error}): "
             f"stdout starts {stdout[:120]!r}, stderr "
             f"{stderr.decode('utf-8', 'replace').strip()[:200]!r}") from error
 
@@ -184,25 +188,26 @@ def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> di
     Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
     """
     first, first_stderr, wall = _driver_once(driver, wav, latency_ms, assets_dir)
-    second, _, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    second, second_stderr, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
     payload = _driver_payload(first, first_stderr)
-    deterministic = first == second
+    again = _driver_payload(second, second_stderr)
+    deterministic = payload == again
     return {
         "checks": payload["checks"],
         "wall_seconds": wall,
         "second_wall_seconds": second_wall,
         "deterministic": deterministic,
-        "determinism_diff": None if deterministic else _json_diff(first, second),
+        "determinism_diff": None if deterministic else _json_diff(payload, again),
         "inference_count": payload.get("inference_count"),
         "failure_count": payload.get("failure_count"),
         "inference_latency_ms": payload.get("inference_latency_ms"),
     }
 
 
-def _json_diff(first: bytes, second: bytes) -> list[str]:
-    """The first lines that differ between two driver outputs, for the run note."""
-    left = json.dumps(json.loads(first), ensure_ascii=False, indent=2, sort_keys=True).splitlines()
-    right = json.dumps(json.loads(second), ensure_ascii=False, indent=2, sort_keys=True).splitlines()
+def _json_diff(first: Mapping, second: Mapping) -> list[str]:
+    """The first lines that differ between two driver payloads, for the run note."""
+    left = json.dumps(first, ensure_ascii=False, indent=2, sort_keys=True).splitlines()
+    right = json.dumps(second, ensure_ascii=False, indent=2, sort_keys=True).splitlines()
     return list(difflib.unified_diff(left, right, "run 1", "run 2", lineterm=""))[:40]
 
 

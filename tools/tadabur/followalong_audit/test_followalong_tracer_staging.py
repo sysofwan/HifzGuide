@@ -81,6 +81,16 @@ def test_a_zip_without_the_model_package_is_refused(tmp_path):
         stage_assets(directory, manifest, tmp_path / "staging")
 
 
+def test_staging_never_deletes_the_release_it_reads(tmp_path):
+    directory, manifest = release(tmp_path)
+    with pytest.raises(ValueError, match="holds the release itself"):
+        stage_assets(directory, manifest, directory)
+    assert (directory / "models.zip").is_file()
+    with pytest.raises(ValueError, match="holds the release itself"):
+        stage_assets(directory, manifest, tmp_path)
+    assert (directory / "models.zip").is_file()
+
+
 def test_a_release_whose_bytes_do_not_match_is_refused_before_staging(tmp_path):
     directory, manifest = release(tmp_path)
     (directory / "window.bin").write_bytes(b"tampered")

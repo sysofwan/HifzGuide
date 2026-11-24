@@ -106,9 +106,9 @@ Device logs, previews per window:
 | surah3_page55_ayah42_mutashabihat_creep_jump | 5.56 |
 | surah3_page58_far_reread_pause_residue | 5.79 |
 
-The App arm's own cadence on its seeded subsets — previews per full window, pooled over the subset (flushes and the closing stop are neither; a clip whose trace is empty or ran no window is counted apart):
+The App arm's own cadence on its seeded subsets — previews per full window, pooled over the subset (flushes and the closing stop are neither). A clip that ran no window still counts its previews and is listed in the last column; a clip whose trace is empty — its session graded no word — is counted apart:
 
-| traces | latency | clips | previews | windows | preview:window | no window |
+| traces | latency | clips | previews | windows | preview:window | of which no window |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | p3_0 | 0 ms | 484 | 16,315 | 1,965 | 8.30 | 186 |
 | p2 | 40 ms | 195 | 6,834 | 840 | 8.14 | 76 |

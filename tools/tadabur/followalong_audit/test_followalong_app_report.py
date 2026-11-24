@@ -126,7 +126,7 @@ def test_the_doc_reports_the_apps_own_cadence_beside_the_device_logs():
     assert "| log | preview:window |" in text and "| log | 1.50 |" in text
     assert "The App arm's own cadence" in text
     assert "| p3_0 | 0 ms | 500 | 6,834 | 840 | 8.14 | 3 |" in text
-    assert "a clip whose trace is empty or ran no window is counted apart" in text
+    assert "a clip whose trace is empty" in text and "still counts its previews" in text
 
 
 def test_without_app_cadence_the_device_table_stands_alone():

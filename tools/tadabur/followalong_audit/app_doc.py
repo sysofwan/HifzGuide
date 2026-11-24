@@ -245,9 +245,11 @@ def _app_cadence(entries: Sequence[Mapping]) -> list[str]:
     if not entries:
         return []
     lines = ["", "The App arm's own cadence on its seeded subsets — previews per full window, "
-                 "pooled over the subset (flushes and the closing stop are neither; a clip whose "
-                 "trace is empty or ran no window is counted apart):", "",
-             "| traces | latency | clips | previews | windows | preview:window | no window |",
+                 "pooled over the subset (flushes and the closing stop are neither). A clip that "
+                 "ran no window still counts its previews and is listed in the last column; a "
+                 "clip whose trace is empty — its session graded no word — is counted apart:", "",
+             "| traces | latency | clips | previews | windows | preview:window | of which no "
+             "window |",
              "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for entry in sorted(entries, key=lambda item: item["latency_ms"]):
         ratio = entry["ratio"]

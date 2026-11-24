@@ -145,6 +145,38 @@ def read_clips(path: Path) -> list[dict]:
     return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line]
 
 
+def selected_clips(population: Sequence[Mapping], named: Sequence[Mapping]) -> list[dict]:
+    """The named list's clips as the population's own rows, refusing anything else.
+
+    A named list is a *selection from* :func:`app_arm_rows`, never a substitute for it: the
+    claim-gated population is the only authority on which clips this audit grades and against
+    which ayah, so every record must name a population clip and repeat its
+    :data:`PROVENANCE_FIELDS` exactly (extra fields are ignored, as a tranche file's are). An
+    unknown record, a repeat, or a changed provenance/reference is refused — with the WAVs
+    present, silently accepting one would grade an unopened tranche's clip or another ayah.
+    """
+    by_sha = {row["audio_sha256"]: row for row in population}
+    chosen: dict[str, dict] = {}
+    for record in named:
+        sha = record.get("audio_sha256")
+        row = by_sha.get(sha)
+        if row is None:
+            raise ValueError(
+                f"{record.get('audio_path', record)} is not one of the population's "
+                f"{len(population)} claim-gated confirm.1/confirm.2 clips: a named clip list "
+                "selects from that population, it does not replace it")
+        if sha in chosen:
+            raise ValueError(f"{row['audio_path']} appears twice in the clip list")
+        differing = [field for field in PROVENANCE_FIELDS if record.get(field) != row[field]]
+        if differing:
+            raise ValueError(
+                f"{row['audio_path']} disagrees with the population on {differing}: "
+                f"{ {field: record.get(field) for field in differing} }, the population says "
+                f"{ {field: row[field] for field in differing} }")
+        chosen[sha] = row
+    return list(chosen.values())
+
+
 def draw_record_path(clip_list: Path) -> Path:
     """Where a clip list's selection record sits: ``clips.jsonl`` → ``clips.draw.json``."""
     return Path(clip_list).with_suffix(".draw.json")

@@ -59,6 +59,7 @@ from tadabur.followalong_audit.clips import (
     gating_rows,
     oracle_eligible,
     read_clips,
+    selected_clips,
     selection_record,
     write_clips,
 )
@@ -219,7 +220,7 @@ def _selected_clips(args) -> list[dict]:
     """The clips an App-arm run grades: the whole population, a named list, or a seeded draw."""
     clips = app_arm_rows()
     if getattr(args, "clips", None) is not None:
-        return read_clips(args.clips)
+        return selected_clips(clips, read_clips(args.clips))
     if getattr(args, "size", None) is not None:
         return draw_clips(clips, args.size, seed=args.seed)
     return clips

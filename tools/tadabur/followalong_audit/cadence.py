@@ -1,18 +1,22 @@
-"""P3, cadence (#309): device logs' preview:window ratio, and the words a latency moves.
+"""P3, cadence (#309): previews per window — the device logs', and the App arm's own.
 
 The app's scheduler runs a preview every hop and a full window every third, and the device's
 inference latency decides how many previews fit in a window. The four h448-era device logs and
 the owner's three exports record that cadence; :func:`log_preview_window_ratio` reads the same
-facet from them. The App arm is then run at a no-latency floor (0 ms) and at a slow-device
-cadence (130 ms), and :func:`cadence_report` asks how many words changed outcome: more than 2%
-is a follow-along finding (the latency setting changes what the audit would have said), exactly
-2% is not.
+facet from them. :func:`app_ratios` reads it from the App arm's committed subset traces, so the
+audit's own cadence can be compared with the device's instead of assumed. The App arm is then run
+at a no-latency floor (0 ms) and at a slow-device cadence (130 ms), and :func:`cadence_report`
+asks how many words changed outcome: more than 2% is a follow-along finding (the latency setting
+changes what the audit would have said), exactly 2% is not.
 """
 
 from __future__ import annotations
 
+import gzip
+import json
 import re
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 
 from tadabur.followalong_audit.bridge import outcome
 
@@ -92,15 +96,58 @@ def owner_ratios(paths: Sequence[Path], notes) -> dict[str, float | None]:
     return {session.name: log_preview_window_ratio(session.text) for session in sessions}
 
 
+def app_ratios(traces_dir: Path, *, latency_ms: int) -> dict:
+    """The App arm's own previews per full window on a subset's committed traces.
+
+    Each trace file is one clip, and every row in it repeats that clip's whole check list, so the
+    clip is counted once — from its first row. The ratio is ``sum(previews) / sum(windows)`` over
+    the subset: a pooled rate, not a mean of per-clip ratios, so a long clip weighs what it
+    contributed, and every preview counts, including those of a clip that never completed a
+    window (the device logs' :func:`preview_window_ratio` counts the same way). A clip whose
+    trace holds no rows — a session that graded no word — and one that ran no window are counted
+    in their own fields rather than dropped silently; a failed clip writes no file at all, so the
+    subset's graded count is the caller's to check.
+    """
+    from tadabur.followalong_audit.session import preview_window_counts
+
+    previews = windows = no_window = no_rows = 0
+    clips = 0
+    for path in sorted(Path(traces_dir).glob("*.jsonl.gz")):
+        with gzip.open(path, "rt", encoding="utf-8") as source:
+            first = next((json.loads(line) for line in source if line.strip()), None)
+        clips += 1
+        if first is None:
+            no_rows += 1
+            continue
+        counts = preview_window_counts(first["checks"])
+        previews += counts["preview"]
+        windows += counts["window"]
+        if not counts["window"]:
+            no_window += 1
+    return {
+        "traces": Path(traces_dir).name,
+        "latency_ms": latency_ms,
+        "clips": clips - no_rows,
+        "previews": previews,
+        "windows": windows,
+        "ratio": previews / windows if windows else None,
+        "clips_without_window": no_window,
+        "clips_without_rows": no_rows,
+    }
+
+
 def p3_section(zero: Sequence[Mapping], other: Sequence[Mapping], *,
                device_ratios: Mapping[str, float | None],
                latencies: Sequence[int] = P3_LATENCIES,
-               seed: int | None = None) -> dict:
-    """The P3 readout: the device ratios and the two latency runs' changed outcomes.
+               seed: int | None = None,
+               app_cadence: Sequence[Mapping] = ()) -> dict:
+    """The P3 readout: the device ratios, the App arm's own, and the changed outcomes.
 
     A clip one latency run failed has no rows, so it is left out of the comparison and listed in
     ``skipped`` rather than aborting the report; ``cadence_report`` itself still refuses two runs
     whose word sets differ, since comparing a subset silently would read better than it is.
+    ``app_cadence`` is :func:`app_ratios` per latency run: the App arm's side of the device-log
+    comparison, measured from the same subset traces.
     """
     from training.muraja_policy import AUDIT_SCORINGS
 
@@ -111,6 +158,7 @@ def p3_section(zero: Sequence[Mapping], other: Sequence[Mapping], *,
     other = [row for row in other if row["item"] in common]
     return {
         "device_ratios": dict(sorted(device_ratios.items())),
+        "app_cadence": [dict(entry) for entry in app_cadence],
         "latencies_ms": list(latencies),
         "clips": len(common),
         "seed": seed,

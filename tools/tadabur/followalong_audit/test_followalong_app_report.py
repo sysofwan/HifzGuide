@@ -112,3 +112,49 @@ def test_the_summary_keeps_the_run_block_and_the_catch_loss_counts():
                                  "catch_loss": CATCH_LOSS},
                           run=RUN)
     assert built["run"] == RUN and built["catch_loss"] == CATCH_LOSS
+
+
+APP_CADENCE = {"traces": "p3_0", "latency_ms": 0, "clips": 500, "previews": 6834,
+               "windows": 840, "ratio": 6834 / 840, "clips_without_window": 3,
+               "clips_without_rows": 1}
+
+
+def test_the_doc_reports_the_apps_own_cadence_beside_the_device_logs():
+    p3 = summary()["p3"]
+    p3["app_cadence"] = [APP_CADENCE]
+    text = render(summary(p3=p3))
+    assert "| log | preview:window |" in text and "| log | 1.50 |" in text
+    assert "The App arm's own cadence" in text
+    assert "| p3_0 | 0 ms | 500 | 6,834 | 840 | 8.14 | 3 |" in text
+    assert "a clip whose trace is empty or ran no window is counted apart" in text
+
+
+def test_without_app_cadence_the_device_table_stands_alone():
+    text = render(summary())
+    assert "| log | 1.50 |" in text and "The App arm's own cadence" not in text
+
+
+DETERMINISM = {"seed": 319, "size": 25, "clips": ["a#0"], "identical": False,
+               "differences": ["b#0"], "rows_differ": [], "failed": [],
+               "payloads": {"b#0": {"run1": "e" * 64, "run2": "f" * 64}}}
+
+
+def test_the_run_block_states_what_the_two_run_check_found():
+    text = render(summary(run={**RUN, "determinism": DETERMINISM}))
+    assert ("Determinism: the 25 seeded clips ran twice; 24 of 25 driver payloads were "
+            "byte-identical, 1 differed in the decode and their word tables did not change") in text
+
+
+def test_a_decode_difference_that_moves_a_word_is_described_as_such():
+    text = render(summary(run={**RUN, "determinism": {**DETERMINISM,
+                                                     "rows_differ": ["b#0"]}}))
+    assert "1 differed in the decode and 1 of them changed a word's outcome" in text
+
+
+def test_an_all_identical_sample_says_so_as_a_sample():
+    clean = {"seed": 319, "size": 25, "clips": [], "identical": True, "differences": [],
+             "rows_differ": [], "failed": [], "payloads": {}}
+    text = render(summary(run={**RUN, "determinism": clean}))
+    assert ("Determinism: the 25 seeded clips ran twice and all 25 driver payloads were "
+            "byte-identical in this sample") in text
+    assert "a sample bounds, it does not prove, bit-identity" in text

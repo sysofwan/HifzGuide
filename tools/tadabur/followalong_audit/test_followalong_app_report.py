@@ -116,7 +116,7 @@ def test_the_summary_keeps_the_run_block_and_the_catch_loss_counts():
 
 APP_CADENCE = {"traces": "p3_0", "latency_ms": 0, "clips": 500, "previews": 6834,
                "windows": 840, "ratio": 6834 / 840, "clips_without_window": 3,
-               "clips_without_rows": 1}
+               "clips_without_rows": 16}
 
 
 def test_the_doc_reports_the_apps_own_cadence_beside_the_device_logs():
@@ -125,8 +125,9 @@ def test_the_doc_reports_the_apps_own_cadence_beside_the_device_logs():
     text = render(summary(p3=p3))
     assert "| log | preview:window |" in text and "| log | 1.50 |" in text
     assert "The App arm's own cadence" in text
-    assert "| p3_0 | 0 ms | 500 | 6,834 | 840 | 8.14 | 3 |" in text
+    assert "| p3_0 | 0 ms | 500 | 6,834 | 840 | 8.14 | 3 | 16 |" in text
     assert "a clip whose trace is empty" in text and "still counts its previews" in text
+    assert "has no word to pool and is listed beside the clips that do" in text
 
 
 def test_without_app_cadence_the_device_table_stands_alone():

@@ -237,26 +237,29 @@ def _app_cadence(entries: Sequence[Mapping]) -> list[str]:
     """The App arm's own previews per window, beside the device logs it is compared with.
 
     The ratio is pooled over clips (``sum(previews) / sum(windows)``), from the subset traces each
-    latency run committed; flushes and the closing stop are neither, and a clip that ran no full
-    window is counted apart. The comparison bounds the cadence the audit actually ran — S1's
-    caveat still holds: clip length and the output gate also move a device log's ratio, so a gap
-    is not all the App arm's.
+    latency run committed; flushes and the closing stop are neither, a clip that ran no full
+    window still contributes its previews, and a clip whose trace is empty contributes nothing.
+    Each exclusion has its own column, so the subset drawn is the clips pooled plus the traces
+    without rows. The comparison bounds the cadence the audit actually ran — S1's caveat still
+    holds: clip length and the output gate also move a device log's ratio, so a gap is not all
+    the App arm's.
     """
     if not entries:
         return []
     lines = ["", "The App arm's own cadence on its seeded subsets — previews per full window, "
                  "pooled over the subset (flushes and the closing stop are neither). A clip that "
-                 "ran no window still counts its previews and is listed in the last column; a "
-                 "clip whose trace is empty — its session graded no word — is counted apart:", "",
-             "| traces | latency | clips | previews | windows | preview:window | of which no "
-             "window |",
-             "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
+                 "ran no window still counts its previews and is listed in its own column; a clip "
+                 "whose trace is empty — its session graded no word — has no word to pool and is "
+                 "listed beside the clips that do:", "",
+             "| traces | latency | clips with rows | previews | windows | preview:window | no "
+             "window | no rows |",
+             "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for entry in sorted(entries, key=lambda item: item["latency_ms"]):
         ratio = entry["ratio"]
         lines.append(f"| {entry['traces']} | {entry['latency_ms']} ms | {entry['clips']:,} | "
                      f"{entry['previews']:,} | {entry['windows']:,} | "
                      f"{'—' if ratio is None else f'{ratio:.2f}'} | "
-                     f"{entry['clips_without_window']} |")
+                     f"{entry['clips_without_window']} | {entry['clips_without_rows']} |")
     lines += ["", "Device logs and the App arm read the same scheduler facet, but not under the "
                   "same conditions: the logs are whole device sessions (their length sets how "
                   "many previews fit), so a larger App ratio means these clips had more previews "

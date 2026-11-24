@@ -106,13 +106,13 @@ Device logs, previews per window:
 | surah3_page55_ayah42_mutashabihat_creep_jump | 5.56 |
 | surah3_page58_far_reread_pause_residue | 5.79 |
 
-The App arm's own cadence on its seeded subsets — previews per full window, pooled over the subset (flushes and the closing stop are neither). A clip that ran no window still counts its previews and is listed in the last column; a clip whose trace is empty — its session graded no word — is counted apart:
+The App arm's own cadence on its seeded subsets — previews per full window, pooled over the subset (flushes and the closing stop are neither). A clip that ran no window still counts its previews and is listed in its own column; a clip whose trace is empty — its session graded no word — has no word to pool and is listed beside the clips that do:
 
-| traces | latency | clips | previews | windows | preview:window | of which no window |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| p3_0 | 0 ms | 484 | 16,315 | 1,965 | 8.30 | 186 |
-| p2 | 40 ms | 195 | 6,834 | 840 | 8.14 | 76 |
-| p3_130 | 130 ms | 484 | 15,321 | 1,966 | 7.79 | 185 |
+| traces | latency | clips with rows | previews | windows | preview:window | no window | no rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| p3_0 | 0 ms | 484 | 16,315 | 1,965 | 8.30 | 186 | 16 |
+| p2 | 40 ms | 195 | 6,834 | 840 | 8.14 | 76 | 5 |
+| p3_130 | 130 ms | 484 | 15,321 | 1,966 | 7.79 | 185 | 16 |
 
 Device logs and the App arm read the same scheduler facet, but not under the same conditions: the logs are whole device sessions (their length sets how many previews fit), so a larger App ratio means these clips had more previews per window, not that the scheduler differs.
 

@@ -128,18 +128,20 @@ def _planted(planted: Mapping) -> list[str]:
               "exempt): " + (", ".join(
                   f"{entry['letter']} ({entry['planted']:,} planted)" for entry in exemptions)
                   or "none") + "."]
-    lines += ["", "### Added words: inserted vs neighbour", "",
-              "An added word is a copy of its neighbour inserted right after it, so the engine's"
-              " own word numbering is unchanged. Caught means a non-correct grade on the"
-              " inserted word or its neighbours; the split is reported apart.", "",
-              "| mode | graded | caught | on the inserted word | on a neighbour | not_graded |"
+    lines += ["", "### Added words: copied word vs the word after it", "",
+              "An added word is a copy of its neighbour inserted right after it. The harness"
+              " reports the ayah's own phoneme words, so the copy has no word number of its own:"
+              " the insertion can displace the grade of the copied word and of the word after"
+              " it, and caught means a non-correct grade on either; the split is reported"
+              " apart.", "",
+              "| mode | graded | caught | on the copied word | on the word after | not_graded |"
               " rate |",
               "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for cell in planted["inserted_split"]:
         lines.append(
             f"| {MODE_LABELS.get(cell['mode'], cell['mode'])} | {cell['n']:,} |"
-            f" {cell['caught']:,} | {cell['caught_on_inserted']:,} |"
-            f" {cell['caught_on_neighbours']:,} | {cell['not_graded']:,} |"
+            f" {cell['caught']:,} | {cell['caught_on_copied']:,} |"
+            f" {cell['caught_on_following']:,} | {cell['not_graded']:,} |"
             f" {_rate(cell['rate'])} |")
     return [*lines, ""]
 
@@ -148,10 +150,12 @@ def _patterns(patterns: Sequence[Mapping]) -> list[str]:
     lines = [
         "## Patterns",
         "",
-        "Findings are pooled by cause (every grouping) and by reference form, where only the"
-        " forms covering ten or more words are listed: a form seen once is not a pattern. A"
-        " pattern covering ten or more distinct ayah words is a candidate Muraja issue. The"
-        " drafts are in the run note"
+        "The clean sweeps' findings — every word the engine did not grade correct under a"
+        " perfect decode — are pooled by cause (every grouping) and by reference form, where"
+        " only the forms covering ten or more words are listed: a form seen once is not a"
+        " pattern. A planted mistake the engine misses is catch capacity, not a finding, so it"
+        " never enters a pattern. A pattern covering ten or more distinct ayah words is a"
+        " candidate Muraja issue. The drafts are in the run note"
         " (`tadabur/followalong_audit/oracle_sweep/run_note.md`) and are not filed by this repo.",
         "",
         "| pattern | words | findings | candidate |",
@@ -180,7 +184,10 @@ def _patterns(patterns: Sequence[Mapping]) -> list[str]:
 
 
 def _rate(value: float | None) -> str:
-    return "—" if value is None else f"{value:.1f}"
+    """A rate as text: ``None`` is a dash, and a small rate keeps three decimals (0.018, not 0.0)."""
+    if value is None:
+        return "—"
+    return f"{value:.3f}" if value <= 1 else f"{value:.1f}"
 
 
 def _trim(lines: list[str]) -> list[str]:

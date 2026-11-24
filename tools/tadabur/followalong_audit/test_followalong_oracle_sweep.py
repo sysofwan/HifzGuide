@@ -15,10 +15,12 @@ import pytest
 from tadabur.followalong_audit.plant import KINDS, plant, plantable_words, planting_seed
 from tadabur.followalong_audit.sweep import (
     SweepClip,
+    _observed_exemptions,
     catch_rates,
     clean_sweep,
     false_flags_per_1000,
     median_speech_pace,
+    oracle_summary,
     paced_word_times,
     planted_sweep,
     splits_window,
@@ -259,19 +261,24 @@ def test_a_planted_word_the_engine_leaves_out_is_not_graded_and_neither_caught_n
     assert planted_rows(result, "skip_word", BALANCED)[0]["caught"] is False
 
 
-def test_an_added_word_is_caught_on_the_inserted_word_or_its_neighbours_and_reports_the_split():
+def test_an_added_word_is_caught_on_the_copied_word_or_the_one_after_and_reports_the_split():
     source = clip()
     planted = expected_plant(7, source, "add_word")
-    twin = planted.word + 1                       # the engine word the copy doubles
-    neighbours = [w for w in (twin - 1, twin + 1) if 1 <= w <= 4]
-    on_twin = StubEngine({("c1/add_word", STRICT, twin): ("wrong", SUBSTITUTION)})
-    (row,) = planted_rows(planted_sweep([source], on_twin, seed=7), "add_word", STRICT)
-    assert (row["caught"], row["caught_on_inserted"], row["caught_on_neighbours"]) == (True, True, False)
-    on_next = StubEngine({("c1/add_word", STRICT, neighbours[-1]): ("wrong", SUBSTITUTION)})
-    (row,) = planted_rows(planted_sweep([source], on_next, seed=7), "add_word", STRICT)
-    assert (row["caught"], row["caught_on_inserted"], row["caught_on_neighbours"]) == (True, False, True)
+    copied = planted.word + 1                     # the ayah word the copy doubles, 1-based
+    following = copied + 1                        # the word the copy's phonemes displace
+    assert planted.inserted == planted.word + 1   # the copy is reference-only: no engine word
+    on_copied = StubEngine({("c1/add_word", STRICT, copied): ("wrong", SUBSTITUTION)})
+    (row,) = planted_rows(planted_sweep([source], on_copied, seed=7), "add_word", STRICT)
+    assert (row["caught"], row["caught_on_copied"], row["caught_on_following"]) == (True, True, False)
+    assert (row["word"], row["quality"]) == (copied, "wrong")
+    on_following = StubEngine({("c1/add_word", STRICT, following): ("wrong", SUBSTITUTION)})
+    (row,) = planted_rows(planted_sweep([source], on_following, seed=7), "add_word", STRICT)
+    assert (row["caught"], row["caught_on_copied"], row["caught_on_following"]) == (True, False, True)
+    before = StubEngine({("c1/add_word", STRICT, copied - 1): ("wrong", SUBSTITUTION)})
+    (row,) = planted_rows(planted_sweep([source], before, seed=7), "add_word", STRICT)
+    assert (row["caught"], row["caught_on_copied"], row["caught_on_following"]) == (False, False, False)
     (quiet,) = planted_rows(planted_sweep([source], StubEngine(), seed=7), "add_word", STRICT)
-    assert (quiet["caught"], quiet["caught_on_inserted"], quiet["caught_on_neighbours"]) == (False, False, False)
+    assert (quiet["caught"], quiet["caught_on_copied"], quiet["caught_on_following"]) == (False, False, False)
 
 
 def test_a_haraka_drop_row_says_whether_the_dropped_letter_was_protected():
@@ -281,6 +288,18 @@ def test_a_haraka_drop_row_says_whether_the_dropped_letter_was_protected():
     for row in planted_rows(result, "haraka_drop", STRICT):
         assert row["protected"] is planted.protected
     assert all(row["protected"] is None for row in result.rows if row["kind"] != "haraka_drop")
+
+
+def test_an_observed_exemption_names_the_letter_the_drop_was_planted_on():
+    rows = [{"kind": "haraka_drop", "protected": False, "mode": mode, "form": "بِاسمِ",
+             "label": "-م", "caught": False} for mode in (STRICT, BALANCED)]
+    assert _observed_exemptions(rows) == [{"letter": "م", "planted": 2, "caught": 0}]
+
+
+def test_a_letter_the_engine_flags_a_drop_on_is_no_exemption():
+    rows = [{"kind": "haraka_drop", "protected": False, "mode": STRICT, "form": "بِاسمِ",
+             "label": "-ب", "caught": True}]
+    assert _observed_exemptions(rows) == []
 
 
 def test_a_pair_swap_row_carries_the_direction_it_planted():
@@ -346,3 +365,19 @@ def test_words_of_very_different_length_fall_in_different_cells():
 def test_a_cell_with_nothing_graded_has_no_rate():
     (cell,) = catch_rates([row(caught=None)])
     assert (cell["n"], cell["not_graded"], cell["rate"]) == (0, 1, None)
+
+
+# --- the App arm's oracle section -------------------------------------------------------------
+def cell(flagged: bool) -> dict:
+    return {"graded": True, "flagged": flagged, "causes": []}
+
+
+def test_the_oracle_summary_counts_the_oracles_own_flags_and_the_App_flags_it_shares():
+    words = [{"item": "a", "word": 1, "strict": cell(False)},
+             {"item": "a", "word": 2, "strict": cell(True)},
+             {"item": "b", "word": 1, "strict": cell(True)}]
+    app = [{"item": "a", "word": 2, "strict": cell(True)},
+           {"item": "b", "word": 1, "strict": cell(False)}]
+    summary = oracle_summary(words, app)
+    assert (summary["flagged"], summary["shared"], summary["app_flagged"]) == (2, 1, 1)
+    assert summary["share"] == 1.0

@@ -12,10 +12,13 @@ follow-along or reference fault. This module runs that arm over two populations 
 
 — and over the same clips **planted** with one seeded mistake per kind (``plant``), which
 measures what the follow-along catches when the model hears the mistake. A planted word is
-**caught** when its kept grade is below correct; caught on the inserted copy or its neighbours
-for an added word; and **not_graded** when the engine kept no row for it, reported apart because
-neither a catch nor a miss says anything about the engine. Every finding carries the per-check
-statuses, the word's position, and whether a window boundary splits it.
+**caught** when its kept grade is below correct; for an added word, on the copied word or the
+word after it (the harness reports the ayah's own phoneme words, so a copy inserted into the
+reference has no word of its own); and **not_graded** when the engine kept no row for it,
+reported apart because neither a catch nor a miss says anything about the engine. Every finding
+carries the per-check statuses, the word's position, and whether a window boundary splits it.
+Only the clean sweeps' findings are pooled into patterns: a planted miss is catch capacity, not
+a fault of the follow-along or the reference.
 """
 
 from __future__ import annotations
@@ -341,24 +344,25 @@ def _planted_row(clip: SweepClip, kind: str, planted: Planted, mode: str,
         "boundary": _planted_boundary(clip, kind, planted),
         "length": len(clusters(form)),
         "form": form,
-        "caught_on_inserted": None,
-        "caught_on_neighbours": None,
+        "caught_on_copied": None,
+        "caught_on_following": None,
     }
     if kind == "add_word":
-        inserted = planted.word + 1
-        twins = [inserted - 1, inserted + 1]
-        neighbours = [word for word in twins if 1 <= word <= len(clip.words)]
-        on_inserted = by_word.get((mode, inserted))
-        pending = on_inserted is not None and on_inserted["quality"] == PENDING
-        row["caught_on_inserted"] = _below_correct(on_inserted)
-        row["caught_on_neighbours"] = any(
-            _below_correct(by_word.get((mode, word))) for word in neighbours)
-        row["quality"] = on_inserted["quality"] if on_inserted is not None else None
-        row["not_graded"] = on_inserted is None or pending
-        caught = row["caught_on_inserted"] or row["caught_on_neighbours"]
-        row["caught"] = True if caught else (None if row["not_graded"] else False)
-        row["statuses"] = (_statuses(on_inserted, request)
-                           if row["caught"] is False or row["caught"] is None else [])
+        # The harness reports the ayah's own phoneme words, so the copy has no word number of
+        # its own: the insertion can displace the grade of the copied word and of the word after
+        # it, and those are the two the split reports.
+        copied = planted.word + 1
+        affected = [copied, copied + 1] if copied < len(clip.words) else [copied]
+        traces = {word: by_word.get((mode, word)) for word in affected}
+        verdicts = [trace["quality"] for trace in traces.values()
+                    if trace is not None and trace["quality"] != PENDING]
+        row["caught_on_copied"] = _below_correct(traces[copied])
+        row["caught_on_following"] = _below_correct(traces.get(copied + 1))
+        row["quality"] = traces[copied]["quality"] if traces[copied] is not None else None
+        row["not_graded"] = not verdicts
+        row["caught"] = None if not verdicts else any(q != CORRECT for q in verdicts)
+        row["statuses"] = (_statuses(traces[copied], request)
+                           if row["caught"] is not True else [])
     else:
         trace = by_word.get((mode, planted.word + 1))
         pending = trace is not None and trace["quality"] == PENDING
@@ -428,6 +432,22 @@ def false_flags_per_1000(result: CleanSweep) -> dict[str, dict]:
     return rates
 
 
+def _tally(cell: dict, row: Mapping) -> None:
+    """Count one planted row into ``cell``: a ``not_graded`` word is apart from caught/missed."""
+    if row["caught"] is None:
+        cell["not_graded"] += 1
+    else:
+        cell["n"] += 1
+        cell["caught"] += bool(row["caught"])
+
+
+def _cells(cells: Mapping) -> list[dict]:
+    """The cells in key order, each finished with its rate: caught over graded, ``None`` if none."""
+    for cell in cells.values():
+        cell["rate"] = cell["caught"] / cell["n"] if cell["n"] else None
+    return [cells[key] for key in sorted(cells)]
+
+
 def catch_rates(rows: Sequence[Mapping]) -> list[dict]:
     """Catch rate per kind, mode, position and word-length cell.
 
@@ -442,14 +462,8 @@ def catch_rates(rows: Sequence[Mapping]) -> list[dict]:
             "kind": key[0], "mode": key[1], "position": key[2], "length_bin": key[3],
             "n": 0, "caught": 0, "not_graded": 0,
         })
-        if row["caught"] is None:
-            cell["not_graded"] += 1
-        else:
-            cell["n"] += 1
-            cell["caught"] += bool(row["caught"])
-    for cell in cells.values():
-        cell["rate"] = cell["caught"] / cell["n"] if cell["n"] else None
-    return [cells[key] for key in sorted(cells)]
+        _tally(cell, row)
+    return _cells(cells)
 
 
 # --- the committed run -----------------------------------------------------------------------
@@ -531,36 +545,24 @@ def _protected_split(rows: Sequence[Mapping]) -> list[dict]:
         cell = cells.setdefault(key, {"kind": "haraka_drop", "mode": key[0],
                                      "protected": key[1], "n": 0, "caught": 0,
                                      "not_graded": 0})
-        if row["caught"] is None:
-            cell["not_graded"] += 1
-        else:
-            cell["n"] += 1
-            cell["caught"] += bool(row["caught"])
-    for cell in cells.values():
-        cell["rate"] = cell["caught"] / cell["n"] if cell["n"] else None
-    return [cells[key] for key in sorted(cells)]
+        _tally(cell, row)
+    return _cells(cells)
 
 
 def _inserted_split(rows: Sequence[Mapping]) -> list[dict]:
-    """An added word's catches split between the inserted copy and its neighbours."""
+    """An added word's catches split between the copied word and the word after it."""
     cells: dict[str, dict] = {}
     for row in rows:
         if row["kind"] != "add_word":
             continue
         cell = cells.setdefault(row["mode"], {
             "kind": "add_word", "mode": row["mode"], "n": 0, "caught": 0,
-            "not_graded": 0, "caught_on_inserted": 0, "caught_on_neighbours": 0,
+            "not_graded": 0, "caught_on_copied": 0, "caught_on_following": 0,
         })
-        if row["caught"] is None:
-            cell["not_graded"] += 1
-        else:
-            cell["n"] += 1
-            cell["caught"] += bool(row["caught"])
-        cell["caught_on_inserted"] += bool(row["caught_on_inserted"])
-        cell["caught_on_neighbours"] += bool(row["caught_on_neighbours"])
-    for cell in cells.values():
-        cell["rate"] = cell["caught"] / cell["n"] if cell["n"] else None
-    return [cells[mode] for mode in sorted(cells)]
+        _tally(cell, row)
+        cell["caught_on_copied"] += bool(row["caught_on_copied"])
+        cell["caught_on_following"] += bool(row["caught_on_following"])
+    return _cells(cells)
 
 
 def _observed_exemptions(rows: Sequence[Mapping]) -> list[dict]:
@@ -570,21 +572,11 @@ def _observed_exemptions(rows: Sequence[Mapping]) -> list[dict]:
     for row in rows:
         if row["kind"] != "haraka_drop" or row["protected"]:
             continue
-        letter = row["form"][0] if row["form"] else ""
+        letter = row["label"][1:]  # a drop's label is ``-<letter>``
         planted[letter] = planted.get(letter, 0) + 1
         caught[letter] = caught.get(letter, 0) + bool(row["caught"])
     return [{"letter": letter, "planted": planted[letter], "caught": caught.get(letter, 0)}
             for letter in sorted(planted) if caught.get(letter, 0) == 0]
-
-
-def _planted_findings(rows: Sequence[Mapping]) -> list[dict]:
-    """The planted mistakes the engine missed, in the shape :func:`group_findings` pools."""
-    return [{
-        "item": row["item"], "surah": row["surah"], "ayah": row["ayah"],
-        "word": row["word"], "mode": row["mode"], "quality": row["quality"],
-        "error_kind": row["kind"], "form": row["form"], "position": row["position"],
-        "boundary": row["boundary"], "statuses": row["statuses"] or [None],
-    } for row in rows if row["caught"] is False]
 
 
 def _clean_section(result: CleanSweep) -> dict:
@@ -633,7 +625,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
     stage(f"mushaf clean: {len(clean_mushaf.findings):,} findings")
     planted = planted_sweep(tlog_clips, harness, seed=seed)
     stage(f"planted: {len(planted.rows):,} rows")
-    findings = clean_tlog.findings + clean_mushaf.findings + _planted_findings(planted.rows)
+    findings = clean_tlog.findings + clean_mushaf.findings
     patterns: list[dict] = []
     for dimensions in PATTERN_DIMENSIONS:
         patterns.extend(group_findings(findings, dimensions))
@@ -674,7 +666,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
 
 def oracle_summary(word_rows: Sequence[Mapping],
                    app_rows: Sequence[Mapping]) -> dict:
-    """The App-arm doc's oracle section: the App flags (strict) the oracle shares.
+    """The App-arm doc's oracle section: the oracle's own flags and the App flags it shares.
 
     Both tables are keyed ``(item, word)``; a word the App flagged under strict is
     oracle-explained when the perfect decode flags it too. Words outside the oracle table
@@ -685,8 +677,9 @@ def oracle_summary(word_rows: Sequence[Mapping],
     shared = sum(1 for row in app_flagged if oracle.get((row["item"], row["word"])))
     return {
         "scoring": "strict",
-        "flagged": shared,
+        "flagged": sum(1 for flagged in oracle.values() if flagged),
         "app_flagged": len(app_flagged),
+        "shared": shared,
         "share": shared / len(app_flagged) if app_flagged else 0.0,
         "oracle_table": "oracle_sweep/word_grades.jsonl.gz",
     }
@@ -728,13 +721,15 @@ def sweep_note(report: Mapping) -> str:
         " counted as neither caught nor missed.",
         "- `protected`: a haraka drop on و ا ء ي is labelled protected (the app's exemption);"
         " every other letter is `other`.",
-        "- `inserted` / `neighbour`: an added word is a copy of its neighbour inserted right"
-        " after it; caught means a non-correct grade on the inserted word or its neighbours,"
-        " and the two are reported apart.",
+        "- `copied` / `following`: an added word is a copy of its neighbour inserted right"
+        " after it. The harness reports the ayah's own phoneme words, so the copy has no word"
+        " number of its own: caught means a non-correct grade on the copied word or the word"
+        " after it, and the two are reported apart.",
         "- `speech span`: the pace is the median Characters per second from a clip's first"
         " word start to its last word end, recomputed by this run.",
         "- Every word the engine does not grade correct under a perfect decode is a finding:"
-        " no model and no ear is involved.",
+        " no model and no ear is involved. Only those findings are pooled into patterns; a"
+        " planted mistake the engine misses is catch capacity, read from the catch rates.",
         "",
         "## Unreadable mushaf ayat",
         "",

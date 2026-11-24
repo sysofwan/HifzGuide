@@ -18,7 +18,7 @@ from tadabur.followalong_audit.patterns import CANDIDATE_WORDS, EXAMPLES, issue_
 from tadabur.followalong_audit.plant import KINDS
 from tadabur.followalong_audit.sweep import SWEEP_SEED, build_report
 from tadabur.followalong_audit.sweep_doc import render
-from training.muraja_policy import CURRENT_COMMIT, Harness
+from training.muraja_policy import CORRECT, CURRENT_COMMIT, Harness
 
 REPO = Path(__file__).resolve().parents[3]
 DOC = REPO / "docs" / "followalong-oracle-sweep.md"
@@ -89,6 +89,13 @@ def test_a_pattern_is_a_candidate_exactly_when_it_covers_ten_words_and_keeps_its
         assert pattern["candidate"] is (pattern["words"] >= CANDIDATE_WORDS)
         assert 1 <= len(pattern["examples"]) <= EXAMPLES
         assert all(example["statuses"] for example in pattern["examples"])
+
+
+def test_patterns_pool_only_the_clean_sweeps_findings(report):
+    # A planted miss is graded correct on purpose: pooling it here would draft an issue that
+    # claims the perfect decode flagged a word it did not.
+    for pattern in report["patterns"]:
+        assert all(example["quality"] != CORRECT for example in pattern["examples"])
 
 
 def test_each_candidate_pattern_has_its_issue_draft_in_the_run_note(report):

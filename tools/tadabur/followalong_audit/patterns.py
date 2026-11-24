@@ -1,10 +1,12 @@
 """Pattern grouping for the S2 findings (#308): candidate Muraja issues at ten words.
 
-A **finding** is one word the engine graded wrongly — a false flag under a perfect decode or a
-planted mistake it missed. A **pattern** pools findings that agree on the requested dimensions
-(reference form, error kind, position, boundary) and counts the distinct ayah words it covers,
-``(surah, ayah, word)``: one word flagged in strict and in balanced, or in several clips of the
-same ayah, is one word of the pattern. :data:`CANDIDATE_WORDS` is the PRD's threshold for a
+A **finding** is one word the engine graded wrongly under a perfect decode: a false flag, so
+the word is a follow-along or reference fault. (A planted mistake the engine misses is not a
+finding: the decode there was deliberately wrong, so the miss measures catch capacity and is
+read from the sweep's catch rates.) A **pattern** pools findings that agree on the requested
+dimensions (reference form, error kind, position, boundary) and counts the distinct ayah words
+it covers, ``(surah, ayah, word)``: one word flagged in strict and in balanced, or in several
+clips of the same ayah, is one word of the pattern. :data:`CANDIDATE_WORDS` is the PRD's threshold for a
 candidate Muraja issue, and :func:`issue_body` writes the draft the owner files in the private
 repo (the note keeps the drafts; this repo quotes no Muraja source).
 """

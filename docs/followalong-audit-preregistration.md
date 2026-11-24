@@ -170,7 +170,7 @@ the cells below and S4's ungraded split are the committed `app_arm/cells.json`, 
 
 The 200 snips are allocated **proportionally with a floor of 3 per cell**, the remainder by
 **largest remainder**, 200 in total. The floor binds only for the shaddah-no cell and the two
-target_pair cells; without it they would get 2, 1 and 2 snips. Readouts report **every cause** a word carries, not only the primary; rule 3's
+target_pair cells; without it they would get 2 and 1–2 snips. Readouts report **every cause** a word carries, not only the primary; rule 3's
 soft/target test is any cause in {soft_pair, target_pair}.
 
 **S5's composition.** S5's 9,342 words are mostly clip edges: **leading 3,933**, **trailing

@@ -20,8 +20,11 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from tadabur.followalong_audit.allocation import (
+    PRIMARY_CAUSES, S1_CELL_FLOOR, S1_SNIPS, allocate, primary_cause,
+)
 from tadabur.followalong_audit.atomic import write_text_atomically
-from tadabur.followalong_audit.strata import pool_sizes, s1_records, stratify
+from tadabur.followalong_audit.strata import S1, S1_PENDING, S4, pool_sizes, s1_records, stratify
 from tadabur.tlog_mining.candidate_inventory import DETECTORS, GATING, load_decode_lines
 from training.aug_readout_gate import harness_identity
 from training.external_corpus import word_grades
@@ -88,8 +91,10 @@ def words_from_grades(grades: Sequence, app_grades: Sequence[Mapping], *,
     """The strata's per-word rows from the detectors' grades and the App arm's table.
 
     A word is ``{"key", "position", "word", "word_index", "app", "oracle", "detectors",
-    "causes"}``. A clip the App run failed is excluded — its words are not S5, which means the
-    App graded the clip and left that word ungraded — and counted in the metadata.
+    "detector_graded", "causes"}``: ``detector_graded`` is whether each detector graded the word
+    (an ungraded detector never flags), which S4's bound records. A clip the App run failed is
+    excluded — its words are not S5, which means the App graded the clip and left that word
+    ungraded — and counted in the metadata.
     """
     failed_keys = set(failed)
     app_by_word = {(row["item"], row["word"]): row["strict"] for row in app_grades}
@@ -116,6 +121,7 @@ def words_from_grades(grades: Sequence, app_grades: Sequence[Mapping], *,
             "app": _outcome(cell),
             "oracle": oracle_by_word.get((key, grade.word)),
             "detectors": {model: bool(per_model[model].flagged) for model in DETECTORS},
+            "detector_graded": {model: bool(per_model[model].graded) for model in DETECTORS},
             "causes": list(cell["causes"]) if cell is not None else [],
         })
     return words, {"words": len(words), "detector_ungraded": ungraded,
@@ -135,18 +141,18 @@ def _oracle_outcome(cell: Mapping) -> str | None:
     return None if outcome == "ungraded" else outcome
 
 
-def candidate_pools(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
-                    harness=None, oracle: Sequence[Mapping] | None = None,
-                    failed: Sequence[str] = ()) -> dict:
-    """The strata table's summary: pool sizes, the S1 pool by cause, and the catch-loss marks.
-
-    ``oracle`` is S2's word table (the same line shape as the App arm's, read under ``strict``),
-    joined on ``(item, word)``: with it, ``assign_stratum`` splits S1 from ``ORACLE_EXPLAINED``
-    and the S1 pool becomes final; without it the pool renders pending.
-    """
+def stratified_run(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
+                   harness=None, oracle: Sequence[Mapping] | None = None,
+                   failed: Sequence[str] = ()) -> tuple[list[dict], dict, set]:
+    """The graded population with its strata, its metadata, and round 2's catch-loss marks."""
     words, meta = strata_words(rows, app_grades, harness=harness, oracle=oracle, failed=failed)
     marks = catch_loss_marks()
-    stratified = stratify(words, catch_loss=marks)
+    return stratify(words, catch_loss=marks), meta, marks
+
+
+def pools_from_run(stratified: Sequence[Mapping], meta: Mapping,
+                   marks: set) -> dict:
+    """The pools summary: pool sizes, the S1 pool by cause, and the catch-loss marks."""
     matched = sum(1 for row in stratified if row["catch_loss"])
     return {
         "clips": meta["items"] - meta["excluded_failed_clips"],
@@ -162,7 +168,64 @@ def candidate_pools(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
     }
 
 
+def candidate_pools(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
+                    harness=None, oracle: Sequence[Mapping] | None = None,
+                    failed: Sequence[str] = ()) -> dict:
+    """The strata table's summary: pool sizes, the S1 pool by cause, and the catch-loss marks.
+
+    ``oracle`` is S2's word table (the same line shape as the App arm's, read under ``strict``),
+    joined on ``(item, word)``: with it, ``assign_stratum`` splits S1 from ``ORACLE_EXPLAINED``
+    and the S1 pool becomes final; without it the pool renders pending.
+    """
+    return pools_from_run(*stratified_run(rows, app_grades, harness=harness, oracle=oracle,
+                                          failed=failed))
+
+
+def primary_cells(stratified: Sequence[Mapping]) -> list[dict]:
+    """S1's 14 primary-cause × base-flag cells with their pre-registered allocation.
+
+    A word counts once, in its primary cause's cell (D2). The 200 snips are allocated by
+    :func:`tadabur.followalong_audit.allocation.allocate` with the pre-registered floor. The
+    per-cell inclusion probability (§3) is its ``n`` over its ``words``.
+    """
+    counts = {(cause, base): 0 for cause in PRIMARY_CAUSES for base in (False, True)}
+    for row in stratified:
+        if row["stratum"] in (S1, S1_PENDING):
+            counts[(primary_cause(row["causes"]), bool(row["detectors"]["base"]))] += 1
+    split = allocate(counts, S1_SNIPS, floor=S1_CELL_FLOOR)
+    return [{"cause": cause, "base_flags": base, "words": counts[(cause, base)],
+             "n": split[(cause, base)]}
+            for cause in PRIMARY_CAUSES for base in (False, True)]
+
+
+def s4_ungraded(stratified: Sequence[Mapping]) -> dict:
+    """S4's words and how many detectors graded nothing at them (D11)."""
+    rows = [row for row in stratified if row["stratum"] == S4]
+    return {
+        "words": len(rows),
+        "at_least_one_detector_ungraded": sum(
+            1 for row in rows if not all(row["detector_graded"].values())),
+        "all_four_detectors_ungraded": sum(
+            1 for row in rows if not any(row["detector_graded"].values())),
+        "ungraded_pairs": sum(1 for row in rows for graded in row["detector_graded"].values()
+                              if not graded),
+    }
+
+
+def cells_record(stratified: Sequence[Mapping], detector_ungraded: int) -> dict:
+    """The primary-cause cells and S4's ungraded split, as the committed ``app_arm/cells.json``."""
+    return {"detector_ungraded": detector_ungraded,
+            "s1_primary_cells": primary_cells(stratified),
+            "s4": s4_ungraded(stratified)}
+
+
 def write_pools(pools: Mapping, path: Path) -> None:
     """The pools summary as sorted, indented JSON, atomically."""
     write_text_atomically(Path(path),
                           json.dumps(pools, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+
+
+def write_cells(cells: Mapping, path: Path) -> None:
+    """The cells record as sorted, indented JSON, atomically."""
+    write_text_atomically(Path(path),
+                          json.dumps(cells, ensure_ascii=False, indent=2, sort_keys=True) + "\n")

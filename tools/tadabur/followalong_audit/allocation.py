@@ -13,6 +13,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
+#: S1's pre-registered total and floor (D2, D6).
+S1_SNIPS = 200
+S1_CELL_FLOOR = 3
+
 #: The causes in the pre-registered precedence order (D2).
 PRIMARY_CAUSES = ("target_pair", "soft_pair", "other_consonant", "shaddah", "tashkeel", "skipped",
                   "unrecorded")

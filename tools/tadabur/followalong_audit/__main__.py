@@ -88,6 +88,8 @@ from tadabur.followalong_audit.tracer import (
 
 
 def main() -> int:
+    from tadabur.followalong_audit.sweep import CLEAN_FINDINGS_FILE, PLANTED_ROWS_FILE
+
     parser = argparse.ArgumentParser(prog="python -m tadabur.followalong_audit", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -189,6 +191,10 @@ def main() -> int:
     oracle.add_argument("--doc-out", type=Path, default=_sweep_doc())
     oracle.add_argument("--word-grades-out", type=Path,
                         default=_oracle_sweep_dir() / "word_grades.jsonl.gz")
+    oracle.add_argument("--clean-findings-out", type=Path,
+                        default=_oracle_sweep_dir() / CLEAN_FINDINGS_FILE)
+    oracle.add_argument("--planted-rows-out", type=Path,
+                        default=_oracle_sweep_dir() / PLANTED_ROWS_FILE)
     oracle.add_argument("--summary-out", type=Path,
                         default=_oracle_sweep_dir() / "summary.json")
     oracle.add_argument("--run-note-out", type=Path,
@@ -566,6 +572,8 @@ def _oracle_sweep(args) -> int:
     write_json(Path(args.report_out), result.report)
     write_text_atomically(Path(args.doc_out), render(result.report))
     write_grades(result.word_rows, args.word_grades_out)
+    write_grades(result.clean_findings, args.clean_findings_out)
+    write_grades(result.planted_rows, args.planted_rows_out)
     summary = oracle_summary(result.word_rows, read_grades(_app_arm("word_grades.jsonl.gz")))
     write_json(Path(args.summary_out), summary)
     write_text_atomically(Path(args.run_note_out), result.run_note)
@@ -575,6 +583,8 @@ def _oracle_sweep(args) -> int:
         "mushaf_ayat": result.report["clean"]["mushaf"]["ayat"],
         "patterns": len(result.report["patterns"]),
         "candidates": sum(1 for p in result.report["patterns"] if p["candidate"]),
+        "clean_findings": len(result.clean_findings),
+        "planted_rows": len(result.planted_rows),
         "oracle_share": summary["share"],
         "doc": str(args.doc_out),
     }, sort_keys=True))

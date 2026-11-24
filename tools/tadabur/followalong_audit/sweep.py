@@ -12,13 +12,16 @@ follow-along or reference fault. This module runs that arm over two populations 
 
 — and over the same clips **planted** with one seeded mistake per kind (``plant``), which
 measures what the follow-along catches when the model hears the mistake. A planted word is
-**caught** when its kept grade is below correct; for an added word, on the copied word or the
-word after it (the harness reports the ayah's own phoneme words, so a copy inserted into the
-reference has no word of its own); and **not_graded** when the engine kept no row for it,
-reported apart because neither a catch nor a miss says anything about the engine. Every finding
-carries the per-check statuses, the word's position, and whether a window boundary splits it.
-Only the clean sweeps' findings are pooled into patterns: a planted miss is catch capacity, not
-a fault of the follow-along or the reference.
+**caught** when the kept grade of the engine word it is recited in is below correct; for an
+added word, on the copied engine word or the word after it (the harness reports the ayah's own
+phoneme words, so a copy inserted into the reference has no word of its own); and
+**not_graded** when the engine kept no row for it, reported apart because neither a catch nor a
+miss says anything about the engine. Every finding carries the per-check statuses, the word's
+position, and whether a window boundary splits it, and every finding and every planted row is
+committed as evidence beside the report. The grade is read in Muraja's own word numbering,
+which a wasl merge makes fewer than the phonetizer's canonical words the reference is placed and
+planted in; the planted rows keep both. Only the clean sweeps' findings are pooled into
+patterns: a planted miss is catch capacity, not a fault of the follow-along or the reference.
 """
 
 from __future__ import annotations
@@ -42,7 +45,15 @@ from tadabur.followalong_audit.session import session_request
 from tadabur.followalong_audit.tracer import load_word_times
 from tadabur.waqf_segments import _uthmani_words, hafs_word_reference
 from training.decoding import SAMPLE_RATE, WINDOW, check_schedule, clusters
-from training.muraja_policy import AUDIT_SCORINGS, CORRECT, CURRENT_COMMIT, PENDING, word_traces
+from training.muraja_policy import (
+    AUDIT_SCORINGS,
+    CORRECT,
+    CURRENT_COMMIT,
+    PENDING,
+    MurajaText,
+    counterparts_in,
+    word_traces,
+)
 from training.nonpro_decode import item_key
 
 #: The sweep's one seed: the clip/kind draw and the run identity both hang from it.
@@ -79,17 +90,28 @@ LENGTH_BINS = ((1, 2, "1-2"), (3, 4, "3-4"), (5, 6, "5-6"), (7, 10, "7-10"), (11
 
 @dataclass(frozen=True)
 class SweepClip:
-    """One clip's reference placement: its ayah, phoneme words and the clock they sit on."""
+    """One clip's reference in both coordinate systems: the phonetizer's canonical words, which
+    the reference is placed and planted in, and Muraja's own phoneme words, which it reports and
+    grades. A wasl merge recites two canonical words in one engine word.
+    """
 
     item: str
     surah: int
     ayah: int
+    #: The phonetizer's canonical phoneme words.
     words: tuple[str, ...]
-    #: One ``(start_s, end_s)`` per word, or ``None`` for a clip whose alignment failed.
+    #: Muraja's own phoneme words, in its own numbering (``1..len(engine_words)``).
+    engine_words: tuple[str, ...]
+    #: The 1-based engine word each canonical word is recited in, ascending.
+    word_of: tuple[int, ...]
+    #: One ``(start_s, end_s)`` per canonical word, or ``None`` for a failed alignment.
     word_times: tuple[tuple[float, float], ...] | None = None
     n_samples: int = SAMPLE_RATE
-    #: The 0-based word indices a pause sign marks.
+    #: The 0-based engine words a printed pause sign marks.
     waqf: frozenset[int] = frozenset()
+    #: Per canonical cluster, in ayah order: the ``(engine word, engine group)`` it lands in, or
+    #: ``None`` where the phonetizer's reference and Muraja's do not line up.
+    cluster_groups: tuple[tuple[int, int] | None, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -195,12 +217,13 @@ def _request(item: str, clip: SweepClip, words: Sequence[str],
              word_times: Sequence[tuple[float, float]] | None) -> dict:
     """One oracle session over ``words`` placed at ``word_times``, on the clip's ayah.
 
-    The reported words are the clip's own ayah words (1..N), whatever the planting changed:
-    Muraja grades its own phoneme words, and the planted reference is what its checks hear.
+    The reported words are Muraja's own (``1..len(engine_words)``), whatever the planting
+    changed: its checks hear the planted reference, but it numbers its own phoneme words, and a
+    wasl merge makes that fewer than the canonical words planted here.
     """
     reference = "".join(words)
     arm = oracle_checks(reference, _offsets(words), word_times, clip.n_samples)
-    return session_request(item, clip.surah, clip.ayah, len(clip.words), arm.checks)
+    return session_request(item, clip.surah, clip.ayah, len(clip.engine_words), arm.checks)
 
 
 def _batches(items: Sequence, size: int = GRADE_BATCH):
@@ -229,11 +252,21 @@ def _statuses(trace: Mapping | None, request: Mapping) -> list:
     return [check["status"] for check in trace["checks"]]
 
 
-def _boundary(clip: SweepClip, index: int) -> bool | None:
-    if clip.word_times is None or index >= len(clip.word_times):
+def _engine_span(clip: SweepClip, word: int) -> tuple[float, float] | None:
+    """The placed span of a 1-based engine word: the times of the canonical words it recites."""
+    if clip.word_times is None:
         return None
-    start, end = clip.word_times[index]
-    return splits_window(start, end, clip.n_samples)
+    spans = [clip.word_times[index] for index, engine in enumerate(clip.word_of)
+             if engine == word]
+    if not spans:
+        return None
+    return spans[0][0], spans[-1][1]
+
+
+def _engine_boundary(clip: SweepClip, word: int) -> bool | None:
+    """Whether a transcriber window edge falls strictly inside engine word ``word``."""
+    span = _engine_span(clip, word)
+    return None if span is None else splits_window(*span, clip.n_samples)
 
 
 def clean_sweep(clips: Sequence[SweepClip], engine) -> CleanSweep:
@@ -258,17 +291,18 @@ def clean_sweep(clips: Sequence[SweepClip], engine) -> CleanSweep:
             traces = word_traces(request, results, AUDIT_SCORINGS)
             by_word = {(trace["scoring"], trace["word"]): trace for trace in traces}
             word_rows.extend({**row, "item": clip.item} for row in word_grade_rows(
-                request["item"], len(clip.words), traces, _oracle_causes))
+                request["item"], len(clip.engine_words), traces, _oracle_causes))
             for scoring in AUDIT_SCORINGS:
                 mode = scoring.name
-                for word in range(1, len(clip.words) + 1):
+                for word in range(1, len(clip.engine_words) + 1):
                     trace = by_word.get((mode, word))
                     index = word - 1
                     if trace is None or trace["quality"] == PENDING:
                         not_graded[mode] += 1
                         continue
                     graded[mode] += 1
-                    position = word_position(index, len(clip.words), waqf=index in clip.waqf)
+                    position = word_position(index, len(clip.engine_words),
+                                             waqf=index in clip.waqf)
                     positions[mode][position] = positions[mode].get(position, 0) + 1
                     if trace["quality"] == CORRECT:
                         continue
@@ -280,9 +314,9 @@ def clean_sweep(clips: Sequence[SweepClip], engine) -> CleanSweep:
                         "mode": mode,
                         "quality": trace["quality"],
                         "error_kind": _error_type(trace),
-                        "form": clip.words[index],
+                        "form": clip.engine_words[index],
                         "position": position,
-                        "boundary": _boundary(clip, index),
+                        "boundary": _engine_boundary(clip, word),
                         "statuses": _statuses(trace, request),
                         "marked": trace["marked"],
                         "setting_checks": trace["setting_checks"],
@@ -311,14 +345,36 @@ def _planted_times(clip: SweepClip, kind: str,
 
 
 def _planted_boundary(clip: SweepClip, kind: str, planted: Planted) -> bool | None:
-    if clip.word_times is None or kind == "skip_word":
+    """Whether a window edge splits the planted word's placed span.
+
+    For an added word, the copy's own span (the insert takes half its source's); for a skipped
+    word, the span the skip takes with it, which is known even though the word is gone; for
+    every other kind, the placed span of the engine word the plant is recited in.
+    """
+    if clip.word_times is None:
         return None
-    times = _planted_times(clip, kind, planted)
-    index = planted.inserted if kind == "add_word" else planted.word
-    if times is None or index >= len(times):
+    if kind == "add_word":
+        times = _planted_times(clip, kind, planted)
+        start, end = times[planted.inserted]
+        return splits_window(start, end, clip.n_samples)
+    if kind == "skip_word":
+        start, end = clip.word_times[planted.word]
+        return splits_window(start, end, clip.n_samples)
+    return _engine_boundary(clip, clip.word_of[planted.word])
+
+
+def _planted_group(clip: SweepClip, planted: Planted) -> tuple[int, int] | None:
+    """The engine ``(word, group)`` the planted Character lands in, or ``None`` when the plant
+    has no single Character (skip, add) or the two references do not line up there.
+
+    The app marks the printed graphemes of the group it flags (:func:`highlights`), so a kept
+    error's ``group_index`` equal to this one is an error whose marked letter is the planted one.
+    """
+    if planted.character is None:
         return None
-    start, end = times[index]
-    return splits_window(start, end, clip.n_samples)
+    before = sum(len(clusters(word)) for word in clip.words[:planted.word])
+    index = before + planted.character
+    return clip.cluster_groups[index] if index < len(clip.cluster_groups) else None
 
 
 def _below_correct(trace: Mapping | None) -> bool:
@@ -328,43 +384,48 @@ def _below_correct(trace: Mapping | None) -> bool:
 
 def _planted_row(clip: SweepClip, kind: str, planted: Planted, mode: str,
                  by_word: Mapping[tuple[str, int], Mapping], request: Mapping) -> dict:
-    """One row: the planted word's kept grade, and whether the engine caught the mistake."""
+    """One row: the planted word's kept grade, and whether the engine caught the mistake.
+
+    The grade is read at the engine word the plant is recited in, not at the canonical word's
+    ordinal: a wasl merge recites two canonical words as one engine word.
+    """
     form = clip.words[planted.word] if kind == "skip_word" else planted.words[planted.word]
+    engine = clip.word_of[planted.word]
     row = {
         "item": clip.item,
         "surah": clip.surah,
         "ayah": clip.ayah,
         "kind": kind,
         "mode": mode,
-        "word": planted.word + 1,
+        "word": engine,
+        "reference_word": planted.word + 1,
         "label": planted.label,
         "protected": planted.protected,
-        "position": word_position(planted.word, len(clip.words),
-                                  waqf=planted.word in clip.waqf),
+        "position": word_position(engine - 1, len(clip.engine_words),
+                                  waqf=(engine - 1) in clip.waqf),
         "boundary": _planted_boundary(clip, kind, planted),
-        "length": len(clusters(form)),
+        "length": len(clusters(clip.words[planted.word])),
         "form": form,
         "caught_on_copied": None,
         "caught_on_following": None,
     }
     if kind == "add_word":
         # The harness reports the ayah's own phoneme words, so the copy has no word number of
-        # its own: the insertion can displace the grade of the copied word and of the word after
-        # it, and those are the two the split reports.
-        copied = planted.word + 1
-        affected = [copied, copied + 1] if copied < len(clip.words) else [copied]
+        # its own: the insertion can displace the grade of the copied engine word and of the
+        # word after it, and those are the two the split reports.
+        affected = [engine, engine + 1] if engine < len(clip.engine_words) else [engine]
         traces = {word: by_word.get((mode, word)) for word in affected}
         verdicts = [trace["quality"] for trace in traces.values()
                     if trace is not None and trace["quality"] != PENDING]
-        row["caught_on_copied"] = _below_correct(traces[copied])
-        row["caught_on_following"] = _below_correct(traces.get(copied + 1))
-        row["quality"] = traces[copied]["quality"] if traces[copied] is not None else None
+        row["caught_on_copied"] = _below_correct(traces[engine])
+        row["caught_on_following"] = _below_correct(traces.get(engine + 1))
+        row["quality"] = traces[engine]["quality"] if traces[engine] is not None else None
         row["not_graded"] = not verdicts
         row["caught"] = None if not verdicts else any(q != CORRECT for q in verdicts)
-        row["statuses"] = (_statuses(traces[copied], request)
+        row["statuses"] = (_statuses(traces[engine], request)
                            if row["caught"] is not True else [])
     else:
-        trace = by_word.get((mode, planted.word + 1))
+        trace = by_word.get((mode, engine))
         pending = trace is not None and trace["quality"] == PENDING
         row["quality"] = trace["quality"] if trace is not None else None
         row["not_graded"] = trace is None or pending
@@ -372,9 +433,12 @@ def _planted_row(clip: SweepClip, kind: str, planted: Planted, mode: str,
                          else trace["quality"] != CORRECT)
         row["statuses"] = (_statuses(trace, request)
                            if row["caught"] is False or row["caught"] is None else [])
-    row["marked_is_planted"] = bool(
-        planted.character is not None and by_word.get((mode, planted.word + 1)) is not None
-        and planted.character in by_word[(mode, planted.word + 1)]["marked"])
+    group = _planted_group(clip, planted)
+    trace = by_word.get((mode, engine))
+    row["marked_is_planted"] = (
+        None if group is None or trace is None else
+        group[0] == engine and any(error["group_index"] == group[1]
+                                   for error in trace["errors"]))
     return row
 
 
@@ -468,20 +532,93 @@ def catch_rates(rows: Sequence[Mapping]) -> list[dict]:
 
 # --- the committed run -----------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class _AyahReference:
+    """One ayah's two references: the phonetizer's canonical words, which the reference is
+    placed and planted in, and Muraja's own phoneme words, which it reports and grades."""
+
+    words: tuple[str, ...]
+    engine_words: tuple[str, ...]
+    #: The 1-based engine word each canonical word is recited in, ascending.
+    word_of: tuple[int, ...]
+    #: Per canonical cluster, in ayah order: ``(engine word, engine group)`` or ``None``.
+    cluster_groups: tuple[tuple[int, int] | None, ...]
+    #: The 0-based engine words a printed pause sign marks.
+    waqf: frozenset[int]
+
+
+def _cluster_starts(offset: int, word: str) -> list[int]:
+    """Each cluster's first code-point index in the ayah's spaceless canonical reference."""
+    starts, at = [], offset
+    for character in clusters(word):
+        starts.append(at)
+        at += len(character)
+    return starts
+
+
+def _canonical_words(label: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]:
+    """The phonetizer's canonical phoneme words of ``"surah:ayah"``, their spaceless reference
+    and word offsets: the coordinates the reference is placed and the mistakes planted in."""
+    uthmani = _uthmani_words(label)
+    reference, offsets = hafs_word_reference()(uthmani)
+    words = tuple(reference[offsets[index]:offsets[index + 1]]
+                  for index in range(len(offsets) - 1))
+    return words, reference, tuple(offsets)
+
+
 class _References:
-    """The phonetizer's reference for an ayah, cached: 5,742 clips share 6,236 ayat."""
+    """An ayah's two references, cached: 5,742 clips share 6,236 ayat.
 
-    def __init__(self) -> None:
-        self._cache: dict[str, tuple[tuple[str, ...], str, list[int]]] = {}
+    ``canonical`` gives the phonetizer's words, ``text`` gives Muraja's own reference. The two
+    are the same recitation (a pausal taa marbuta aside, :func:`counterparts_in` maps across),
+    Muraja's separated by the words it reports, so a canonical word's first mapped Character
+    places it in an engine word, and each canonical cluster in an engine group.
+    """
 
-    def __call__(self, label: str) -> tuple[tuple[str, ...], str, list[int]]:
+    def __init__(self, text, canonical) -> None:
+        self._text = text
+        self._canonical = canonical
+        self._cache: dict[str, _AyahReference] = {}
+
+    def __call__(self, label: str) -> _AyahReference:
         if label not in self._cache:
-            uthmani = _uthmani_words(label)
-            reference, offsets = hafs_word_reference()(uthmani)
-            words = tuple(reference[offsets[i]:offsets[i + 1]]
-                          for i in range(len(offsets) - 1))
-            self._cache[label] = (words, reference, offsets)
+            self._cache[label] = self._build(label)
         return self._cache[label]
+
+    def _build(self, label: str) -> _AyahReference:
+        words, reference, offsets = self._canonical(label)
+        surah, ayah = (int(part) for part in label.split(":"))
+        phonemes = self._text.phonemes(surah, ayah)
+        # counterparts_in keys Muraja's Characters; the plants are laid on the phonetizer's.
+        placed = {canonical: at for at, canonical
+                  in counterparts_in(reference, phonemes).items()}
+        engine_words = tuple(phonemes.split(" "))
+        groups = [tuple(self._text.word_groups(surah, ayah, number))
+                  for number in range(1, len(engine_words) + 1)]
+
+        def engine_of(at: int) -> int:
+            return phonemes[:at].count(" ") + 1
+
+        word_of: list[int] = []
+        cluster_groups: list[tuple[int, int] | None] = []
+        for index, word in enumerate(words):
+            starts = _cluster_starts(offsets[index], word)
+            mapped = [placed[position] for position in starts if position in placed]
+            # A word whose every Character is spelled differently is recited in the engine word
+            # before it: the phonemes are monotone, and the merge keeps them together.
+            word_of.append(engine_of(mapped[0]) if mapped else (word_of[-1] if word_of else 1))
+            for position in starts:
+                at = placed.get(position)
+                group = None if at is None else next(
+                    (number for number, (start, end)
+                     in enumerate(groups[engine_of(at) - 1]) if start <= at < end), None)
+                cluster_groups.append(None if at is None or group is None
+                                      else (engine_of(at), group))
+        waqf = frozenset(index for index in range(len(engine_words))
+                         if any(sign in self._text.printed(surah, ayah, index + 1)
+                                for sign in WAQF_SIGNS))
+        return _AyahReference(words, engine_words, tuple(word_of),
+                              tuple(cluster_groups), waqf)
 
 
 def _end_samples(path: Path = DECODES_PATH) -> dict[str, int]:
@@ -490,10 +627,13 @@ def _end_samples(path: Path = DECODES_PATH) -> dict[str, int]:
         return {record["key"]: int(record["end_sample"]) for record in map(json.loads, source)}
 
 
-def _waqf_indices(words: Sequence[str]) -> frozenset[int]:
-    """The words a waqf sign marks, by their position in the phonetizer's word list."""
-    return frozenset(index for index, word in enumerate(words)
-                     if any(char in WAQF_SIGNS for char in word))
+def _clip(item: str, label: str, ayah: _AyahReference,
+          word_times: tuple[tuple[float, float], ...] | None,
+          n_samples: int) -> SweepClip:
+    """A sweep clip over one ayah's record, either side of its canon."""
+    surah, ayah_number = (int(part) for part in label.split(":"))
+    return SweepClip(item, surah, ayah_number, ayah.words, ayah.engine_words, ayah.word_of,
+                     word_times, n_samples, ayah.waqf, ayah.cluster_groups)
 
 
 def _tlog_clips(rows: Sequence[Mapping], word_times: Mapping[str, Mapping],
@@ -504,12 +644,12 @@ def _tlog_clips(rows: Sequence[Mapping], word_times: Mapping[str, Mapping],
         record = word_times[key]
         if key not in samples:
             raise ValueError(f"{key} has word times but no committed decode row for its length")
-        words, _, _ = references(row["filename_label"])
+        ayah = references(row["filename_label"])
         times = (tuple(tuple(pair) for pair in record["word_times"])
                  if record["aligned"] else None)
-        surah, ayah = (int(part) for part in row["filename_label"].split(":"))
-        clips.append(SweepClip(key, surah, ayah, words, times, int(samples[key]),
-                              _waqf_indices(_uthmani_words(row["filename_label"]))))
+        if times is not None and len(times) != len(ayah.words):
+            raise ValueError(f"{key}: {len(times)} word times for {len(ayah.words)} words")
+        clips.append(_clip(key, row["filename_label"], ayah, times, int(samples[key])))
     return clips
 
 
@@ -523,15 +663,13 @@ def _mushaf_clips(harness, pace: float,
     for surah, ayah in ayat:
         label = f"{surah}:{ayah}"
         try:
-            words, reference, offsets = references(label)
+            record = references(label)
         except (KeyError, IndexError) as error:
             unreadable.append({"ayah": label, "reason": f"{type(error).__name__}: {error}"})
             continue
-        lengths = [len(clusters(reference[offsets[i]:offsets[i + 1]]))
-                   for i in range(len(offsets) - 1)]
+        lengths = [len(clusters(word)) for word in record.words]
         times, n_samples = paced_word_times(lengths, pace)
-        clips.append(SweepClip(label, surah, ayah, words, tuple(times), n_samples,
-                              _waqf_indices(_uthmani_words(label))))
+        clips.append(_clip(label, label, record, tuple(times), n_samples))
     return clips, unreadable
 
 
@@ -582,6 +720,7 @@ def _observed_exemptions(rows: Sequence[Mapping]) -> list[dict]:
 def _clean_section(result: CleanSweep) -> dict:
     return {
         "clips": result.clips,
+        "findings": len(result.findings),
         "graded_words": result.graded_words,
         "not_graded": result.not_graded,
         "words_by_position": result.words_by_position,
@@ -589,12 +728,20 @@ def _clean_section(result: CleanSweep) -> dict:
     }
 
 
+#: The two committed evidence tables, beside the report they explain.
+CLEAN_FINDINGS_FILE = "clean_findings.jsonl.gz"
+PLANTED_ROWS_FILE = "planted_rows.jsonl.gz"
+
+
 @dataclass(frozen=True)
 class SweepResult:
-    """A finished run: the committed report, the oracle word table, and the run note."""
+    """A finished run: the committed report, the oracle word table, the two evidence tables, and
+    the run note."""
 
     report: dict
     word_rows: list[dict]
+    clean_findings: list[dict]
+    planted_rows: list[dict]
     run_note: str
     unreadable: list[dict]
 
@@ -611,7 +758,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
 
     word_times = load_word_times()
     rows = oracle_eligible(gating_rows(), word_times)
-    references = _References()
+    references = _References(MurajaText(harness.quran_db), _canonical_words)
     tlog_clips = _tlog_clips(rows, word_times, _end_samples(), references)
     aligned = [clip for clip in tlog_clips if clip.word_times]
     pace = median_speech_pace(
@@ -631,6 +778,8 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
         patterns.extend(group_findings(findings, dimensions))
     patterns.extend(pattern for pattern in group_findings(findings, WORD_DIMENSIONS)
                     if pattern["candidate"])
+    evidence_findings = ([{**finding, "sweep": "tlog"} for finding in clean_tlog.findings]
+                         + [{**finding, "sweep": "mushaf"} for finding in clean_mushaf.findings])
 
     report = {
         "seed": seed,
@@ -638,6 +787,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
         "modes": [scoring.name for scoring in AUDIT_SCORINGS],
         "pace": {"basis": "speech_span_median", "clips": len(aligned),
                  "characters_per_second": pace},
+        "evidence": {"clean_findings": CLEAN_FINDINGS_FILE, "planted_rows": PLANTED_ROWS_FILE},
         "clean": {
             "tlog": _clean_section(clean_tlog),
             "mushaf": {
@@ -660,8 +810,9 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
         "patterns": patterns,
     }
     note = sweep_note(report)
-    return SweepResult(report=report, word_rows=clean_tlog.word_rows, run_note=note,
-                       unreadable=unreadable)
+    return SweepResult(report=report, word_rows=clean_tlog.word_rows,
+                       clean_findings=evidence_findings, planted_rows=planted.rows,
+                       run_note=note, unreadable=unreadable)
 
 
 def oracle_summary(word_rows: Sequence[Mapping],
@@ -714,6 +865,10 @@ def sweep_note(report: Mapping) -> str:
         + (", ".join(f"{kind} ({count})"
                      for kind, count in sorted(planted["unplantable"].items()))
            or "none") + ".",
+        f"- Evidence: `{report['evidence']['clean_findings']}` "
+        f"({tlog['findings'] + mushaf['findings']:,} false flags) and "
+        f"`{report['evidence']['planted_rows']}` ({planted['rows']:,} planted rows), each with"
+        " its per-check statuses, position and window boundary.",
         "",
         "## Reading the rules",
         "",
@@ -721,10 +876,16 @@ def sweep_note(report: Mapping) -> str:
         " counted as neither caught nor missed.",
         "- `protected`: a haraka drop on و ا ء ي is labelled protected (the app's exemption);"
         " every other letter is `other`.",
+        "- `word` / `reference_word`: the planted word's engine word (the one Muraja reports and"
+        " grades) and the canonical word it was planted in. A wasl merge recites two canonical"
+        " words in one engine word.",
         "- `copied` / `following`: an added word is a copy of its neighbour inserted right"
         " after it. The harness reports the ayah's own phoneme words, so the copy has no word"
         " number of its own: caught means a non-correct grade on the copied word or the word"
         " after it, and the two are reported apart.",
+        "- `marked_is_planted`: whether an error's marked phoneme group is the group the plant"
+        " landed in, compared in Muraja's own group numbering; `None` for a skipped or added"
+        " word, which has no single Character.",
         "- `speech span`: the pace is the median Characters per second from a clip's first"
         " word start to its last word end, recomputed by this run.",
         "- Every word the engine does not grade correct under a perfect decode is a finding:"

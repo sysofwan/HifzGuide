@@ -16,6 +16,9 @@ from tadabur.followalong_audit.plant import KINDS, plant, plantable_words, plant
 from tadabur.followalong_audit.sweep import (
     SweepClip,
     _observed_exemptions,
+    _planted_row,
+    _References,
+    _tlog_clips,
     catch_rates,
     clean_sweep,
     false_flags_per_1000,
@@ -66,9 +69,28 @@ class StubEngine:
 
 
 def clip(item: str = "c1", words=WORDS, *, surah: int = 1, ayah: int = 2, times=None,
-         n_samples: int = 8 * SAMPLE_RATE, waqf=frozenset()) -> SweepClip:
-    return SweepClip(item=item, surah=surah, ayah=ayah, words=tuple(words), word_times=times,
-                     n_samples=n_samples, waqf=frozenset(waqf))
+         n_samples: int = 8 * SAMPLE_RATE, waqf=frozenset(), engine=None, word_of=None,
+         cluster_groups=None) -> SweepClip:
+    """A sweep clip; by default Muraja recites one engine word per canonical word, and each
+    canonical cluster lands in its own word's group of the same index."""
+    words = tuple(words)
+    engine = words if engine is None else tuple(engine)
+    word_of = (tuple(range(1, len(words) + 1)) if word_of is None else tuple(word_of))
+    if cluster_groups is None:
+        cluster_groups = tuple(
+            (word + 1, group)
+            for word, characters in enumerate(words)
+            for group in range(len(clusters(characters))))
+    return SweepClip(item=item, surah=surah, ayah=ayah, words=words, engine_words=engine,
+                     word_of=word_of, word_times=times, n_samples=n_samples,
+                     waqf=frozenset(waqf), cluster_groups=tuple(cluster_groups))
+
+
+def trace(word: int, *, mode: str = STRICT, quality: str = "minor", groups=(), marked=()) -> dict:
+    """One ``word_traces`` row for a stub engine's grade of ``word``."""
+    return {"scoring": mode, "word": word, "quality": quality, "score": 1.0,
+            "errors": [{"group_index": group} for group in groups],
+            "marked": list(marked), "checks": [{"status": None}], "setting_checks": []}
 
 
 def reference(words) -> str:
@@ -251,6 +273,15 @@ def test_a_miss_carries_its_replay_evidence_position_and_boundary():
         1 for char in WORDS[planted.word] if "ً" <= char <= "ٟ")
 
 
+def test_a_skipped_words_boundary_comes_from_the_word_the_skip_removes():
+    times = ((0.1, 0.9), (1.1, 1.9), (2.7, 3.4), (3.6, 3.9))  # word 3 spans the 3 s edge
+    source = clip(times=times)
+    planted = plant("skip_word", WORDS, random.Random(0), word=2)
+    row = _planted_row(source, "skip_word", planted, STRICT, {(STRICT, 3): trace(3)},
+                       {"checks": [{"flush": False}]})
+    assert (row["word"], row["boundary"]) == (3, True)
+
+
 def test_a_planted_word_the_engine_leaves_out_is_not_graded_and_neither_caught_nor_missed():
     source = clip()
     word = expected_plant(7, source, "skip_word").word + 1
@@ -365,6 +396,104 @@ def test_words_of_very_different_length_fall_in_different_cells():
 def test_a_cell_with_nothing_graded_has_no_rate():
     (cell,) = catch_rates([row(caught=None)])
     assert (cell["n"], cell["not_graded"], cell["rate"]) == (0, 1, None)
+
+
+# --- both coordinate systems --------------------------------------------------------------------
+#: Two canonical words Muraja recites as one, as 4:109 merges ``هَٰٓأَنتُمۡ`` and
+#: ``هَٰٓؤُلَآءِ``; the engine words are its own.
+MERGED_WORDS = ("ءَ", "بِ", "تُ", "ثَ")
+MERGED_ENGINE = ("ءَبِ", "تُ", "ثَ")
+MERGED_WORD_OF = (1, 1, 2, 3)
+MERGED_GROUPS = ((1, 0), (1, 1), (2, 0), (3, 0))
+
+
+def merged_clip(**fields) -> SweepClip:
+    return clip(words=MERGED_WORDS, engine=MERGED_ENGINE, word_of=MERGED_WORD_OF,
+                cluster_groups=MERGED_GROUPS, **fields)
+
+
+def test_a_merged_word_is_graded_and_counted_as_one_engine_word_not_two_canonical_ones():
+    source = merged_clip()
+    engine = StubEngine({("c1/oracle", STRICT, 1): ("minor", SUBSTITUTION)})
+    result = clean_sweep([source], engine)
+    (request,) = engine.requests
+    assert request["report_words"] == [1, 2, 3]  # Muraja's words, not the four canonical ones
+    assert result.graded_words == {STRICT: 3, BALANCED: 3}
+    assert [(f["word"], f["form"]) for f in result.findings if f["mode"] == STRICT] == [
+        (1, MERGED_ENGINE[0])]
+    assert [row["word"] for row in result.word_rows] == [1, 2, 3]
+
+
+def test_a_planted_word_is_read_at_the_engine_word_it_is_recited_in():
+    source = merged_clip(times=((0.1, 0.9), (0.9, 1.5), (1.5, 2.0), (2.0, 2.6)))
+    planted = plant("haraka_swap", MERGED_WORDS, random.Random(0), word=1)
+    request = {"checks": [{"flush": False}]}
+    on_engine = {(STRICT, 1): trace(1, groups=[0]),
+                 (STRICT, 2): trace(2, quality=CORRECT),
+                 (STRICT, 3): trace(3, quality=CORRECT)}
+    row = _planted_row(source, "haraka_swap", planted, STRICT, on_engine, request)
+    assert (row["word"], row["reference_word"]) == (1, 2)
+    assert (row["caught"], row["quality"], row["form"]) == (True, "minor", planted.words[1])
+    # The canonical ordinal would have read engine word 2, which is correct here.
+    ordinal = {(STRICT, 1): trace(1, quality=CORRECT),
+               (STRICT, 2): trace(2, groups=[0]),
+               (STRICT, 3): trace(3, quality=CORRECT)}
+    assert _planted_row(source, "haraka_swap", planted, STRICT, ordinal,
+                        request)["caught"] is False
+
+
+def test_the_marked_letter_is_compared_in_murajas_group_coordinates():
+    # لِللَااهِ: the madd doubles ا across one group, and the geminate's two ل share another.
+    source = clip(words=("لِللَااهِ",), cluster_groups=((1, 0), (1, 1), (1, 1), (1, 2),
+                                                       (1, 2), (1, 3)))
+    planted = plant("haraka_swap", source.words, random.Random(0), word=0)
+    assert planted.character == 2  # لَ: group 1, not cluster index 2
+    request = {"checks": [{"flush": False}]}
+    on_group = {(STRICT, 1): trace(1, groups=[1])}
+    assert _planted_row(source, "haraka_swap", planted, STRICT, on_group,
+                        request)["marked_is_planted"] is True
+    elsewhere = {(STRICT, 1): trace(1, groups=[3])}
+    assert _planted_row(source, "haraka_swap", planted, STRICT, elsewhere,
+                        request)["marked_is_planted"] is False
+
+
+class FakeMurajaText:
+    """One ayah's Muraja reference, as :class:`_References` reads it."""
+
+    def __init__(self, phonemes: str, printed: dict[int, str], groups: dict[int, tuple]):
+        self._phonemes = phonemes
+        self._printed = printed
+        self._groups = groups
+
+    def phonemes(self, surah: int, ayah: int) -> str:
+        return self._phonemes
+
+    def printed(self, surah: int, ayah: int, word: int) -> str:
+        return self._printed[word]
+
+    def word_groups(self, surah: int, ayah: int, word: int) -> tuple:
+        return self._groups[word]
+
+
+def test_the_loader_marks_an_internal_printed_pause_sign_and_keeps_both_word_identities():
+    # Two canonical words recited as one engine word, and an internal pause sign on engine
+    # word 2's printed text (U+06D6), as 2:5's رَّبِّهِمۡۖ carries it.
+    text = FakeMurajaText("ءَبَ تُ ثَ", {1: "ءَبَ", 2: "تُۖ", 3: "ثَ"},
+                          {1: ((0, 2), (2, 4)), 2: ((5, 7),), 3: ((8, 10),)})
+    references = _References(text, lambda label: (
+        ("ءَ", "بَ", "تُ", "ثَ"), "ءَبَتُثَ", (0, 2, 4, 6, 8)))
+    record = references("1:1")
+    assert record.engine_words == ("ءَبَ", "تُ", "ثَ")
+    assert record.word_of == (1, 1, 2, 3)
+    assert record.cluster_groups == ((1, 0), (1, 1), (2, 0), (3, 0))
+    assert record.waqf == frozenset({1})
+    (loaded,) = _tlog_clips(
+        [{"audio_path": "c.flac", "filename_label": "1:1"}],
+        {"c.flac#0": {"aligned": True,
+                      "word_times": [[0.1, 0.5], [0.5, 0.9], [0.9, 1.3], [1.3, 1.7]]}},
+        {"c.flac#0": 8 * SAMPLE_RATE}, references)
+    assert loaded.waqf == frozenset({1})
+    assert word_position(1, len(loaded.engine_words), waqf=1 in loaded.waqf) == "waqf"
 
 
 # --- the App arm's oracle section -------------------------------------------------------------

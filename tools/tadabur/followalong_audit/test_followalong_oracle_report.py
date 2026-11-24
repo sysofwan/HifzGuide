@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from tadabur.followalong_audit.app_arm import read_grades
 from tadabur.followalong_audit.patterns import CANDIDATE_WORDS, EXAMPLES, issue_body
 from tadabur.followalong_audit.plant import KINDS
 from tadabur.followalong_audit.sweep import SWEEP_SEED, build_report
@@ -23,7 +24,8 @@ from training.muraja_policy import CORRECT, CURRENT_COMMIT, Harness
 REPO = Path(__file__).resolve().parents[3]
 DOC = REPO / "docs" / "followalong-oracle-sweep.md"
 REPORT = REPO / "docs" / "followalong-oracle-sweep.json"
-RUN_NOTE = Path(__file__).parent / "oracle_sweep" / "run_note.md"
+EVIDENCE = Path(__file__).parent / "oracle_sweep"
+RUN_NOTE = EVIDENCE / "run_note.md"
 
 #: The population the issue names: confirm.1/2 gating rows less #248's twenty unreadable clips,
 #: and every ayah of the mushaf.
@@ -96,6 +98,25 @@ def test_patterns_pool_only_the_clean_sweeps_findings(report):
     # claims the perfect decode flagged a word it did not.
     for pattern in report["patterns"]:
         assert all(example["quality"] != CORRECT for example in pattern["examples"])
+
+
+def test_the_evidence_tables_hold_every_false_flag_and_every_planted_row(report):
+    clean = read_grades(EVIDENCE / report["evidence"]["clean_findings"])
+    planted = read_grades(EVIDENCE / report["evidence"]["planted_rows"])
+    assert len(clean) == (report["clean"]["tlog"]["findings"]
+                          + report["clean"]["mushaf"]["findings"])
+    assert len(planted) == report["planted"]["rows"]
+    for row in clean:
+        assert {"sweep", "item", "word", "mode", "quality", "error_kind", "form", "position",
+                "boundary", "statuses"} <= set(row)
+        assert row["quality"] != CORRECT
+        assert row["statuses"]  # the per-check statuses of the false flag
+    for row in planted:
+        assert {"kind", "mode", "word", "reference_word", "label", "protected", "position",
+                "boundary", "length", "form", "caught", "not_graded", "marked_is_planted",
+                "statuses"} <= set(row)
+    misses = [row for row in planted if row["caught"] is False]
+    assert misses and all(row["statuses"] for row in misses)
 
 
 def test_each_candidate_pattern_has_its_issue_draft_in_the_run_note(report):

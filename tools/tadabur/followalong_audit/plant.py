@@ -77,15 +77,28 @@ def _pair(kind: str) -> tuple[str, str]:
     return first, second
 
 
-def _geminates(characters: Sequence[str]) -> list[int]:
-    """The indices of bare consonants that the next Character repeats (a shaddah)."""
-    return [
-        index for index, character in enumerate(characters)
-        if character[0] in CONSONANTS
-        and len(character) == 1
-        and index + 1 < len(characters)
-        and characters[index + 1][0] == character[0]
-    ]
+def _geminates(characters: Sequence[str]) -> list[tuple[int, int]]:
+    """Each shaddah as its ``(start, end)`` cluster indices: a run of one consonant whose
+    clusters are all bare but the last, which carries the vowel (``رَببِ``: ``ب`` then ``بِ``,
+    and the ghunnah geminates spell four: ``ءِننننَ``). A run with marks before its last cluster
+    is a word boundary the phonetizer merged and a segment where the mark sits first
+    (``لِّل`` is ``ل`` then ``ل``), not a shaddah, and madd and ghunna characters are no
+    consonants.
+    """
+    runs: list[tuple[int, int]] = []
+    index = 0
+    while index < len(characters):
+        base = characters[index][0]
+        end = index
+        while end + 1 < len(characters) and characters[end + 1][0] == base:
+            end += 1
+        if (end > index and base in CONSONANTS
+                and all(len(character) == 1 for character in characters[index:end])):
+            runs.append((index, end))
+            index = end + 1
+        else:
+            index += 1
+    return runs
 
 
 def _sites(kind: str, words: Sequence[str]) -> list[tuple[int, int]]:
@@ -95,6 +108,9 @@ def _sites(kind: str, words: Sequence[str]) -> list[tuple[int, int]]:
     if kind == "add_word":
         return [(word, 0) for word in range(len(words))]
     grid = [clusters(word) for word in words]
+    if kind == "shaddah_drop":
+        return [(word, start) for word, characters in enumerate(grid)
+                for start, _ in _geminates(characters)]
     sites: list[tuple[int, int]] = []
     for word, characters in enumerate(grid):
         for index, character in enumerate(characters):
@@ -107,8 +123,6 @@ def _sites(kind: str, words: Sequence[str]) -> list[tuple[int, int]]:
                 plantable = bool(set(character[1:]) & HARAKAT)
             elif kind == "haraka_drop":
                 plantable = sum(1 for mark in character[1:] if mark in HARAKAT) == 1
-            elif kind == "shaddah_drop":
-                plantable = index in _geminates(characters)
             else:
                 raise ValueError(f"{kind!r} is not a planted kind: {KINDS}")
             if plantable:
@@ -180,8 +194,12 @@ def plant(kind: str, words: Sequence[str], rng: random.Random,
             protected = old[0] in PROTECTED_LETTERS
             label = f"-{old[0]}"
         else:  # shaddah_drop
-            del characters[character_index]
-            label = f"-{old[0]}"
+            base = old[0]
+            end = character_index
+            while end + 1 < len(characters) and characters[end + 1][0] == base:
+                end += 1
+            characters[character_index:end + 1] = [base + characters[end][1:]]
+            label = f"-{base}"
         edited[chosen] = "".join(characters)
 
     return Planted(kind=kind, words=tuple(edited), word=chosen, label=label,

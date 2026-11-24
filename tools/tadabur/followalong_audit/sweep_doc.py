@@ -42,6 +42,7 @@ def render(report: Mapping) -> str:
     lines += _clean("the mushaf at the tlog pace", report["clean"]["mushaf"],
                     modes=report["modes"], mushaf=True)
     lines += _planted(report["planted"])
+    lines += _evidence(report["evidence"])
     lines += _patterns(report["patterns"])
     return "\n".join(_trim(lines)) + "\n"
 
@@ -72,7 +73,9 @@ def _clean(title: str, section: Mapping, *, modes: Sequence[str],
     else:
         lines.append(f"{section['clips']:,} gating clips, each at its own phase A word times.")
     lines += ["A word with no kept grade — no row in the engine's `final`, or only `pending` —"
-              " is counted as not graded, never as a finding."]
+              " is counted as not graded, never as a finding. Words, denominators and positions"
+              " are Muraja's own phoneme words; an internal printed pause sign marks its word"
+              " `waqf`, and a wasl merge recites two canonical words as one of them."]
     lines += ["", "| mode | graded words | not graded | false flags per 1,000 words |",
               "| --- | ---: | ---: | ---: |"]
     for mode in modes:
@@ -97,8 +100,10 @@ def _planted(planted: Mapping) -> list[str]:
     lines = [
         "## Planted mistakes",
         "",
-        "One seeded mistake per kind per clip, planted before the reference is placed. **Caught**"
-        " means the planted word's kept grade is below correct. A word with no kept grade — no"
+        "One seeded mistake per kind per clip, planted in a canonical word before the reference"
+        " is placed. **Caught** means the kept grade of the engine word the plant is recited in"
+        " is below correct: a wasl merge recites two canonical words in one engine word, and an"
+        " added word's copy has no engine word of its own. A word with no kept grade — no"
         " row in the engine's `final`, or only `pending` — is `not_graded`: reported apart and"
         " counted as neither caught nor missed. Rates are caught over graded planted words.",
         "",
@@ -144,6 +149,20 @@ def _planted(planted: Mapping) -> list[str]:
             f" {cell['caught_on_following']:,} | {cell['not_graded']:,} |"
             f" {_rate(cell['rate'])} |")
     return [*lines, ""]
+
+
+def _evidence(evidence: Mapping) -> list[str]:
+    return [
+        "## Evidence",
+        "",
+        f"`tools/tadabur/followalong_audit/oracle_sweep/{evidence['clean_findings']}` holds every"
+        f" false flag from both clean sweeps, and"
+        f" `tools/tadabur/followalong_audit/oracle_sweep/{evidence['planted_rows']}` every planted"
+        " row, each with its per-check statuses, its position and whether a window boundary"
+        " splits it. Both are compressed, sorted-key JSONL, regenerated deterministically with"
+        " this report.",
+        "",
+    ]
 
 
 def _patterns(patterns: Sequence[Mapping]) -> list[str]:

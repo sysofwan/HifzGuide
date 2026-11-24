@@ -21,6 +21,7 @@ from tadabur.followalong_audit.plant import (
 )
 from tadabur.truth_sites import CONSONANTS, HARAKA_CHARS, TARGET_PAIRS
 from training.decoding import clusters
+from training.nonpro_eval import mushaf_form
 
 #: 1:2, as ``hafs_word_reference`` spells it: no spaces, geminates doubled, madd as repeated letters.
 WORDS = ("ءَلحَمدُ", "لِللَااهِ", "رَببِ", "لعَاالَمِۦۦن")
@@ -138,6 +139,28 @@ def test_a_shaddah_drop_collapses_a_geminate_to_one_consonant():
     assert one.words == ("ءَلحَمدُ", "لِللَااهِ", "رَبِ", "لعَاالَمِۦۦن")
     other = plant("shaddah_drop", WORDS, random.Random(0), word=1)
     assert other.words == ("ءَلحَمدُ", "لِلَااهِ", "رَببِ", "لعَاالَمِۦۦن")
+
+
+def test_a_shaddah_drop_collapses_a_four_consonant_ghunnah_geminate_to_one():
+    # إِنَّ: the phonetizer spells the held noon as four. Dropping one leaves a geminate and
+    # changes nothing the mushaf form sees; the whole run must collapse.
+    assert plant("shaddah_drop", ("ءِننننَ",), random.Random(0)).words == ("ءِنَ",)
+    assert plantable_words("shaddah_drop", ("ءِننننَ",)) == [0]
+
+
+def test_a_shaddah_drop_is_one_site_per_run_and_always_changes_the_mushaf_form():
+    # (word, how many Characters the collapse removes)
+    corpus = {"ءِننننَ": 3, "رَببِ": 1, "لِللَااهِ": 1}
+    for word, removed in corpus.items():
+        planted = plant("shaddah_drop", (word,), random.Random(0))
+        assert len(clusters(planted.words[0])) == len(clusters(word)) - removed
+        assert mushaf_form(planted.words[0]) != mushaf_form(word)
+
+
+def test_a_merged_word_boundary_and_a_madd_are_no_shaddah_site():
+    # لِلكَاافِرِۦۦن recites لِ and ل from two words; لعَاالَمِۦۦن doubles ا and ۦ, no consonant.
+    assert plantable_words("shaddah_drop", ("لِلكَاافِرِۦۦن",)) == []
+    assert 3 not in plantable_words("shaddah_drop", WORDS)
 
 
 def test_madd_and_a_repeated_vowel_letter_are_no_geminate():

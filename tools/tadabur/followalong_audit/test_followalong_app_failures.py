@@ -3,13 +3,20 @@
 The run records per-clip failures because some of 5,742 clips will fail. P2 and P3 must compare
 the clips that produced rows and list the rest; the strata must exclude a failed clip's words
 rather than fold them into S5, which means "the App graded the clip and left that word ungraded".
+
+An attempt is retried before its failure is recorded: the CoreML driver intermittently exits 0
+having written nothing, and a run that recorded that transient as an exclusion would understate
+the App arm. The retries are bounded, so a clip that always fails is still reported as failed.
 """
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
-from tadabur.followalong_audit import bridge
+import pytest
+
+from tadabur.followalong_audit import bridge, tracer
+from tadabur.followalong_audit.app_run import ATTEMPTS, run_clips
 from tadabur.followalong_audit.cadence import p3_section
 from tadabur.followalong_audit.strata_run import words_from_grades
 from training.nonpro_decode import item_key
@@ -30,6 +37,58 @@ def cell(flagged: bool = False, graded: bool = True) -> dict:
 def word_rows(item: str, flags: list[bool]) -> list[dict]:
     return [{"item": item, "word": index + 1, "strict": cell(flag),
              "shipped_default": cell()} for index, flag in enumerate(flags)]
+
+
+# --- the driver's silent zero exit ---------------------------------------------------------------
+
+
+def fake_driver(tmp_path, body: str):
+    path = tmp_path / "transcribe_checks"
+    path.write_text("#!/bin/sh\n" + body, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def test_a_zero_exit_with_no_payload_names_the_bytes_it_wrote(tmp_path):
+    driver = fake_driver(tmp_path, "exit 0\n")
+    with pytest.raises(RuntimeError, match="exited 0 with 0 bytes"):
+        tracer.driver_checks(driver, tmp_path / "clip.wav", 40, tmp_path)
+
+
+def test_a_zero_exit_with_stdout_that_is_not_json_names_the_head_and_stderr(tmp_path):
+    driver = fake_driver(tmp_path, "echo 'warning: no model'; echo 'note' >&2; exit 0\n")
+    with pytest.raises(RuntimeError) as raised:
+        tracer.driver_checks(driver, tmp_path / "clip.wav", 40, tmp_path)
+    message = str(raised.value)
+    assert "not JSON" in message and "warning: no model" in message and "note" in message
+
+
+# --- the bounded retries -------------------------------------------------------------------------
+
+
+def test_a_clip_that_fails_once_is_graded_by_the_retry(tmp_path, capsys):
+    calls = {"n": 0}
+
+    def run_one(row: dict) -> list[dict]:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("exited 0 with 0 bytes of stdout")
+        return word_rows(item_key(row["audio_path"]), [False])
+
+    results = run_clips([clip(1)], run_one, tmp_path, workers=1)
+    assert results[0]["failure"] is None and len(results[0]["rows"]) == 1
+    assert "retrying" in capsys.readouterr().err
+    assert (tmp_path / f"{clip(1)['audio_sha256']}.json").is_file()
+
+
+def test_a_clip_that_fails_every_attempt_is_recorded_and_not_cached(tmp_path, capsys):
+    def run_one(row: dict) -> list[dict]:
+        raise RuntimeError("exited 0 with 0 bytes of stdout")
+
+    results = run_clips([clip(1)], run_one, tmp_path, workers=1)
+    assert results[0]["failure"] == "RuntimeError: exited 0 with 0 bytes of stdout"
+    assert capsys.readouterr().err.count("retrying") == ATTEMPTS - 1
+    assert not (tmp_path / f"{clip(1)['audio_sha256']}.json").exists()
 
 
 # --- P3 -----------------------------------------------------------------------------------------

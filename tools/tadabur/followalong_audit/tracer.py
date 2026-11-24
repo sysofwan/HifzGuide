@@ -130,8 +130,8 @@ def load_word_times(directory: Path = WORD_TIMES_DIR,
 
 
 def _driver_once(driver: Path, wav: Path, latency_ms: int,
-                 assets_dir: Path) -> tuple[bytes, float]:
-    """One driver process over one WAV: its stdout and wall time, or its own failure."""
+                 assets_dir: Path) -> tuple[bytes, bytes, float]:
+    """One driver process over one WAV: its stdout, stderr and wall time, or its own failure."""
     env = {
         **os.environ,
         "HIFZGUIDE_ASSETS_DIR": str(assets_dir),
@@ -142,7 +142,23 @@ def _driver_once(driver: Path, wav: Path, latency_ms: int,
     elapsed = time.perf_counter() - started
     if done.returncode != 0:
         raise RuntimeError(done.stderr.decode("utf-8", "replace").strip())
-    return done.stdout, elapsed
+    return done.stdout, done.stderr, elapsed
+
+
+def _driver_payload(stdout: bytes, stderr: bytes) -> dict:
+    """The driver's JSON payload, or an error naming what it wrote instead.
+
+    The driver exits 0 only after printing its payload, so a zero exit whose stdout is not JSON
+    is the one failure whose cause is invisible from the exception alone: the reason carries the
+    byte count, the bytes it wrote and the stderr the run would otherwise drop (#309).
+    """
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(
+            f"exited 0 with {len(stdout)} bytes of stdout that is not JSON ({error}): "
+            f"stdout starts {stdout[:120]!r}, stderr "
+            f"{stderr.decode('utf-8', 'replace').strip()[:200]!r}") from error
 
 
 def driver_checks(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
@@ -151,8 +167,8 @@ def driver_checks(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) ->
     The S3 App-arm run is 5,742 clips, so it pays for one driver run per clip and re-runs only
     its seeded determinism subset (:func:`tadabur.followalong_audit.app_arm.determinism_report`).
     """
-    stdout, wall = _driver_once(driver, wav, latency_ms, assets_dir)
-    payload = json.loads(stdout)
+    stdout, stderr, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    payload = _driver_payload(stdout, stderr)
     return {
         "checks": payload["checks"],
         "wall_seconds": wall,
@@ -167,9 +183,9 @@ def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> di
 
     Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
     """
-    first, wall = _driver_once(driver, wav, latency_ms, assets_dir)
-    second, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
-    payload = json.loads(first)
+    first, first_stderr, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    second, _, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    payload = _driver_payload(first, first_stderr)
     deterministic = first == second
     return {
         "checks": payload["checks"],

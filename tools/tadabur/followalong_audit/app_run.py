@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -71,6 +72,12 @@ def _cell(trace: Mapping | None, scoring: Scoring,
 
 _RESULT_FIELDS = ("item", "failure", "rows")
 
+#: How many times one clip is attempted before its failure is recorded. The CoreML driver
+#: occasionally exits 0 having written nothing (#309): retrying costs one clip and keeps a
+#: transient from entering the table as an exclusion, while a clip that fails every attempt is
+#: still recorded as failed, never as a silent pass.
+ATTEMPTS = 3
+
 
 def _cache_path(out_dir: Path, clip: Mapping) -> Path:
     """A clip's result file: its source checksum, so a resumed run finds it without the WAVs."""
@@ -84,7 +91,9 @@ def _write_result(path: Path, result: Mapping) -> None:
 def _run_cached(job: tuple[dict, Callable, str]) -> dict:
     """One clip's result: its cached one when a previous run finished it, else ``run_one``'s.
 
-    A failed clip is not cached, so a rerun retries exactly the clips that failed.
+    A failed clip is not cached, so a rerun retries exactly the clips that failed. Each attempt
+    before the last is announced on stderr, so a run's log records the transient that a retry
+    absorbed.
     """
     from training.nonpro_decode import item_key
 
@@ -95,13 +104,20 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
         if set(cached) == set(_RESULT_FIELDS):
             return cached
     item = item_key(clip["audio_path"])
-    try:
-        rows = list(run_one(clip))
-    except Exception as error:  # noqa: BLE001 - the clip's reason, never the run's death
-        return {"item": item, "failure": f"{type(error).__name__}: {error}", "rows": []}
-    result = {"item": item, "failure": None, "rows": rows}
-    _write_result(path, result)
-    return result
+    reason = ""
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            rows = list(run_one(clip))
+        except Exception as error:  # noqa: BLE001 - the clip's reason, never the run's death
+            reason = f"{type(error).__name__}: {error}"
+            if attempt < ATTEMPTS:
+                print(f"retrying {item} after attempt {attempt}/{ATTEMPTS}: {reason}",
+                      file=sys.stderr, flush=True)
+            continue
+        result = {"item": item, "failure": None, "rows": rows}
+        _write_result(path, result)
+        return result
+    return {"item": item, "failure": reason, "rows": []}
 
 
 #: The run-identity record's name: what a cache directory was produced by.

@@ -225,3 +225,11 @@ tools/tadabur/aug_readout/restricted/
 # tables for both arms, the decode checks and the per-clip cadence. Decode text and provenance
 # only — audio stays in scratch. `*.jsonl` is ignored by default.
 !tools/tadabur/followalong_audit/tracer/*.jsonl
+# The follow-along audit S3 App arm (#309): the population's per-word grades
+# (`word_grades.jsonl.gz` and the 0/130 ms P3 runs, not matched by `*.jsonl`), the run's per-clip
+# table, and the full per-check traces kept for the P2 and P3 subsets only (gzipped: each row
+# repeats the clip's check list, so the raw text is 261 MB for the 1,200 subset clips and 10 MB
+# compressed). Audio stays in scratch; nothing here is audio.
+!tools/tadabur/followalong_audit/app_arm/*.jsonl
+!tools/tadabur/followalong_audit/app_arm/*.jsonl.gz
+!tools/tadabur/followalong_audit/app_arm/traces/*.jsonl.gz

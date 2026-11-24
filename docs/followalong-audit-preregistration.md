@@ -28,10 +28,11 @@ Principal cross-check: pending
 The population is the **placeable phone audio** of confirm.1 ∪ confirm.2: every claim-gated
 gating clip whose ayah the Teacher could place. Concretely:
 
-- **5,762** phase A gating clips carry confirm.1/confirm.2 `gating` rows; **minus** the 20 clips of
-  **8 unreadable mushaf ayat** that #248 excludes — `55:17`, `90:8`–`90:10` and `106:1`–`106:4`,
+- **5,762** phase A gating clips carry confirm.1/confirm.2 `gating` rows; **minus** the 20 clips
+  #248 excludes — 7 of the **8 unreadable mushaf ayat**, `55:17`, `90:8`, `90:10` and `106:1`–`106:4`,
   whose reference phonemes the phonetizer cannot produce (`tadabur/consonant2_readout/report.json`
-  `coverage.graded.excluded_clips`) — leaves **5,742 clips**, not 5,762. The count is
+  `coverage.graded.excluded_clips`; `90:9` is unreadable too but has no gating clips) — leaves
+  **5,742 clips**, not 5,762. The count is
   `app_arm/summary.json`'s `population.clips`, and S3 graded all of them (no failed clip).
 - A clip's **gating** row is one whose `stratum` is `gating`. Its words are the Teacher's placed
   Mushaf words: **gating = the Teacher placed the ayah**, so a word outside the placed ayah is not
@@ -61,7 +62,8 @@ byte-identical.
 variation with an identical word table, so the decoder is not bit-stable and S7 diagnoses that. A
 clip the CoreML driver exited 0 on with no output was retried (the **E5RT** transient, three
 attempts) rather than recorded as failed; S3's record is 0 failed clips. S2's clean mushaf sweep
-tallies **8 unreadable** ayat (`55:17`, `90:8`–`90:10`, `106:1`–`106:4`), never silently dropped.
+tallies **8 unreadable** ayat (`55:17`, `90:8`–`90:10`, `106:1`–`106:4`, as
+`oracle_sweep/run_note.md` records), never silently dropped.
 
 ## 2. Arms and identities
 
@@ -130,45 +132,59 @@ audit needs a miss bound from words nothing flags.
 | S3: the App passes and the base or ≥ 2 detectors flag | 1,459 | 250 | 69 | 0.171 |
 | S4: the App passes and nothing flags | 38,598 | 60 | 17 | 0.00155 |
 | S5: the App left the word ungraded | 9,342 | 30 | 8 | 0.00321 |
-| repeats: seeded re-asks of this audit's own items | 540 | 25 | 7 | - |
+| repeats: seeded re-asks of this audit's own items | 150 + 540 | 25 | 7 | - |
 
-Inclusion probability is **final n ÷ pool**, computed after the resize: 200/5,156, 250/1,459,
-60/38,598 and 30/9,342 above. The repeats are re-asks, not a pool, and carry no inclusion
-probability.
+The table's inclusion column is each stratum's overall n ÷ pool: S3 and S4 are one cell each, so
+that is every word's inclusion probability there. **S1 and S5 are drawn cell by cell**, so a
+word's inclusion probability is its own cell's π = n_cell ÷ N_cell — tabulated with S1's cells
+below and S5's buckets — and §7 weights by that π, never the stratum average. The n above are the
+frozen design; the §8 resize extends the same permutations and recomputes each cell's π as final
+n ÷ N. The repeats are re-asks, not a pool: the pilot's 7 come from its 150 served items and the
+main sitting's 18 from its 540 (the row's pool is both), and they carry no inclusion probability.
 
 **S1's cells.** A word can carry several causes; its cell is allocated by one **primary cause**,
 the first match in
 `target_pair, soft_pair, other_consonant, shaddah, tashkeel, skipped, unrecorded` — deliberately not
 `training.word_flags.CAUSES`' order, because decision rule 3 turns on soft and target pairs.
-Primary cause × base-detector flag gives 14 cells summing to 5,156:
+Primary cause × base-detector flag gives 14 cells summing to 5,156. `pools.json`'s
+`s1_by_cause_and_base` counts a word once per cause it carries (any-cause), not by primary cause;
+the cells below and S4's ungraded split are the committed `app_arm/cells.json`, written by
+`python -m tadabur.followalong_audit strata` at the pinned harness:
 
-| cause | base detector flags | words | n |
-|---|---|---:|---:|
-| other_consonant | no | 1,150 | 44 |
-| other_consonant | yes | 1,607 | 61 |
-| shaddah | no | 61 | 3 |
-| shaddah | yes | 174 | 6 |
-| skipped | no | 147 | 5 |
-| skipped | yes | 296 | 11 |
-| soft_pair | no | 129 | 5 |
-| soft_pair | yes | 344 | 13 |
-| target_pair | no | 24 | 3 |
-| target_pair | yes | 41 | 3 |
-| tashkeel | no | 283 | 11 |
-| tashkeel | yes | 416 | 16 |
-| unrecorded | no | 98 | 4 |
-| unrecorded | yes | 386 | 15 |
+| cause | base detector flags | words | n | π |
+|---|---|---:|---:|---:|
+| other_consonant | no | 1,150 | 44 | 0.0383 |
+| other_consonant | yes | 1,607 | 61 | 0.038 |
+| shaddah | no | 61 | 3 | 0.0492 |
+| shaddah | yes | 174 | 6 | 0.0345 |
+| skipped | no | 147 | 5 | 0.034 |
+| skipped | yes | 296 | 11 | 0.0372 |
+| soft_pair | no | 129 | 5 | 0.0388 |
+| soft_pair | yes | 344 | 13 | 0.0378 |
+| target_pair | no | 24 | 3 | 0.125 |
+| target_pair | yes | 41 | 3 | 0.0732 |
+| tashkeel | no | 283 | 11 | 0.0389 |
+| tashkeel | yes | 416 | 16 | 0.0385 |
+| unrecorded | no | 98 | 4 | 0.0408 |
+| unrecorded | yes | 386 | 15 | 0.0389 |
 
 The 200 snips are allocated **proportionally with a floor of 3 per cell**, the remainder by
-**largest remainder**, 200 in total. The floor matters only for the target_pair cells, which would
-otherwise get 1–2. Readouts report **every cause** a word carries, not only the primary; rule 3's
+**largest remainder**, 200 in total. The floor binds only for the shaddah-no cell and the two
+target_pair cells; without it they would get 2, 1 and 2 snips. Readouts report **every cause** a word carries, not only the primary; rule 3's
 soft/target test is any cause in {soft_pair, target_pair}.
 
 **S5's composition.** S5's 9,342 words are mostly clip edges: **leading 3,933**, **trailing
 5,103**, **interior 306**, and **250 clips** are entirely ungraded. The oracle arm leaves only 245
 of 57,935 words ungraded, so these are real decodes at clip edges (single-ayah clips put a session
 start and end every ~10 words) or words not in the recorded audio. S5's 30 snips split
-**leading 10 / trailing 10 / interior 10**. An "unusable audio" verdict carries the sub-reason
+**leading 10 / trailing 10 / interior 10**, and the buckets do not share π:
+
+| S5 bucket | words | n | inclusion |
+|---|---:|---:|---:|
+| leading | 3,933 | 10 | 0.00254 |
+| trailing | 5,103 | 10 | 0.00196 |
+| interior | 306 | 10 | 0.0327 |
+ An "unusable audio" verdict carries the sub-reason
 `not_in_clip` when the word is not in the recording. Every headline rate is also reported without
 each clip's first and last engine word. A possible end-word mechanism — the withheld grade is
 stored only at score ≥ 0.75 (`GradeStore.swift:663,676-691`) — is checked in S7, never asserted
@@ -228,8 +244,12 @@ second.
 - **F-ref**: the same deviation at the same word in ≥ 3 distinct tranche `group_key`s, a
   **reference suspect** computed by `reference_suspects`. The deviation is the App strict kept
   grade's error set as the **sorted** tuple of `(group_index, kind.type, kind.expected,
-  kind.heard or None)`, over the whole population's traces. It is checked after F1/F1-align and
-  before F2/F3, and it is never settled by hand: rule 2 is computed with F-ref on **both** sides
+  kind.heard or None)`, over the whole population's traces. That needs the full-population App
+  traces: S5 regenerates them at the frozen identity and must reproduce every committed
+  `word_grades` row (flagged, graded, causes). A word that does not reproduce is listed and never
+  drawn. `app_arm/payload_probe.json` shows the decoder is not bit-stable (two payloads with an
+  identical word table), so this gate can fire; it removes a word from the draw rather than
+  re-grading it. It is checked after F1/F1-align and before F2/F3, and it is never settled by hand: rule 2 is computed with F-ref on **both** sides
   and both are reported if they differ.
 - **F2**: the Teacher arm, through the engine, passes the word. **F3**: it flags the word or left
   it **ungraded** — a Teacher-ungraded word is **not learnable** (D8), counted and shown to the
@@ -273,8 +293,9 @@ The PRD's rule, frozen with these numbers:
 
 Two sides, never pooled (ADR-0008):
 
-- **False flags per 1,000 correctly recited words**, weighted by inclusion probability, with a
-  clip-bootstrap **95%** interval.
+- **False flags per 1,000 correctly recited words**, weighted by the word's **cell** inclusion
+  probability π (S1's 14 cells and S5's 3 buckets do not share it), with a clip-bootstrap **95%**
+  interval.
 - **Misses per 100 confirmed mistakes**, the same way, with the same interval.
 
 Every headline rate is also reported without each clip's first and last engine word, and in
@@ -299,8 +320,11 @@ number of confirmed misses toward 60 within the 3 h total:
   pool; **ties** go to **S3**;
 - stop once the expected confirmed misses reach **60**, or when the **3 h** budget runs out.
 
-At the frozen sizes and round 3's 17% prior yield the expectation is **~42** misses, so the miss
-side would report **direction** only. **Any other change is a dated amendment, made before the main sitting** — never a redraw after listening begins.
+At the frozen sizes the expectation is **~42** misses: 250 × 0.17, S3 only, from round 3
+catch-loss's 17.39% removed-real share (`docs/consonant-round3-catch-loss.md`). S1 words are
+App-flagged and cannot be misses, and S4/S5 have no stated prior, so they are assumed ~0; the
+~42 is therefore S3's, and the **direction**-only conclusion rests on that assumption. Applying
+17% to all 540 snips would give ~92 and cross 60, which is why the prior is scoped to S3. **Any other change is a dated amendment, made before the main sitting** — never a redraw after listening begins.
 
 ## 9. Dataset rows
 

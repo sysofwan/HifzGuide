@@ -157,8 +157,9 @@ def main() -> int:
     strata.add_argument("--oracle", type=Path,
                         help="S2's word table, when #308 has run (same shape as --grades)")
     strata.add_argument("--pools-out", type=Path, default=_app_arm("pools.json"))
-    strata.add_argument("--cells-out", type=Path, default=_app_arm("cells.json"),
-                        help="S1's primary-cause cells and S4's ungraded split")
+    strata.add_argument("--cells-out", type=Path,
+                        help="write S1's primary-cause cells and S4's ungraded split here; "
+                             "omitted, the count-only run writes no design artifact")
 
     report = commands.add_parser("report", help="write the summary and the generated doc")
     report.add_argument("--grades", type=Path, default=_app_arm("word_grades.jsonl.gz"))
@@ -519,8 +520,10 @@ def _strata(args) -> int:
                                              oracle=oracle,
                                              failed=_failed_items(args.clip_runs))
     pools = pools_from_run(stratified, meta, marks)
+    cells = cells_record(stratified, meta["detector_ungraded"]) if args.cells_out else None
     write_pools(pools, args.pools_out)
-    write_cells(cells_record(stratified, meta["detector_ungraded"]), args.cells_out)
+    if cells is not None:
+        write_cells(cells, args.cells_out)
     print(json.dumps({"clips": pools["clips"], "words": pools["words"],
                       "pools": pools["pools"], "catch_loss": pools["catch_loss"]},
                      sort_keys=True))

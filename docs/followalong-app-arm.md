@@ -13,6 +13,7 @@ Generated from `app_arm/summary.json` by `python -m tadabur.followalong_audit re
 - App-arm latency 40 ms per inference; P2 seed 319; P3 seed 309.
 - Driver sha256 `d58dbd066ddaea4640f79b561b307c35e1f1e8ab9e6f1447b23f085833192108`; harness binary sha256 `6913c94384950653c0fa7889eb320b63d16c22424244d38d12d57b6af0aa7bef`.
 - `audio_manifest.jsonl.gz` sha256 `1162aa8b4adba6c0a8b7a0d053bcc9e5dcd3c71ccd820e7f88af819676d57982`; `word_grades.jsonl.gz` sha256 `6064be7082341690db9534f987b636c0e6bd482abf66aa1bd708dd9473dbb3b2`.
+- Determinism: the 25 seeded clips ran twice and all 25 driver payloads were byte-identical in this sample; a sample bounds, it does not prove, bit-identity (`app_arm/determinism.json`).
 
 ## Flags per 1,000 graded words
 
@@ -104,6 +105,16 @@ Device logs, previews per window:
 | surah3_page51_ayah15_mutashabihat_wrong_words | 4.89 |
 | surah3_page55_ayah42_mutashabihat_creep_jump | 5.56 |
 | surah3_page58_far_reread_pause_residue | 5.79 |
+
+The App arm's own cadence on its seeded subsets — previews per full window, pooled over the subset (flushes and the closing stop are neither; a clip whose trace is empty or ran no window is counted apart):
+
+| traces | latency | clips | previews | windows | preview:window | no window |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| p3_0 | 0 ms | 484 | 16,315 | 1,965 | 8.30 | 186 |
+| p2 | 40 ms | 195 | 6,834 | 840 | 8.14 | 76 |
+| p3_130 | 130 ms | 484 | 15,321 | 1,966 | 7.79 | 185 |
+
+Device logs and the App arm read the same scheduler facet, but not under the same conditions: the logs are whole device sessions (their length sets how many previews fit), so a larger App ratio means these clips had more previews per window, not that the scheduler differs.
 
 The App arm ran at 0 ms, 130 ms per inference on 500 clips (seed 309).
 

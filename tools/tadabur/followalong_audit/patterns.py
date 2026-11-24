@@ -47,13 +47,27 @@ def group_findings(findings: Sequence[Mapping],
             "words": len(words),
             "findings": len(ordered),
             "candidate": len(words) >= CANDIDATE_WORDS,
-            "examples": [{field: finding[field] for field in _EXAMPLE_FIELDS}
-                         for finding in ordered[:EXAMPLES]],
+            "examples": _examples(ordered),
         })
     patterns.sort(key=lambda pattern: (-pattern["words"],
                                        json.dumps(pattern["key"], sort_keys=True,
                                                   ensure_ascii=False)))
     return patterns
+
+
+def _examples(ordered: Sequence[Mapping]) -> list[dict]:
+    """The first findings in ayah order, one per distinct ayah word, capped at ``EXAMPLES``."""
+    examples: list[dict] = []
+    seen: set[tuple[int, int, int]] = set()
+    for finding in ordered:
+        word = (finding["surah"], finding["ayah"], finding["word"])
+        if word in seen:
+            continue
+        seen.add(word)
+        examples.append({field: finding[field] for field in _EXAMPLE_FIELDS})
+        if len(examples) == EXAMPLES:
+            break
+    return examples
 
 
 def _word_order(finding: Mapping) -> tuple:

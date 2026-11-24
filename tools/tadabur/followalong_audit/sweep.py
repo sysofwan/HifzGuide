@@ -39,7 +39,7 @@ from tadabur.followalong_audit.session import session_request
 from tadabur.followalong_audit.tracer import load_word_times
 from tadabur.waqf_segments import _uthmani_words, hafs_word_reference
 from training.decoding import SAMPLE_RATE, WINDOW, check_schedule, clusters
-from training.muraja_policy import AUDIT_SCORINGS, CORRECT, CURRENT_COMMIT, word_traces
+from training.muraja_policy import AUDIT_SCORINGS, CORRECT, CURRENT_COMMIT, PENDING, word_traces
 from training.nonpro_decode import item_key
 
 #: The sweep's one seed: the clip/kind draw and the run identity both hang from it.
@@ -59,14 +59,16 @@ WAQF_SIGNS = frozenset(chr(codepoint) for codepoint in range(0x06D6, 0x06DC))
 #: enough that a batch's results stay small.
 GRADE_BATCH = 512
 
-#: The groupings the report pools findings by: one cause each, then boundaries/positions, then
-#: the reference form (a candidate issue needs ten distinct words).
+#: The cause groupings the report pools every finding by.
 PATTERN_DIMENSIONS = (
     ("error_kind",),
     ("error_kind", "position"),
     ("error_kind", "boundary"),
-    ("form",),
 )
+
+#: The reference-form grouping: a form seen once is no pattern, so the report keeps only the
+#: forms that reach :data:`~tadabur.followalong_audit.patterns.CANDIDATE_WORDS`.
+WORD_DIMENSIONS = ("form",)
 
 #: The word-length cells a catch rate is reported in (Characters, both ends inclusive).
 LENGTH_BINS = ((1, 2, "1-2"), (3, 4, "3-4"), (5, 6, "5-6"), (7, 10, "7-10"), (11, None, "11+"))
@@ -259,7 +261,7 @@ def clean_sweep(clips: Sequence[SweepClip], engine) -> CleanSweep:
                 for word in range(1, len(clip.words) + 1):
                     trace = by_word.get((mode, word))
                     index = word - 1
-                    if trace is None:
+                    if trace is None or trace["quality"] == PENDING:
                         not_graded[mode] += 1
                         continue
                     graded[mode] += 1
@@ -316,6 +318,11 @@ def _planted_boundary(clip: SweepClip, kind: str, planted: Planted) -> bool | No
     return splits_window(start, end, clip.n_samples)
 
 
+def _below_correct(trace: Mapping | None) -> bool:
+    """Whether a kept grade is a verdict below correct (a pending word is no verdict)."""
+    return trace is not None and trace["quality"] not in (CORRECT, PENDING)
+
+
 def _planted_row(clip: SweepClip, kind: str, planted: Planted, mode: str,
                  by_word: Mapping[tuple[str, int], Mapping], request: Mapping) -> dict:
     """One row: the planted word's kept grade, and whether the engine caught the mistake."""
@@ -342,22 +349,23 @@ def _planted_row(clip: SweepClip, kind: str, planted: Planted, mode: str,
         twins = [inserted - 1, inserted + 1]
         neighbours = [word for word in twins if 1 <= word <= len(clip.words)]
         on_inserted = by_word.get((mode, inserted))
-        row["caught_on_inserted"] = (on_inserted is not None
-                                     and on_inserted["quality"] != CORRECT)
+        pending = on_inserted is not None and on_inserted["quality"] == PENDING
+        row["caught_on_inserted"] = _below_correct(on_inserted)
         row["caught_on_neighbours"] = any(
-            by_word.get((mode, word)) is not None
-            and by_word[(mode, word)]["quality"] != CORRECT for word in neighbours)
+            _below_correct(by_word.get((mode, word))) for word in neighbours)
         row["quality"] = on_inserted["quality"] if on_inserted is not None else None
-        row["not_graded"] = on_inserted is None
+        row["not_graded"] = on_inserted is None or pending
         caught = row["caught_on_inserted"] or row["caught_on_neighbours"]
-        row["caught"] = caught if caught or on_inserted is not None else None
+        row["caught"] = True if caught else (None if row["not_graded"] else False)
         row["statuses"] = (_statuses(on_inserted, request)
                            if row["caught"] is False or row["caught"] is None else [])
     else:
         trace = by_word.get((mode, planted.word + 1))
+        pending = trace is not None and trace["quality"] == PENDING
         row["quality"] = trace["quality"] if trace is not None else None
-        row["not_graded"] = trace is None
-        row["caught"] = None if trace is None else trace["quality"] != CORRECT
+        row["not_graded"] = trace is None or pending
+        row["caught"] = (None if row["not_graded"]
+                         else trace["quality"] != CORRECT)
         row["statuses"] = (_statuses(trace, request)
                            if row["caught"] is False or row["caught"] is None else [])
     row["marked_is_planted"] = bool(
@@ -629,6 +637,8 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
     patterns: list[dict] = []
     for dimensions in PATTERN_DIMENSIONS:
         patterns.extend(group_findings(findings, dimensions))
+    patterns.extend(pattern for pattern in group_findings(findings, WORD_DIMENSIONS)
+                    if pattern["candidate"])
 
     report = {
         "seed": seed,
@@ -643,10 +653,12 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
                 "ayat": len(mushaf_clips) + len(unreadable),
                 "graded": len(mushaf_clips),
                 "unreadable": len(unreadable),
+                "unreadable_ayat": list(unreadable),
                 "characters_per_second": pace,
             },
         },
         "planted": {
+            "rows": len(planted.rows),
             "unplantable": planted.unplantable,
             "catch_rates": catch_rates(planted.rows),
             "protected_split": _protected_split(planted.rows),
@@ -655,7 +667,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
         },
         "patterns": patterns,
     }
-    note = sweep_note(report, planted, unreadable)
+    note = sweep_note(report)
     return SweepResult(report=report, word_rows=clean_tlog.word_rows, run_note=note,
                        unreadable=unreadable)
 
@@ -685,10 +697,15 @@ def build_report(harness, seed: int = SWEEP_SEED) -> dict:
     return run_sweep(harness, seed=seed).report
 
 
-def sweep_note(report: Mapping, planted: PlantedSweep, unreadable: Sequence[Mapping]) -> str:
-    """The run note: provenance, the reading rules, and a draft issue for each candidate."""
+def sweep_note(report: Mapping) -> str:
+    """The run note: provenance, the reading rules, and a draft issue for each candidate.
+
+    A pure function of the committed report, so the note can be regenerated from the JSON.
+    """
     pace = report["pace"]
     tlog, mushaf = report["clean"]["tlog"], report["clean"]["mushaf"]
+    planted = report["planted"]
+    unreadable = mushaf["unreadable_ayat"]
     lines = [
         "# S2 oracle sweep run (#308)",
         "",
@@ -700,9 +717,9 @@ def sweep_note(report: Mapping, planted: PlantedSweep, unreadable: Sequence[Mapp
         f"({mushaf['graded']:,} graded, {mushaf['unreadable']} unreadable).",
         f"- Pace: {pace['characters_per_second']:.3f} Characters/s over the speech span of "
         f"{pace['clips']:,} aligned clips (first word start to last word end).",
-        f"- Planted rows: {len(planted.rows):,}; unplantable kinds: "
+        f"- Planted rows: {planted['rows']:,}; unplantable kinds: "
         + (", ".join(f"{kind} ({count})"
-                     for kind, count in sorted(planted.unplantable.items()))
+                     for kind, count in sorted(planted["unplantable"].items()))
            or "none") + ".",
         "",
         "## Reading the rules",

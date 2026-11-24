@@ -24,8 +24,8 @@ same mistake; a caller plants before placing, and the sweep records which word m
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from tadabur.truth_sites import CONSONANTS, HARAKA_CHARS, TARGET_PAIRS
 from training.decoding import clusters

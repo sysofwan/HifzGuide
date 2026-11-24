@@ -65,8 +65,14 @@ def _clean(title: str, section: Mapping, *, modes: Sequence[str],
             f"{section['ayat']:,} ayat; {section['graded']:,} graded and"
             f" {section['unreadable']} the phonetizer cannot read (tallied, never dropped), at"
             f" {section['characters_per_second']:.3f} Characters per second.")
+        unreadable = section.get("unreadable_ayat") or []
+        if unreadable:
+            lines += ["", "Unreadable ayat: " + ", ".join(
+                f"{entry['ayah']} ({entry['reason']})" for entry in unreadable) + "."]
     else:
         lines.append(f"{section['clips']:,} gating clips, each at its own phase A word times.")
+    lines += ["A word with no kept grade — no row in the engine's `final`, or only `pending` —"
+              " is counted as not graded, never as a finding."]
     lines += ["", "| mode | graded words | not graded | false flags per 1,000 words |",
               "| --- | ---: | ---: | ---: |"]
     for mode in modes:
@@ -92,9 +98,9 @@ def _planted(planted: Mapping) -> list[str]:
         "## Planted mistakes",
         "",
         "One seeded mistake per kind per clip, planted before the reference is placed. **Caught**"
-        " means the planted word's kept grade is below correct. A word with no row in the"
-        " engine's `final` is `not_graded`: reported apart and counted as neither caught nor"
-        " missed. Rates are caught over graded planted words.",
+        " means the planted word's kept grade is below correct. A word with no kept grade — no"
+        " row in the engine's `final`, or only `pending` — is `not_graded`: reported apart and"
+        " counted as neither caught nor missed. Rates are caught over graded planted words.",
         "",
         "| kind | mode | position | word length | graded | caught | not_graded | rate |",
         "| --- | --- | --- | --- | ---: | ---: | ---: | ---: |",
@@ -142,8 +148,10 @@ def _patterns(patterns: Sequence[Mapping]) -> list[str]:
     lines = [
         "## Patterns",
         "",
-        "Findings pooled by cause; a pattern covering ten or more distinct ayah words is a"
-        " candidate Muraja issue. The drafts are in the run note"
+        "Findings are pooled by cause (every grouping) and by reference form, where only the"
+        " forms covering ten or more words are listed: a form seen once is not a pattern. A"
+        " pattern covering ten or more distinct ayah words is a candidate Muraja issue. The"
+        " drafts are in the run note"
         " (`tadabur/followalong_audit/oracle_sweep/run_note.md`) and are not filed by this repo.",
         "",
         "| pattern | words | findings | candidate |",

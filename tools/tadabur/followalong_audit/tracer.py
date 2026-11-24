@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import difflib
 import gzip
+import hashlib
 import json
 import os
 import shutil
@@ -129,45 +130,88 @@ def load_word_times(directory: Path = WORD_TIMES_DIR,
     return keyed
 
 
-def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
-    """One clip through the driver: its full checks, wall times, and two-run determinism.
-
-    Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
-    """
+def _driver_once(driver: Path, wav: Path, latency_ms: int,
+                 assets_dir: Path) -> tuple[bytes, bytes, float]:
+    """One driver process over one WAV: its stdout, stderr and wall time, or its own failure."""
     env = {
         **os.environ,
         "HIFZGUIDE_ASSETS_DIR": str(assets_dir),
         "TRANSCRIBE_INFERENCE_LATENCY_MS": str(latency_ms),
     }
+    started = time.perf_counter()
+    done = subprocess.run([str(driver), str(wav)], capture_output=True, env=env, check=False)
+    elapsed = time.perf_counter() - started
+    if done.returncode != 0:
+        raise RuntimeError(done.stderr.decode("utf-8", "replace").strip())
+    return done.stdout, done.stderr, elapsed
 
-    def once() -> tuple[bytes, float]:
-        started = time.perf_counter()
-        done = subprocess.run([str(driver), str(wav)], capture_output=True, env=env, check=False)
-        elapsed = time.perf_counter() - started
-        if done.returncode != 0:
-            raise RuntimeError(done.stderr.decode("utf-8", "replace").strip())
-        return done.stdout, elapsed
 
-    first, wall = once()
-    second, second_wall = once()
-    payload = json.loads(first)
-    deterministic = first == second
+def _driver_payload(stdout: bytes, stderr: bytes) -> dict:
+    """The driver's JSON payload, or an error naming what it wrote instead.
+
+    The driver prints one JSON object and exits 0 only after printing it, so a zero exit whose
+    stdout is not the payload is the one failure whose cause is invisible from the exception
+    alone. It is real: CoreML's runtime writes its own diagnostics to **stdout** when its
+    compiled-model cache is contended (`E5RT encountered an STL exception ... rename: Directory
+    not empty`, `Failed to find file for memory-mapping: ...com.apple.e5rt.e5bundlecache`), and
+    those runs print no payload at all — the transcript never ran (#309). The reason carries the
+    byte count, the bytes written and the stderr the run would otherwise drop.
+    """
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(
+            f"exited 0 with {len(stdout)} bytes of stdout that is not the payload ({error}): "
+            f"stdout starts {stdout[:120]!r}, stderr "
+            f"{stderr.decode('utf-8', 'replace').strip()[:200]!r}") from error
+
+
+def driver_checks(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
+    """One clip through the driver: its full checks and timing, without the determinism rerun.
+
+    The S3 App-arm run is 5,742 clips, so it pays for one driver run per clip and re-runs only
+    its seeded determinism subset (:func:`tadabur.followalong_audit.app_arm.determinism_report`).
+    """
+    stdout, stderr, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    payload = _driver_payload(stdout, stderr)
     return {
         "checks": payload["checks"],
         "wall_seconds": wall,
-        "second_wall_seconds": second_wall,
-        "deterministic": deterministic,
-        "determinism_diff": None if deterministic else _json_diff(first, second),
+        # The driver's own bytes, so a determinism check compares what the app's decoder produced
+        # rather than the flags it happened to reduce to.
+        "payload_sha256": hashlib.sha256(stdout).hexdigest(),
         "inference_count": payload.get("inference_count"),
         "failure_count": payload.get("failure_count"),
         "inference_latency_ms": payload.get("inference_latency_ms"),
     }
 
 
-def _json_diff(first: bytes, second: bytes) -> list[str]:
-    """The first lines that differ between two driver outputs, for the run note."""
-    left = json.dumps(json.loads(first), ensure_ascii=False, indent=2, sort_keys=True).splitlines()
-    right = json.dumps(json.loads(second), ensure_ascii=False, indent=2, sort_keys=True).splitlines()
+def run_driver(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) -> dict:
+    """One clip through the driver: its full checks, wall times, and two-run determinism.
+
+    Raises ``RuntimeError`` with the driver's own reason when Muraja cannot publish the clip.
+    """
+    first, first_stderr, wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    second, second_stderr, second_wall = _driver_once(driver, wav, latency_ms, assets_dir)
+    payload = _driver_payload(first, first_stderr)
+    again = _driver_payload(second, second_stderr)
+    deterministic = payload == again
+    return {
+        "checks": payload["checks"],
+        "wall_seconds": wall,
+        "second_wall_seconds": second_wall,
+        "deterministic": deterministic,
+        "determinism_diff": None if deterministic else _json_diff(payload, again),
+        "inference_count": payload.get("inference_count"),
+        "failure_count": payload.get("failure_count"),
+        "inference_latency_ms": payload.get("inference_latency_ms"),
+    }
+
+
+def _json_diff(first: Mapping, second: Mapping) -> list[str]:
+    """The first lines that differ between two driver payloads, for the run note."""
+    left = json.dumps(first, ensure_ascii=False, indent=2, sort_keys=True).splitlines()
+    right = json.dumps(second, ensure_ascii=False, indent=2, sort_keys=True).splitlines()
     return list(difflib.unified_diff(left, right, "run 1", "run 2", lineterm=""))[:40]
 
 

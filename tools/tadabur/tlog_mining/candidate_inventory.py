@@ -186,12 +186,23 @@ def _decode_lines(root: Path = ROOT) -> dict[str, dict[str, dict[str, dict]]]:
     return decodes
 
 
+def load_decode_lines(root: Path = ROOT) -> dict[str, dict[str, dict[str, dict]]]:
+    """Every decode line, by population, model and key — the public form of the pinned read.
+
+    Each input goes through :func:`read_pinned` and is refused when it holds a row outside
+    confirm.1/2 or a key set the population's base did not decode. A caller that needs the
+    records' own fields (a clip's samples, its tranche) reads them here; a caller that only
+    replays checks uses :func:`load_decodes`.
+    """
+    return _decode_lines(root)
+
+
 def load_decodes(root: Path = ROOT) -> dict[str, dict[str, dict[str, Sequence[dict]]]]:
     """Each population's detector decodes by key, holding only the recorded ``checks`` (the r3
     gating decode's ``spans`` play no part in the join)."""
     return {population: {model: {key: line["checks"] for key, line in lines.items()}
                          for model, lines in models.items()}
-            for population, models in _decode_lines(root).items()}
+            for population, models in load_decode_lines(root).items()}
 
 
 def excluded_248(root: Path = ROOT) -> set[str]:

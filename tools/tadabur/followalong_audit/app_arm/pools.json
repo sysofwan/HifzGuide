@@ -1,0 +1,124 @@
+{
+  "catch_loss": {
+    "marked": 150,
+    "matched": 0,
+    "worklist": "consonant2_readout/catch_loss/worklist.jsonl"
+  },
+  "clips": 5742,
+  "detector_ungraded": 39936,
+  "excluded_failed_clips": 0,
+  "excluded_failed_words": 0,
+  "harness": {
+    "binary_sha256": "6913c94384950653c0fa7889eb320b63d16c22424244d38d12d57b6af0aa7bef",
+    "build": {
+      "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+      "harness": "tools/muraja_harness/main.swift",
+      "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+      "protocol_version": 3,
+      "scoring_keys": [
+        "name",
+        "mode",
+        "softPairsEnabled",
+        "shaddahSuppression",
+        "softPairsDisabled"
+      ]
+    },
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+    "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+    "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+    "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+  },
+  "pools": {
+    "catch_loss": {
+      "S1": 0,
+      "S1-pending": 0,
+      "S3": 0,
+      "S4": 0,
+      "S5": 0,
+      "oracle-explained": 0,
+      "residual": 0
+    },
+    "strata": {
+      "S1": 0,
+      "S1-pending": 5157,
+      "S3": 1459,
+      "S4": 38598,
+      "S5": 9342,
+      "oracle-explained": 0,
+      "residual": 3379
+    }
+  },
+  "s1_by_cause_and_base": [
+    {
+      "base_flags": false,
+      "cause": "other_consonant",
+      "words": 1175
+    },
+    {
+      "base_flags": true,
+      "cause": "other_consonant",
+      "words": 1698
+    },
+    {
+      "base_flags": false,
+      "cause": "shaddah",
+      "words": 77
+    },
+    {
+      "base_flags": true,
+      "cause": "shaddah",
+      "words": 223
+    },
+    {
+      "base_flags": false,
+      "cause": "skipped",
+      "words": 148
+    },
+    {
+      "base_flags": true,
+      "cause": "skipped",
+      "words": 296
+    },
+    {
+      "base_flags": false,
+      "cause": "soft_pair",
+      "words": 130
+    },
+    {
+      "base_flags": true,
+      "cause": "soft_pair",
+      "words": 346
+    },
+    {
+      "base_flags": false,
+      "cause": "target_pair",
+      "words": 24
+    },
+    {
+      "base_flags": true,
+      "cause": "target_pair",
+      "words": 41
+    },
+    {
+      "base_flags": false,
+      "cause": "tashkeel",
+      "words": 283
+    },
+    {
+      "base_flags": true,
+      "cause": "tashkeel",
+      "words": 416
+    },
+    {
+      "base_flags": false,
+      "cause": "unrecorded",
+      "words": 98
+    },
+    {
+      "base_flags": true,
+      "cause": "unrecorded",
+      "words": 386
+    }
+  ],
+  "words": 57935
+}

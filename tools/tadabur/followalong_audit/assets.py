@@ -102,9 +102,12 @@ def stage_assets(release_dir: Path, manifest: Mapping, staging_dir: Path) -> Sta
     these are the bytes that must match. Refuses a zip that holds no ``MuaalemStudent_*``
     package at its root: the driver would fail later with a less specific error.
     """
+    staging_dir = Path(staging_dir)
+    if Path(release_dir).resolve().is_relative_to(staging_dir.resolve()):
+        raise ValueError(f"{staging_dir} holds the release itself: staging re-creates its "
+                         f"directory, which would delete the verified {release_dir}")
     verify_assets(Path(release_dir), manifest)
     listed = {asset["filename"]: asset["sha256"] for asset in manifest["assets"]}
-    staging_dir = Path(staging_dir)
     if staging_dir.exists():
         shutil.rmtree(staging_dir)
     staging_dir.mkdir(parents=True)

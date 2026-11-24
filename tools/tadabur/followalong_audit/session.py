@@ -27,22 +27,23 @@ def session_request(item: str, surah: int, ayah: int, word_count: int,
     }
 
 
+def preview_window_counts(checks: Sequence[dict]) -> dict[str, int]:
+    """Previews and full windows in ``checks``: flushes and the closing stop are neither."""
+    counts = {"preview": 0, "window": 0}
+    for check in checks:
+        if check["flush"] or check.get("stop"):
+            continue
+        counts["window" if check["hop"] else "preview"] += 1
+    return counts
+
+
 def preview_window_ratio(checks: Sequence[dict]) -> float | None:
     """Previews per full window in ``checks``, or ``None`` when the clip ran no window.
 
     The ratio is the facet of the cadence a device-representative latency moves most; flushes
     and the closing stop are neither preview nor window, so they are left out.
     """
-    def kind(check: dict) -> str | None:
-        if check["flush"] or check.get("stop"):
-            return None
-        return "window" if check["hop"] else "preview"
-
-    counts = {"preview": 0, "window": 0}
-    for check in checks:
-        found = kind(check)
-        if found is not None:
-            counts[found] += 1
+    counts = preview_window_counts(checks)
     if not counts["window"]:
         return None
     return counts["preview"] / counts["window"]

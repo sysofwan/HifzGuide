@@ -23,6 +23,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from tadabur.followalong_audit.atomic import write_text_atomically
+from tadabur.panel_seal import SealedPanelError
 from training.muraja_policy import AUDIT_SCORINGS, CORRECT, PENDING, Scoring, displayed
 
 
@@ -108,6 +109,8 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
     for attempt in range(1, ATTEMPTS + 1):
         try:
             rows = list(run_one(clip))
+        except SealedPanelError:  # a seal violation is never a flaky clip
+            raise
         except Exception as error:  # noqa: BLE001 - the clip's reason, never the run's death
             reason = f"{type(error).__name__}: {error}"
             if attempt < ATTEMPTS:

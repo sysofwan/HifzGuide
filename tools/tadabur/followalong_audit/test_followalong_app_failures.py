@@ -96,6 +96,17 @@ def test_a_clip_that_fails_every_attempt_is_recorded_and_not_cached(tmp_path, ca
     assert not (tmp_path / f"{clip(1)['audio_sha256']}.json").exists()
 
 
+def test_a_seal_violation_aborts_the_run_instead_of_being_retried(tmp_path, capsys):
+    from tadabur.panel_seal import SealedPanelError
+
+    def run_one(row: dict) -> list[dict]:
+        raise SealedPanelError("panel clip")
+
+    with pytest.raises(SealedPanelError):
+        run_clips([clip(1)], run_one, tmp_path, workers=1)
+    assert "retrying" not in capsys.readouterr().err
+
+
 # --- P3 -----------------------------------------------------------------------------------------
 
 

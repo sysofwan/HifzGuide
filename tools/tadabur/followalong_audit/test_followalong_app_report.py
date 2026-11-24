@@ -170,9 +170,10 @@ def test_a_known_payload_variation_is_disclosed_beside_an_identical_sample():
     text = render(summary(run={**RUN, "determinism": CLEAN_SAMPLE, "payload_probe": PROBE}))
     assert "all 25 driver payloads were byte-identical in this sample" in text
     assert "Known counterexample" in text and "b#0" in text
-    assert "10 times at 40 ms" in text and "2 distinct payloads" in text
+    assert "10 times at 40 ms: 10 succeeded, 0 failed" in text
+    assert "2 distinct payloads" in text
     assert "8× `eeeeeeeeeeee`" in text and "2× `ffffffffffff`" in text
-    assert "every run's word table was identical" in text
+    assert "their word table was identical" in text
 
 
 def test_a_probe_that_moved_a_word_names_it():
@@ -185,4 +186,20 @@ def test_a_repeated_clip_that_agreed_is_not_called_a_counterexample():
     probe = {**PROBE, "payloads": {"e" * 64: 10}}
     text = render(summary(run={**RUN, "payload_probe": probe}))
     assert "One clip repeated" in text and "Known counterexample" not in text
-    assert "identical in every run" in text
+    assert "the successful runs' payload was identical in every one of them" in text
+
+
+def test_a_probe_whose_runs_all_failed_reports_no_evidence():
+    probe = {**PROBE, "runs": 2, "payloads": {}, "failed_runs": [0, 1]}
+    text = render(summary(run={**RUN, "payload_probe": probe}))
+    assert "2 times at 40 ms: 0 succeeded, 2 failed" in text
+    assert "too few successful repetitions to compare its payloads" in text
+    assert "identical" not in text and "Known counterexample" not in text
+
+
+def test_a_probe_with_one_success_is_not_enough_to_compare_payloads():
+    probe = {**PROBE, "runs": 2, "payloads": {"e" * 64: 1}, "failed_runs": [0]}
+    text = render(summary(run={**RUN, "payload_probe": probe}))
+    assert "2 times at 40 ms: 1 succeeded, 1 failed" in text
+    assert "too few successful repetitions to compare its payloads" in text
+    assert "Known counterexample" not in text

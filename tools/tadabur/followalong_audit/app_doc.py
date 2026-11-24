@@ -105,22 +105,30 @@ def _probe(probe: Mapping) -> str:
     stability without establishing it. The probe is the audit's own observation of that gap and
     is rendered beside the pair whichever way the pair came out: the doc must disclose a known
     variation even when the latest seeded sample is identical.
+
+    The repetitions' outcome comes first, because a probe whose runs failed has no payloads to
+    compare and must not read as one that agreed: fewer than two successful repetitions is
+    reported as insufficient evidence, and every stability claim is about the runs that ran.
     """
-    head = f"`{probe['item']}` ran {probe['runs']} times at {probe['latency_ms']} ms"
+    runs, failed = probe["runs"], probe["failed_runs"]
+    succeeded = runs - len(failed)
+    head = (f"`{probe['item']}` ran {runs} times at {probe['latency_ms']} ms: {succeeded}"
+            f" succeeded, {len(failed)} failed")
+    if succeeded < 2:
+        return (f"One clip repeated (`app_arm/payload_probe.json`): {head} — too few successful"
+                " repetitions to compare its payloads.")
     variants = len(probe["payloads"])
     if variants < 2:
-        return (f"One clip repeated (`app_arm/payload_probe.json`): {head} and its payload was"
-                " identical in every run.")
+        return (f"One clip repeated (`app_arm/payload_probe.json`): {head}; the successful runs'"
+                " payload was identical in every one of them.")
     counts = ", ".join(f"{count}× `{digest[:12]}`" for digest, count in probe["payloads"].items())
-    finding = (f"Known counterexample (`app_arm/payload_probe.json`): {head}; its decode took"
-               f" {variants} distinct payloads ({counts})")
+    finding = (f"Known counterexample (`app_arm/payload_probe.json`): {head}; the successful runs'"
+               f" decode took {variants} distinct payloads ({counts})")
     if probe["changed_words"]:
         words = ", ".join(f"word {entry['word']}" for entry in probe["changed_words"])
         finding += f", changing {len(probe['changed_words'])} word outcome(s) ({words})"
     else:
-        finding += ", and every run's word table was identical"
-    if probe["failed_runs"]:
-        finding += f"; {len(probe['failed_runs'])} run(s) failed"
+        finding += ", and their word table was identical"
     return finding + (" — the decoder is not bit-stable, and diagnosing that is S7's, not this"
                       " audit's.")
 

@@ -153,7 +153,7 @@ the first match in
 Primary cause × base-detector flag gives 14 cells summing to 5,156. `pools.json`'s
 `s1_by_cause_and_base` counts a word once per cause it carries (any-cause), not by primary cause;
 the cells below and S4's ungraded split are the committed `app_arm/cells.json`, written at the
-pinned harness by `python -m tadabur.followalong_audit strata --oracle oracle_sweep/word_grades.jsonl.gz --cells-out tadabur/followalong_audit/app_arm/cells.json`
+pinned harness, from `tools/`, by `python -m tadabur.followalong_audit strata --oracle tadabur/followalong_audit/oracle_sweep/word_grades.jsonl.gz --cells-out tadabur/followalong_audit/app_arm/cells.json`
 (the count-only run omits `--cells-out` and writes no design artifact):
 
 | cause | base detector flags | words | n | π |

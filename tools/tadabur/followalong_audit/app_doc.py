@@ -15,6 +15,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from tadabur.followalong_audit.atomic import write_text_atomically
+from tadabur.followalong_audit.strata import S1_PENDING
 from training.word_flags import CAUSES
 
 #: Where the run's summary and the doc it renders live.
@@ -29,7 +30,7 @@ SCORING_LABELS = {"strict": "strict", "shipped_default": "balanced (shipped defa
 STRATUM_LABELS = {
     "S5": "the App left the word ungraded",
     "S1": "the App flags and the oracle passes",
-    "S1-pending": "the App flags, oracle pending S2 (#308)",
+    "S1-pending": "the App flags, no oracle verdict for the word",
     "oracle-explained": "the App flags and the oracle flags too",
     "S3": "the App passes and the base or two detectors flag",
     "S4": "nothing flags",
@@ -310,10 +311,14 @@ def _pools(pools: Mapping, s1: Sequence[Mapping],
              "| stratum | words | catch-loss words |", "| --- | ---: | ---: |"]
     for stratum in sorted(pools["strata"]):
         size = pools["strata"][stratum]
-        lines.append(f"| {stratum}: {STRATUM_LABELS[stratum]} | {size:,} | "
+        label = STRATUM_LABELS[stratum]
+        if stratum == S1_PENDING and oracle_pending:
+            label = "the App flags, oracle pending S2 (#308)"
+        lines.append(f"| {stratum}: {label} | {size:,} | "
                      f"{pools['catch_loss'][stratum]:,} |")
     pending = (" and S1-pending — pending S2 (#308)"
-               if oracle_pending else ", with S1-pending emptied by S2's oracle grades")
+               if oracle_pending
+               else " and S1-pending (the App flags, no oracle verdict)")
     lines += ["", "The App-flag pool by cause and base-detector agreement — strata S1 (the App"
                   f" flags and the oracle passes){pending}:", "",
               "| cause | base detector flags | words |", "| --- | --- | ---: |"]

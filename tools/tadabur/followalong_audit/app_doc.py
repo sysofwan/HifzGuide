@@ -192,7 +192,7 @@ def _oracle(oracle: Mapping | None) -> list[str]:
     return ["## Oracle-explained share", "",
             f"The oracle's perfect decode flags {oracle['flagged']:,} words of its own; the"
             f" App also flags {oracle['shared']:,} of them: the oracle explains"
-            f" {oracle['share']:.1%} of the App arm's {oracle['app_flagged']:,} flagged words.",
+            f" {oracle['share']:.3%} of the App arm's {oracle['app_flagged']:,} flagged words.",
             ""]
 
 

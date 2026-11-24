@@ -39,7 +39,7 @@ The App arm ran the app's own CoreML decoder at 40 ms per inference; **strict** 
 
 ## Oracle-explained share
 
-The oracle flags 1 of the App arm's 5,157 flagged words: 0.0% of the App flags are oracle-explained.
+The oracle's perfect decode flags 2 words of its own; the App also flags 1 of them: the oracle explains 0.019% of the App arm's 5,157 flagged words.
 
 ## P2: the CoreML-vs-PyTorch bridge
 

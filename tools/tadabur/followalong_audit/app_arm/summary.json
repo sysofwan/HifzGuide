@@ -7618,6 +7618,17 @@
     },
     "latency_ms": 40,
     "muraja_commit": "028bc513eeb233caa7240a5c37c423da59f3d9d7",
+    "payload_probe": {
+      "changed_words": [],
+      "failed_runs": [],
+      "item": "41_29_undefined_ItjrgCt.flac#0",
+      "latency_ms": 40,
+      "payloads": {
+        "7e4e27d387eecb4a5acabe5d80489a8cf8daddbcc2bf6f1be77191036eba7775": 4,
+        "914b1c85ff941bc6e8417e2e78def703519a4a294bee58f224ef7ed1acf49642": 16
+      },
+      "runs": 20
+    },
     "release": "v1.0.7",
     "seeds": {
       "p2": 319,

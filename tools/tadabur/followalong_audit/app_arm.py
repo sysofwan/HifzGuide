@@ -21,6 +21,7 @@ from __future__ import annotations
 import gzip
 import json
 import shutil
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -243,3 +244,45 @@ def determinism_report(clips: Sequence[Mapping], arm: AppArm, out_root: Path, *,
                                     "run2": right["payload_sha256"]}
                      for left, right in zip(first, second)},
     }
+
+
+def payload_variation(clip: Mapping, arm: AppArm, out_root: Path, *, runs: int) -> dict:
+    """Run one clip ``runs`` times and count the decode digests and the word tables they made.
+
+    The seeded pair is a sample, and a pair that agrees does not show the decoder is bit-stable:
+    the committed pair came back identical while one clip had already differed in an earlier
+    pass. Repeating a single clip measures that instead of inferring it. Each repetition gets its
+    own cleared directory — the run's cache would otherwise answer every later repetition from
+    the first, and the probe would find perfect stability by construction. A repetition that
+    failed is listed in ``failed_runs`` and its (empty) result is left out of both tallies.
+    """
+    if runs < 2:
+        raise ValueError("a probe compares at least two runs of the clip")
+    runs_root = Path(out_root) / "runs"
+    shutil.rmtree(runs_root, ignore_errors=True)
+    results = [run_clips([clip], arm, runs_root / f"{index:02d}")[0] for index in range(runs)]
+    succeeded = [result for result in results if result["failure"] is None]
+    payloads = Counter(result["payload_sha256"] for result in succeeded)
+    return {
+        "item": item_key(clip["audio_path"]),
+        "latency_ms": arm.latency_ms,
+        "runs": runs,
+        "failed_runs": [index for index, result in enumerate(results)
+                        if result["failure"] is not None],
+        "payloads": dict(sorted(payloads.items())),
+        "changed_words": _changed_words(succeeded),
+    }
+
+
+def _changed_words(results: Sequence[Mapping]) -> list[dict]:
+    """The words whose row left the first run's, over the repetitions that produced a table."""
+    if not results:
+        return []
+    first = {(row["item"], row["word"]): row for row in results[0]["rows"]}
+    changed: dict[tuple[str, int], dict] = {}
+    for result in results[1:]:
+        for row in result["rows"]:
+            key = (row["item"], row["word"])
+            if first.get(key) != row:
+                changed[key] = {"item": row["item"], "word": row["word"]}
+    return [changed[key] for key in sorted(changed)]

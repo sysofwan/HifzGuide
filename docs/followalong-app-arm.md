@@ -14,6 +14,7 @@ Generated from `app_arm/summary.json` by `python -m tadabur.followalong_audit re
 - Driver sha256 `d58dbd066ddaea4640f79b561b307c35e1f1e8ab9e6f1447b23f085833192108`; harness binary sha256 `6913c94384950653c0fa7889eb320b63d16c22424244d38d12d57b6af0aa7bef`.
 - `audio_manifest.jsonl.gz` sha256 `1162aa8b4adba6c0a8b7a0d053bcc9e5dcd3c71ccd820e7f88af819676d57982`; `word_grades.jsonl.gz` sha256 `6064be7082341690db9534f987b636c0e6bd482abf66aa1bd708dd9473dbb3b2`.
 - Determinism: the 25 seeded clips ran twice and all 25 driver payloads were byte-identical in this sample; a sample bounds, it does not prove, bit-identity (`app_arm/determinism.json`).
+- Known counterexample (`app_arm/payload_probe.json`): `41_29_undefined_ItjrgCt.flac#0` ran 20 times at 40 ms; its decode took 2 distinct payloads (4× `7e4e27d387ee`, 16× `914b1c85ff94`), and every run's word table was identical — the decoder is not bit-stable, and diagnosing that is S7's, not this audit's.
 
 ## Flags per 1,000 graded words
 

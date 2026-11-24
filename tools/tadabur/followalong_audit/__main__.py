@@ -30,10 +30,13 @@ S3's App arm over the whole population:
     python -m tadabur.followalong_audit app-run --out <scratch>/app130 --size 500 --seed 309 \
         --latency-ms 130 ... --grades-out .../word_grades.130ms.jsonl.gz --traces-dir ...
 
-    # determinism on the seeded subset, the detectors' strata, then the summary and doc.
+    # determinism on the seeded subset, one clip repeated (the pair is a sample), the detectors'
+    # strata, then the summary and doc.
     # Each cache directory records its identity (latency, weights, harness, driver, audio and
     # clip set) and refuses a run that would reuse another configuration's results.
     python -m tadabur.followalong_audit determinism --out-root <scratch>/determinism ...
+    python -m tadabur.followalong_audit determinism-probe --item <clip item key> \
+        --out-root <scratch>/probe --runs 20 ...
     python -m tadabur.followalong_audit strata            # S2: add --oracle <word table>
     python -m tadabur.followalong_audit report
 
@@ -131,6 +134,16 @@ def main() -> int:
     determinism.add_argument("--seed", type=int, default=319)
     determinism.add_argument("--latency-ms", type=int, default=DEVICE_LATENCY_MS)
 
+    probe = commands.add_parser("determinism-probe",
+                                help="repeat one clip to measure the decode's variation")
+    _assets_arguments(probe)
+    probe.add_argument("--item", required=True,
+                       help="the clip's item key, as the committed tables name it")
+    probe.add_argument("--out-root", type=Path, required=True)
+    probe.add_argument("--runs", type=int, default=20)
+    probe.add_argument("--latency-ms", type=int, default=DEVICE_LATENCY_MS)
+    probe.add_argument("--out", type=Path, default=_app_arm("payload_probe.json"))
+
     strata = commands.add_parser("strata", help="re-grade the detectors and size the pools")
     strata.add_argument("--grades", type=Path, default=_app_arm("word_grades.jsonl.gz"))
     strata.add_argument("--clip-runs", type=Path, default=_app_arm("clip_runs.jsonl"),
@@ -149,6 +162,8 @@ def main() -> int:
                         help="the committed subset traces, read for the App arm's own cadence")
     report.add_argument("--determinism", type=Path, default=_app_arm("determinism.json"),
                         help="the seeded two-run check, quoted in the doc's run block")
+    report.add_argument("--payload-probe", type=Path, default=_app_arm("payload_probe.json"),
+                        help="one clip repeated, quoted beside the seeded pair when it varies")
     report.add_argument("--exports-dir", type=Path, default=Path.home() / "Downloads")
     report.add_argument("--oracle", type=Path, help="S2's oracle summary, when #308 has run")
     report.add_argument("--p2-clips", type=int, default=_p2_clips())
@@ -169,6 +184,8 @@ def main() -> int:
         return _app_run(args)
     if args.command == "determinism":
         return _determinism(args)
+    if args.command == "determinism-probe":
+        return _determinism_probe(args)
     if args.command == "strata":
         return _strata(args)
     if args.command == "report":
@@ -274,10 +291,13 @@ def _report_run(args, harness) -> dict:
 
     determinism = (json.loads(Path(args.determinism).read_text(encoding="utf-8"))
                    if Path(args.determinism).is_file() else None)
+    probe = (json.loads(Path(args.payload_probe).read_text(encoding="utf-8"))
+             if Path(args.payload_probe).is_file() else None)
     return {
         "muraja_commit": CURRENT_COMMIT,
         "harness": harness_identity(harness),
         "determinism": determinism,
+        "payload_probe": probe,
         "release": RELEASE,
         "latency_ms": args.latency_ms,
         "seeds": {"p2": args.p2_seed, "p3": args.p3_seed},
@@ -404,6 +424,31 @@ def _determinism(args) -> int:
                       for key in ("seed", "size", "identical", "differences", "failed")},
                      sort_keys=True))
     return 0 if report["identical"] else 1
+
+
+def _determinism_probe(args) -> int:
+    from tadabur.followalong_audit.app_arm import AppArm, payload_variation
+    from training.nonpro_decode import item_key
+
+    population = app_arm_rows()
+    clip = next((row for row in population if item_key(row["audio_path"]) == args.item), None)
+    if clip is None:
+        raise SystemExit(
+            f"{args.item} is not one of the population's {len(population)} claim-gated"
+            " confirm.1/confirm.2 clips: the probe repeats a clip the audit grades, it does not"
+            " add one")
+    staged, driver, harness = _staged(args)
+    probe = payload_variation(
+        clip, AppArm(driver=driver, assets_dir=staged.directory, wav_dir=args.wav_dir,
+                     wav_manifest_path=_wav_manifest_path(args), quran_db=harness.quran_db,
+                     latency_ms=args.latency_ms),
+        args.out_root, runs=args.runs)
+    write_json(Path(args.out), probe)
+    print(json.dumps({"item": probe["item"], "runs": probe["runs"],
+                      "payloads": probe["payloads"],
+                      "changed_words": len(probe["changed_words"]),
+                      "failed_runs": probe["failed_runs"]}, sort_keys=True))
+    return 0 if not probe["failed_runs"] else 1
 
 
 def _strata(args) -> int:

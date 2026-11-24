@@ -93,7 +93,36 @@ def _run_identity(run: Mapping | None) -> list[str]:
     ]
     if run.get("determinism") is not None:
         lines.append(f"- {_determinism(run['determinism'])}")
+    if run.get("payload_probe") is not None:
+        lines.append(f"- {_probe(run['payload_probe'])}")
     return [*lines, ""]
+
+
+def _probe(probe: Mapping) -> str:
+    """One clip repeated: the counterexample a seeded pair that agreed cannot show.
+
+    ``_determinism`` reports one comparison, and a comparison that agrees bounds the decoder's
+    stability without establishing it. The probe is the audit's own observation of that gap and
+    is rendered beside the pair whichever way the pair came out: the doc must disclose a known
+    variation even when the latest seeded sample is identical.
+    """
+    head = f"`{probe['item']}` ran {probe['runs']} times at {probe['latency_ms']} ms"
+    variants = len(probe["payloads"])
+    if variants < 2:
+        return (f"One clip repeated (`app_arm/payload_probe.json`): {head} and its payload was"
+                " identical in every run.")
+    counts = ", ".join(f"{count}× `{digest[:12]}`" for digest, count in probe["payloads"].items())
+    finding = (f"Known counterexample (`app_arm/payload_probe.json`): {head}; its decode took"
+               f" {variants} distinct payloads ({counts})")
+    if probe["changed_words"]:
+        words = ", ".join(f"word {entry['word']}" for entry in probe["changed_words"])
+        finding += f", changing {len(probe['changed_words'])} word outcome(s) ({words})"
+    else:
+        finding += ", and every run's word table was identical"
+    if probe["failed_runs"]:
+        finding += f"; {len(probe['failed_runs'])} run(s) failed"
+    return finding + (" — the decoder is not bit-stable, and diagnosing that is S7's, not this"
+                      " audit's.")
 
 
 def _determinism(report: Mapping) -> str:

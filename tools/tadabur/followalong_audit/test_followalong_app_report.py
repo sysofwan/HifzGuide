@@ -138,6 +138,8 @@ def test_without_app_cadence_the_device_table_stands_alone():
 DETERMINISM = {"seed": 319, "size": 25, "clips": ["a#0"], "identical": False,
                "differences": ["b#0"], "rows_differ": [], "failed": [],
                "payloads": {"b#0": {"run1": "e" * 64, "run2": "f" * 64}}}
+CLEAN_SAMPLE = {"seed": 319, "size": 25, "clips": [], "identical": True, "differences": [],
+                "rows_differ": [], "failed": [], "payloads": {}}
 
 
 def test_the_run_block_states_what_the_two_run_check_found():
@@ -153,9 +155,34 @@ def test_a_decode_difference_that_moves_a_word_is_described_as_such():
 
 
 def test_an_all_identical_sample_says_so_as_a_sample():
-    clean = {"seed": 319, "size": 25, "clips": [], "identical": True, "differences": [],
-             "rows_differ": [], "failed": [], "payloads": {}}
-    text = render(summary(run={**RUN, "determinism": clean}))
+    text = render(summary(run={**RUN, "determinism": CLEAN_SAMPLE}))
     assert ("Determinism: the 25 seeded clips ran twice and all 25 driver payloads were "
             "byte-identical in this sample") in text
     assert "a sample bounds, it does not prove, bit-identity" in text
+
+
+PROBE = {"item": "b#0", "latency_ms": 40, "runs": 10, "failed_runs": [],
+         "payloads": {"e" * 64: 8, "f" * 64: 2}, "changed_words": []}
+
+
+def test_a_known_payload_variation_is_disclosed_beside_an_identical_sample():
+    """The pair is the latest sample; the probe is the observation that the sample missed."""
+    text = render(summary(run={**RUN, "determinism": CLEAN_SAMPLE, "payload_probe": PROBE}))
+    assert "all 25 driver payloads were byte-identical in this sample" in text
+    assert "Known counterexample" in text and "b#0" in text
+    assert "10 times at 40 ms" in text and "2 distinct payloads" in text
+    assert "8× `eeeeeeeeeeee`" in text and "2× `ffffffffffff`" in text
+    assert "every run's word table was identical" in text
+
+
+def test_a_probe_that_moved_a_word_names_it():
+    probe = {**PROBE, "changed_words": [{"item": "b#0", "word": 4}]}
+    text = render(summary(run={**RUN, "payload_probe": probe}))
+    assert "changing 1 word outcome(s) (word 4)" in text
+
+
+def test_a_repeated_clip_that_agreed_is_not_called_a_counterexample():
+    probe = {**PROBE, "payloads": {"e" * 64: 10}}
+    text = render(summary(run={**RUN, "payload_probe": probe}))
+    assert "One clip repeated" in text and "Known counterexample" not in text
+    assert "identical in every run" in text

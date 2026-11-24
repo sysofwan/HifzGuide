@@ -136,7 +136,11 @@ Inclusion probability is **final n ÷ pool**, computed after the resize: 200/5,1
 60/38,598 and 30/9,342 above. The repeats are re-asks, not a pool, and carry no inclusion
 probability.
 
-**S1's cells.** A word can carry several causes; its cell is allocated by one **primary cause**, the first match in `target_pair, soft_pair, other_consonant, shaddah, tashkeel, skipped, unrecorded` — deliberately not `training.word_flags.CAUSES`' order, because decision rule 3 turns on soft and target pairs. Primary cause × base-detector flag gives 14 cells summing to 5,156:
+**S1's cells.** A word can carry several causes; its cell is allocated by one **primary cause**,
+the first match in
+`target_pair, soft_pair, other_consonant, shaddah, tashkeel, skipped, unrecorded` — deliberately not
+`training.word_flags.CAUSES`' order, because decision rule 3 turns on soft and target pairs.
+Primary cause × base-detector flag gives 14 cells summing to 5,156:
 
 | cause | base detector flags | words | n |
 |---|---|---:|---:|
@@ -163,7 +167,8 @@ soft/target test is any cause in {soft_pair, target_pair}.
 **S5's composition.** S5's 9,342 words are mostly clip edges: **leading 3,933**, **trailing
 5,103**, **interior 306**, and **250 clips** are entirely ungraded. The oracle arm leaves only 245
 of 57,935 words ungraded, so these are real decodes at clip edges (single-ayah clips put a session
-start and end every ~10 words) or words not in the recorded audio. S5's 30 snips split **leading 10 / trailing 10 / interior 10**. An "unusable audio" verdict carries the sub-reason
+start and end every ~10 words) or words not in the recorded audio. S5's 30 snips split
+**leading 10 / trailing 10 / interior 10**. An "unusable audio" verdict carries the sub-reason
 `not_in_clip` when the word is not in the recording. Every headline rate is also reported without
 each clip's first and last engine word. A possible end-word mechanism — the withheld grade is
 stored only at score ≥ 0.75 (`GradeStore.swift:663,676-691`) — is checked in S7, never asserted
@@ -171,8 +176,7 @@ here.
 
 **S4 means "nothing that graded it flagged it".** `assign_stratum` treats an ungraded detector as
 not flagging, so S4 is "the App passes and no detector that graded the word flags it". Of the
-39,936 word × detector pairs that are ungraded, **2,184** S4 words had **at least one detector** ungraded and **57** had **all four detectors** ungraded. S4's bound is labelled
-accordingly.
+39,936 word × detector pairs that are ungraded, **2,184** S4 words had **at least one detector** ungraded and **57** had **all four detectors** ungraded. S4's bound is labelled accordingly.
 
 **Draw mechanics.** S5 draws the full design first, as one **seeded** random **permutation** per
 cell. The pilot is each cell's **prefix**, allocated within a stratum by largest remainder over the

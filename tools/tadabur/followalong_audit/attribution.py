@@ -23,7 +23,7 @@ three tranche groups; it is a *reference suspect* shown both ways, never settled
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 
 from training.muraja_policy import CORRECT, PENDING, STRICT, Scoring, displayed
 

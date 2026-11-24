@@ -56,6 +56,8 @@ def allocate(sizes: Mapping, total: int, *, floor: int = 0) -> dict:
     """
     if total < 0 or floor < 0:
         raise ValueError(f"a negative total ({total}) or floor ({floor}) allocates nothing")
+    if any(size <= 0 for size in sizes.values()):
+        raise ValueError(f"every cell needs a positive pool: {dict(sizes)}")
     if total > sum(sizes.values()):
         raise ValueError(f"total {total} is more than the pools' {sum(sizes.values())}")
 

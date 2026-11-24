@@ -120,11 +120,14 @@ S3, S4, S5 below are the pools `assign_stratum` returns, and the repeated names 
 
 S1 ∪ S1-pending is the S1 pool proper, **N = 5,156**: the 5 pending words are the oracle's
 *ungraded* words, not oracle-explained ones. The `residual` and `oracle-explained` pools are
-**not sampled** in this audit; their counts are reported only.
+**not sampled** in this audit (π = 0); their counts are reported only, and §7's headline frame is
+the sampled subpopulation of **54,555 words**.
 
-**The design.** The main sitting is **540** stratum snips — S1 200, S3 250, S4 60, S5 30 — and a
-**150**-snip pilot precedes it. **S4 is kept as the control** (unlike #261's proposed drop): the
-audit needs a miss bound from words nothing flags.
+**The design.** The design is **540** stratum snips, **cumulative pilot and main sitting**: S1 200,
+S3 250, S4 60, S5 30. The **150**-snip pilot is the **first 150 of those 540** — S1 56, S3 69, S4
+17, S5 8 — so the initial remaining main allocation is S1 144, S3 181, S4 43, S5 22 (**390** in
+total). **S4 is kept as the control** (unlike #261's proposed drop): the audit needs a miss bound
+from words nothing flags.
 
 | stratum | pool | n | pilot | inclusion |
 |---|---:|---:|---:|---:|
@@ -132,15 +135,16 @@ audit needs a miss bound from words nothing flags.
 | S3: the App passes and the base or ≥ 2 detectors flag | 1,459 | 250 | 69 | 0.171 |
 | S4: the App passes and nothing flags | 38,598 | 60 | 17 | 0.00155 |
 | S5: the App left the word ungraded | 9,342 | 30 | 8 | 0.00321 |
-| repeats: seeded re-asks of this audit's own items | 150 + 540 | 25 | 7 | - |
+| repeats: seeded re-asks of this audit's own items | 540 | 25 | 7 | - |
 
 The table's inclusion column is each stratum's overall n ÷ pool: S3 and S4 are one cell each, so
 that is every word's inclusion probability there. **S1 and S5 are drawn cell by cell**, so a
 word's inclusion probability is its own cell's π = n_cell ÷ N_cell — tabulated with S1's cells
 below and S5's buckets — and §7 weights by that π, never the stratum average. The n above are the
 frozen design; the §8 resize extends the same permutations and recomputes each cell's π as final
-n ÷ N. The repeats are re-asks, not a pool: the pilot's 7 come from its 150 served items and the
-main sitting's 18 from its 540 (the row's pool is both), and they carry no inclusion probability.
+n ÷ N. The repeats are re-asks, not additional distinct items: their pool is the same 540 design,
+the pilot's 7 re-ask its first 150 and the main sitting's 18 re-ask its later items, and they carry
+no inclusion probability.
 
 **S1's cells.** A word can carry several causes; its cell is allocated by one **primary cause**,
 the first match in
@@ -148,8 +152,9 @@ the first match in
 `training.word_flags.CAUSES`' order, because decision rule 3 turns on soft and target pairs.
 Primary cause × base-detector flag gives 14 cells summing to 5,156. `pools.json`'s
 `s1_by_cause_and_base` counts a word once per cause it carries (any-cause), not by primary cause;
-the cells below and S4's ungraded split are the committed `app_arm/cells.json`, written by
-`python -m tadabur.followalong_audit strata` at the pinned harness:
+the cells below and S4's ungraded split are the committed `app_arm/cells.json`, written at the
+pinned harness by `python -m tadabur.followalong_audit strata --oracle oracle_sweep/word_grades.jsonl.gz --cells-out tadabur/followalong_audit/app_arm/cells.json`
+(the count-only run omits `--cells-out` and writes no design artifact):
 
 | cause | base detector flags | words | n | π |
 |---|---|---:|---:|---:|
@@ -194,11 +199,12 @@ here.
 not flagging, so S4 is "the App passes and no detector that graded the word flags it". Of the
 39,936 word × detector pairs that are ungraded, **2,184** S4 words had **at least one detector** ungraded and **57** had **all four detectors** ungraded. S4's bound is labelled accordingly.
 
-**Draw mechanics.** S5 draws the full design first, as one **seeded** random **permutation** per
-cell. The pilot is each cell's **prefix**, allocated within a stratum by largest remainder over the
-cells' main allocations with no floor; later and resized draws extend the same permutations, so
-every cell stays a simple random sample. The **inclusion probabilit**y of a word is its cell's
-final n ÷ N.
+**Draw mechanics.** S5 draws the full 540 first, as one **seeded** random **permutation** per
+cell. The pilot is each cell's **prefix** — within a stratum, allocated by largest remainder over
+the cells' main allocations with no floor — and the main sitting continues the same permutation
+from the pilot's prefix. Later and resized draws extend the same permutations, so every cell stays
+a simple random sample. The **inclusion probabilit**y of a word is its cell's final n ÷ N, where
+the final n includes the already-served pilot prefix.
 
 **Repeats.** Round 2's catch-loss worklist **matched 0** of its 150 words in this population (they
 are look-tranche rows), and round 3's worklist is checked the same way; any match is excluded. So
@@ -291,16 +297,34 @@ The PRD's rule, frozen with these numbers:
 
 ## 7. Estimates
 
-Two sides, never pooled (ADR-0008):
+**The estimation frame (frozen).** The headline frame is the **sampled subpopulation**: the four
+strata with positive inclusion probability — S1 5,156 + S3 1,459 + S4 38,598 + S5 9,342 =
+**54,555 words**. The `residual` (3,379) and `oracle-explained` (1) pools have π = 0, so no
+listening outcome exists for them and no weight can recover one; their counts are reported only,
+never weighted into a rate. This follows `docs/acceptance-rules.md`: the headline population is the
+sampled subpopulation unless every outcome stratum has positive probability. Every estimate here
+is **conditional on this frame** — not a rate for all 57,935 words, nor for all placeable phone
+audio; any whole-population statement is a separately labelled bound, with the unsampled pools'
+counts beside it.
 
-- **False flags per 1,000 correctly recited words**, weighted by the word's **cell** inclusion
-  probability π (S1's 14 cells and S5's 3 buckets do not share it), with a clip-bootstrap **95%**
-  interval.
-- **Misses per 100 confirmed mistakes**, the same way, with the same interval.
+Two sides, never pooled (ADR-0008), each weighted by the word's **cell** inclusion probability π
+(S1's 14 cells and S5's 3 buckets do not share it; S3 and S4 are one cell each):
+
+- **False flags per 1,000 correctly recited words** =
+  1,000 · Σ_{w∈frame, verdict correct} π_w⁻¹ F_w / Σ_{w∈frame, verdict correct} π_w⁻¹, where
+  F_w = 1 when the App flagged the word and the owner heard it correct (F1, F1-align, F-ref, F2 or
+  F3), else 0. A clip-bootstrap **95%** interval resamples whole clips.
+- **Misses per 100 confirmed mistakes** =
+  100 · Σ_{w∈frame, verdict mistake, App not flagged} π_w⁻¹ / Σ_{w∈frame, verdict mistake} π_w⁻¹,
+  with the same bootstrap. A served word counts once, at its first verdict.
+
+**S4's role.** S4 contributes to **both denominators** — its correctly recited words enter the
+false-flag denominator and its mistakes the miss denominator — and to the miss numerator; it
+cannot enter the false-flag numerator because nothing flags there. **S4 is a labelled bound, not a headline**: it bounds the miss rate on
+words nothing flags, and its detectors that graded nothing weaken the bound.
 
 Every headline rate is also reported without each clip's first and last engine word, and in
-balanced beside strict. **S4 is a labelled bound, not a headline**: it bounds the miss rate on
-words nothing flags, and its detectors that graded nothing weaken the bound.
+balanced beside strict.
 
 The **catch rate on known verified tlog mistakes** runs the App arm on the **33** verified
 look-tranche mistakes — **11** from round 2 and **22** from round 3 (`look`, not this population).
@@ -308,14 +332,17 @@ It is a separate table labelled **biased upward** (the detections chose them) an
 
 ## 8. Pilot and resize rule
 
-The pilot is 150 stratum snips (35-min) plus 7 repeats; the main sitting is **2.5 h**, with the
-owner's listening allowed to run to the full **3 h**.
+The pilot is the **first 150** of the 540 (35-min) and carries 7 of the 25 repeats; the main
+sitting serves the **remaining 390** plus the other 18 repeats, planned at about **2.5 h**. Every
+served minute — pilot, main sitting and repeats — is charged against the **3 h** cap, so the main
+sitting shrinks if the pilot or its repeats run long.
 
 After the pilot, each stratum's confirmed-mistake yield over its decisive verdicts and the
 measured seconds per snip are read, and the remaining snips are re-split to maximise the expected
 number of confirmed misses toward 60 within the 3 h total:
 
-- floors for the main sitting's totals: **S1 ≥ 150**, **S4 ≥ 40**, **S5 ≥ 20**, **repeats ≥ 15**;
+- floors for the **final** totals, pilot included: **S1 ≥ 150**, **S4 ≥ 40**, **S5 ≥ 20**,
+  **repeats ≥ 15** — never below a cell's already-served pilot prefix;
 - fill the floors, then add to the stratum with the **highest** pilot **miss yield**, up to its
   pool; **ties** go to **S3**;
 - stop once the expected confirmed misses reach **60**, or when the **3 h** budget runs out.

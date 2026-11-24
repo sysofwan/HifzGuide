@@ -145,6 +145,10 @@ def main() -> int:
     report.add_argument("--pools", type=Path, default=_app_arm("pools.json"))
     report.add_argument("--p3-zero", type=Path, default=_app_arm("word_grades.0ms.jsonl.gz"))
     report.add_argument("--p3-130", type=Path, default=_app_arm("word_grades.130ms.jsonl.gz"))
+    report.add_argument("--traces-root", type=Path, default=_app_arm("traces"),
+                        help="the committed subset traces, read for the App arm's own cadence")
+    report.add_argument("--determinism", type=Path, default=_app_arm("determinism.json"),
+                        help="the seeded two-run check, quoted in the doc's run block")
     report.add_argument("--exports-dir", type=Path, default=Path.home() / "Downloads")
     report.add_argument("--oracle", type=Path, help="S2's oracle summary, when #308 has run")
     report.add_argument("--p2-clips", type=int, default=_p2_clips())
@@ -268,9 +272,12 @@ def _report_run(args, harness) -> dict:
     from training.aug_readout_gate import harness_identity
     from training.muraja_policy import CURRENT_COMMIT
 
+    determinism = (json.loads(Path(args.determinism).read_text(encoding="utf-8"))
+                   if Path(args.determinism).is_file() else None)
     return {
         "muraja_commit": CURRENT_COMMIT,
         "harness": harness_identity(harness),
+        "determinism": determinism,
         "release": RELEASE,
         "latency_ms": args.latency_ms,
         "seeds": {"p2": args.p2_seed, "p3": args.p3_seed},
@@ -278,6 +285,19 @@ def _report_run(args, harness) -> dict:
         "audio_manifest_sha256": sha256_file(PROVENANCE_PATH),
         "word_grades_sha256": sha256_file(args.grades),
     }
+
+
+def _app_cadence(traces_root: Path, latency_ms: int) -> list[dict]:
+    """The App arm's previews per window, from the committed subset traces of each latency run.
+
+    P3's two runs are the subsets drawn at :data:`P3_LATENCIES`; the P2 subset ran at the audit's
+    own latency. A run whose traces are not present is left out rather than reported as zero.
+    """
+    from tadabur.followalong_audit.cadence import P3_LATENCIES, app_ratios
+
+    runs = [(f"p3_{latency}", latency) for latency in P3_LATENCIES] + [("p2", latency_ms)]
+    return [app_ratios(Path(traces_root) / name, latency_ms=latency)
+            for name, latency in runs if (Path(traces_root) / name).is_dir()]
 
 
 def _staged(args):
@@ -380,7 +400,8 @@ def _determinism(args) -> int:
                latency_ms=args.latency_ms),
         args.out_root, size=args.size, seed=args.seed, workers=args.workers)
     write_json(Path(args.out_root) / "determinism.json", report)
-    print(json.dumps({key: report[key] for key in ("seed", "size", "identical", "differences")},
+    print(json.dumps({key: report[key]
+                      for key in ("seed", "size", "identical", "differences", "failed")},
                      sort_keys=True))
     return 0 if report["identical"] else 1
 
@@ -423,7 +444,8 @@ def _report(args) -> int:
     notes = load_annotations(MurajaText(harness.quran_db))
     exports = [Path(args.exports_dir) / name for name in sorted(notes.exports)]
     ratios = {**h448_ratios(), **owner_ratios(exports, notes)}
-    p3 = p3_section(zero, other, device_ratios=ratios, seed=args.p3_seed)
+    p3 = p3_section(zero, other, device_ratios=ratios, seed=args.p3_seed,
+                    app_cadence=_app_cadence(args.traces_root, args.latency_ms))
     pools = json.loads(args.pools.read_text(encoding="utf-8"))
     summary = build_summary(grades, clips=len(population), failed=failed, p2=p2, p3=p3,
                             pools=pools, oracle=oracle,

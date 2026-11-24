@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import difflib
 import gzip
+import hashlib
 import json
 import os
 import shutil
@@ -176,6 +177,9 @@ def driver_checks(driver: Path, wav: Path, latency_ms: int, assets_dir: Path) ->
     return {
         "checks": payload["checks"],
         "wall_seconds": wall,
+        # The driver's own bytes, so a determinism check compares what the app's decoder produced
+        # rather than the flags it happened to reduce to.
+        "payload_sha256": hashlib.sha256(stdout).hexdigest(),
         "inference_count": payload.get("inference_count"),
         "failure_count": payload.get("failure_count"),
         "inference_latency_ms": payload.get("inference_latency_ms"),

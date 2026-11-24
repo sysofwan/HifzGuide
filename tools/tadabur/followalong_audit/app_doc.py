@@ -75,12 +75,12 @@ def _population(population: Mapping) -> list[str]:
 
 
 def _run_identity(run: Mapping | None) -> list[str]:
-    """What produced the numbers: weights, engine, latency, seeds and the tables' digests."""
+    """What produced the numbers: weights, engine, latency, seeds, determinism and the digests."""
     if run is None:
         return []
     harness = run.get("harness") or {}
     seeds = run.get("seeds") or {}
-    return [
+    lines = [
         "## Run identity",
         "",
         f"- Muraja harness commit `{run['muraja_commit']}`; assets release `{run['release']}`.",
@@ -90,8 +90,32 @@ def _run_identity(run: Mapping | None) -> list[str]:
         f" `{harness.get('binary_sha256', '—')}`.",
         f"- `audio_manifest.jsonl.gz` sha256 `{run['audio_manifest_sha256']}`;"
         f" `word_grades.jsonl.gz` sha256 `{run['word_grades_sha256']}`.",
-        "",
     ]
+    if run.get("determinism") is not None:
+        lines.append(f"- {_determinism(run['determinism'])}")
+    return [*lines, ""]
+
+
+def _determinism(report: Mapping) -> str:
+    """The seeded two-run check, as its sample found it: payloads compared, not just grades."""
+    size = report["size"]
+    differing = report.get("differences") or []
+    failed = report.get("failed") or []
+    rows_differ = report.get("rows_differ") or []
+    if not differing and not failed:
+        return (f"Determinism: the {size} seeded clips ran twice and all {size} driver payloads"
+                " were byte-identical in this sample; a sample bounds, it does not prove,"
+                " bit-identity (`app_arm/determinism.json`).")
+    identical = size - len(differing) - len(failed)
+    finding = (f"Determinism: the {size} seeded clips ran twice; {identical} of {size} driver"
+               " payloads were byte-identical")
+    if differing:
+        changed = (f"{len(rows_differ)} of them changed a word's outcome"
+                   if rows_differ else "their word tables did not change")
+        finding += f", {len(differing)} differed in the decode and {changed}"
+    if failed:
+        finding += f", {len(failed)} failed to run"
+    return finding + " (`app_arm/determinism.json`)."
 
 
 def _rates(rates: Mapping, run: Mapping | None = None) -> list[str]:
@@ -182,6 +206,7 @@ def _p3(p3: Mapping) -> list[str]:
     for log in sorted(p3["device_ratios"]):
         ratio = p3["device_ratios"][log]
         lines.append(f"| {log} | {'—' if ratio is None else f'{ratio:.2f}'} |")
+    lines += _app_cadence(p3.get("app_cadence") or [])
     latencies = ", ".join(f"{value} ms" for value in p3["latencies_ms"])
     clips = f"{p3['clips']:,} clips"
     if p3.get("seed") is not None:
@@ -206,6 +231,35 @@ def _p3(p3: Mapping) -> list[str]:
         lines += ["", f"Skipped (no rows in one latency run): {len(skipped)} clip(s): "
                       + ", ".join(skipped[:20]) + ("…" if len(skipped) > 20 else "") + "."]
     return [*lines, ""]
+
+
+def _app_cadence(entries: Sequence[Mapping]) -> list[str]:
+    """The App arm's own previews per window, beside the device logs it is compared with.
+
+    The ratio is pooled over clips (``sum(previews) / sum(windows)``), from the subset traces each
+    latency run committed; flushes and the closing stop are neither, and a clip that ran no full
+    window is counted apart. The comparison bounds the cadence the audit actually ran — S1's
+    caveat still holds: clip length and the output gate also move a device log's ratio, so a gap
+    is not all the App arm's.
+    """
+    if not entries:
+        return []
+    lines = ["", "The App arm's own cadence on its seeded subsets — previews per full window, "
+                 "pooled over the subset (flushes and the closing stop are neither; a clip whose "
+                 "trace is empty or ran no window is counted apart):", "",
+             "| traces | latency | clips | previews | windows | preview:window | no window |",
+             "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    for entry in sorted(entries, key=lambda item: item["latency_ms"]):
+        ratio = entry["ratio"]
+        lines.append(f"| {entry['traces']} | {entry['latency_ms']} ms | {entry['clips']:,} | "
+                     f"{entry['previews']:,} | {entry['windows']:,} | "
+                     f"{'—' if ratio is None else f'{ratio:.2f}'} | "
+                     f"{entry['clips_without_window']} |")
+    lines += ["", "Device logs and the App arm read the same scheduler facet, but not under the "
+                  "same conditions: the logs are whole device sessions (their length sets how "
+                  "many previews fit), so a larger App ratio means these clips had more previews "
+                  "per window, not that the scheduler differs."]
+    return lines
 
 
 def _pools(pools: Mapping, s1: Sequence[Mapping],

@@ -20,6 +20,7 @@ import random
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.followalong_audit.atomic import write_text_atomically
@@ -71,7 +72,20 @@ def _cell(trace: Mapping | None, scoring: Scoring,
 
 # --- the resumable run ----------------------------------------------------------------------------
 
-_RESULT_FIELDS = ("item", "failure", "rows")
+@dataclass(frozen=True)
+class ClipOutput:
+    """What ``run_one`` returns: the clip's word rows and the driver payload they came from.
+
+    ``payload_sha256`` is the digest of the driver's own stdout — the app's decoder's bytes, not
+    the flags they reduced to — so a two-run determinism check compares the decode itself. It is
+    ``None`` for a callable that runs no driver, and then only the rows are compared.
+    """
+
+    rows: Sequence[dict]
+    payload_sha256: str | None = None
+
+
+_RESULT_FIELDS = ("item", "failure", "rows", "payload_sha256")
 
 #: How many times one clip is attempted before its failure is recorded. The CoreML driver
 #: occasionally exits 0 having written nothing (#309): retrying costs one clip and keeps a
@@ -94,7 +108,8 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
 
     A failed clip is not cached, so a rerun retries exactly the clips that failed. Each attempt
     before the last is announced on stderr, so a run's log records the transient that a retry
-    absorbed.
+    absorbed. ``run_one`` returns the clip's rows, or a :class:`ClipOutput` when it also has the
+    driver payload's digest.
     """
     from training.nonpro_decode import item_key
 
@@ -108,7 +123,8 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
     reason = ""
     for attempt in range(1, ATTEMPTS + 1):
         try:
-            rows = list(run_one(clip))
+            output = run_one(clip)
+            output = output if isinstance(output, ClipOutput) else ClipOutput(output)
         except SealedPanelError:  # a seal violation is never a flaky clip
             raise
         except Exception as error:  # noqa: BLE001 - the clip's reason, never the run's death
@@ -117,10 +133,11 @@ def _run_cached(job: tuple[dict, Callable, str]) -> dict:
                 print(f"retrying {item} after attempt {attempt}/{ATTEMPTS}: {reason}",
                       file=sys.stderr, flush=True)
             continue
-        result = {"item": item, "failure": None, "rows": rows}
+        result = {"item": item, "failure": None, "rows": list(output.rows),
+                  "payload_sha256": output.payload_sha256}
         _write_result(path, result)
         return result
-    return {"item": item, "failure": reason, "rows": []}
+    return {"item": item, "failure": reason, "rows": [], "payload_sha256": None}
 
 
 #: The run-identity record's name: what a cache directory was produced by.

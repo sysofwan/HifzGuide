@@ -27,7 +27,12 @@ from functools import lru_cache
 from pathlib import Path
 
 from tadabur.followalong_audit import tracer
-from tadabur.followalong_audit.app_run import determinism_keys, run_clips, word_grade_rows
+from tadabur.followalong_audit.app_run import (
+    ClipOutput,
+    determinism_keys,
+    run_clips,
+    word_grade_rows,
+)
 from tadabur.followalong_audit.atomic import write_bytes_atomically, write_text_atomically
 from tadabur.followalong_audit.clips import verify_wav
 from tadabur.followalong_audit.fetch import read_manifest
@@ -67,7 +72,7 @@ class AppArm:
     latency_ms: int = DEVICE_LATENCY_MS
     traces_dir: Path | None = None
 
-    def __call__(self, clip: Mapping) -> list[dict]:
+    def __call__(self, clip: Mapping) -> ClipOutput:
         key = item_key(clip["audio_path"])
         surah, ayah = (int(part) for part in clip["filename_label"].split(":"))
         wav = Path(self.wav_dir) / f"{clip['audio_sha256']}.wav"
@@ -81,7 +86,8 @@ class AppArm:
         traces = word_traces(request, results, AUDIT_SCORINGS)
         if self.traces_dir is not None:
             _write_traces(Path(self.traces_dir), clip["audio_sha256"], traces)
-        return word_grade_rows(key, word_count, traces, causes_of(text, surah, ayah))
+        return ClipOutput(word_grade_rows(key, word_count, traces, causes_of(text, surah, ayah)),
+                          timed["payload_sha256"])
 
 
 def causes_of(text: MurajaText, surah: int, ayah: int) -> Callable[[Mapping], Sequence[str]]:
@@ -126,7 +132,9 @@ def _write_traces(traces_dir: Path, audio_sha256: str, traces: Sequence[Mapping]
 
     Each row repeats the clip's whole check list, so the text is large and compresses ~25×: 1,200
     subset clips are 261 MB raw and 10 MB gzipped. Fixed mtime, so the file is byte-identical
-    across runs.
+    across runs. A session that graded no word yields no trace rows and so an empty file: the
+    clip's checks are not kept (they are the S5 clips, and keeping them would need their own
+    record shape).
     """
     body = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in traces)
     write_bytes_atomically(Path(traces_dir) / f"{audio_sha256}.jsonl.gz",
@@ -193,13 +201,16 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def determinism_report(clips: Sequence[Mapping], arm: AppArm, out_root: Path, *,
                        size: int, seed: int, workers: int = 1) -> dict:
-    """Run the seeded subset twice in separate directories and compare every clip's table.
+    """Run the seeded subset twice in separate directories and compare the decode and the table.
 
-    The comparison is the whole per-clip result (the graded rows), which is byte-identical only
-    if the driver's checks and the engine's grading both are. Clips whose runs differ are listed
-    by item, never smoothed over. Both directories are cleared first: a resumable cache would
-    otherwise answer the second check from the first invocation's results and "agree" with
-    itself, so a determinism rerun after a failure would prove nothing.
+    Each run's per-clip result holds the word table **and** the digest of the driver's own stdout
+    (``ClipOutput.payload_sha256``): comparing the tables alone would report two different
+    check schedules as identical whenever they reduce to the same flags, and two identical
+    failures as identical runs. A clip that failed in either run is listed in ``failed`` and
+    makes the check unsuccessful; a clip whose payload or rows differ is listed in
+    ``differences``. Both directories are cleared first: a resumable cache would otherwise answer
+    the second check from the first invocation's results and "agree" with itself, so a
+    determinism rerun after a failure would prove nothing.
     """
     keys = determinism_keys(clips, size, seed=seed)
     subset = [clip for clip in clips if item_key(clip["audio_path"]) in keys]
@@ -208,6 +219,27 @@ def determinism_report(clips: Sequence[Mapping], arm: AppArm, out_root: Path, *,
         shutil.rmtree(out_root / name, ignore_errors=True)
     first = run_clips(subset, arm, out_root / "run1", workers=workers)
     second = run_clips(subset, arm, out_root / "run2", workers=workers)
-    differing = [left["item"] for left, right in zip(first, second) if left != right]
-    return {"seed": seed, "size": len(subset), "clips": [result["item"] for result in first],
-            "identical": not differing, "differences": differing}
+    failed: list[str] = []
+    differing: list[str] = []
+    rows_differ: list[str] = []
+    for left, right in zip(first, second):
+        if left["failure"] is not None or right["failure"] is not None:
+            failed.append(left["item"])
+        elif left != right:
+            differing.append(left["item"])
+            if left["rows"] != right["rows"]:
+                rows_differ.append(left["item"])
+    return {
+        "seed": seed,
+        "size": len(subset),
+        "clips": [result["item"] for result in first],
+        "identical": not differing and not failed,
+        "differences": differing,
+        # Which of the differing clips also changed a word's graded outcome: a decode that varies
+        # without moving a decision is a different finding from one that moves it.
+        "rows_differ": rows_differ,
+        "failed": failed,
+        "payloads": {left["item"]: {"run1": left["payload_sha256"],
+                                    "run2": right["payload_sha256"]}
+                     for left, right in zip(first, second)},
+    }

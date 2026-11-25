@@ -73,11 +73,12 @@ CLASSES = ("S1", "S3", "S4", "S5-leading", "S5-trailing", "S5-interior")
 S5_BUCKETS = ("S5-leading", "S5-trailing", "S5-interior")
 #: S5's candidate composition (committed pools and word tables): leading / trailing / interior.
 S5_CANDIDATES = {"S5-leading": 3933, "S5-trailing": 5103, "S5-interior": 306}
-#: Principal-r3's counts for the rule as it measured them. They are NOT reproduced by the rule's
-#: own code (which compares anchored indices and spans in one coordinate system): the 1,961 /
-#: 1,305 / 210 come out only when the alignment's indices are counted with spaces stripped and the
-#: spans with spaces kept. Left as an expected failure until the owner decides which stands.
-BRIEF_S5_FRAME = {"S5-leading": 1961, "S5-trailing": 1305, "S5-interior": 210}
+#: What the rule produces, with anchored indices and spans in one coordinate system (the ayah's
+#: reference, spaces counted), from the committed gating decode and Muraja's reference at 028bc51.
+#: Principal-r3's 1,961 / 1,305 / 210 came from counting the alignment's indices with spaces
+#: stripped against spans that keep them; the orchestrator ruled that the rule stands.
+EXPECTED_S5_FRAME = {"S5-leading": 2038, "S5-trailing": 1553, "S5-interior": 196}
+EXPECTED_S5_NOT_COVERED = {"S5-leading": 1895, "S5-trailing": 3550, "S5-interior": 110}
 
 REFERENCE = "abcde fghij klmno"
 SPANS = [(0, 5), (6, 11), (12, 17)]
@@ -362,13 +363,13 @@ def test_the_s4_split_still_describes_the_whole_candidate_s4_pool():
     assert CELLS["s4"]["words"] == CELLS["coverage"]["frame"]["S4"]
 
 
-@pytest.mark.xfail(reason="needs-decision: principal-r3's counts are reproduced only with the "
-                          "alignment's indices counted space-stripped against spans that keep "
-                          "spaces; the rule's own code gives 2,038 / 1,553 / 196", strict=False)
-def test_the_s5_frame_reproduces_the_briefs_counts():
-    assert {name: CELLS["coverage"]["frame"][name] for name in S5_BUCKETS} == BRIEF_S5_FRAME
-    assert CELLS["coverage"]["frame_words"] == 48689
-    assert CELLS["coverage"]["not_covered_words"] == 5866
+def test_the_committed_s5_frame_is_what_the_transcript_rule_produces():
+    coverage = CELLS["coverage"]
+    assert {name: coverage["frame"][name] for name in S5_BUCKETS} == EXPECTED_S5_FRAME
+    assert {name: coverage["not_covered"][name] for name in S5_BUCKETS} == EXPECTED_S5_NOT_COVERED
+    assert sum(EXPECTED_S5_FRAME.values()) == 3787 and sum(EXPECTED_S5_NOT_COVERED.values()) == 5555
+    assert coverage["frame_words"] == 5156 + 1459 + 38598 + 3787 == 49000
+    assert coverage["not_covered_words"] == 5555
 
 
 # --- the document -------------------------------------------------------------------------------

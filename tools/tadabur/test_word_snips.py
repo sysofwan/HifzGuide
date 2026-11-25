@@ -2,7 +2,7 @@
 
 The interface these tests fix, in ``tadabur.word_snips``:
 
-* ``MIN_LL_PER_FRAME``: the reliability gate, a module constant (provisional -3.5). An aligned
+* ``MIN_LL_PER_FRAME``: the reliability gate, a module constant (-3.5, owner-approved 2026-11-25). An aligned
   record whose ``ll_per_frame`` is **below** it is treated exactly as ``aligned: False``.
 * ``ALIGNMENT`` / ``WHOLE_CLIP``: the two ``snip_source`` values (``"alignment"``, ``"whole_clip"``).
 * ``Snip(site_id, audio_sha256, start_sample, end_sample, snip_source)``: a frozen dataclass.

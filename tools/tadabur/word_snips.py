@@ -45,10 +45,10 @@ from training.tashkeel_eval import write_text_atomically
 from .listening_session import excerpt_span
 from .mining_pool import PoolSegment
 
-#: An aligned word's per-frame log-likelihood below this is not trusted to place the word:
-#: the clip plays whole, exactly as ``aligned: false`` does. Provisional (-3.5, phase A's
-#: aligned p5) until the owner confirms it for the S5 draw (#311); it depends only on the
-#: reference and the teacher, so it leaks nothing to the page.
+#: Owner-approved cutoff (2026-11-25 on #264): -3.5, phase A's aligned p5 (-3.49 over the
+#: 8,342 aligned look/confirm records). An aligned word below it plays whole, exactly as
+#: ``aligned: false`` does; the value depends only on the reference and the teacher, so it
+#: leaks nothing to the page.
 MIN_LL_PER_FRAME = -3.5
 
 #: An excerpt cut from the clip's word alignment.

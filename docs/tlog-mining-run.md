@@ -369,7 +369,8 @@ likelihoods separate the two:
 `identified` has the worst lower tail — p5 −8.83, p25 −3.83 — while `filename` has the lowest
 median (−2.12) and p75 (−1.20); all three sources sit well below phase A's distribution. **The
 rule #264 applies:** a row whose `ll_per_frame` is below −3.5 (phase A's aligned 5th percentile
-is −3.49) is treated exactly as `aligned: false` — play the whole clip. That is 1,861 of the 8,898
+is −3.49) is treated exactly as `aligned: false` — play the whole clip. The owner approved that
+cutoff on 2026-11-25 (#264; `tadabur.word_snips.MIN_LL_PER_FRAME`). That is 1,861 of the 8,898
 aligned rows (20.9%), so 3,605 of the 10,642 mined rows (33.9%) play whole at presentation.
 
 **All 1,744 fallbacks have the same cause**: the posteriors are too short for the assigned

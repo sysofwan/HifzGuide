@@ -83,10 +83,10 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     if len(key) != len(originals) + PILOT_REPEATS + MAIN_REPEATS:
         raise ValueError(f"the key holds {len(key)} served items, not the design's")
     worklist = _worklist_rows(key, clips, manifest)
-    _write_jsonl(key, out / "key.jsonl")
-    _write_jsonl(worklist, out / "worklist.jsonl")
+    write_jsonl(key, out / "key.jsonl")
+    write_jsonl(worklist, out / "worklist.jsonl")
     for sitting, plan in plans.items():
-        _write_jsonl(_serve_rows(plan, seed), out / f"{sitting}.jsonl")
+        write_jsonl(_serve_rows(plan, seed), out / f"{sitting}.jsonl")
 
     records = [record for tranche in TRANCHES
                for record in _read_jsonl_gz(WORD_TIMES / f"{tranche}.jsonl.gz")]

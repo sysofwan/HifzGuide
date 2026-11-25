@@ -842,22 +842,28 @@ NATURALNESS = (NATURAL, UNNATURAL, UNCLEAR)
 class Verdict:
     """What the listener heard at one site, in the truth-site vocabulary of its mark, and
     for a synthetic-edit check item also whether it sounded ``natural`` (one of
-    :data:`NATURALNESS`). ``natural`` is ``None`` for every other site and is then left out
-    of the file, so a verdicts file without it reads and rewrites byte for byte."""
+    :data:`NATURALNESS`). ``whole_played`` records whether the whole clip was served for the
+    site, not just its snip (:mod:`tadabur.word_snips`), so the readouts can report how often
+    the snip was not enough. Each of ``natural`` and ``whole_played`` is ``None`` when the
+    session did not ask it and is then left out of the file, so a verdicts file without it
+    reads and rewrites byte for byte."""
 
     site_id: str
     heard: str
     note: str = ""
     natural: str | None = None
+    whole_played: bool | None = None
 
     def as_json(self) -> dict:
         data = asdict(self)
-        if self.natural is None:
-            del data["natural"]
+        for name, value in (("natural", self.natural), ("whole_played", self.whole_played)):
+            if value is None:
+                del data[name]
         return data
 
 
 _VERDICT_KEYS = frozenset({"site_id", "heard", "note"})
+_VERDICT_OPTIONAL = frozenset({"natural", "whole_played"})
 _REVIEW_KEYS = frozenset({"site_id", "note"})
 
 
@@ -876,12 +882,15 @@ def read_verdicts(path: Path = VERDICTS_PATH) -> dict[str, Verdict]:
             if not raw.strip():
                 continue
             data = json.loads(raw)
-            if not isinstance(data, dict) or set(data) - {"natural"} != _VERDICT_KEYS:
+            if (not isinstance(data, dict)
+                    or set(data) - _VERDICT_OPTIONAL != _VERDICT_KEYS):
                 raise ValueError(
                     f"{path}:{lineno}: a verdict is {{site_id, heard, note}} and optionally "
-                    f"natural")
+                    f"natural and whole_played")
             if "natural" in data and data["natural"] not in NATURALNESS:
                 raise ValueError(f"{path}:{lineno}: natural must be one of {NATURALNESS}")
+            if "whole_played" in data and not isinstance(data["whole_played"], bool):
+                raise ValueError(f"{path}:{lineno}: whole_played must be true or false")
             if data["site_id"] in verdicts:
                 raise ValueError(f"{path}:{lineno}: a second verdict for {data['site_id']}")
             verdicts[data["site_id"]] = Verdict(**data)

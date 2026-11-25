@@ -21,11 +21,7 @@ Committed inputs this design is computed from:
 
 Owner approval: pending
 
-Principal cross-check: pending
-
-Fable's final cross-check **approved** this pre-registration on 2026-11-25 (`principal-r4`, head
-`4ac7a2bc`). The D14 line above changes from `pending` only when an issue-310 comment URL records
-the approval; the issue held no comments at this commit.
+Principal cross-check: https://github.com/sysofwan/HifzGuide/issues/310#issuecomment-7155122212
 
 ## 1. Population
 

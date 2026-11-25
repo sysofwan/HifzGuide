@@ -11,7 +11,8 @@ Contract this file pins
 * ``docs/followalong-audit-preregistration.md`` is byte-identical to the frozen text (SHA-256
   ``33d3ba26…``): an amendment, never an edit.
 * ``docs/followalong-audit-draw-amendment.md`` is dated 2026-11-25, frozen before any draw, cites
-  the frozen document by SHA-256, and carries the owner's issue-311 approval comment.
+  the frozen document by SHA-256, and carries the owner's and the principal's issue-311 comment
+  URLs on the pre-registration's ``Owner approval`` / ``Principal cross-check`` lines.
 * It states ten numbered items, tagged **addition** (1 and 10) or **clarification** (2–9).
 * The seed is the 64-bit big-endian prefix of ``sha256("followalong-audit-draw:" + M_hex)`` over
   the first ``main`` commit that adds the file, with decimal-seed sub-seeds; the shuffle idiom
@@ -38,6 +39,7 @@ AMENDMENT = DOCS / "followalong-audit-draw-amendment.md"
 PREREG_SHA256 = "33d3ba26dbe6df3a72b0a03637934274a1c2526ac9e0dc306afd1545ea28ed39"
 DATE = "2026-11-25"
 APPROVAL = "https://github.com/sysofwan/HifzGuide/issues/311#issuecomment-7168352666"
+CROSS_CHECK = "https://github.com/sysofwan/HifzGuide/issues/311#issuecomment-7168475180"
 KINDS = {1: "addition", 2: "clarification", 3: "clarification", 4: "clarification",
          5: "clarification", 6: "clarification", 7: "clarification", 8: "clarification",
          9: "clarification", 10: "addition"}
@@ -84,12 +86,11 @@ def test_the_amendment_is_dated_frozen_before_any_draw_and_cites_the_frozen_docu
     _expect(text, r"followalong-audit-preregistration\.md", PREREG_SHA256, r"byte-identical")
 
 
-def test_the_owner_approval_line_carries_the_issue_311_comment():
+def test_the_approval_lines_carry_the_issue_311_comments():
     text = _text()
-    assert f"Owner approval: {APPROVAL}" in text
-    cross_check = re.search(r"^Principal cross-check: (.+)$", text, flags=re.M).group(1)
-    assert DATE in cross_check
-    assert "pending" not in cross_check.lower()
+    for label, url in (("Owner approval", APPROVAL), ("Principal cross-check", CROSS_CHECK)):
+        assert re.search(rf"^{label}: {re.escape(url)}$", text, flags=re.M), label
+    assert "pending" not in text
 
 
 def test_the_amendment_states_ten_items_each_tagged_addition_or_clarification():

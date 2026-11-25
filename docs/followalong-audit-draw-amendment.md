@@ -20,8 +20,7 @@ known — and they change no number either.
 
 Owner approval: https://github.com/sysofwan/HifzGuide/issues/311#issuecomment-7168352666
 
-Principal cross-check: 2026-11-25, verdict **amend**; its three seed precisions are folded into
-item 1, and it re-ran the pilot arithmetic item 3 quotes.
+Principal cross-check: https://github.com/sysofwan/HifzGuide/issues/311#issuecomment-7168475180
 
 ## 1. The random seed (addition)
 

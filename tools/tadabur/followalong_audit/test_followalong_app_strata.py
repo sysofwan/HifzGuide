@@ -1,12 +1,13 @@
 """The candidate strata S4 draws from (#309): total, single-valued, and the pools they size.
 
-A word is ``{"key", "position", "app", "oracle", "detectors", "causes"}``:
+A word is ``{"key", "position", "app", "oracle", "detectors", "detector_graded", "causes"}``:
 
 * ``app`` is the App arm's strict outcome: ``flagged`` / ``passed`` / ``ungraded``;
 * ``oracle`` is S2's outcome for the word (``flagged`` / ``passed``), or ``None`` while S2
   (#308) has not run;
 * ``detectors`` is ``{"base", "c95", "r2_candidate_ema", "r3_candidate_ema": bool}`` — whether
-  each detector flags the word, re-graded at 028bc51 in strict;
+  each detector flags the word, re-graded at 028bc51 in strict; ``detector_graded`` is whether
+  each detector graded it at all (an ungraded detector never flags);
 * ``causes`` are the App flag's causes (empty unless the App flagged).
 
 Strata: S5 the App left ungraded; S1 the App flags and the oracle passes (``S1_PENDING`` until

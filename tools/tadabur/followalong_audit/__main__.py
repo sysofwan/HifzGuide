@@ -157,6 +157,9 @@ def main() -> int:
     strata.add_argument("--oracle", type=Path,
                         help="S2's word table, when #308 has run (same shape as --grades)")
     strata.add_argument("--pools-out", type=Path, default=_app_arm("pools.json"))
+    strata.add_argument("--cells-out", type=Path,
+                        help="write S1's primary-cause cells and S4's ungraded split here; "
+                             "omitted, the count-only run writes no design artifact")
 
     report = commands.add_parser("report", help="write the summary and the generated doc")
     report.add_argument("--grades", type=Path, default=_app_arm("word_grades.jsonl.gz"))
@@ -504,12 +507,23 @@ def _determinism_probe(args) -> int:
 
 def _strata(args) -> int:
     from tadabur.followalong_audit.app_arm import read_grades, read_jsonl
-    from tadabur.followalong_audit.strata_run import candidate_pools, write_pools
+    from tadabur.followalong_audit.strata_run import (
+        cells_record,
+        pools_from_run,
+        stratified_run,
+        write_cells,
+        write_pools,
+    )
 
     oracle = read_grades(args.oracle) if args.oracle is not None else None
-    pools = candidate_pools(app_arm_rows(), read_grades(args.grades), oracle=oracle,
-                            failed=_failed_items(args.clip_runs))
+    stratified, meta, marks = stratified_run(app_arm_rows(), read_grades(args.grades),
+                                             oracle=oracle,
+                                             failed=_failed_items(args.clip_runs))
+    pools = pools_from_run(stratified, meta, marks)
+    cells = cells_record(stratified, meta["detector_ungraded"]) if args.cells_out else None
     write_pools(pools, args.pools_out)
+    if cells is not None:
+        write_cells(cells, args.cells_out)
     print(json.dumps({"clips": pools["clips"], "words": pools["words"],
                       "pools": pools["pools"], "catch_loss": pools["catch_loss"]},
                      sort_keys=True))

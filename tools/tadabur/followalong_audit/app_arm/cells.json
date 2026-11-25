@@ -1,0 +1,120 @@
+{
+  "coverage": {
+    "frame": {
+      "S1": 5156,
+      "S3": 1459,
+      "S4": 38598,
+      "S5-interior": 196,
+      "S5-leading": 2038,
+      "S5-trailing": 1553
+    },
+    "frame_words": 49000,
+    "not_covered": {
+      "S1": 0,
+      "S3": 0,
+      "S4": 0,
+      "S5-interior": 110,
+      "S5-leading": 1895,
+      "S5-trailing": 3550
+    },
+    "not_covered_words": 5555,
+    "s5_engine_graded": {
+      "S5-interior": 96,
+      "S5-leading": 403,
+      "S5-trailing": 418
+    }
+  },
+  "detector_ungraded": 39936,
+  "s1_primary_cells": [
+    {
+      "base_flags": false,
+      "cause": "target_pair",
+      "n": 3,
+      "words": 24
+    },
+    {
+      "base_flags": true,
+      "cause": "target_pair",
+      "n": 3,
+      "words": 41
+    },
+    {
+      "base_flags": false,
+      "cause": "soft_pair",
+      "n": 5,
+      "words": 129
+    },
+    {
+      "base_flags": true,
+      "cause": "soft_pair",
+      "n": 13,
+      "words": 344
+    },
+    {
+      "base_flags": false,
+      "cause": "other_consonant",
+      "n": 44,
+      "words": 1150
+    },
+    {
+      "base_flags": true,
+      "cause": "other_consonant",
+      "n": 61,
+      "words": 1607
+    },
+    {
+      "base_flags": false,
+      "cause": "shaddah",
+      "n": 3,
+      "words": 61
+    },
+    {
+      "base_flags": true,
+      "cause": "shaddah",
+      "n": 6,
+      "words": 174
+    },
+    {
+      "base_flags": false,
+      "cause": "tashkeel",
+      "n": 11,
+      "words": 283
+    },
+    {
+      "base_flags": true,
+      "cause": "tashkeel",
+      "n": 16,
+      "words": 416
+    },
+    {
+      "base_flags": false,
+      "cause": "skipped",
+      "n": 5,
+      "words": 147
+    },
+    {
+      "base_flags": true,
+      "cause": "skipped",
+      "n": 11,
+      "words": 296
+    },
+    {
+      "base_flags": false,
+      "cause": "unrecorded",
+      "n": 4,
+      "words": 98
+    },
+    {
+      "base_flags": true,
+      "cause": "unrecorded",
+      "n": 15,
+      "words": 386
+    }
+  ],
+  "s4": {
+    "all_four_detectors_ungraded": 57,
+    "at_least_one_detector_ungraded": 2184,
+    "ungraded_pairs": 3059,
+    "words": 38598
+  }
+}

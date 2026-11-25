@@ -244,10 +244,12 @@ def error_key(errors: Iterable[Mapping]) -> tuple[tuple[int, str, str | None, st
     """The App strict kept-grade errors as a canonical key, whatever order the engine listed them.
 
     Each error is ``(group_index, kind.type, kind.expected, kind.heard or None)``, sorted, so two
-    traces that describe the same deviation key equal (D3).
+    traces that describe the same deviation key equal (D3). The sort orders ``None`` as the empty
+    string: a trace with ``expected: None`` must not make ``sorted`` compare ``None`` with ``str``.
     """
-    return tuple(sorted((error["group_index"], error["kind"]["type"], error["kind"]["expected"],
-                         error["kind"].get("heard")) for error in errors))
+    rows = [(error["group_index"], error["kind"]["type"], error["kind"]["expected"],
+             error["kind"].get("heard")) for error in errors]
+    return tuple(sorted(rows, key=lambda row: (row[0], row[1], row[2] or "", row[3] or "")))
 
 
 def reference_suspects(observations: Iterable[Mapping], minimum: int = 3

@@ -197,6 +197,26 @@ def test_the_clip_cache_is_still_overridable_for_round_three(tmp_path, stage):
     assert "--clip-cache '/elsewhere/clips'" in _remote(tmp_path)
 
 
+def test_a_snips_sidecar_committed_beside_the_worklist_is_passed_and_its_absence_is_not(
+        tmp_path, stage):
+    """`ui launch` stages the branch, so a committed sidecar reaches the box's clone; without
+    one the command is exactly round 2's (whole clips, as before)."""
+    without = tmp_path / "without"
+    without.mkdir()
+    assert _launch(without, stage, "ui", "launch").returncode == 0
+    assert _ui_command(R2_ROOT, R2_AUDIT, 8000) in _remote(without)
+    assert "--snips" not in _remote(without)
+
+    (stage / R2_AUDIT).mkdir(parents=True)
+    (stage / R2_AUDIT / "snips.jsonl").write_text("", encoding="utf-8")
+    with_snips = tmp_path / "with"
+    with_snips.mkdir()
+    assert _launch(with_snips, stage, "ui", "launch").returncode == 0
+    expected = _ui_command(R2_ROOT, R2_AUDIT, 8000).replace(
+        " --port", f" --snips '{R2_ROOT}/repo/{R2_AUDIT}/snips.jsonl' --port")
+    assert expected in _remote(with_snips)
+
+
 def test_round_three_fetches_its_verdicts_review_list_and_draw_from_its_root(tmp_path, stage):
     for job in ("ui", "draw", "backup"):
         done = _launch(tmp_path, stage, job, "fetch", str(tmp_path / "out"), SPEC="consonant3")

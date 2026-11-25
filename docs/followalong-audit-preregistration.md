@@ -208,12 +208,14 @@ target_pair cells; without it they would get 2 and 1–2 snips. Readouts report 
 soft/target test is any cause in {soft_pair, target_pair}.
 
 **S5's composition.** S5's candidate pool of 9,342 words is mostly clip edges: **leading 3,933**,
-**trailing 5,103**, **interior 306**, and **250 clips** are entirely ungraded. The coverage gate
+**trailing 5,103**, **interior 306**, and **250 clips** are entirely ungraded. The oracle arm
+leaves only **245** of 57,935 words ungraded, so the App's ungraded pool is App-specific, not a
+reference-pipeline failure. The coverage gate
 keeps **2,038 leading / 1,553 trailing / 196 interior** words — 3,787 in all — and reports the
-other **1,895 / 3,550 / 110** as not covered by audio. The engine left ungraded many of those words; the transcript covers 3,787 of them, and
-the base detector graded only 1,207 S5 words, so at most 2,580 covered words are engine-ungraded
-too. S5's 30 snips split **leading
-10 / trailing 10 / interior 10** over the *covered* words, and the buckets do not share π.
+other **1,895 / 3,550 / 110** as not covered by audio. The engine left ungraded 2,870 words the transcript covers (the base detector graded only 917
+of the 3,787; 1,207 of the whole S5 candidate pool), recorded as `s5_engine_graded` in
+`app_arm/cells.json`; those words are a finding S7 reads, not `not_in_clip`. S5's 30 snips split
+**leading 10 / trailing 10 / interior 10** over the *covered* words, and the buckets do not share π.
 
 | S5 bucket | covered words | n | inclusion |
 |---|---:|---:|---:|
@@ -230,8 +232,10 @@ each clip's ayah range. A possible end-word mechanism — the withheld grade is 
 score ≥ 0.75 (`GradeStore.swift:663,676-691`) — is checked in S7, never asserted here.
 
 **S4 means "nothing that graded it flagged it".** `assign_stratum` treats an ungraded detector as
-not flagging, so S4 is "the App passes and no detector that graded the word flags it". Of the
-39,936 word × detector pairs that are ungraded, **2,184** S4 words had **at least one detector** ungraded and **57** had **all four detectors** ungraded. S4's bound is labelled accordingly.
+not flagging, so S4 is "the App passes and no detector that graded the word flags it". S4's 38,598 words hold
+**3,059** ungraded word × detector pairs (of the population's 39,936); **2,184** S4 words had
+**at least one detector** ungraded and **57** had **all four detectors** ungraded (3,059 ungraded
+pairs). S4's bound is labelled accordingly.
 
 **Draw mechanics.** The draw samples the **49,000-word covered frame**: S1's cells, S3, S4 and
 S5's covered leading/trailing/interior words; the 5,555 not-covered S5 words are never drawn.

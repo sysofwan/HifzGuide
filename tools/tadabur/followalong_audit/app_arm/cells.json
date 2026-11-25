@@ -17,7 +17,12 @@
       "S5-leading": 1895,
       "S5-trailing": 3550
     },
-    "not_covered_words": 5555
+    "not_covered_words": 5555,
+    "s5_engine_graded": {
+      "S5-interior": 96,
+      "S5-leading": 403,
+      "S5-trailing": 418
+    }
   },
   "detector_ungraded": 39936,
   "s1_primary_cells": [

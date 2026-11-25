@@ -212,8 +212,11 @@ def candidate_pools(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
                                           failed=failed))
 
 
-#: The coverage classes: every sampled stratum, S5 split by where the word sits in its clip.
-COVERAGE_CLASSES = ("S1", "S3", "S4", "S5-leading", "S5-trailing", "S5-interior")
+#: S5's coverage classes: where the word sits in its clip.
+S5_CLASSES = ("S5-leading", "S5-trailing", "S5-interior")
+
+#: The coverage classes: every sampled stratum, S5 split by place in the clip.
+COVERAGE_CLASSES = ("S1", "S3", "S4", *S5_CLASSES)
 
 
 def _edges(stratified: Sequence[Mapping]) -> dict[tuple[str, int], str]:
@@ -273,6 +276,7 @@ def coverage_record(stratified: Sequence[Mapping]) -> dict:
     """
     frame = dict.fromkeys(COVERAGE_CLASSES, 0)
     not_covered = dict.fromkeys(COVERAGE_CLASSES, 0)
+    s5_engine_graded = dict.fromkeys(S5_CLASSES, 0)
     edges = _edges(stratified)
     for row in stratified:
         name = _coverage_class(row, edges)
@@ -280,9 +284,12 @@ def coverage_record(stratified: Sequence[Mapping]) -> dict:
             continue
         if name.startswith("S5") and not covered(row):
             not_covered[name] += 1
-        else:
-            frame[name] += 1
+            continue
+        frame[name] += 1
+        if name.startswith("S5") and row["detector_graded"]["base"]:
+            s5_engine_graded[name] += 1
     return {"frame": frame, "not_covered": not_covered,
+            "s5_engine_graded": s5_engine_graded,
             "frame_words": sum(frame.values()),
             "not_covered_words": sum(not_covered.values())}
 

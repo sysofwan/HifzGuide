@@ -5,14 +5,17 @@ harness-free; the engine itself is exercised in ``test_muraja_harness.py``."""
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from training import muraja_policy
 from training.muraja_policy import (
     ALLOWANCES,
+    ANCHOR_RUN,
     ALLOWANCES_ON,
     FLAGGED,
     FLAGGED_ELSEWHERE,
@@ -187,6 +190,83 @@ def test_counterpart_aligns_across_spaces_and_waqf_forms():
     assert counterpart("دَه", 2, "دَتَںںں") == 2
     assert counterpart("ثَه وَ", 2, "ثَتِوو وَ") == 2
     assert counterpart("دَهُم", 2, "دَتَںںں") is None  # two letters against one group
+
+
+# --- anchored_alignment: the public alignment contract (#323) -------------------------------------
+# Called as ``muraja_policy.anchored_alignment`` so each contract test fails on its own until the
+# public name exists, instead of one import error taking the whole module down.
+RUN = "abcdefghij"[:ANCHOR_RUN]  # a run of exactly ANCHOR_RUN matching characters
+SHORT = "klmnopqrst"[: ANCHOR_RUN - 1]  # one short of anchoring
+
+
+def test_anchored_alignment_ignores_spaces_on_both_sides_but_indexes_the_strings_as_given():
+    # text index 3 is the space: "d" and "e" are indices 4 and 5 and match reference 3 and 4
+    mapping, anchored = muraja_policy.anchored_alignment("abc de", "abcde")
+    assert mapping == {0: 0, 1: 1, 2: 2, 4: 3, 5: 4}
+    assert anchored == {0, 1, 2, 4, 5}
+    # a space in the reference shifts the reference indices, not the matching
+    mapping, anchored = muraja_policy.anchored_alignment("abcde", "ab cde")
+    assert mapping == {0: 0, 1: 1, 2: 3, 3: 4, 4: 5}
+    assert anchored == {0, 1, 2, 3, 4}
+
+
+def test_a_space_inside_a_run_does_not_break_the_run():
+    mapping, anchored = muraja_policy.anchored_alignment("a b c d", "abcd")
+    assert mapping == {0: 0, 2: 1, 4: 2, 6: 3}
+    assert anchored == {0, 2, 4, 6}
+
+
+def test_a_run_anchors_at_anchor_run_and_not_one_character_short():
+    text, reference = f"{RUN}x{SHORT}y", f"{RUN}z{SHORT}w"
+    mapping, anchored = muraja_policy.anchored_alignment(text, reference)
+    run = range(len(RUN))
+    short = range(len(RUN) + 1, len(RUN) + 1 + len(SHORT))
+    assert set(mapping) == {*run, *short}
+    assert all(mapping[i] == i for i in mapping)  # same positions, only x/y and z/w differ
+    assert anchored == set(run)  # the short run is aligned (mapped) yet not anchored
+
+
+def test_a_mismatched_character_maps_to_nothing():
+    mapping, anchored = muraja_policy.anchored_alignment(f"{RUN}x", f"{RUN}z")
+    assert len(RUN) not in mapping and anchored == set(range(len(RUN)))
+
+
+def test_a_pausal_taa_aligns_to_the_wasl_taa_but_is_never_anchored():
+    # a pausal ه against the ت group of Muraja's reference (the same pairs as counterpart's test)
+    mapping, anchored = muraja_policy.anchored_alignment("دَه", "دَتَںںں")
+    assert mapping == {0: 0, 1: 1, 2: 2}
+    assert anchored == frozenset()
+    mapping, anchored = muraja_policy.anchored_alignment("ثَه وَ", "ثَتِوو وَ")
+    assert mapping == {0: 0, 1: 1, 2: 2, 4: 7, 5: 8}
+    assert anchored == frozenset()
+
+
+def test_any_other_replacement_is_not_mapped_across():
+    # two letters against one group: not the pausal taa, so the ه maps to nothing
+    mapping, _ = muraja_policy.anchored_alignment("دَهُم", "دَتَںںں")
+    assert 2 not in mapping
+
+
+@pytest.mark.parametrize("text, reference", [("", "abc"), ("abc", ""), ("", ""), (" ", "  ")])
+def test_an_empty_side_aligns_nothing(text, reference):
+    assert muraja_policy.anchored_alignment(text, reference) == ({}, frozenset())
+
+
+def test_the_alignment_is_the_one_counterpart_reads():
+    text, reference = "لَں تَمَ", "لَںںں تَمَسسَنَ"
+    mapping, _ = muraja_policy.anchored_alignment(text, reference)
+    assert [counterpart(text, i, reference) for i in range(len(text))] == [
+        mapping.get(i) for i in range(len(text))]
+
+
+def test_the_private_alignment_is_gone_and_nothing_imports_it():
+    assert not hasattr(muraja_policy, "_alignment")
+    tools = Path(__file__).resolve().parents[1]
+    private = re.compile(r"(?<![A-Za-z0-9_])_alignment\b")
+    offenders = [str(path.relative_to(tools)) for path in sorted(tools.rglob("*.py"))
+                 if path not in (Path(__file__).resolve(), Path(muraja_policy.__file__).resolve())
+                 and private.search(path.read_text(encoding="utf-8"))]
+    assert offenders == []
 
 
 def test_a_site_maps_to_its_word_and_the_letter_the_app_marks(text):

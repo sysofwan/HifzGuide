@@ -292,11 +292,11 @@ def test_m1u_counts_a_check_that_graded_below_correct_before_the_word_went_pendi
     assert m_labels(app=app) == ["M1u", "M3"]
 
 
-def test_m1u_needs_a_check_below_correct_an_ungraded_word_with_none_is_a_plain_miss():
+def test_m1u_needs_a_check_below_correct_an_ungraded_word_with_a_status_but_none_is_a_plain_miss():
+    # Amended by A2 (2026-11-24): an App word with no row at all is M-nograde, not a plain miss;
+    # see test_followalong_prereg_nograde.py. A word with a status at some check stays M2/M3.
     app = trace(status("pending"), [check(cell=status("pending")), check(cell=None)])
     assert m_labels(app=app) == ["M3"]
-    assert m_labels(app=None) == ["M3"]
-    assert m_labels(app=None, teacher=FLAGGED) == ["M2"]
 
 
 def test_the_checks_of_an_ungraded_word_never_make_it_m1r_or_m1_and_a_passed_one_never_m1u():

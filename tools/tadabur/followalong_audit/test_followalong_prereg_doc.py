@@ -55,7 +55,7 @@ SECTIONS = ("Population", "Arms", "Strata", "Verdicts", "Attribution", "Decision
             "Estimates", "Pilot", "Dataset")
 STRATUM_SIZES = {"S1": 200, "S3": 250, "S4": 60, "S5": 30}
 PILOT = {"S1": 56, "S3": 69, "S4": 17, "S5": 8}
-BUCKETS = ("F1", "F1-align", "F-ref", "F2", "F3", "M1", "M1r", "M1u", "M2", "M3")
+BUCKETS = ("F1", "F1-align", "F-ref", "F2", "F3", "M1", "M1r", "M1u", "M-nograde", "M2", "M3")
 APPROVAL = r"(pending|https://github\.com/sysofwan/HifzGuide/issues/310#issuecomment-\d+)"
 
 
@@ -283,8 +283,9 @@ def test_section_3_sizes_the_strata_and_keeps_s4_as_the_control():
     rows = {cells[0].split(":")[0].split()[0]: cells for cells in _table_rows(_section(3))
             if len(cells) >= 5 and re.match(r"(S[1345]|repeats)\b", cells[0])}
     assert set(rows) == {*STRATUM_SIZES, "repeats"}
-    pools = {"S1": STRATA["S1"] + STRATA["S1-pending"], "S3": STRATA["S3"],
-             "S4": STRATA["S4"], "S5": STRATA["S5"]}
+    # Amended by A1 (2026-11-24): the stratum table's pool is the covered frame, not the candidate
+    # pool (the candidate pools are quoted beside it, above).
+    pools = {"S1": 4697, "S3": 1447, "S4": 38047, "S5": 1207}
     for stratum, size in STRATUM_SIZES.items():
         pool, n, pilot, inclusion = rows[stratum][1:5]
         assert (_int(pool), _int(n), _int(pilot)) == (pools[stratum], size, PILOT[stratum])
@@ -313,7 +314,7 @@ def test_section_3_s1_table_has_the_14_primary_cause_cells_that_sum_to_the_pool(
     assert {(row[0], row[1]) for row in cells} == {(c, b) for c in PRIMARY_ORDER
                                                    for b in ("yes", "no")}
     counts = {(row[0], row[1] == "yes"): _int(row[2]) for row in cells}
-    assert sum(counts.values()) == 5156
+    assert sum(counts.values()) == 4697  # the covered S1 words (A1); the pool proper is 5,156
     assert sum(_int(row[3]) for row in cells) == STRATUM_SIZES["S1"]
 
 
@@ -323,8 +324,8 @@ def test_the_s1_cells_agree_with_the_committed_word_tables_and_pools():
     counts = {(row[0], row[1] == "yes"): _int(row[2]) for row in cells}
     totals = _s1_primary_totals()
     assert sum(totals.values()) == 5156
-    for cause in PRIMARY_ORDER:
-        assert counts[(cause, True)] + counts[(cause, False)] == totals[cause], cause
+    for cause in PRIMARY_ORDER:  # A1: only the covered words are in a cell
+        assert counts[(cause, True)] + counts[(cause, False)] <= totals[cause], cause
     any_cause = {(row["cause"], row["base_flags"]): row["words"]
                  for row in POOLS["s1_by_cause_and_base"]}
     for cell, words in counts.items():
@@ -381,7 +382,8 @@ def test_section_5_defines_every_bucket_and_the_precedence():
     for bucket in BUCKETS:
         assert re.search(rf"(?<![\w-]){re.escape(bucket)}(?![\w-])", text), bucket
     _expect(text, r"F1\s*(→|->)\s*F1-align\s*(→|->)\s*F-ref\s*(→|->)\s*F2",
-            r"M1r\s*(→|->)\s*M1\s*(→|->)\s*M1u\s*(→|->)\s*M2\s*(→|->)\s*M3")
+            r"M1r\s*(→|->)\s*M1\s*(→|->)\s*M1u\s*(→|->)\s*M-nograde\s*(→|->)\s*M2"
+            r"\s*(→|->)\s*M3")
 
 
 def test_section_5_pins_the_matching_rules_of_the_architect_decisions():

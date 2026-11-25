@@ -9,6 +9,7 @@ pay must not leave a new ``pools.json`` beside an old ``cells.json``.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from pathlib import Path
 
@@ -22,8 +23,15 @@ from tadabur.followalong_audit.allocation import PRIMARY_CAUSES
 DETECTORS = ("base", "c95", "r2_candidate_ema", "r3_candidate_ema")
 
 
+_SERIAL = itertools.count()
+
+
 def _row(stratum: str = "S5", causes=(), base: bool = False) -> dict:
+    # Every row is its own clip (A1's coverage record reads the clip's words in order).
     return {
+        "key": f"clip{next(_SERIAL)}#0",
+        "position": 0,
+        "app": "ungraded" if stratum == "S5" else "passed",
         "stratum": stratum,
         "catch_loss": False,
         "detectors": {name: name == "base" and base for name in DETECTORS},

@@ -24,19 +24,22 @@ AUDIT = ROOT / "tools" / "tadabur" / "followalong_audit"
 CELLS = json.loads((AUDIT / "app_arm" / "cells.json").read_text(encoding="utf-8"))
 PREREG = ROOT / "docs" / "followalong-audit-preregistration.md"
 
-#: The cells as the S3 re-grade at 028bc51 computed them (words, snips).
+#: The cells as the strata re-grade at 028bc51 computes them over the *covered* words, the
+#: Teacher-graded ones (words, snips). Amended by A1 (2026-11-24): the first version counted
+#: every S1 word (5,156); the 459 the Teacher decode never graded left the frame.
 EXPECTED_CELLS = {
-    ("target_pair", False): (24, 3), ("target_pair", True): (41, 3),
-    ("soft_pair", False): (129, 5), ("soft_pair", True): (344, 13),
-    ("other_consonant", False): (1150, 44), ("other_consonant", True): (1607, 61),
-    ("shaddah", False): (61, 3), ("shaddah", True): (174, 6),
-    ("tashkeel", False): (283, 11), ("tashkeel", True): (416, 16),
-    ("skipped", False): (147, 5), ("skipped", True): (296, 11),
-    ("unrecorded", False): (98, 4), ("unrecorded", True): (386, 15),
+    ("target_pair", False): (20, 3), ("target_pair", True): (41, 3),
+    ("soft_pair", False): (105, 4), ("soft_pair", True): (344, 14),
+    ("other_consonant", False): (915, 38), ("other_consonant", True): (1607, 67),
+    ("shaddah", False): (45, 3), ("shaddah", True): (174, 7),
+    ("tashkeel", False): (208, 9), ("tashkeel", True): (416, 17),
+    ("skipped", False): (82, 4), ("skipped", True): (296, 12),
+    ("unrecorded", False): (58, 3), ("unrecorded", True): (386, 16),
 }
 EXPECTED_S4 = {"words": 38598, "at_least_one_detector_ungraded": 2184,
                "all_four_detectors_ungraded": 57, "ungraded_pairs": 3059}
-EXPECTED_S5 = {"leading": (3933, 10), "trailing": (5103, 10), "interior": (306, 10)}
+# Amended by A1: the covered words of S5 (candidate buckets 3,933 / 5,103 / 306).
+EXPECTED_S5 = {"leading": (510, 10), "trailing": (549, 10), "interior": (148, 10)}
 
 
 def _cells(line: str) -> list[str]:
@@ -70,7 +73,7 @@ def test_the_cells_record_holds_the_14_primary_cause_cells():
 
 def test_the_cells_are_the_pre_registered_floor_and_largest_remainder_split():
     counts = {key: words for key, (words, _) in EXPECTED_CELLS.items()}
-    assert sum(counts.values()) == 5156
+    assert sum(counts.values()) == 4697
     assert allocate(counts, 200, floor=3) == {key: n for key, (_, n) in EXPECTED_CELLS.items()}
 
 

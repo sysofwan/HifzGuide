@@ -283,9 +283,12 @@ def test_section_3_sizes_the_strata_and_keeps_s4_as_the_control():
     rows = {cells[0].split(":")[0].split()[0]: cells for cells in _table_rows(_section(3))
             if len(cells) >= 5 and re.match(r"(S[1345]|repeats)\b", cells[0])}
     assert set(rows) == {*STRATUM_SIZES, "repeats"}
-    # Amended by A1 (2026-11-24): the stratum table's pool is the covered frame, not the candidate
-    # pool (the candidate pools are quoted beside it, above).
-    pools = {"S1": 4697, "S3": 1447, "S4": 38047, "S5": 1207}
+    # Amended by A1 (2026-11-24): S5's pool in the stratum table is its transcript-covered frame
+    # (the candidate pools are quoted beside it, above); S1, S3 and S4 are whole.
+    coverage = _json("app_arm/cells.json")["coverage"]
+    s5_frame = sum(coverage["frame"][f"S5-{bucket}"] for bucket in ("leading", "trailing", "interior"))
+    pools = {"S1": STRATA["S1"] + STRATA["S1-pending"], "S3": STRATA["S3"],
+             "S4": STRATA["S4"], "S5": s5_frame}
     for stratum, size in STRATUM_SIZES.items():
         pool, n, pilot, inclusion = rows[stratum][1:5]
         assert (_int(pool), _int(n), _int(pilot)) == (pools[stratum], size, PILOT[stratum])
@@ -314,7 +317,7 @@ def test_section_3_s1_table_has_the_14_primary_cause_cells_that_sum_to_the_pool(
     assert {(row[0], row[1]) for row in cells} == {(c, b) for c in PRIMARY_ORDER
                                                    for b in ("yes", "no")}
     counts = {(row[0], row[1] == "yes"): _int(row[2]) for row in cells}
-    assert sum(counts.values()) == 4697  # the covered S1 words (A1); the pool proper is 5,156
+    assert sum(counts.values()) == 5156
     assert sum(_int(row[3]) for row in cells) == STRATUM_SIZES["S1"]
 
 
@@ -324,8 +327,8 @@ def test_the_s1_cells_agree_with_the_committed_word_tables_and_pools():
     counts = {(row[0], row[1] == "yes"): _int(row[2]) for row in cells}
     totals = _s1_primary_totals()
     assert sum(totals.values()) == 5156
-    for cause in PRIMARY_ORDER:  # A1: only the covered words are in a cell
-        assert counts[(cause, True)] + counts[(cause, False)] <= totals[cause], cause
+    for cause in PRIMARY_ORDER:
+        assert counts[(cause, True)] + counts[(cause, False)] == totals[cause], cause
     any_cause = {(row["cause"], row["base_flags"]): row["words"]
                  for row in POOLS["s1_by_cause_and_base"]}
     for cell, words in counts.items():

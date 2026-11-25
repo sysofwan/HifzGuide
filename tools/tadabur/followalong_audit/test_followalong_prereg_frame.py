@@ -29,13 +29,14 @@ def _section(number: int) -> str:
 
 
 def test_the_frame_is_every_covered_word_of_the_strata_with_positive_inclusion_probability():
-    # Amended by A1 (2026-11-24): the candidate pools hold 54,555 words; the frame is the 45,398
-    # the Teacher decode graded, and the other 9,157 are a reported pool with pi = 0.
+    # Amended by A1 (2026-11-24): the candidate pools hold 54,555 words; the frame is those minus
+    # the S5 words the Teacher transcript does not cover, a reported pool with pi = 0.
     candidate = POOLS["S1"] + POOLS["S1-pending"] + sum(POOLS[name] for name in ("S3", "S4", "S5"))
     assert candidate == 54555
     assert CELLS["coverage"]["frame_words"] + CELLS["coverage"]["not_covered_words"] == candidate
     text = _section(7)
-    assert "sampled subpopulation" in text and "**45,398 words**" in text
+    assert "sampled subpopulation" in text
+    assert f"**{CELLS['coverage']['frame_words']:,} words**" in text
     assert "π = 0" in text
     for name in UNSAMPLED:
         assert name in text and f"{POOLS[name]:,}" in text
@@ -73,5 +74,5 @@ def test_s4_contributes_to_both_denominators_and_its_own_bound_is_not_a_headline
 
 def test_section_3_names_the_same_frame():
     text = _section(3)
-    assert "45,398 words" in text
+    assert f"{CELLS['coverage']['frame_words']:,} words" in text
     assert "π = 0" in text

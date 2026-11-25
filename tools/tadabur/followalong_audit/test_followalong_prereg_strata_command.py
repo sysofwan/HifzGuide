@@ -32,6 +32,7 @@ def _row(stratum: str = "S5", causes=(), base: bool = False) -> dict:
         "key": f"clip{next(_SERIAL)}#0",
         "position": 0,
         "app": "ungraded" if stratum == "S5" else "passed",
+        "transcript_covered": True if stratum == "S5" else None,
         "stratum": stratum,
         "catch_loss": False,
         "detectors": {name: name == "base" and base for name in DETECTORS},

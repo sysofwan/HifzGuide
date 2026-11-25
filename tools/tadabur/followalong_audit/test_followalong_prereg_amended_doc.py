@@ -122,3 +122,17 @@ def test_the_changelog_records_the_five_amendments_and_the_owner_s_approval():
     for amendment in ("A1", "A2", "A3", "A4", "A5"):
         assert amendment in text
     _expect(text, r"2026-11-24", r"cross-check", r"owner")
+
+
+# --- principal-r3's ruling 2: the unknown words beside rule 2's share -----------------------------
+def test_rule_two_reports_the_unknown_count_by_stratum_beside_the_share():
+    text = _section(5) + _section(6)
+    _expect(text, r"unknown[^.\n]*(count|number)[^.\n]*(by|per) stratum|"
+                  r"(count|number) of unknown[^.\n]*(by|per) stratum")
+
+
+def test_rule_two_reports_the_share_at_both_extremes_and_leaves_a_straddle_to_the_owner():
+    text = _section(5) + _section(6)
+    _expect(text, r"every unknown[^.\n]*follow-along", r"every unknown[^.\n]*model",
+            r"straddle[^.\n]*50\s?%", r"not decided by the listened words",
+            r"owner[^.\n]*decides")

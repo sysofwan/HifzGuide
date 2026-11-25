@@ -384,9 +384,20 @@ ANCHOR_RUN = 3
 
 
 @lru_cache(maxsize=1024)
-def _alignment(text: str, reference: str) -> tuple[dict[int, int], frozenset[int]]:
-    """Every index of ``text`` with a counterpart in ``reference`` (spaces ignored on both
-    sides), and those inside a run of at least :data:`ANCHOR_RUN` identical characters."""
+def anchored_alignment(text: str, reference: str) -> tuple[dict[int, int], frozenset[int]]:
+    """Map each index of ``text`` to its counterpart in ``reference``, and which are anchored.
+
+    Spaces are ignored on both sides, but the indices are the two strings' own code points,
+    spaces counted: ``"abc de"`` against ``"abcde"`` maps ``4`` (``"d"``) to ``3``.
+
+    A character maps when it aligns in an ``equal`` run, or — a pausal ``ه`` against the wasl
+    ``ت`` of a taa marbuta's tanween (:func:`_pausal_taa`) — in a ``replace``, where only the
+    first index maps. An index is *anchored* when its ``equal`` run is at least
+    :data:`ANCHOR_RUN` long: a placement anchor, not a coincidental match. A mismatched
+    character, or either side empty, maps to nothing.
+
+    Both results are cached and shared: callers must not mutate them.
+    """
     a = [i for i, c in enumerate(text) if c != " "]
     b = [i for i, c in enumerate(reference) if c != " "]
     left, right = [text[i] for i in a], [reference[i] for i in b]
@@ -410,13 +421,13 @@ def counterpart(text: str, index: int, reference: str) -> int | None:
     marbuta at a pause: a pausal ``ه`` against the wasl ``ت`` group Muraja's reference holds
     (``تَںںں``, ``تِن``, ``تِوو``) maps to that ``ت``. Anything else spelled differently maps to
     nothing (``None``)."""
-    return _alignment(text, reference)[0].get(index)
+    return anchored_alignment(text, reference)[0].get(index)
 
 
 def counterparts_in(text: str, reference: str) -> dict[int, int]:
     """Each index of ``reference`` some character of ``text`` aligns to (:func:`counterpart`'s
     alignment), with that character's index: the reference characters ``text`` also holds."""
-    return {position: index for index, position in _alignment(text, reference)[0].items()}
+    return {position: index for index, position in anchored_alignment(text, reference)[0].items()}
 
 
 def _pausal_taa(realized: Sequence[str], reference: Sequence[str]) -> bool:
@@ -523,7 +534,7 @@ class MurajaText:
         a word recited twice, or one whose letters around the carrier match nothing, never
         borrows a neighbouring word's grade."""
         text, index = site.reference, site.reference_index
-        mapping, anchored = _alignment(text, reference)
+        mapping, anchored = anchored_alignment(text, reference)
         before = index - 1
         while before >= 0 and text[before] == " ":
             before -= 1

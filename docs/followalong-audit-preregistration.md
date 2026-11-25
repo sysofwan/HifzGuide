@@ -40,6 +40,19 @@ gating clip whose ayah the Teacher could place. Concretely:
 - Words are Muraja's phoneme words, keyed `(item, word)` on the App arm's committed table;
   `app_arm/word_grades.jsonl.gz` holds **57,935** of them.
 
+**The audio-coverage gate (A1), applied before the draw.** An App-ungraded word is **covered**
+when the **Teacher's whole-clip decode** — its checks' concatenated `hop` — **aligns** to the
+word's reference phonemes: the transcript is aligned to the ayah's reference with
+`training.muraja_policy`'s engine-free alignment (spaces ignored, a run of at least three
+characters anchors), and an anchored character inside the word's `phoneme_groups` span marks the
+word covered. **No engine grade decides coverage**, and the gate applies to the App-ungraded
+words only (**S5 only**): an App-graded word's grade is evidence of audio at its position, so S1,
+S3 and S4 stay whole. A word the transcript does not cover leaves the frame into the reported
+pool **"not covered by audio"** with **π = 0**, by edge class. The covered frame is **49,000
+words**; **5,555** S5 words are not covered by audio and are reported only. This is the gate the
+principal's cross-check required: without it, most S5 snips would be words nobody recited and
+`not_in_clip` verdicts would dominate the miss rate.
+
 **Disclosures (A5).**
 
 - **Round 3 warm-started from round 2's EMA**, which was selected on these tranches. The App arm
@@ -120,8 +133,24 @@ S3, S4, S5 below are the pools `assign_stratum` returns, and the repeated names 
 
 S1 ∪ S1-pending is the S1 pool proper, **N = 5,156**: the 5 pending words are the oracle's
 *ungraded* words, not oracle-explained ones. The `residual` and `oracle-explained` pools are
-**not sampled** in this audit (π = 0); their counts are reported only, and §7's headline frame is
-the sampled subpopulation of **54,555 words**.
+**not sampled** in this audit (π = 0); their counts are reported only.
+
+**The coverage gate (A1) splits the candidate 54,555 sampled words into a frame and a reported
+pool.** S1, S3 and S4 are whole; S5's covered words are in the frame and its uncovered words are
+the reported "not covered by audio" pool (π = 0):
+
+| class | covered frame | not covered |
+|---|---:|---:|
+| S1 | 5,156 | 0 |
+| S3 | 1,459 | 0 |
+| S4 | 38,598 | 0 |
+| S5-leading | 2,038 | 1,895 |
+| S5-trailing | 1,553 | 3,550 |
+| S5-interior | 196 | 110 |
+| **total** | **49,000** | **5,555** |
+
+49,000 + 5,555 = 54,555: the candidate pools are unchanged, and the frame the draw samples is
+**49,000 words**. The gate is the Teacher transcript's, never an engine grade (A1).
 
 **The design.** The design is **540** stratum snips, **cumulative pilot and main sitting**: S1 200,
 S3 250, S4 60, S5 30. The **150**-snip pilot is the **first 150 of those 540** — S1 56, S3 69, S4
@@ -134,7 +163,7 @@ from words nothing flags.
 | S1: the App flags and the oracle passes | 5,156 | 200 | 56 | 0.0388 |
 | S3: the App passes and the base or ≥ 2 detectors flag | 1,459 | 250 | 69 | 0.171 |
 | S4: the App passes and nothing flags | 38,598 | 60 | 17 | 0.00155 |
-| S5: the App left the word ungraded | 9,342 | 30 | 8 | 0.00321 |
+| S5: the App left the word ungraded, and the transcript covers it | 3,787 | 30 | 8 | 0.00792 |
 | repeats: seeded re-asks of this audit's own items | 540 | 25 | 7 | - |
 
 The table's inclusion column is each stratum's overall n ÷ pool: S3 and S4 are one cell each, so
@@ -178,28 +207,35 @@ The 200 snips are allocated **proportionally with a floor of 3 per cell**, the r
 target_pair cells; without it they would get 2 and 1–2 snips. Readouts report **every cause** a word carries, not only the primary; rule 3's
 soft/target test is any cause in {soft_pair, target_pair}.
 
-**S5's composition.** S5's 9,342 words are mostly clip edges: **leading 3,933**, **trailing
-5,103**, **interior 306**, and **250 clips** are entirely ungraded. The oracle arm leaves only 245
-of 57,935 words ungraded, so these are real decodes at clip edges (single-ayah clips put a session
-start and end every ~10 words) or words not in the recorded audio. S5's 30 snips split
-**leading 10 / trailing 10 / interior 10**, and the buckets do not share π:
+**S5's composition.** S5's candidate pool of 9,342 words is mostly clip edges: **leading 3,933**,
+**trailing 5,103**, **interior 306**, and **250 clips** are entirely ungraded. The coverage gate
+keeps **2,038 leading / 1,553 trailing / 196 interior** words — 3,787 in all — and reports the
+other **1,895 / 3,550 / 110** as not covered by audio. The engine left ungraded many of those words; the transcript covers 3,787 of them, and
+the base detector graded only 1,207 S5 words, so at most 2,580 covered words are engine-ungraded
+too. S5's 30 snips split **leading
+10 / trailing 10 / interior 10** over the *covered* words, and the buckets do not share π.
 
-| S5 bucket | words | n | inclusion |
+| S5 bucket | covered words | n | inclusion |
 |---|---:|---:|---:|
-| leading | 3,933 | 10 | 0.00254 |
-| trailing | 5,103 | 10 | 0.00196 |
-| interior | 306 | 10 | 0.0327 |
- An "unusable audio" verdict carries the sub-reason
-`not_in_clip` when the word is not in the recording. Every headline rate is also reported without
-each clip's first and last engine word. A possible end-word mechanism — the withheld grade is
-stored only at score ≥ 0.75 (`GradeStore.swift:663,676-691`) — is checked in S7, never asserted
-here.
+| leading | 2,038 | 10 | 0.00491 |
+| trailing | 1,553 | 10 | 0.00644 |
+| interior | 196 | 10 | 0.051 |
+
+S5's leading and trailing snips are drawn from covered words only, and an S5 leading or trailing
+word is served as a **whole clip** (`whole_played = true`), because a one-word snip of an edge
+word cannot be judged without its neighbours; interior S5 words are served as snips. An
+"unusable audio" verdict carries the sub-reason `not_in_clip` when the word is not in the
+recording. Every headline rate is also reported without the first and last word of
+each clip's ayah range. A possible end-word mechanism — the withheld grade is stored only at
+score ≥ 0.75 (`GradeStore.swift:663,676-691`) — is checked in S7, never asserted here.
 
 **S4 means "nothing that graded it flagged it".** `assign_stratum` treats an ungraded detector as
 not flagging, so S4 is "the App passes and no detector that graded the word flags it". Of the
 39,936 word × detector pairs that are ungraded, **2,184** S4 words had **at least one detector** ungraded and **57** had **all four detectors** ungraded. S4's bound is labelled accordingly.
 
-**Draw mechanics.** S5 draws the full 540 first, as one **seeded** random **permutation** per
+**Draw mechanics.** The draw samples the **49,000-word covered frame**: S1's cells, S3, S4 and
+S5's covered leading/trailing/interior words; the 5,555 not-covered S5 words are never drawn.
+S5 draws the full 540 first, as one **seeded** random **permutation** per
 cell. The pilot is each cell's **prefix** — within a stratum, allocated by largest remainder over
 the cells' main allocations with no floor — and the main sitting continues the same permutation
 from the pilot's prefix. Later and resized draws extend the same permutations, so every cell stays
@@ -207,7 +243,8 @@ a simple random sample. The **inclusion probabilit**y of a word is its cell's fi
 the final n includes the already-served pilot prefix.
 
 **Repeats.** Round 2's catch-loss worklist **matched 0** of its 150 words in this population (they
-are look-tranche rows), and round 3's worklist is checked the same way; any match is excluded. So
+are look-tranche rows), and the same check on round 3's worklist also matched 0 of 150; any match
+would be excluded. So
 the 25 **seeded** **re-ask**s are this audit's own items: 7 in the pilot and 18 in the main
 sitting, each served at least **20 items** after its original. The **first verdict** counts in
 every rate; repeats feed only the agreement figure.
@@ -258,26 +295,36 @@ second.
   re-grading it. It is checked after F1/F1-align and before F2/F3, and it is never settled by hand: rule 2 is computed with F-ref on **both** sides
   and both are reported if they differ.
 - **F2**: the Teacher arm, through the engine, passes the word. **F3**: it flags the word or left
-  it **ungraded** — a Teacher-ungraded word is **not learnable** (D8), counted and shown to the
-  owner and Fable.
+  it **ungraded**. A Teacher-ungraded word is a **reported bound** (D8) and stays on the
+  model side for rule 2; rule 5 neither learns nor rejects on it (A3).
 
 **Missed mistakes** — the owner heard a mistake the App did not flag. Every label met is
 recorded, in precedence order:
 
-**M1r → M1 → M1u → M2 → M3**
+**M1r → M1 → M1u → M-nograde → M2 → M3**
 
 - **M1r**: the App's kept grade is `passed` and some check's status is below correct.
-- **M1**: the kept grade is `passed` and a setting check decoded the deviation away — its status
-  has errors or a score below 1.
+- **M1**: the kept grade is `passed` and a setting check decoded a deviation the engine
+  **forgives** — its status has errors or a score below 1.
 - **M1u**: the kept grade is **ungraded** and some check's status is below correct — the engine
   graded the word and the app dropped the grade.
+- **M-nograde**: the kept grade is **ungraded** and **no App status** exists at **any check** — no
+  row at all, no checks, or every check's status `None`. The engine never saw the word, so M1u
+  cannot fire. Its side is follow-along when the **Teacher arm graded** the word, **unknown** when
+  it did not.
 - **M2**: the Teacher arm, through the engine, flags the word. **M3**: neither arm flags it (the
   Teacher's ungraded outcome is M3, D8).
 
 `side(bucket)` puts F1, F1-align, M1r, M1 and M1u on the follow-along side and F2, F3, M2 and M3
-on the model side; F-ref goes to whichever side rule 2 is reading. `model_share` is rule 2's
-fraction. A false-flag call on a word the App did not flag, and a miss call on a word it did,
-raise.
+on the model side; M-nograde is on the follow-along side when the Teacher arm graded the word and
+**unknown** when it did not; F-ref goes to whichever side rule 2 is reading. Rule 2's share is the
+**unweighted fraction of listened words**, and an unknown no-grade word is **excluded** from both
+its numerator and its denominator: it carries no evidence for either side. The readout reports the
+**number of unknown words by stratum** and the share at **both extremes**: with
+**every unknown** on the follow-along side, and with **every unknown** on the model side. If the
+two extremes **straddle 50%**, rule 2 is **not decided by the listened words** and the
+**owner decides**. The π-weighted share without S4 is a sensitivity. A false-flag call on a word
+the App did not flag, and a miss call on a word it did, raise.
 
 ## 6. Decision rule
 
@@ -288,24 +335,32 @@ The PRD's rule, frozen with these numbers:
 2. **A fix is accepted only if a corpus replay loses no verified catch**: the replay must not turn
    a known correct catch into a miss.
 3. **Fine-tune at ≥ 50% model share** — compute it after the follow-along fixes, as the model
-   side's fraction of the attributed words (F-ref on each side, both reported).
+   side's fraction of the attributed words. The share is the **unweighted fraction** of the
+   listened words (F-ref on each side, both reported); the π-weighted share without S4 is a
+   sensitivity. Unknown M-nograde words are outside both numerator and denominator.
 4. **The miss side decides only with ≥ 60 confirmed misses.** Below 60 the audit reports
    **direction** and decides nothing on misses.
 5. **F2 + M2 vs F3 + M3** picks the kind of model work: F2/M2 say the Teacher sees what the App
-   does not (learnable), F3/M3 say the word is beyond the Teacher. If **soft or target** pairs
-   hold **half of F3**, propose a **strict-mode allowance** instead of a fine-tune.
+   does not (learnable), F3/M3 say the word is beyond the Teacher. Read the rule on the
+   **Teacher-graded** words only (A3): Teacher-ungraded words stay on the model side for rule 2
+   as a **reported bound**, and rule 5 reports the **all-F2 / all-F3** (and all-M2 / all-M3)
+   **extremes** — every Teacher-ungraded word counted on the learnable side, then on the beyond
+   side. If the two **extremes disagree** on the direction, the readout says so and the
+   **owner decides**. If **soft or target** pairs hold **half of F3**, propose a
+   **strict-mode allowance** instead of a fine-tune.
 
 ## 7. Estimates
 
 **The estimation frame (frozen).** The headline frame is the **sampled subpopulation**: the four
-strata with positive inclusion probability — S1 5,156 + S3 1,459 + S4 38,598 + S5 9,342 =
-**54,555 words**. The `residual` (3,379) and `oracle-explained` (1) pools have π = 0, so no
-listening outcome exists for them and no weight can recover one; their counts are reported only,
-never weighted into a rate. This follows `docs/acceptance-rules.md`: the headline population is the
-sampled subpopulation unless every outcome stratum has positive probability. Every estimate here
-is **conditional on this frame** — not a rate for all 57,935 words, nor for all placeable phone
-audio; any whole-population statement is a separately labelled bound, with the unsampled pools'
-counts beside it.
+strata with positive inclusion probability that the coverage gate leaves — S1 5,156 + S3 1,459 +
+S4 38,598 + S5's covered 3,787 = **49,000 words**. The **5,555** S5 words the Teacher transcript
+does not cover are a **not covered by audio** pool with **π = 0**, and the `residual` (3,379) and
+`oracle-explained` (1) pools have π = 0 too: no listening outcome exists for any of them and no
+weight can recover one. Their counts are reported only, never weighted into a rate. This follows
+`docs/acceptance-rules.md`: the headline population is the sampled subpopulation unless every
+outcome stratum has positive probability. Every estimate here is **conditional on this frame** —
+not a rate for all 57,935 words, nor for all placeable phone audio; any whole-population statement
+is a separately labelled bound, with the unsampled pools' counts beside it.
 
 Two sides, never pooled (ADR-0008), each weighted by the word's **cell** inclusion probability π
 (S1's 14 cells and S5's 3 buckets do not share it; S3 and S4 are one cell each):
@@ -314,17 +369,22 @@ Two sides, never pooled (ADR-0008), each weighted by the word's **cell** inclusi
   1,000 · Σ_{w∈frame, verdict correct} π_w⁻¹ F_w / Σ_{w∈frame, verdict correct} π_w⁻¹, where
   F_w = 1 when the App flagged the word and the owner heard it correct (F1, F1-align, F-ref, F2 or
   F3), else 0. A clip-bootstrap **95%** interval resamples whole clips.
-- **Misses per 100 confirmed mistakes** =
-  100 · Σ_{w∈frame, verdict mistake, App not flagged} π_w⁻¹ / Σ_{w∈frame, verdict mistake} π_w⁻¹,
+- **The headline miss rate** is computed on **H = S1 ∪ S3 ∪ S5-interior**, and reported as
+  **misses per 100 confirmed mistakes** =
+  100 · Σ_{w∈H, verdict mistake, App not flagged} π_w⁻¹ / Σ_{w∈H, verdict mistake} π_w⁻¹,
   with the same bootstrap. A served word counts once, at its first verdict.
 
-**S4's role.** S4 contributes to **both denominators** — its correctly recited words enter the
-false-flag denominator and its mistakes the miss denominator — and to the miss numerator; it
-cannot enter the false-flag numerator because nothing flags there. **S4 is a labelled bound, not a headline**: it bounds the miss rate on
-words nothing flags, and its detectors that graded nothing weaken the bound.
+**S4's role.** S4's correctly recited words enter the **false-flag denominator**; it
+**cannot enter the false-flag numerator** because nothing flags there.
+**S4 is a labelled bound, not a headline**
+(A4): one control verdict carries a weight two orders of magnitude above an S3 word's,
+so S4's mistakes are **not** in the headline miss rate. **S4 and the S5-edge words are separate
+labelled bounds**: S5-edge words are **not** in the headline either, and neither is S4. The
+**full-frame π-weighted** estimate over every covered word is a **sensitivity** with its own
+**interval**, reported beside the headline; S4 and S5-edge are included in it.
 
-Every headline rate is also reported without each clip's first and last engine word, and in
-balanced beside strict.
+Every headline rate is also reported without the first and last word of each clip's ayah range,
+and in balanced beside strict.
 
 The **catch rate on known verified tlog mistakes** runs the App arm on the **33** verified
 look-tranche mistakes — **11** from round 2 and **22** from round 3 (`look`, not this population).
@@ -373,5 +433,12 @@ from the existing verdicts (#225, #257, Ship A)?
 
 ## Changelog
 
+- 2026-11-24: amendments **A1–A5** applied after the principal's **cross-check** and the
+  **owner**'s approval: **A1** the Teacher-transcript audio-coverage gate (S5 only, no engine
+  grade; frame 49,000 words, 5,555 not covered with π = 0, S5 edge snips served whole); **A2**
+  M-nograde and the precedence M1r → M1 → M1u → M-nograde → M2 → M3; **A3** rule 5 on the
+  Teacher-graded words with both extremes; **A4** the S1 + S3 + S5-interior headline, S4 and
+  S5-edge as separate bounds, and the unweighted rule-2 share with its π-weighted sensitivity;
+  **A5** the round-3 catch-loss result, the ayah-range edge sensitivity and the M1 wording.
 - 2026-11-24: written and frozen before S5's draw; all nine sections, with S3's pools and S0, S1,
   S3 and S2's gate results cited by commit.

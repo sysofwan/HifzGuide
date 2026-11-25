@@ -80,7 +80,7 @@ import json
 import threading
 import wave
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -501,14 +501,33 @@ class SessionState:
 
     def _whole_played(self, row: Row, previous: Verdict | None) -> bool | None:
         """Whether the whole clip has played for ``row``: asked for with ``whole=1`` in this
-        process, recorded for the site before (sticky across a re-answer and a restart), or
-        the item's snip is the clip itself. ``None`` without a snip sidecar, so a session
-        that does not offer the choice keeps its verdict file's old shape."""
+        process (which also rewrites an answer already given, :meth:`_note_whole_played`),
+        recorded for the site before (sticky across a re-answer and a restart), or the item's
+        snip is the clip itself. ``None`` without a snip sidecar, so a session that does not
+        offer the choice keeps its verdict file's old shape."""
         snip = self.snips.get(row.site.site_id)
         if snip is None:
             return None
         return (snip.snip_source == WHOLE_CLIP or row.site.site_id in self._served_whole
                 or bool(previous and previous.whole_played))
+
+    def _note_whole_played(self, row: Row) -> None:
+        """Rewrite a verdict already given for ``row`` so it records the whole clip that has
+        just played: the listener commonly checks an answer with the Whole control after
+        saving it, and the readout must count that clip. Called under the lock; a verdict
+        that already says so, or none yet, needs nothing. An unwritable file leaves the
+        served set intact, so a later answer still records it."""
+        stored = self.verdicts.get(row.site.site_id)
+        if stored is None or stored.whole_played is True:
+            return
+        updated = replace(stored, whole_played=True)
+        proposed = {**self.verdicts, updated.site_id: updated}
+        try:
+            write_verdicts(proposed, self.verdicts_path)
+        except OSError as error:  # the clip still plays; a re-answer records it too
+            print(f"verdict not updated with the whole clip: {error}", flush=True)
+            return
+        self.verdicts = proposed
 
     def mark_for_review(self, key: str, queued: bool) -> str | None:
         """Queue the site for another listen with :data:`LISTENER_REVIEW_NOTE`, or take it
@@ -549,6 +568,7 @@ class SessionState:
                 return encode_wav(samples[snip.start_sample:snip.end_sample])
             with self._lock:
                 self._served_whole.add(row.site.site_id)
+                self._note_whole_played(row)
             return encode_wav(samples)
         start, end = (
             (row.site.start_sample, row.site.end_sample)

@@ -170,6 +170,20 @@ def test_a_clip_missing_from_the_cache_refuses_at_startup(tmp_path):
         audit.load()
 
 
+def test_a_snip_that_runs_past_its_clip_refuses_at_startup(tmp_path):
+    """The sidecar's bounds are in the decoded 16 kHz clip, whose length the row records."""
+    audit = Audit(tmp_path)
+    sidecar = tmp_path / "snips.jsonl"
+    sidecar.write_text("".join(
+        json.dumps({"id": row["id"], "audio_sha256": row["audio_sha256"], "start_sample": 0,
+                    "end_sample": row["end_sample"] + 1, "snip_source": "alignment"}) + "\n"
+        for row in audit.rows), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="past the clip"):
+        SessionState.load_catch_loss(audit.worklist, audit.verdicts, audit.cache, _words,
+                                     snips=sidecar)
+
+
 # --- the audio -----------------------------------------------------------------------------------
 
 
@@ -216,6 +230,29 @@ def test_only_the_word_questions_answers_are_accepted(tmp_path):
     with pytest.raises(ValueError):
         state.record(key, "yes", "", "unclear")  # the page says "Yes"; the stored answer is "correct"
     assert read_verdicts(audit.verdicts)[row["id"]].heard == "unclear"
+
+
+def test_the_whole_clip_fetched_after_an_answer_rewrites_its_verdict_as_played(tmp_path):
+    """The listener may check a saved answer with the Whole control; the readout must count
+    that clip, so fetching it after the verdict rewrites the verdict's ``whole_played``."""
+    audit = Audit(tmp_path)
+    sidecar = tmp_path / "snips.jsonl"
+    sidecar.write_text("".join(
+        json.dumps({"id": row["id"], "audio_sha256": row["audio_sha256"],
+                    "start_sample": 0 if n == 0 else None,
+                    "end_sample": 100 if n == 0 else None,
+                    "snip_source": "alignment" if n == 0 else "whole_clip"}) + "\n"
+        for n, row in enumerate(audit.rows)), encoding="utf-8")
+    state = SessionState.load_catch_loss(audit.worklist, audit.verdicts, audit.cache, _words,
+                                         snips=sidecar)
+    key = page_key(audit.rows[0]["id"])
+    state.audio(key, whole=False)
+    state.record(key, "correct", "", None)
+    assert read_verdicts(audit.verdicts)[audit.rows[0]["id"]].whole_played is False
+
+    state.audio(key, whole=True)
+
+    assert read_verdicts(audit.verdicts)[audit.rows[0]["id"]].whole_played is True
 
 
 def test_an_answer_and_its_review_marker_survive_a_relaunch_beside_the_worklist(tmp_path):

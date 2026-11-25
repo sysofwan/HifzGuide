@@ -23,6 +23,10 @@ Owner approval: pending
 
 Principal cross-check: pending
 
+Fable's final cross-check **approved** this pre-registration on 2026-11-25 (`principal-r4`, head
+`4ac7a2bc`). The D14 line above changes from `pending` only when an issue-310 comment URL records
+the approval; the issue held no comments at this commit.
+
 ## 1. Population
 
 The population is the **placeable phone audio** of confirm.1 ∪ confirm.2: every claim-gated
@@ -213,7 +217,7 @@ leaves only **245** of 57,935 words ungraded, so the App's ungraded pool is App-
 reference-pipeline failure. The coverage gate
 keeps **2,038 leading / 1,553 trailing / 196 interior** words — 3,787 in all — and reports the
 other **1,895 / 3,550 / 110** as not covered by audio. The engine left ungraded 2,870 words the transcript covers (the base detector graded only 917
-of the 3,787; 1,207 of the whole S5 candidate pool), recorded as `s5_engine_graded` in
+of the 3,787), recorded as `s5_engine_graded` in
 `app_arm/cells.json`; those words are a finding S7 reads, not `not_in_clip`. S5's 30 snips split
 **leading 10 / trailing 10 / interior 10** over the *covered* words, and the buckets do not share π.
 

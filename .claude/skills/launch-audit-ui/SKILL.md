@@ -106,6 +106,39 @@ curl -s -o /dev/null -w "lan HTTP %{http_code}\n" http://<LAN-IP>:8000/
 
 Both must return `HTTP 200`. Give the user the exact URL: **`http://<LAN-IP>:8000/`**.
 
+## Serving the listening UI with word snips
+
+`tadabur.tashkeel_audit_ui --catch-loss` serves the catch-loss worklist as the listening UI's
+whole-word question. By default every item plays its whole look clip; **`--snips`** makes it
+play the word's excerpt instead, with the page's "Whole" button (`whole=1`) still fetching the
+whole clip:
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate hifzguide && cd /root/repos/HifzGuide/tools && \
+exec python -m tadabur.tashkeel_audit_ui \
+  --catch-loss tadabur/consonant3_readout/catch_loss/worklist.jsonl \
+  --clip-cache /root/scratch/tlog/r3/clips \
+  --snips tadabur/consonant3_readout/catch_loss/snips.jsonl \
+  --port 8000 --host 0.0.0.0
+```
+
+Build the sidecar **before any listening** and commit it beside the worklist:
+
+```bash
+python -m tadabur.word_snips build \
+  --worklist tadabur/consonant3_readout/catch_loss/worklist.jsonl \
+  --word-times tadabur/tlog_mining/word_times/look.jsonl.gz \
+              tadabur/tlog_mining/word_times/confirm.1.jsonl.gz \
+              tadabur/tlog_mining/word_times/confirm.2.jsonl.gz \
+  --out tadabur/consonant3_readout/catch_loss/snips.jsonl \
+  --report tadabur/consonant3_readout/catch_loss/snips.report.json
+```
+
+It prints the fallback rate — the share of items that play whole because the clip is not
+aligned, sits below the `ll_per_frame` gate, names another ayah, has no such word, or gives
+an excerpt shorter than the minimum. The sidecar is refused at startup if it misses a worklist
+id or was built for another clip, and each verdict records whether the whole clip played.
+
 ## Still refused from the user's machine?
 
 Once the listener shows `0.0.0.0:8000` and the host's own `curl http://<LAN-IP>:8000/` returns 200,

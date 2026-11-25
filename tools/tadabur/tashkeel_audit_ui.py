@@ -57,12 +57,17 @@ Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the
   python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000] \
       [--worklist tadabur/ship_a/worklist.jsonl --words tadabur/ship_a/word_sample.jsonl]
 
-or the catch-loss audit's worklist alone, playing each look clip whole from the box's
-cache (``scripts/issue-225-audit.sh ui launch`` on cuda-dev)::
+or the catch-loss audit's worklist alone from the box's look clip cache
+(``scripts/issue-225-audit.sh ui launch`` on cuda-dev), playing each item's snip when its
+sidecar is given and the whole look clip on the "Whole" control (``whole=1``) either way::
 
   python -m tadabur.tashkeel_audit_ui --catch-loss <catch_loss/worklist.jsonl> \
       --clip-cache /root/scratch/tlog/r2/clips --verdicts <catch_loss/verdicts.jsonl> \
-      --host 0.0.0.0
+      --snips <catch_loss/snips.jsonl> --host 0.0.0.0
+
+``--snips`` is the sidecar ``python -m tadabur.word_snips build`` writes beside the worklist
+from the committed word times; without it an item plays its whole clip, exactly as before.
+With it a verdict records whether the whole clip played (:func:`SessionState.audio`).
 """
 
 from __future__ import annotations
@@ -114,6 +119,7 @@ from .listening_session import (
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
 from .truth_sites import CONSONANTS, HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
 from .word_sample import WORD_MODE, WORD_VERDICTS, WordSite, load_words
+from .word_snips import ALIGNMENT, WHOLE_CLIP, Snip, read_snips
 
 _PAGE_PATH = Path(__file__).parent / "tashkeel_audit_page.html"
 #: The page's logic, a module with no DOM in it, so it is tested on its own.
@@ -323,6 +329,19 @@ def verify_audio(
         verify_staged(clip, audio_dir)
 
 
+def verify_snips(rows: list[CatchLossRow], snips: Mapping[str, Snip]) -> None:
+    """Fail unless every row has its snip and the snip was built for this clip and lies
+    inside it: a sidecar from another worklist revision never reaches the owner's ear."""
+    for row in rows:
+        snip = snips.get(row.site.site_id)
+        if snip is None:
+            raise ValueError(f"the snip file has no snip for {row.site.site_id}")
+        if snip.audio_sha256 != row.site.audio_sha256:
+            raise ValueError(f"{row.site.site_id}: the snip file was built for another clip")
+        if snip.snip_source == ALIGNMENT and snip.end_sample > row.site.end_sample:
+            raise ValueError(f"{row.site.site_id}: its snip runs past the clip")
+
+
 def asks_naturalness(row: Row) -> bool:
     """Whether the page also asks if the row sounds natural: the synthetic-edit check."""
     return isinstance(row, EditCheckSite)
@@ -351,7 +370,12 @@ class SessionState:
 
     ``review`` is the list of sites queued for another listen (:func:`read_review`): each
     one's note is shown with it, and saving its answer again, changed or not, takes it off
-    the list. The listener may also queue or unqueue a site (:meth:`mark_for_review`)."""
+    the list. The listener may also queue or unqueue a site (:meth:`mark_for_review`).
+
+    With ``snips`` (a catch-loss session's sidecar, :mod:`tadabur.word_snips`), a whole-word
+    item plays the clip's snip, ``whole=1`` still plays the whole clip, and a verdict records
+    whether the whole clip played. The page is told neither: the bounds are the reference
+    alignment's, and :meth:`view` is exactly what it is without them."""
 
     rows: list[Row]
     verdicts_path: Path
@@ -359,8 +383,10 @@ class SessionState:
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     review_path: Path | None = None
     review: dict[str, str] = field(default_factory=dict)
+    snips: Mapping[str, Snip] = field(default_factory=dict)
     _by_key: dict[str, Row] = field(default_factory=dict)
     _targets: dict[Word, list[Target]] = field(default_factory=dict)
+    _served_whole: set[str] = field(default_factory=set)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
@@ -396,16 +422,22 @@ class SessionState:
     @classmethod
     def load_catch_loss(
         cls, worklist: Path, verdicts: Path, clip_cache: Path,
-        uthmani_words, review: Path | None = None,
+        uthmani_words, review: Path | None = None, snips: Path | None = None,
     ) -> "SessionState":
         """The catch-loss audit's worklist (#225, #257) in its one seeded queue, once every
         look clip is verified against the SHA-256 its row records: the page is asked the
-        whole-word question and never sees a stratum, a grade or a weight."""
+        whole-word question and never sees a stratum, a grade or a weight. With ``snips``,
+        each item also plays the excerpt its sidecar records, once every row has one built
+        for its clip (:func:`verify_snips`)."""
         rows = read_catch_loss_worklist(worklist, uthmani_words)
         verify_clips(rows, clip_cache)
+        sidecar: dict[str, Snip] = {}
+        if snips is not None:
+            sidecar = read_snips(snips)
+            verify_snips(rows, sidecar)
         return cls(rows=queue([], [], rows), verdicts_path=verdicts, audio_dir=clip_cache,
                    verdicts=read_verdicts(verdicts), review_path=review,
-                   review={} if review is None else read_review(review))
+                   review={} if review is None else read_review(review), snips=sidecar)
 
     def row(self, key: str) -> Row:
         return self._by_key[key]
@@ -449,10 +481,12 @@ class SessionState:
             raise ValueError(f"{heard!r} is not an answer to this question")
         if natural not in (NATURALNESS if asks_naturalness(row) else (None,)):
             raise ValueError(f"{natural!r} is not an answer to whether this sounds natural")
-        verdict = Verdict(site_id=row.site.site_id, heard=heard, note=note, natural=natural)
         with self._lock:
-            if stored_answer(row, self.verdicts.get(verdict.site_id)) != previous:
+            stored = self.verdicts.get(row.site.site_id)
+            if stored_answer(row, stored) != previous:
                 raise StaleAnswer("this site was answered elsewhere since; reload the page")
+            verdict = Verdict(site_id=row.site.site_id, heard=heard, note=note, natural=natural,
+                              whole_played=self._whole_played(row, stored))
             proposed = {**self.verdicts, verdict.site_id: verdict}
             write_verdicts(proposed, self.verdicts_path)
             self.verdicts = proposed
@@ -464,6 +498,17 @@ class SessionState:
                     print(f"review list not rewritten: {error}", flush=True)
                 self.review = reviewed
         return verdict
+
+    def _whole_played(self, row: Row, previous: Verdict | None) -> bool | None:
+        """Whether the whole clip has played for ``row``: asked for with ``whole=1`` in this
+        process, recorded for the site before (sticky across a re-answer and a restart), or
+        the item's snip is the clip itself. ``None`` without a snip sidecar, so a session
+        that does not offer the choice keeps its verdict file's old shape."""
+        snip = self.snips.get(row.site.site_id)
+        if snip is None:
+            return None
+        return (snip.snip_source == WHOLE_CLIP or row.site.site_id in self._served_whole
+                or bool(previous and previous.whole_played))
 
     def mark_for_review(self, key: str, queued: bool) -> str | None:
         """Queue the site for another listen with :data:`LISTENER_REVIEW_NOTE`, or take it
@@ -490,11 +535,20 @@ class SessionState:
     def audio(self, key: str, whole: bool) -> bytes:
         """The site's excerpt, or its whole segment, as a WAV. A catch-loss item is its whole
         look clip from the cache: the clip's own container and rate (tlog's are not the staged
-        16 kHz WAV), and the span its row records is provenance, not a cut."""
+        16 kHz WAV), and the span its row records is provenance, not a cut. With a snip
+        sidecar an item plays its snip instead, unless ``whole`` asks for the clip; serving
+        the whole clip is remembered for the item's verdict (:meth:`_whole_played`)."""
         row = self.row(key)
         if isinstance(row, CatchLossRow):
             source = self.audio_dir / f"{row.site.audio_sha256}.audio"
             samples, _, _ = decode_to_mono_16k_with_rate_and_decoder(read_audio_bytes(source))
+            snip = self.snips.get(row.site.site_id)
+            if snip is None:
+                return encode_wav(samples)
+            if not whole and snip.snip_source == ALIGNMENT:
+                return encode_wav(samples[snip.start_sample:snip.end_sample])
+            with self._lock:
+                self._served_whole.add(row.site.site_id)
             return encode_wav(samples)
         start, end = (
             (row.site.start_sample, row.site.end_sample)
@@ -597,6 +651,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--clip-cache", type=Path, default=None,
                         help="the box's look clip cache (tlog/r2/clips), needed with "
                              "--catch-loss")
+    parser.add_argument("--snips", type=Path, default=None,
+                        help="a snip sidecar (tadabur.word_snips build) keyed by the "
+                             "catch-loss worklist's ids: each item plays its word's excerpt "
+                             "and a whole-clip control fetches the clip; needs --catch-loss")
     parser.add_argument("--edit-check", type=Path, default=None,
                         help="the synthetic-edit blind check asked in the same queue "
                              f"(default: {BLIND_CHECK_PATH.name})")
@@ -635,8 +693,10 @@ def main() -> None:
         directory = args.catch_loss.parent
         state = SessionState.load_catch_loss(
             args.catch_loss, args.verdicts or directory / "verdicts.jsonl", args.clip_cache,
-            _uthmani_words, args.review or directory / "review.jsonl")
+            _uthmani_words, args.review or directory / "review.jsonl", snips=args.snips)
     else:
+        if args.snips is not None:
+            parser.error("--snips needs --catch-loss")
         if args.audio_dir is None:
             parser.error("--audio-dir is required unless --catch-loss is given")
         state = SessionState.load(args.worklist or WORKLIST_PATH,

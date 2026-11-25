@@ -1,4 +1,24 @@
 {
+  "coverage": {
+    "frame": {
+      "S1": 5156,
+      "S3": 1459,
+      "S4": 38598,
+      "S5-interior": 196,
+      "S5-leading": 2038,
+      "S5-trailing": 1553
+    },
+    "frame_words": 49000,
+    "not_covered": {
+      "S1": 0,
+      "S3": 0,
+      "S4": 0,
+      "S5-interior": 110,
+      "S5-leading": 1895,
+      "S5-trailing": 3550
+    },
+    "not_covered_words": 5555
+  },
   "detector_ungraded": 39936,
   "s1_primary_cells": [
     {

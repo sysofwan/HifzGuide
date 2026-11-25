@@ -82,7 +82,7 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
         raise ValueError("two served items share an id")
     if len(key) != len(originals) + PILOT_REPEATS + MAIN_REPEATS:
         raise ValueError(f"the key holds {len(key)} served items, not the design's")
-    worklist = _worklist_rows(originals, clips, manifest)
+    worklist = _worklist_rows(key, clips, manifest)
     _write_jsonl(key, out / "key.jsonl")
     _write_jsonl(worklist, out / "worklist.jsonl")
     for sitting, plan in plans.items():
@@ -236,11 +236,15 @@ def _serve_rows(plan: Sequence, seed: int) -> list[dict]:
             for position, served in enumerate(plan, 1)]
 
 
-def _worklist_rows(originals: Sequence[Mapping], clips: Mapping[str, Mapping],
+def _worklist_rows(key: Sequence[Mapping], clips: Mapping[str, Mapping],
                    manifest: Mapping[str, Mapping]) -> list[dict]:
-    """The blind file: an opaque id, the clip's provenance, the ayah and the word's text."""
+    """The blind file: an opaque id, the clip's provenance, the ayah and the word's text.
+
+    One line per served item, a repeat's line identical to its original's but for the id, so the
+    page can serve both without knowing which is which.
+    """
     rows = []
-    for row in originals:
+    for row in key:
         clip = clips[row["item"]]
         words = _uthmani(row["surah_ayah"])
         if not 0 <= row["word_index"] < len(words):

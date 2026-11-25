@@ -19,7 +19,7 @@ Committed inputs this design is computed from:
 | S3 — the App arm on 5,742 clips, pools, P2 and P3 | `9f3f6da7e40da458ef27a38876a31eed49d1cc7c` |
 | S2 — the oracle and planted-mistake sweeps, the S1 oracle fill | `314dd8653735a22f0f2d11d32e469b116715ed72` |
 
-Owner approval: pending
+Owner approval: https://github.com/sysofwan/HifzGuide/issues/310#issuecomment-7158769300
 
 Principal cross-check: https://github.com/sysofwan/HifzGuide/issues/310#issuecomment-7155122212
 
@@ -437,6 +437,8 @@ from the existing verdicts (#225, #257, Ship A)?
 
 ## Changelog
 
+- 2026-11-25: **owner approval** of the pre-registration and Fable's **principal cross-check**
+  recorded by their issue-310 comment URLs; the design stays frozen for S5's draw.
 - 2026-11-24: amendments **A1–A5** applied after the principal's **cross-check** and the
   **owner**'s approval: **A1** the Teacher-transcript audio-coverage gate (S5 only, no engine
   grade; frame 49,000 words, 5,555 not covered with π = 0, S5 edge snips served whole); **A2**

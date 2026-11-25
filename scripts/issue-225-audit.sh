@@ -18,6 +18,8 @@
 #
 # The worklist is committed before the UI starts: `ui launch` stages the current branch, so a
 # worklist that is only in the box's clone (drawn above, not committed) is gone on relaunch.
+# A `snips.jsonl` committed beside it (python -m tadabur.word_snips build) is passed as
+# `--snips`, so each item plays its excerpt; without one the UI plays whole clips as before.
 # Restarting a running UI needs the owner's OK.
 #
 # `draw` and `ui` stage the current branch as a bundle on the box; the backup loop only copies
@@ -115,7 +117,11 @@ command_for() {
     draw)
       echo "python -u -m tadabur.catch_loss_audit draw$DRAW_ARG --tranche '$REPO/$TRANCHE' && cp '$REPO/$AUDIT/worklist.jsonl' '$REPO/$AUDIT/key.jsonl' '$REPO/$AUDIT/summary.json' '$ROOT/'" ;;
     ui)
-      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW' --port $PORT --host 0.0.0.0" ;;
+      snips=
+      if [ -f "$REPO_DIR/$AUDIT/snips.jsonl" ]; then
+        snips=" --snips '$REPO/$AUDIT/snips.jsonl'"
+      fi
+      echo "python -u -m tadabur.tashkeel_audit_ui --catch-loss '$REPO/$AUDIT/worklist.jsonl' --clip-cache '$CLIPS' --verdicts '$VERDICTS' --review '$REVIEW'$snips --port $PORT --host 0.0.0.0" ;;
     backup)
       echo "mkdir -p '$BACKUP'; while true; do
         cp '$VERDICTS' '$BACKUP/verdicts.'\$(date +%s)'.jsonl' 2>/dev/null || true

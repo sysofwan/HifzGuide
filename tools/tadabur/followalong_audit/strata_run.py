@@ -17,18 +17,21 @@ together so a zero is visible rather than implied.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from tadabur.followalong_audit.allocation import (
     PRIMARY_CAUSES, S1_CELL_FLOOR, S1_SNIPS, allocate, primary_cause,
 )
 from tadabur.followalong_audit.atomic import write_text_atomically
-from tadabur.followalong_audit.strata import S1, S1_PENDING, S4, pool_sizes, s1_records, stratify
+from tadabur.followalong_audit.coverage import ayah_coverage
+from tadabur.followalong_audit.strata import (
+    S1, S1_PENDING, S3, S4, S5, covered, pool_sizes, s1_records, stratify,
+)
 from tadabur.tlog_mining.candidate_inventory import DETECTORS, GATING, load_decode_lines
 from training.aug_readout_gate import harness_identity
 from training.external_corpus import word_grades
-from training.muraja_policy import CURRENT_COMMIT, STRICT, require_harness
+from training.muraja_policy import CURRENT_COMMIT, STRICT, MurajaText, require_harness
 from training.nonpro_decode import item_key
 from training.tlog_eval import gating_items
 
@@ -82,7 +85,35 @@ def strata_words(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
                          f"{sorted(unsupported)[:3]}")
     _, grades = word_grades(items, decodes, harness, models=DETECTORS, scorings=[STRICT])
     words, meta = words_from_grades(grades, app_grades, oracle=oracle, failed=failed_keys)
+    coverage = _transcript_coverage(words, base, MurajaText(harness.quran_db))
+    words = with_transcript_coverage(words, coverage)
     return words, {"items": len(items), **meta, "harness": harness_identity(harness)}
+
+
+def _transcript_coverage(words: Sequence[Mapping], teacher_rows: Mapping,
+                         text: MurajaText) -> dict[tuple[str, int], bool]:
+    """The Teacher transcript's verdict on every App-ungraded word, keyed ``(clip, word)``."""
+    by_clip: dict[str, list[int]] = {}
+    for row in words:
+        if row["app"] == "ungraded":
+            by_clip.setdefault(row["key"], []).append(row["word"])
+    coverage = {}
+    for key, clip_words in by_clip.items():
+        row = teacher_rows[key]
+        surah, ayah = (int(part) for part in row["surah_ayah"].split(":"))
+        listed = ayah_coverage(row, text, surah, ayah, clip_words)
+        coverage.update({(key, word): holds for word, holds in listed.items()})
+    return coverage
+
+
+def with_transcript_coverage(words: Iterable[Mapping],
+                             coverage: Mapping[tuple[str, int], bool]) -> list[dict]:
+    """Each word with ``transcript_covered``: the gate's verdict for an App-ungraded word, else
+    ``None``. A word the gate never assessed is refused; the input is not mutated."""
+    return [{**row,
+             "transcript_covered": (coverage[(row["key"], row["word"])]
+                                    if row["app"] == "ungraded" else None)}
+            for row in words]
 
 
 def words_from_grades(grades: Sequence, app_grades: Sequence[Mapping], *,
@@ -181,6 +212,81 @@ def candidate_pools(rows: Sequence[Mapping], app_grades: Sequence[Mapping], *,
                                           failed=failed))
 
 
+#: The coverage classes: every sampled stratum, S5 split by where the word sits in its clip.
+COVERAGE_CLASSES = ("S1", "S3", "S4", "S5-leading", "S5-trailing", "S5-interior")
+
+
+def _edges(stratified: Sequence[Mapping]) -> dict[tuple[str, int], str]:
+    """Each word's S5 edge class, decided over *every* word of its clip, covered or not.
+
+    A word before the clip's first App-graded word is ``leading`` (every word of a wholly
+    ungraded clip is), after its last is ``trailing``, and between them is ``interior``.
+    """
+    by_clip: dict[str, list[tuple[int, bool]]] = {}
+    for row in stratified:
+        by_clip.setdefault(row["key"], []).append((row["position"], row["app"] != "ungraded"))
+    edges = {}
+    for key, rows in by_clip.items():
+        graded = [position for position, is_graded in rows if is_graded]
+        if not graded:
+            edges.update({(key, position): "leading" for position, _ in rows})
+            continue
+        first, last = min(graded), max(graded)
+        for position, _ in rows:
+            edges[(key, position)] = ("leading" if position < first
+                                      else "trailing" if position > last else "interior")
+    return edges
+
+
+def _coverage_class(row: Mapping, edges: Mapping[tuple[str, int], str]) -> str | None:
+    """The coverage class a row belongs to; ``None`` for a stratum the gate does not sample."""
+    if row["stratum"] == S5:
+        return f"S5-{edges[(row['key'], row['position'])]}"
+    return {S1: "S1", S1_PENDING: "S1", S3: "S3", S4: "S4"}.get(row["stratum"])
+
+
+def draw_frame(stratified: Sequence[Mapping]) -> list[dict]:
+    """The words the draw may pick from (A1), sorted by clip then position.
+
+    Every S1 (pending included), S3 and S4 word, and S5's *covered* words. Each row is
+    ``{"key", "position", "stratum", "edge", "whole_played"}``; S5 edges are served whole.
+    Residual, oracle-explained and uncovered S5 words are not in the frame.
+    """
+    edges = _edges(stratified)
+    frame = []
+    for row in stratified:
+        name = _coverage_class(row, edges)
+        if name is None or (name.startswith("S5") and not covered(row)):
+            continue
+        edge = edges[(row["key"], row["position"])] if name.startswith("S5") else None
+        frame.append({"key": row["key"], "position": row["position"],
+                      "stratum": "S5" if edge is not None else name, "edge": edge,
+                      "whole_played": edge in ("leading", "trailing")})
+    return sorted(frame, key=lambda row: (row["key"], row["position"]))
+
+
+def coverage_record(stratified: Sequence[Mapping]) -> dict:
+    """The covered frame and the not-covered pool, by coverage class.
+
+    Only S5's gate drops words; S1, S3 and S4 are whole. ``frame_words`` is the sampled frame and
+    ``not_covered_words`` the reported pool with π = 0.
+    """
+    frame = dict.fromkeys(COVERAGE_CLASSES, 0)
+    not_covered = dict.fromkeys(COVERAGE_CLASSES, 0)
+    edges = _edges(stratified)
+    for row in stratified:
+        name = _coverage_class(row, edges)
+        if name is None:
+            continue
+        if name.startswith("S5") and not covered(row):
+            not_covered[name] += 1
+        else:
+            frame[name] += 1
+    return {"frame": frame, "not_covered": not_covered,
+            "frame_words": sum(frame.values()),
+            "not_covered_words": sum(not_covered.values())}
+
+
 def primary_cells(stratified: Sequence[Mapping]) -> list[dict]:
     """S1's 14 primary-cause × base-flag cells with their pre-registered allocation.
 
@@ -213,8 +319,10 @@ def s4_ungraded(stratified: Sequence[Mapping]) -> dict:
 
 
 def cells_record(stratified: Sequence[Mapping], detector_ungraded: int) -> dict:
-    """The primary-cause cells and S4's ungraded split, as the committed ``app_arm/cells.json``."""
-    return {"detector_ungraded": detector_ungraded,
+    """The coverage record, the primary-cause cells and S4's ungraded split, as the committed
+    ``app_arm/cells.json``."""
+    return {"coverage": coverage_record(stratified),
+            "detector_ungraded": detector_ungraded,
             "s1_primary_cells": primary_cells(stratified),
             "s4": s4_ungraded(stratified)}
 

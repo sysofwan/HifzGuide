@@ -65,6 +65,16 @@ def assign_stratum(word: Mapping) -> str:
     return S4 if not flagging else RESIDUAL
 
 
+def covered(word: Mapping) -> bool:
+    """Whether the audio holds the word (A1).
+
+    An App-graded word is covered: its grade is evidence of audio at the position. An App-ungraded
+    word is covered when the Teacher transcript aligns to it, and the transcript must have said so
+    — a missing ``transcript_covered`` is a bug in the join, not an uncovered word.
+    """
+    return True if word["app"] != "ungraded" else word["transcript_covered"]
+
+
 def stratify(words: Iterable[Mapping],
              catch_loss: Iterable[tuple[str, int]] = ()) -> list[dict]:
     """Each word with its stratum and whether round 2's catch-loss audit marked it (A5b).

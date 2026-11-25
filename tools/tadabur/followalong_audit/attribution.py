@@ -12,9 +12,12 @@ wins (architect decisions D3, D4, D8)::
     F1 -> F1-align -> F-ref -> F2 -> F3
 
 A **missed mistake** is a word the owner heard as a mistake that the App did not flag. Every label
-the word meets is recorded, in precedence order (D9)::
+the word meets is recorded, in precedence order (D9, amended by A2)::
 
-    M1r -> M1 -> M1u -> M2 -> M3
+    M1r -> M1 -> M1u -> M-nograde -> M2 -> M3
+
+Rule 5 (:func:`rule_five`) reads only the words the Teacher arm graded, with the all-F2/all-F3
+extremes reported (A3).
 
 :func:`reference_suspects` marks a word whose App strict deviation repeats at the same word in
 three tranche groups; it is a *reference suspect* shown both ways, never settled by hand (D3).
@@ -27,12 +30,14 @@ from collections.abc import Iterable, Mapping
 
 from training.muraja_policy import CORRECT, PENDING, STRICT, Scoring, displayed
 
-#: Who owns a bucket: the follow-along side or the teacher/model side (rule 2's model share).
+#: Who owns a bucket: the follow-along side, the teacher/model side (rule 2's model share), or
+#: neither arm's evidence — an M-nograde word no arm graded.
 FOLLOW_ALONG = "follow-along"
 MODEL = "model"
+UNKNOWN = "unknown"
 
 #: The buckets, in the precedence order their sides are read.
-BUCKETS = ("F1", "F1-align", "F-ref", "F2", "F3", "M1r", "M1", "M1u", "M2", "M3")
+BUCKETS = ("F1", "F1-align", "F-ref", "F2", "F3", "M1r", "M1", "M1u", "M-nograde", "M2", "M3")
 
 _SIDES = {
     "F1": FOLLOW_ALONG,
@@ -44,6 +49,14 @@ _SIDES = {
     "F3": MODEL,
     "M2": MODEL,
     "M3": MODEL,
+}
+
+#: The Teacher outcome each rule-5 bucket may carry (A3).
+_RULE_FIVE_OUTCOMES = {
+    "F2": ("passed",),
+    "M2": ("flagged",),
+    "F3": ("flagged", "ungraded"),
+    "M3": ("passed", "ungraded"),
 }
 
 
@@ -124,8 +137,9 @@ def miss_labels(*, app: Mapping | None, teacher: Mapping | None,
 
     M1r: the kept grade passed and some check graded the word below correct. M1: the kept grade
     passed and a *setting* check decoded the deviation away with errors or a score below 1. M1u:
-    the kept grade is ungraded and some check graded the word below correct. Then the Teacher arm:
-    M2 when it flagged the word, M3 when it did not (D8).
+    the kept grade is ungraded and some check graded the word below correct. M-nograde (A2): the
+    kept grade is ungraded and no check holds any App status for the word — the engine never saw
+    it. Then the Teacher arm: M2 when it flagged the word, M3 when it did not (D8).
     """
     outcome = kept_outcome(app, scoring)
     if outcome == "flagged":
@@ -139,12 +153,24 @@ def miss_labels(*, app: Mapping | None, teacher: Mapping | None,
             labels.append("M1")
     elif any(below_correct(check["status"]) for check in checks):
         labels.append("M1u")
+    elif not any(check["status"] is not None for check in checks):
+        labels.append("M-nograde")
     labels.append("M2" if kept_outcome(teacher, scoring) == "flagged" else "M3")
     return labels
 
 
-def side(bucket: str, *, f_ref: str = FOLLOW_ALONG) -> str:
-    """The side a bucket belongs to; F-ref is placed on ``f_ref``'s side, both ways reported."""
+def side(bucket: str, *, f_ref: str = FOLLOW_ALONG,
+         teacher_graded: bool | None = None) -> str:
+    """The side a bucket belongs to; F-ref is placed on ``f_ref``'s side, both ways reported.
+
+    M-nograde is the one bucket whose side the Teacher arm decides (A2): follow-along when the
+    Teacher graded the word, :data:`UNKNOWN` when it did not. Every other bucket ignores
+    ``teacher_graded``.
+    """
+    if bucket == "M-nograde":
+        if teacher_graded is None:
+            raise ValueError("M-nograde needs the Teacher arm's grade: teacher_graded missing")
+        return FOLLOW_ALONG if teacher_graded else UNKNOWN
     if bucket == "F-ref":
         if f_ref not in (FOLLOW_ALONG, MODEL):
             raise ValueError(f"{f_ref!r} is not a side: {FOLLOW_ALONG!r} or {MODEL!r}")
@@ -154,12 +180,64 @@ def side(bucket: str, *, f_ref: str = FOLLOW_ALONG) -> str:
     return _SIDES[bucket]
 
 
-def model_share(buckets: Iterable[str], *, f_ref: str = FOLLOW_ALONG) -> float:
-    """Rule 2's model-side fraction of the buckets, with F-ref on the side ``f_ref`` names."""
-    buckets = list(buckets)
-    if not buckets:
-        raise ValueError("the model share of no words is undefined")
-    return sum(1 for bucket in buckets if side(bucket, f_ref=f_ref) == MODEL) / len(buckets)
+def model_share(buckets: Iterable[str | tuple[str, bool]], *,
+                f_ref: str = FOLLOW_ALONG) -> float:
+    """Rule 2's model-side fraction of the buckets, with F-ref on the side ``f_ref`` names.
+
+    An M-nograde word is given as ``("M-nograde", teacher_graded)``. An :data:`UNKNOWN` one is in
+    neither the numerator nor the denominator — it carries no evidence for either side — so the
+    caller counts and reports it; a share of only unknown words is undefined.
+    """
+    counted = []
+    for bucket in buckets:
+        if isinstance(bucket, tuple):
+            name, teacher_graded = bucket
+            value = side(name, teacher_graded=teacher_graded)
+        else:
+            value = side(bucket, f_ref=f_ref)
+        if value != UNKNOWN:
+            counted.append(value)
+    if not counted:
+        raise ValueError("the model share of no known-side words is undefined")
+    return sum(1 for value in counted if value == MODEL) / len(counted)
+
+
+def rule_five(words: Iterable[tuple[str, str]]) -> dict:
+    """Rule 5 (A3) on ``(bucket, teacher_outcome)`` pairs: learnable vs beyond the Teacher.
+
+    Only F2, F3, M2 and M3 are read; the other buckets are ignored. F2 is learnable, M2 learnable;
+    F3 and M3 are beyond when the Teacher graded the word and *ungraded* when it did not. The
+    direction is ``beyond`` on a tie (the pre-registered reading). ``extremes`` puts every
+    Teacher-ungraded word on each side in turn; when they name different directions the readout
+    says so and the owner decides.
+    """
+    learnable = beyond = ungraded = 0
+    for bucket, outcome in words:
+        if bucket not in _RULE_FIVE_OUTCOMES:
+            continue
+        if outcome not in _RULE_FIVE_OUTCOMES[bucket]:
+            raise ValueError(f"{bucket} cannot carry the Teacher outcome {outcome!r}")
+        if outcome == "ungraded":
+            ungraded += 1
+        elif bucket in ("F2", "M2"):
+            learnable += 1
+        else:
+            beyond += 1
+    if learnable + beyond + ungraded == 0:
+        raise ValueError("rule 5 needs at least one F2, F3, M2 or M3 word")
+    all_learnable = _direction(learnable + ungraded, beyond)
+    all_beyond = _direction(learnable, beyond + ungraded)
+    return {"learnable": learnable, "beyond": beyond, "ungraded": ungraded,
+            "direction": _direction(learnable, beyond),
+            "extremes": {"all_learnable": all_learnable, "all_beyond": all_beyond},
+            "extremes_agree": all_learnable == all_beyond}
+
+
+def _direction(learnable: int, beyond: int) -> str | None:
+    """``beyond`` on a tie, ``learnable`` when it leads, ``None`` when the Teacher graded none."""
+    if learnable + beyond == 0:
+        return None
+    return "beyond" if beyond >= learnable else "learnable"
 
 
 def error_key(errors: Iterable[Mapping]) -> tuple[tuple[int, str, str | None, str | None], ...]:

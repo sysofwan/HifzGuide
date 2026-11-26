@@ -253,10 +253,11 @@ class SessionState:
         if snip.snip_source == WHOLE_CLIP:
             return _wav_slice(source)
         if whole:
+            clip = _wav_slice(source)   # a failed read records nothing: no whole was played
             with self._lock:
                 self._served_whole.add(ident)
                 self._note_whole_played(ident)
-            return _wav_slice(source)
+            return clip
         return _wav_slice(source, snip.start_sample, snip.end_sample)
 
     def _ident(self, key: str) -> str:

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import gzip
 import json
-import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from functools import lru_cache
@@ -26,11 +25,12 @@ from tadabur.followalong_audit.app_arm import read_grades, read_jsonl, write_jso
 from tadabur.followalong_audit.atomic import write_bytes_atomically, write_text_atomically
 from tadabur.followalong_audit.clips import app_arm_rows
 from tadabur.followalong_audit.draw import (
-    AMENDMENT_COMMIT, MAIN_REPEATS, PILOT_REPEATS, derive_seed, frame_rows, item_id,
-    non_reproducing, plan_sitting, repeat_id, select_words, snips_for_draw,
+    AMENDMENT_COMMIT, EDGE_WHOLE_REASON, MAIN_REPEATS, PILOT_REPEATS, S5_EDGES, derive_seed,
+    design_totals, frame_rows, item_id, non_reproducing, plan_sitting, repeat_id,
+    require_commit_hex, select_words, snip_placements,
 )
 from tadabur.followalong_audit.strata_run import stratified_run
-from tadabur.word_snips import ALIGNMENT, WHOLE_CLIP, write_snips
+from tadabur.word_snips import SnipPlacement, write_snips
 from training.nonpro_decode import item_key
 
 AUDIT = Path(__file__).resolve().parent
@@ -43,15 +43,12 @@ PREREGISTRATION = DOCS / "followalong-audit-preregistration.md"
 AMENDMENT = DOCS / "followalong-audit-draw-amendment.md"
 
 TRANCHES = ("confirm.1", "confirm.2")
-S5_EDGES = ("leading", "trailing", "interior")
-_HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 
 def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces: Path,
           reuse_frame: bool = False) -> dict:
     """Write every committed draw file under ``out`` and return the run's counts."""
-    if not _HEX40.match(draw_commit):
-        raise ValueError(f"{draw_commit!r} is not a 40-character lowercase commit SHA")
+    require_commit_hex(draw_commit)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     population = app_arm_rows()
@@ -62,7 +59,8 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
 
     committed = read_grades(APP_ARM / "word_grades.jsonl.gz")
     regenerated = read_grades(Path(regen_grades))
-    reproduction = build_reproduction(frame, committed, regenerated)
+    reproduction = build_reproduction(frame, committed, regenerated,
+                                      regen_grades=Path(regen_grades), traces=Path(traces))
     _write_json(reproduction, out / "reproduction.json")
     _write_jsonl_gz(build_app_errors(Path(traces), regenerated, population),
                     out / "app_errors.jsonl.gz")
@@ -76,8 +74,9 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     originals = _key_rows(draws, clips, seed)
     plans, repeats = _plans_and_repeats(originals, seed)
     key = sorted(originals + repeats, key=lambda row: row["id"])
-    if len(originals) != sum(draw.n for draw in draws.values()):
-        raise ValueError(f"the key holds {len(originals)} drawn words, not the design's total")
+    designed = sum(design_totals(frame).values())
+    if len(originals) != designed:
+        raise ValueError(f"the key holds {len(originals)} drawn words, not the design's {designed}")
     if len({row["id"] for row in key}) != len(key):
         raise ValueError("two served items share an id")
     if len(key) != len(originals) + PILOT_REPEATS + MAIN_REPEATS:
@@ -90,9 +89,9 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
 
     records = [record for tranche in TRANCHES
                for record in _read_jsonl_gz(WORD_TIMES / f"{tranche}.jsonl.gz")]
-    snips = snips_for_draw(worklist, key, records)
-    write_snips(snips, out / "snips.jsonl")
-    report = _snip_report(snips, key)
+    placed = snip_placements(worklist, key, records)
+    write_snips((placement.snip for placement in placed), out / "snips.jsonl")
+    report = _snip_report(placed)
     _write_json(report, out / "snips.report.json")
 
     _write_json({
@@ -141,8 +140,14 @@ def _check_frame(frame: Sequence[Mapping]) -> None:
 # --- the gate -------------------------------------------------------------------------------------
 
 def build_reproduction(frame: Sequence[Mapping], committed: Sequence[Mapping],
-                       regenerated: Sequence[Mapping]) -> dict:
-    """The F-ref gate: every word's outcome compared, and the frame words that did not reproduce."""
+                       regenerated: Sequence[Mapping], *, regen_grades: Path,
+                       traces: Path) -> dict:
+    """The F-ref gate: every word's outcome compared, and the frame words that did not reproduce.
+
+    The regenerated table and the per-clip traces are the second App run's, on the GPU box and
+    uncommitted, so the record pins them by digest: a "0 flips" claim is only re-verifiable
+    against the same run.
+    """
     flips = non_reproducing(committed, regenerated)
     frame_words = {(row["key"], row["word"]) for row in frame}
     gone = [word for word in flips if word in frame_words]
@@ -157,12 +162,21 @@ def build_reproduction(frame: Sequence[Mapping], committed: Sequence[Mapping],
     return {
         "committed_words": len(committed),
         "regenerated_words": len(regenerated),
+        "regen_grades_sha256": _sha256(regen_grades),
+        "traces": _traces_identity(traces),
         "flips": len(flips),
         "flips_in_s1_cells": sum(entry["did_not_reproduce"] for entry in cells
                                  if entry["stratum"] == "S1"),
         "did_not_reproduce": [{"item": item, "word": word} for item, word in sorted(gone)],
         "cells": cells,
     }
+
+
+def _traces_identity(traces: Path) -> dict:
+    """The gate's per-clip traces: how many, and one digest over their names and bytes."""
+    paths = sorted(Path(traces).glob("*.jsonl.gz"))
+    listing = "".join(f"{path.name} {_sha256(path)}\n" for path in paths)
+    return {"files": len(paths), "sha256": sha256(listing.encode("utf-8")).hexdigest()}
 
 
 def build_app_errors(traces: Path, regenerated: Sequence[Mapping],
@@ -272,13 +286,26 @@ def _uthmani(surah_ayah: str) -> tuple[str, ...]:
 
 # --- the files ------------------------------------------------------------------------------------
 
-def _snip_report(snips: Sequence, key: Sequence[Mapping]) -> dict:
-    whole = sum(1 for snip in snips if snip.snip_source == WHOLE_CLIP)
-    return {"rows": len(snips),
-            "alignment": len(snips) - whole,
+def _snip_report(placed: Sequence[SnipPlacement]) -> dict:
+    """The snips' counts: how many play whole, why, and the alignment fallback rate.
+
+    ``fallback_rate`` is the whole-clip share (the sidecar convention, and the number the locked
+    test pins); the S5 edge words play whole by rule, so the alignment's own failures are
+    ``alignment_fallbacks`` / ``alignment_fallback_rate``, which is what the run note quotes.
+    """
+    reasons = Counter(placement.reason for placement in placed if placement.reason is not None)
+    rows = len(placed)
+    whole = sum(reasons.values())
+    edge = reasons.get(EDGE_WHOLE_REASON, 0)
+    fallbacks = whole - edge
+    return {"rows": rows,
+            "alignment": rows - whole,
             "whole_clip": whole,
-            "fallback_rate": whole / len(snips) if snips else 0.0,
-            "edge_whole": sum(1 for row in key if row["whole_played"])}
+            "edge_whole": edge,
+            "fallback_rate": whole / rows if rows else 0.0,
+            "alignment_fallbacks": fallbacks,
+            "alignment_fallback_rate": fallbacks / rows if rows else 0.0,
+            "reasons": dict(sorted(reasons.items()))}
 
 
 def _sha256(path: Path) -> str:

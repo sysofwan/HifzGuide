@@ -103,14 +103,13 @@ def alone_aligned(app: Mapping, oracle: Mapping | None, reference: Mapping | Non
                   scoring: Scoring = STRICT) -> bool:
     """Prereg §5's sensitivity row: F1-align's alignment on the reference R alone.
 
-    The primary rule needs R joined with a neighbour (or, in a clip with no neighbour at all, R
-    alone). This row allows R alone in every clip, from four code points up — the same
-    chance-match guard — under F1-align's other preconditions: the oracle's kept outcome passed,
-    and one of the App's setting checks holds it verbatim. It is reported beside the primary
-    attribution and never decides; it bounds how much the neighbour requirement leans toward the
-    model side.
+    The primary rule needs R joined with a neighbour, and in a clip with no neighbour at all it
+    needs R alone from four code points up. This row allows R alone in every clip, of any length,
+    under F1-align's other preconditions: the oracle's kept outcome passed, and one of the App's
+    setting checks holds R verbatim. It is reported beside the primary attribution and never
+    decides; it bounds how much the neighbour requirement leans toward the model side.
     """
-    if app is None or reference is None or len(reference["word"]) < 4:
+    if app is None or reference is None:
         return False
     if kept_outcome(oracle, scoring) != "passed":
         return False

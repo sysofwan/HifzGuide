@@ -9,7 +9,8 @@ Committed beside the locked ``test_followalong_score_*`` files, never editing th
   through the same pinned harness; a replay that does not reproduce the clip's saved grades is
   refused, and a clip with no trace row at all keeps no cell.
 * R4.2 — prereg §5's R-alone row is reported beside the primary attribution, with its own model
-  share, and never decides.
+  share, and never decides. It matches R alone at any length: the four-code-point floor is the
+  primary rule's, for a clip with no neighbour at all.
 * R4.3 — unknown M-nograde words alone still bound rule 3's share at 0 against 1, which straddles
   50% and leaves the decision to the owner.
 * R4.4 — a reference suspect explained by F1 or F1-align keeps its bucket's side; only F-ref
@@ -20,14 +21,17 @@ from __future__ import annotations
 
 import gzip
 import json
+from pathlib import Path
 
 import pytest
 
+from tadabur.followalong_audit.app_arm import read_jsonl, read_jsonl_gz
 from tadabur.followalong_audit.attribution import FOLLOW_ALONG, MODEL, UNKNOWN
 from tadabur.followalong_audit.attribution import reference_suspects
 from tadabur.followalong_audit.s5_arms import _app_cells
 from tadabur.followalong_audit.s5_score import attribute_listened, evaluate_rules
 
+DRAW = Path(__file__).resolve().parent / "s5_draw"
 ITEM = "2_170_4222931689.flac#0"
 SHA = "d57ea8f4e1245417405d4675687a84c385e7b9f8b23b797cddd1d545319826ee"
 WORD, BEFORE, AFTER = "بِسمِ", "مَلِكِ", "يَومِ"
@@ -200,11 +204,30 @@ def test_an_ungraded_oracle_leaves_the_reference_alone_row_empty():
     assert evaluate_rules([result])["r_alone"]["matches"] == 0
 
 
-def test_a_reference_too_short_to_hold_by_nowhere_near_chance_is_not_alone(tmp_path):
+def test_a_short_reference_counts_on_its_own_because_the_row_has_no_floor():
+    """The four-code-point floor belongs to the primary no-neighbour case; the sensitivity is R
+    alone at any length."""
     short = {"previous": BEFORE, "word": "بِ", "next": AFTER}
     result = attribute_listened(_key_row(), _arms(_flagged("بِ"), reference=short),
                                 {"verdict": "correct"})
-    assert (result["bucket"], result["alone"]) == ("F2", False)
+    assert (result["bucket"], result["alone"]) == ("F2", True)
+    assert evaluate_rules([result])["r_alone"]["moved"] == 1
+
+
+def test_the_committed_three_code_point_reference_is_reported_on_its_own():
+    """`567a698f9ee97bc0` (`2_189_4280756139.flac#0` word 4): R is ``قُل``, three code points, in
+    setting checks 36-47 with neither neighbour. The primary stays F3 on the model side; the
+    sensitivity row moves the word, which is the row's whole purpose."""
+    key = {row["id"]: row for row in read_jsonl(DRAW / "key.jsonl")}
+    arms = {(row["item"], row["word"]): row for row in read_jsonl_gz(DRAW / "arms.jsonl.gz")}
+    key_row = key["567a698f9ee97bc0"]
+    arms_row = arms[(key_row["item"], key_row["word"])]
+    assert arms_row["reference"]["word"] == "قُل"
+    result = attribute_listened(key_row, arms_row, {"verdict": "correct"})
+    assert (result["bucket"], result["side"]) == ("F3", MODEL)
+    assert result["alone"] is True
+    rule = evaluate_rules([result])["r_alone"]
+    assert (rule["matches"], rule["moved"], rule["model_share"]) == (1, 1, 0.0)
 
 
 # --- R4.3: unknown words alone still bound the share ---------------------------------------------

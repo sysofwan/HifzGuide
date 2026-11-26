@@ -104,8 +104,11 @@ placeholder.
 Beside the four rules the scorer reports prereg §5's **R-alone row** (`rules.r_alone`): how many
 decisive words' setting checks hold R alone, how many of those the primary attribution put on the
 model side, and rule 3's share with them read as F1-align. It is labelled a sensitivity and decides
-nothing; the primary buckets, sides and rules are the neighbour-required ones. The row applies the
-primary rule's four-code-point floor to a lone R: the prereg states that floor for the
-no-neighbour case and states none for this row, and without it a two-letter match would count as
-alignment evidence. If the owner reads the frozen text as "R of any length", that floor is a dated
-amendment, not something this build settles.
+nothing; the primary buckets, sides and rules are the neighbour-required ones.
+
+The row matches R alone at **any reference length**. The four-code-point floor is the primary
+rule's, and only for a clip with no neighbour at all; the prereg states none for this row. So the
+row counts words the primary's neighbour requirement declines even where R is three characters:
+`567a698f9ee97bc0` (`2_189_4280756139.flac#0` word 4, R = `قُل`, in setting checks 36–47 with
+neither neighbour) is one — the primary stays F3 on the model side and the sensitivity moves it to
+the follow-along side.

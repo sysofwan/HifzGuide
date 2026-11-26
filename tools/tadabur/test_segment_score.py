@@ -101,7 +101,7 @@ def test_slice_segment_clamps_bounds():
 
 
 def test_score_segments_builds_rows(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words",
+    monkeypatch.setattr(segment_score, "uthmani_words",
                         lambda sa: ["أَوَّلْ", "ثَانِي"])
     _write_clip(tmp_path, "clip.wav", 2.0)
     raw = "ءَننننَ"
@@ -127,7 +127,7 @@ def test_score_segments_builds_rows(tmp_path, monkeypatch):
 
 
 def test_score_segments_orders_by_clip_then_index(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["و"] * 5)
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["و"] * 5)
     _write_clip(tmp_path, "clip.wav", 3.0)
     # Pass out of order; rows must come back sorted by (audio_filename, index).
     segs = [_segment(2, 2.0, 3.0, "و"), _segment(0, 0.0, 1.0, "و"),
@@ -138,7 +138,7 @@ def test_score_segments_orders_by_clip_then_index(tmp_path, monkeypatch):
 
 
 def test_score_segments_drops_repeated_phrase_poison(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"])
     _write_clip(tmp_path, "clip.wav", 2.0)
     ref = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
     good = _segment(0, 0.0, 1.0, ref)
@@ -154,7 +154,7 @@ def test_score_segments_drops_repeated_phrase_poison(tmp_path, monkeypatch):
 
 
 def test_score_segments_drops_boundary_mismatch(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"])
     _write_clip(tmp_path, "clip.wav", 3.0)
     # Two segments of one clip. seg0's audio overruns its reference at the *interior*
     # waqf split: its decode matches the reference then trails 9 extra phonemes the local
@@ -173,7 +173,7 @@ def test_score_segments_drops_boundary_mismatch(tmp_path, monkeypatch):
 
 
 def test_score_segments_drops_edge_recut_failed(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"])
     _write_clip(tmp_path, "clip.wav", 3.0)
     # seg0 is the clip's FIRST segment: its leading edge was re-cut to the aligned matched
     # span (tadabur.waqf_detect), so a large *leading* trim means the re-cut failed. Its
@@ -191,7 +191,7 @@ def test_score_segments_drops_edge_recut_failed(tmp_path, monkeypatch):
 
 
 def test_score_segments_drops_short_interior_segment(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"] * 6)
     _write_clip(tmp_path, "clip.wav", 3.0)
     # A 2-segment clip: seg0 is a 2-word interior sliver (< MIN_SEGMENT_WORDS) → dropped
     # as short_segment without even being scored; seg1 is a 3-word segment → kept.
@@ -207,7 +207,7 @@ def test_score_segments_drops_short_interior_segment(tmp_path, monkeypatch):
 
 
 def test_score_segments_keeps_short_whole_ayah_segment(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w", "w"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w", "w"])
     _write_clip(tmp_path, "clip.wav", 2.0)
     # A whole-ayah clip (single segment) under MIN_SEGMENT_WORDS is exempt from the
     # short-segment drop — a genuinely short ayah is a legitimate unit.
@@ -222,7 +222,7 @@ def test_score_segments_keeps_short_whole_ayah_segment(tmp_path, monkeypatch):
 
 
 def test_score_segments_honours_min_segment_words_override(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"] * 6)
     _write_clip(tmp_path, "clip.wav", 3.0)
     # With min_segment_words=1 a 2-word interior segment is no longer short → both kept.
     seg0 = _segment(0, 0.0, 1.0, "بت", words=2)
@@ -238,7 +238,7 @@ def test_score_segments_honours_min_segment_words_override(tmp_path, monkeypatch
 
 
 def test_score_segments_drops_degenerate_span(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w"] * 6)
     _write_clip(tmp_path, "clip.wav", 3.0)
     # seg0's [start_s, end_s) slice is far shorter than MIN_DECODE_SAMPLES (~25 ms) — a
     # collapsed span that would crash the feature extractor — so it is dropped before any
@@ -333,7 +333,7 @@ def _manifest_record(name: str, surah_ayah: str) -> ManifestRecord:
 
 
 def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     class_ids = _ids(
         [(cid, 2) for cid in _WORD0] + [(0, 12)]
         + [(cid, 2) for cid in _WORD1 + _WORD2]
@@ -364,7 +364,7 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
 def test_segment_clips_splits_reread_clip(tmp_path, monkeypatch):
     # WORD0 WORD1 [waqf] WORD1 WORD2: a re-read is split into two time-consecutive segments
     # whose word ranges overlap on w1, each phonetized as its own single-pass reference.
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     class_ids = _ids(
         [(cid, 2) for cid in _WORD0 + _WORD1] + [(0, 12)]
         + [(cid, 2) for cid in _WORD1 + _WORD2]
@@ -387,7 +387,7 @@ def test_segment_clips_splits_reread_clip(tmp_path, monkeypatch):
 
 
 def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     unrelated = _ids([(cid, 2) for cid in [19, 20, 21, 22, 23, 24, 25, 26]])
     _write_clip(tmp_path, "a.wav", len(unrelated) * _SPF)
     model = _ClassIdModel([unrelated])
@@ -405,7 +405,7 @@ def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
 
 
 def test_segment_clips_keeps_clip_whole_when_no_pauses(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1 + _WORD2])
     _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
     model = _ClassIdModel([class_ids])
@@ -425,7 +425,7 @@ def test_segment_clips_reports_recited_words_for_early_stop(tmp_path, monkeypatc
     # The reciter ends mid-ayah: the decode reaches only w0 w1, never w2. The single kept
     # segment un-inflates to word_end 2, so recited_words (2) is below n_words (3) — the
     # signal the audit UI uses to hide the never-recited tail (w2).
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1])
     _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
     model = _ClassIdModel([class_ids])
@@ -440,7 +440,7 @@ def test_segment_clips_reports_recited_words_for_early_stop(tmp_path, monkeypatc
 
 
 def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     model = _ClassIdModel([])  # decode never called — clip file absent
     records, skips, statuses, _pa = segment_clips(
         [_manifest_record("gone.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
@@ -451,7 +451,7 @@ def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):
 
 
 def test_segment_clips_skips_unphonetizable_ayah(tmp_path, monkeypatch):
-    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    monkeypatch.setattr(segment_score, "uthmani_words", lambda sa: ["w0", "w1", "w2"])
     class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1 + _WORD2])
     _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
     model = _ClassIdModel([class_ids])

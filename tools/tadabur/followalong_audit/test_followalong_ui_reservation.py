@@ -43,13 +43,15 @@ def stage(tmp_path: Path) -> Path:
 
 
 def _launch(tmp_path: Path, repo: Path, *args: str, bound: str = "", lock: str = "",
-            start_fails: bool = False, **env: str) -> subprocess.CompletedProcess:
+            start_fails: bool = False, fail_stage: str = "",
+            **env: str) -> subprocess.CompletedProcess:
     """Run the script with ``ssh`` shimmed (every remote command in ``ssh.log``).
 
     ``lock`` models `$ROOT/ui.lock` as the box holds it: ``live`` (a runner of this root is
     there), ``starting`` (a launcher reserved it and has not started a runner), ``dead`` (the
-    runner it recorded is gone); empty is a free root. The stale swap and the retried ``mkdir``
-    succeed iff the lock was ``dead``, so a takeover is observable in the log."""
+    runner it recorded is gone); empty is a free root — and any existing reservation refuses the
+    launch. ``fail_stage`` fails one staging step as the box would (``clear``: the clone cannot be
+    removed, ``clone``: the clone fails) while the final HEAD check still passes."""
     marker = tmp_path / "launched"
     shim = tmp_path / "bin"
     shim.mkdir(exist_ok=True)
@@ -62,15 +64,15 @@ if [ {int(start_fails)} = 1 ]; then
 fi
 case "$cmd" in *'run-ui.sh'*) : > '{marker}'; exit 0 ;; esac
 case "$cmd" in *'test -f '*'ui.exit'*) exit 1 ;; esac
+if [ -n "{fail_stage}" ]; then
+  case "{fail_stage}:$cmd" in
+    clear:*'rm -rf '*'repo.bundle'*|clone:*'git clone'*) exit 1 ;;
+  esac
+fi
 case "$cmd" in
-  *'mv '*) if [ "{lock}" = dead ]; then : > '{tmp_path}/swapped'; exit 0; fi; exit 1 ;;
-  *'rm -rf '*'ui.lock.stale'*) exit 0 ;;
   *'ui.lock/token'*)
     case "$cmd" in
-      *mkdir*)
-        if [ -z "{lock}" ]; then exit 0; fi
-        if [ "{lock}" = dead ] && [ -f '{tmp_path}/swapped' ]; then exit 0; fi
-        exit 1 ;;
+      *mkdir*) if [ -z "{lock}" ]; then exit 0; fi; exit 1 ;;
       *) exit 0 ;;
     esac ;;
   *'ui.lock/pid'*) case "{lock}" in live) printf 4242 ;; dead) printf 999 ;; esac; exit 0 ;;
@@ -124,20 +126,24 @@ def test_a_root_that_already_serves_a_ui_refuses_a_second_launch_before_staging(
 
 
 def test_a_reservation_mid_launch_is_not_stolen(tmp_path, stage):
-    """The holder has reserved the root and is staging: no pid yet, and not stale."""
+    """The holder has reserved the root and is staging: a pid-less reservation still refuses."""
     done = _launch(tmp_path, stage, "ui", "launch", lock="starting")
     assert done.returncode == 1, _text(done)
-    assert "already being served or launched" in done.stderr
+    assert "reserved by a ui that is not running" in done.stderr
     _nothing_done(done, tmp_path)
 
 
-def test_a_reservation_whose_runner_is_gone_is_taken_over(tmp_path, stage):
-    """A runner that died holds nothing: the next launch takes the reservation and serves."""
+def test_a_reservation_whose_runner_is_gone_refuses_and_names_the_lock(tmp_path, stage):
+    """Recovery is manual: a dead holder's directory is never replaced automatically.
+
+    Replacing it would mean checking a holder and then moving its directory, and two launches
+    doing that at once would both get in — so the owner is told exactly what to remove."""
+    root = tmp_path / "scratch"
     done = _launch(tmp_path, stage, "ui", "launch", bound="8000", lock="dead")
-    assert done.returncode == 0, _text(done)
-    assert "  url:  http://box:8002/" in done.stdout       # the foreign 8000 still falls back
-    remote = _remote(tmp_path)
-    assert "mv '{}".format(tmp_path / "scratch" / "ui.lock") in remote
+    assert done.returncode == 1, _text(done)
+    assert f"ssh root@box rm -rf '{root}/ui.lock'" in done.stderr
+    _nothing_done(done, tmp_path)
+    assert ":8002 " not in _remote(tmp_path)
 
 
 def test_the_runner_claims_the_reservation_and_releases_it_on_the_way_out(tmp_path, stage):
@@ -149,12 +155,31 @@ def test_the_runner_claims_the_reservation_and_releases_it_on_the_way_out(tmp_pa
 
 
 def test_a_failed_start_hands_the_reservation_back(tmp_path, stage):
-    """A start that never happened must not lock the root out until the 15-minute takeover."""
+    """A start that never happened must not lock the root out of the next launch."""
     done = _launch(tmp_path, stage, "ui", "launch", start_fails=True)
     assert done.returncode == 1, _text(done)
     dropped = [line for line in _remote(tmp_path).splitlines()
                if "ui.lock/token" in line and "rm -rf" in line]
     assert dropped, _remote(tmp_path)
+
+
+@pytest.mark.parametrize("fail_stage, message", [("clear", "could not clear"),
+                                                 ("clone", "could not clone")])
+def test_a_failed_staging_step_starts_nothing_and_releases_the_reservation(
+        tmp_path, stage, fail_stage, message):
+    """A staging command's failure must stop the launch, even though the old clone's HEAD matches.
+
+    `launch` calls `stage_repo` in a condition, which turns `errexit` off inside it: only explicit
+    checks keep a failed removal or clone from being masked by the final HEAD comparison."""
+    root = tmp_path / "scratch"
+    done = _launch(tmp_path, stage, "ui", "launch", fail_stage=fail_stage)
+    assert done.returncode == 1, _text(done)
+    assert message in done.stderr
+    remote = _remote(tmp_path)
+    assert "job started" not in done.stdout
+    assert "run-ui.sh'" not in remote and "setsid" not in remote    # no runner, no start
+    assert [line for line in remote.splitlines()
+            if "ui.lock/token" in line and "rm -rf" in line]        # the root went back
 
 
 RACE = """#!/usr/bin/env bash
@@ -182,4 +207,4 @@ def test_two_launches_of_one_root_reserve_it_once(tmp_path):
     go.write_text("", encoding="utf-8")
     results = [process.communicate(timeout=60) for process in processes]
     assert sum(1 for out, _ in results if out.strip() == "reserved:0") == 1, results
-    assert sum(1 for _, err in results if "already being served or launched" in err) == 5, results
+    assert sum(1 for _, err in results if "reserved by a ui that is not running" in err) == 5, results

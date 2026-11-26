@@ -170,11 +170,13 @@ stops the launch instead of reaching the owner's ear. The launcher serves `:8000
 else already answers there and `PORT` was not given, it retries once on `:8002` and prints the
 port it used. An explicit `PORT=` gets no fallback — an occupied port then refuses the launch.
 
-A scratch root holds one sitting at a time: while this root's UI is running — or another launch is
-already staging it — a second `ui launch` refuses before it stages anything, even on a free port;
-the two would share one verdicts file and each hold its own copy of it. The reservation is
-`<root>/ui.lock`; the runner releases it when it exits. Stop the running one first (`ui check`
-names its runner pid), then launch; the S5 page and its `WITH_MAIN` mode are one sitting on one
+A scratch root holds one sitting at a time: while this root's UI is running — or a reservation for
+it exists at all — a second `ui launch` refuses before it stages anything, even on a free port; the
+two would share one verdicts file and each hold its own copy of it. The reservation is
+`<root>/ui.lock`; the runner releases it when it exits, and a launch that fails before starting one
+releases it too. If a launcher died and left it behind, the launch refuses and prints the removal
+command — check that nothing serves that root first, then run it. Stop a running sitting first
+(`ui check` names its runner pid); the S5 page and its `WITH_MAIN` mode are one sitting on one
 root, not two.
 
 ## Still refused from the user's machine?

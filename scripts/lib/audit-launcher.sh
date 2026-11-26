@@ -51,18 +51,25 @@ fetch_tree() {  # remote directory, destination
 }
 
 # The current branch as a bundle on the box, cloned under the scratch root and checked against
-# the local sha: a launch must serve the branch the owner is looking at, nothing older.
+# the local sha: a launch must serve the branch the owner is looking at, nothing older. Every step
+# checks its own status: `launch` calls this in a condition (to release the root on failure), and
+# a condition switches `errexit` off for the whole function — a silent failure here would start a
+# server from a half-staged clone.
 stage_repo() {
   local branch sha
-  branch=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
-  sha=$(git -C "$REPO_DIR" rev-parse HEAD)
-  [ "$branch" = HEAD ] && branch=HEAD
-  remote "mkdir -p '$ROOT' '$LOGS' && rm -rf '$REPO' '$ROOT/repo.bundle'"
-  git -C "$REPO_DIR" bundle create - "$branch" | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
+  branch=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD) || return 1
+  sha=$(git -C "$REPO_DIR" rev-parse HEAD) || return 1
+  if [ "$branch" = HEAD ]; then branch=HEAD; fi
+  remote "mkdir -p '$ROOT' '$LOGS' && rm -rf '$REPO' '$ROOT/repo.bundle'" \
+    || { echo "could not clear $REPO on $HOST" >&2; return 1; }
+  git -C "$REPO_DIR" bundle create - "$branch" | ssh "$HOST" "cat > '$ROOT/repo.bundle'" \
+    || { echo "the branch bundle did not reach $HOST:$ROOT/repo.bundle" >&2; return 1; }
   if [ "$branch" = HEAD ]; then
-    remote "git clone -q '$ROOT/repo.bundle' '$REPO'"
+    remote "git clone -q '$ROOT/repo.bundle' '$REPO'" \
+      || { echo "could not clone the bundle into $REPO" >&2; return 1; }
   else
-    remote "git clone -q -b '$branch' '$ROOT/repo.bundle' '$REPO'"
+    remote "git clone -q -b '$branch' '$ROOT/repo.bundle' '$REPO'" \
+      || { echo "could not clone $branch into $REPO" >&2; return 1; }
   fi
   remote "rm -f '$ROOT/repo.bundle' && test \"\$(git -C '$REPO' rev-parse HEAD)\" = '$sha'" \
     || { echo "the box's clone is not $sha" >&2; return 1; }
@@ -137,11 +144,16 @@ serves_from() {  # runner pid
 # One writer per scratch root: the answers live in $ROOT/verdicts.jsonl, and a second ui would
 # hold its own snapshot of that file and overwrite the first's saves, while staging would replace
 # the clone the first one serves from. The reservation is `$ROOT/ui.lock`, and its creation is
-# `mkdir` — one atomic syscall at the box, taken before anything is staged, so of two launches of
-# one root exactly one gets in, whatever ports they were given. The winner holds it for the ui's
-# lifetime: the runner records its pid there and removes the directory in its EXIT trap, and the
-# launcher removes it when a start fails (`drop_reservation`). The backup job takes none: it only
-# copies.
+# `mkdir` — one atomic syscall at the box, taken before anything is staged and before a port is
+# chosen, so of two launches of one root exactly one gets in, whatever ports they were given. The
+# winner holds it for the ui's lifetime: the runner records its pid there and removes the
+# directory in its EXIT trap, and the launcher removes it when a start fails (`drop_reservation`).
+#
+# An existing reservation is honoured as it stands. A live runner of this root refuses the launch;
+# a reservation whose holder is not live refuses it too, and names the directory for the owner.
+# Recovery is deliberately manual: checking whether a holder is dead and then replacing its
+# directory is two steps, and two launches doing that at once would both get in — a delivered
+# server whose checkout a later launch restages is the data loss this reservation exists to stop.
 reserve_root_ui() {
   local pid args
   RESERVATION="$$-$RANDOM"
@@ -161,24 +173,10 @@ reserve_root_ui() {
         echo "  stop it first (ask the owner): kill -- -$pid" >&2
         return 1 ;;
     esac
-    # A recorded runner that is gone holds nothing: move that reservation aside — only while it
-    # still records the pid just read, so a reservation another launch has made is never taken —
-    # and try again.
-    remote "test \"\$(cat '$ROOT/ui.lock/pid' 2>/dev/null)\" = '$pid' \
-      && mv '$ROOT/ui.lock' '$ROOT/ui.lock.stale.$$'" || true
-  else
-    # No pid yet: the holder is a launcher still staging. Only an old one is stale.
-    remote "test -z \"\$(cat '$ROOT/ui.lock/pid' 2>/dev/null)\" \
-      && find '$ROOT/ui.lock' -maxdepth 0 -mmin +15 | grep -q . \
-      && mv '$ROOT/ui.lock' '$ROOT/ui.lock.stale.$$'" || true
   fi
-  remote "rm -rf '$ROOT/ui.lock.stale.$$'"
-  if remote "mkdir '$ROOT/ui.lock' 2>/dev/null \
-      && printf '%s' '$RESERVATION' > '$ROOT/ui.lock/token'"; then
-    return 0
-  fi
-  echo "$ROOT on $HOST is already being served or launched; nothing was staged or started:" >&2
-  echo "  if nothing serves it, remove $ROOT/ui.lock and retry" >&2
+  echo "$ROOT on $HOST is reserved by a ui that is not running; nothing was staged or started:" >&2
+  echo "  if nothing serves this root, remove the reservation and retry:" >&2
+  echo "  ssh $HOST rm -rf '$ROOT/ui.lock'" >&2
   return 1
 }
 

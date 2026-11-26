@@ -210,7 +210,7 @@ def build_reproduction(frame: Sequence[Mapping], committed: Sequence[Mapping],
         "committed_words": len(committed),
         "regenerated_words": len(regenerated),
         "regen_grades_sha256": _sha256(regen_grades),
-        "traces": _traces_identity(traces),
+        "traces": traces_identity(traces),
         "flips": len(flips),
         "flips_in_s1_cells": sum(entry["did_not_reproduce"] for entry in cells
                                  if entry["stratum"] == "S1"),
@@ -219,7 +219,7 @@ def build_reproduction(frame: Sequence[Mapping], committed: Sequence[Mapping],
     }
 
 
-def _traces_identity(traces: Path) -> dict:
+def traces_identity(traces: Path) -> dict:
     """The gate's per-clip traces: how many, and one digest over their names and bytes."""
     paths = sorted(Path(traces).glob("*.jsonl.gz"))
     listing = "".join(f"{path.name} {_sha256(path)}\n" for path in paths)

@@ -14,11 +14,10 @@ import pytest
 
 from tadabur.followalong_audit.plant import KINDS, plant, plantable_words, planting_seed
 from tadabur.followalong_audit.sweep import (
+    AyahReferences,
     SweepClip,
     _observed_exemptions,
     _planted_row,
-    _References,
-    _tlog_clips,
     catch_rates,
     clean_sweep,
     false_flags_per_1000,
@@ -27,6 +26,7 @@ from tadabur.followalong_audit.sweep import (
     paced_word_times,
     planted_sweep,
     splits_window,
+    tlog_clips,
     word_position,
 )
 from training.decoding import SAMPLE_RATE, clusters, committed_text
@@ -458,7 +458,7 @@ def test_the_marked_letter_is_compared_in_murajas_group_coordinates():
 
 
 class FakeMurajaText:
-    """One ayah's Muraja reference, as :class:`_References` reads it."""
+    """One ayah's Muraja reference, as :class:`AyahReferences` reads it."""
 
     def __init__(self, phonemes: str, printed: dict[int, str], groups: dict[int, tuple]):
         self._phonemes = phonemes
@@ -480,14 +480,14 @@ def test_the_loader_marks_an_internal_printed_pause_sign_and_keeps_both_word_ide
     # word 2's printed text (U+06D6), as 2:5's رَّبِّهِمۡۖ carries it.
     text = FakeMurajaText("ءَبَ تُ ثَ", {1: "ءَبَ", 2: "تُۖ", 3: "ثَ"},
                           {1: ((0, 2), (2, 4)), 2: ((5, 7),), 3: ((8, 10),)})
-    references = _References(text, lambda label: (
+    references = AyahReferences(text, lambda label: (
         ("ءَ", "بَ", "تُ", "ثَ"), "ءَبَتُثَ", (0, 2, 4, 6, 8)))
     record = references("1:1")
     assert record.engine_words == ("ءَبَ", "تُ", "ثَ")
     assert record.word_of == (1, 1, 2, 3)
     assert record.cluster_groups == ((1, 0), (1, 1), (2, 0), (3, 0))
     assert record.waqf == frozenset({1})
-    (loaded,) = _tlog_clips(
+    (loaded,) = tlog_clips(
         [{"audio_path": "c.flac", "filename_label": "1:1"}],
         {"c.flac#0": {"aligned": True,
                       "word_times": [[0.1, 0.5], [0.5, 0.9], [0.9, 1.3], [1.3, 1.7]]}},

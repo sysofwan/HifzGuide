@@ -226,6 +226,12 @@ def _request(item: str, clip: SweepClip, words: Sequence[str],
     return session_request(item, clip.surah, clip.ayah, len(clip.engine_words), arm.checks)
 
 
+def oracle_request(clip: SweepClip) -> dict:
+    """The Oracle arm's harness request for one clip: its canonical words at its own word times,
+    reported in Muraja's own word numbering (:func:`_request`)."""
+    return _request(clip.item, clip, clip.words, clip.word_times)
+
+
 def _batches(items: Sequence, size: int = GRADE_BATCH):
     for start in range(0, len(items), size):
         yield list(items[start:start + size])
@@ -533,7 +539,7 @@ def catch_rates(rows: Sequence[Mapping]) -> list[dict]:
 # --- the committed run -----------------------------------------------------------------------
 
 @dataclass(frozen=True)
-class _AyahReference:
+class AyahReference:
     """One ayah's two references: the phonetizer's canonical words, which the reference is
     placed and planted in, and Muraja's own phoneme words, which it reports and grades."""
 
@@ -566,7 +572,14 @@ def _canonical_words(label: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]
     return words, reference, tuple(offsets)
 
 
-class _References:
+def ayah_references(text) -> AyahReferences:
+    """The ayah references the oracle arm reads, cached, over ``text`` (a
+    :class:`training.muraja_policy.MurajaText`). One accessor, so F1-align's reference is the
+    oracle's own by construction."""
+    return AyahReferences(text, _canonical_words)
+
+
+class AyahReferences:
     """An ayah's two references, cached: 5,742 clips share 6,236 ayat.
 
     ``canonical`` gives the phonetizer's words, ``text`` gives Muraja's own reference. The two
@@ -578,14 +591,14 @@ class _References:
     def __init__(self, text, canonical) -> None:
         self._text = text
         self._canonical = canonical
-        self._cache: dict[str, _AyahReference] = {}
+        self._cache: dict[str, AyahReference] = {}
 
-    def __call__(self, label: str) -> _AyahReference:
+    def __call__(self, label: str) -> AyahReference:
         if label not in self._cache:
             self._cache[label] = self._build(label)
         return self._cache[label]
 
-    def _build(self, label: str) -> _AyahReference:
+    def _build(self, label: str) -> AyahReference:
         words, reference, offsets = self._canonical(label)
         surah, ayah = (int(part) for part in label.split(":"))
         phonemes = self._text.phonemes(surah, ayah)
@@ -617,17 +630,17 @@ class _References:
         waqf = frozenset(index for index in range(len(engine_words))
                          if any(sign in self._text.printed(surah, ayah, index + 1)
                                 for sign in WAQF_SIGNS))
-        return _AyahReference(words, engine_words, tuple(word_of),
+        return AyahReference(words, engine_words, tuple(word_of),
                               tuple(cluster_groups), waqf)
 
 
-def _end_samples(path: Path = DECODES_PATH) -> dict[str, int]:
+def end_samples(path: Path = DECODES_PATH) -> dict[str, int]:
     """Each gating clip's sample count, from its committed decode row (``end_sample``)."""
     with gzip.open(path, "rt", encoding="utf-8") as source:
         return {record["key"]: int(record["end_sample"]) for record in map(json.loads, source)}
 
 
-def _clip(item: str, label: str, ayah: _AyahReference,
+def _clip(item: str, label: str, ayah: AyahReference,
           word_times: tuple[tuple[float, float], ...] | None,
           n_samples: int) -> SweepClip:
     """A sweep clip over one ayah's record, either side of its canon."""
@@ -636,8 +649,8 @@ def _clip(item: str, label: str, ayah: _AyahReference,
                      word_times, n_samples, ayah.waqf, ayah.cluster_groups)
 
 
-def _tlog_clips(rows: Sequence[Mapping], word_times: Mapping[str, Mapping],
-                samples: Mapping[str, int], references: _References) -> list[SweepClip]:
+def tlog_clips(rows: Sequence[Mapping], word_times: Mapping[str, Mapping],
+                samples: Mapping[str, int], references: AyahReferences) -> list[SweepClip]:
     clips = []
     for row in sorted(rows, key=lambda row: item_key(row["audio_path"])):
         key = item_key(row["audio_path"])
@@ -654,7 +667,7 @@ def _tlog_clips(rows: Sequence[Mapping], word_times: Mapping[str, Mapping],
 
 
 def _mushaf_clips(harness, pace: float,
-                  references: _References) -> tuple[list[SweepClip], list[dict]]:
+                  references: AyahReferences) -> tuple[list[SweepClip], list[dict]]:
     """Every ayah of the mushaf on synthetic word times at the tlog pace, and the unreadable."""
     connection = sqlite3.connect(f"file:{harness.quran_db}?mode=ro", uri=True)
     ayat = connection.execute("SELECT surah, ayah FROM ayahs ORDER BY surah, ayah").fetchall()
@@ -758,19 +771,19 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
 
     word_times = load_word_times()
     rows = oracle_eligible(gating_rows(), word_times)
-    references = _References(MurajaText(harness.quran_db), _canonical_words)
-    tlog_clips = _tlog_clips(rows, word_times, _end_samples(), references)
-    aligned = [clip for clip in tlog_clips if clip.word_times]
+    references = AyahReferences(MurajaText(harness.quran_db), _canonical_words)
+    clips = tlog_clips(rows, word_times, end_samples(), references)
+    aligned = [clip for clip in clips if clip.word_times]
     pace = median_speech_pace(
         [(len(clusters("".join(clip.words))), clip.word_times) for clip in aligned])
-    stage(f"tlog: {len(tlog_clips):,} clips, pace {pace:.3f} Characters/s")
-    clean_tlog = clean_sweep(tlog_clips, harness)
+    stage(f"tlog: {len(clips):,} clips, pace {pace:.3f} Characters/s")
+    clean_tlog = clean_sweep(clips, harness)
     stage(f"tlog clean: {len(clean_tlog.findings):,} findings")
     mushaf_clips, unreadable = _mushaf_clips(harness, pace, references)
     stage(f"mushaf: {len(mushaf_clips):,} clips, {len(unreadable)} unreadable")
     clean_mushaf = clean_sweep(mushaf_clips, harness)
     stage(f"mushaf clean: {len(clean_mushaf.findings):,} findings")
-    planted = planted_sweep(tlog_clips, harness, seed=seed)
+    planted = planted_sweep(clips, harness, seed=seed)
     stage(f"planted: {len(planted.rows):,} rows")
     findings = clean_tlog.findings + clean_mushaf.findings
     patterns: list[dict] = []

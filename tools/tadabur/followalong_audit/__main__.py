@@ -187,6 +187,17 @@ def main() -> int:
     report.add_argument("--summary-out", type=Path, default=_app_arm("summary.json"))
     report.add_argument("--doc-out", type=Path, default=_doc_path())
 
+    s5 = commands.add_parser("s5-draw", help="build the committed S5 draw")
+    s5.add_argument("--out", type=Path, default=_draw_dir())
+    s5.add_argument("--draw-commit", required=True,
+                    help="the commit of the draw code (D, recorded in draw_seed.json)")
+    s5.add_argument("--regen-grades", type=Path, required=True,
+                    help="the second App-arm run's word table (the F-ref gate)")
+    s5.add_argument("--traces", type=Path, required=True,
+                    help="that run's per-clip traces (the flagged words' error sets)")
+    s5.add_argument("--reuse-frame", action="store_true",
+                    help="re-read <out>/frame.jsonl.gz instead of re-deriving it")
+
     oracle = commands.add_parser("oracle-sweep",
                                  help="run the clean and planted oracle sweeps")
     oracle.add_argument("--seed", type=int, default=_sweep_seed())
@@ -218,6 +229,8 @@ def main() -> int:
         return _strata(args)
     if args.command == "report":
         return _report(args)
+    if args.command == "s5-draw":
+        return _s5_draw(args)
     if args.command == "oracle-sweep":
         return _oracle_sweep(args)
     return _run(args)
@@ -261,6 +274,12 @@ def _doc_path() -> Path:
     from tadabur.followalong_audit.app_doc import DOC_PATH
 
     return DOC_PATH
+
+
+def _draw_dir() -> Path:
+    from tadabur.followalong_audit.build import DRAW_DIR
+
+    return DRAW_DIR
 
 
 def _sweep_seed() -> int:
@@ -570,6 +589,18 @@ def _report(args) -> int:
     write_doc(json.loads(args.summary_out.read_text(encoding="utf-8")), args.doc_out)
     print(json.dumps({"clips": len(population), "failed": len(failed),
                       "p2": p2["verdict"], "doc": str(args.doc_out)}, sort_keys=True))
+    return 0
+
+
+def _s5_draw(args) -> int:
+    from tadabur.followalong_audit.build import build
+
+    summary = build(out=args.out, draw_commit=args.draw_commit,
+                    regen_grades=args.regen_grades, traces=args.traces,
+                    reuse_frame=args.reuse_frame)
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    if not summary["written"]:
+        print(f"{args.out}: the committed draw re-derives byte for byte; nothing written")
     return 0
 
 

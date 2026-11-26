@@ -133,7 +133,7 @@ def write_snips(snips: Iterable[Snip], path: Path) -> None:
 
 
 @dataclass(frozen=True)
-class _Placement:
+class SnipPlacement:
     """A row's snip and, when it plays whole, why: one cause per whole-clip row."""
 
     snip: Snip
@@ -151,21 +151,32 @@ def build_snips(
     ``records`` are :mod:`tadabur.tlog_mining.word_times` records, whose ``word_times`` are
     each word's ``(start, end)`` pair in seconds.
     """
-    return sorted((placement.snip for placement in _placements(rows, records, min_ll_per_frame)),
+    return sorted((placement.snip for placement in placements(rows, records, min_ll_per_frame)),
                   key=lambda snip: snip.site_id)
 
 
-def _placements(
+def placements(
     rows: Sequence[Mapping[str, object]], records: Iterable[Mapping[str, object]],
-    min_ll_per_frame: float,
-) -> list[_Placement]:
+    min_ll_per_frame: float = MIN_LL_PER_FRAME, *,
+    forced_whole: Mapping[str, str] | None = None,
+) -> list[SnipPlacement]:
+    """Every row's placement, in row order, and why it plays whole.
+
+    ``forced_whole`` maps a row id to the rule that makes it a whole-clip snip whatever its
+    alignment (``{id: reason}``); the reason is the row's report cause. An id no row names is
+    refused: a rule that silently applied to nothing would hide a broken sidecar.
+    """
+    forced = forced_whole or {}
     by_clip = _records_by_clip(records)
-    placements = [_placement(row, by_clip, min_ll_per_frame) for row in rows]
-    ids = [placement.snip.site_id for placement in placements]
+    placed = [_placement(row, by_clip, min_ll_per_frame, forced) for row in rows]
+    ids = [placement.snip.site_id for placement in placed]
     duplicate = next((site_id for site_id, count in Counter(ids).items() if count > 1), None)
     if duplicate is not None:
         raise ValueError(f"two worklist rows share the id {duplicate}")
-    return placements
+    unplaced = sorted(set(forced) - set(ids))
+    if unplaced:
+        raise ValueError(f"no worklist row answers the forced whole-clip ids {unplaced[:3]}")
+    return placed
 
 
 def _records_by_clip(
@@ -212,17 +223,19 @@ def _row_fields(row: Mapping[str, object]) -> tuple[str, str, str, int, int]:
 
 def _placement(
     row: Mapping[str, object], records: Mapping[tuple[str, str], Mapping[str, object]],
-    min_ll_per_frame: float,
-) -> _Placement:
+    min_ll_per_frame: float, forced: Mapping[str, str],
+) -> SnipPlacement:
     site_id, digest, ayah, word_index, clip_samples = _row_fields(row)
+    if site_id in forced:
+        return SnipPlacement(Snip(site_id, digest, None, None, WHOLE_CLIP), forced[site_id])
     record = records.get((digest, ayah))
     reason = _whole_reason(record, word_index, min_ll_per_frame)
     if reason is None:
         start, end = _excerpt(record, word_index, clip_samples)
         if (start, end) != (0, clip_samples):
-            return _Placement(Snip(site_id, digest, start, end, ALIGNMENT), None)
+            return SnipPlacement(Snip(site_id, digest, start, end, ALIGNMENT), None)
         reason = "the excerpt covers the whole clip"
-    return _Placement(Snip(site_id, digest, None, None, WHOLE_CLIP), reason)
+    return SnipPlacement(Snip(site_id, digest, None, None, WHOLE_CLIP), reason)
 
 
 def _whole_reason(
@@ -253,7 +266,7 @@ def _excerpt(
     return excerpt_span(segment, boundaries, 0, word_index, clip_samples)
 
 
-def _report(placements: Sequence[_Placement]) -> dict:
+def _report(placements: Sequence[SnipPlacement]) -> dict:
     reasons = Counter(p.reason for p in placements if p.reason is not None)
     rows = len(placements)
     whole = sum(reasons.values())
@@ -271,9 +284,9 @@ def _read_jsonl(path: Path) -> list[dict]:
 def _build(args: argparse.Namespace) -> None:
     rows = _read_jsonl(args.worklist)
     records = [record for path in args.word_times for record in _read_jsonl(path)]
-    placements = _placements(rows, records, args.min_ll_per_frame)
-    write_snips([placement.snip for placement in placements], args.out)
-    report = _report(placements)
+    placed = placements(rows, records, args.min_ll_per_frame)
+    write_snips([placement.snip for placement in placed], args.out)
+    report = _report(placed)
     print(f"{report['rows']} rows: {report['alignment']} play an alignment excerpt, "
           f"{report['whole_clip']} play whole "
           f"({report['fallback_rate']:.1%} fallback)", flush=True)

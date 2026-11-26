@@ -1,0 +1,15 @@
+{
+  "alignment": 471,
+  "alignment_fallback_rate": 0.12743362831858407,
+  "alignment_fallbacks": 72,
+  "edge_whole": 22,
+  "fallback_rate": 0.1663716814159292,
+  "reasons": {
+    "ll_per_frame is below the gate": 49,
+    "the S5 edge word plays whole": 22,
+    "the clip is not aligned": 16,
+    "the excerpt covers the whole clip": 7
+  },
+  "rows": 565,
+  "whole_clip": 94
+}

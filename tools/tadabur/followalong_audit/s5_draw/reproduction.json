@@ -1,0 +1,147 @@
+{
+  "cells": [
+    {
+      "cell": "other_consonant:no",
+      "did_not_reproduce": 0,
+      "frame": 1150,
+      "population": 1150,
+      "stratum": "S1"
+    },
+    {
+      "cell": "other_consonant:yes",
+      "did_not_reproduce": 0,
+      "frame": 1607,
+      "population": 1607,
+      "stratum": "S1"
+    },
+    {
+      "cell": "shaddah:no",
+      "did_not_reproduce": 0,
+      "frame": 61,
+      "population": 61,
+      "stratum": "S1"
+    },
+    {
+      "cell": "shaddah:yes",
+      "did_not_reproduce": 0,
+      "frame": 174,
+      "population": 174,
+      "stratum": "S1"
+    },
+    {
+      "cell": "skipped:no",
+      "did_not_reproduce": 0,
+      "frame": 147,
+      "population": 147,
+      "stratum": "S1"
+    },
+    {
+      "cell": "skipped:yes",
+      "did_not_reproduce": 0,
+      "frame": 296,
+      "population": 296,
+      "stratum": "S1"
+    },
+    {
+      "cell": "soft_pair:no",
+      "did_not_reproduce": 0,
+      "frame": 129,
+      "population": 129,
+      "stratum": "S1"
+    },
+    {
+      "cell": "soft_pair:yes",
+      "did_not_reproduce": 0,
+      "frame": 344,
+      "population": 344,
+      "stratum": "S1"
+    },
+    {
+      "cell": "target_pair:no",
+      "did_not_reproduce": 0,
+      "frame": 24,
+      "population": 24,
+      "stratum": "S1"
+    },
+    {
+      "cell": "target_pair:yes",
+      "did_not_reproduce": 0,
+      "frame": 41,
+      "population": 41,
+      "stratum": "S1"
+    },
+    {
+      "cell": "tashkeel:no",
+      "did_not_reproduce": 0,
+      "frame": 283,
+      "population": 283,
+      "stratum": "S1"
+    },
+    {
+      "cell": "tashkeel:yes",
+      "did_not_reproduce": 0,
+      "frame": 416,
+      "population": 416,
+      "stratum": "S1"
+    },
+    {
+      "cell": "unrecorded:no",
+      "did_not_reproduce": 0,
+      "frame": 98,
+      "population": 98,
+      "stratum": "S1"
+    },
+    {
+      "cell": "unrecorded:yes",
+      "did_not_reproduce": 0,
+      "frame": 386,
+      "population": 386,
+      "stratum": "S1"
+    },
+    {
+      "cell": "all",
+      "did_not_reproduce": 0,
+      "frame": 1459,
+      "population": 1459,
+      "stratum": "S3"
+    },
+    {
+      "cell": "all",
+      "did_not_reproduce": 0,
+      "frame": 38598,
+      "population": 38598,
+      "stratum": "S4"
+    },
+    {
+      "cell": "interior",
+      "did_not_reproduce": 0,
+      "frame": 196,
+      "population": 196,
+      "stratum": "S5"
+    },
+    {
+      "cell": "leading",
+      "did_not_reproduce": 0,
+      "frame": 2038,
+      "population": 2038,
+      "stratum": "S5"
+    },
+    {
+      "cell": "trailing",
+      "did_not_reproduce": 0,
+      "frame": 1553,
+      "population": 1553,
+      "stratum": "S5"
+    }
+  ],
+  "committed_words": 57935,
+  "did_not_reproduce": [],
+  "flips": 0,
+  "flips_in_s1_cells": 0,
+  "regen_grades_sha256": "6064be7082341690db9534f987b636c0e6bd482abf66aa1bd708dd9473dbb3b2",
+  "regenerated_words": 57935,
+  "traces": {
+    "files": 5742,
+    "sha256": "1412294b872150ee22db72e8b9f94afd23e9bd48dc7cb229a7d866410ed7a281"
+  }
+}

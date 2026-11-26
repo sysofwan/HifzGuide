@@ -38,7 +38,8 @@ from tadabur.followalong_audit.sweep import (
 from tadabur.followalong_audit.tracer import load_word_times
 from tadabur.tlog_mining.candidate_inventory import BASE, GATING, R3, load_decodes
 from training.muraja_policy import (
-    AUDIT_SCORINGS, CURRENT_COMMIT, MurajaText, require_harness, word_traces,
+    AUDIT_SCORINGS, CURRENT_COMMIT, PENDING, STRICT, MurajaText, require_harness,
+    word_traces,
 )
 from training.nonpro_decode import item_key
 
@@ -108,12 +109,12 @@ def build_arms(traces: Path, *, log: Callable[[str], None] = lambda _message: No
     wanted = {item for item, _ in drawn}
     rows = [row for row in gating_rows() if item_key(row["audio_path"]) in wanted]
     population = {item_key(row["audio_path"]): row for row in rows}
-    app = _app_cells(Path(traces), population, drawn)
+    engine = require_harness(commit=CURRENT_COMMIT) if harness is None else harness
+    text = MurajaText(engine.quran_db)
+    app = _app_cells(Path(traces), population, drawn, engine=engine, text=text, log=log)
     causes = _causes(drawn)
     log("arms: App cells read")
 
-    engine = require_harness(commit=CURRENT_COMMIT) if harness is None else harness
-    text = MurajaText(engine.quran_db)
     references = ayah_references(text)
     word_times = load_word_times()
     clips = tlog_clips(oracle_eligible(rows, word_times), word_times, end_samples(), references)
@@ -189,21 +190,103 @@ def write_arms(rows: Sequence[Mapping], path: Path) -> list[str]:
 # --- the arms ------------------------------------------------------------------------------------
 
 def _app_cells(traces: Path, population: Mapping[str, Mapping],
-               drawn: Sequence[tuple[str, int]]) -> dict:
-    """Each drawn word's App trace under both scorings, from the gate's regeneration.
+               drawn: Sequence[tuple[str, int]], *, engine, text: MurajaText,
+               log: Callable[[str], None]) -> dict:
+    """Each drawn word's App cell under both scorings, from the gate's regeneration.
 
-    A word the engine never graded has no trace row: its cell is ``None`` for that scoring, which
-    is the table's own ``graded: false`` (a pending word is ungraded, never a pass).
+    The gate's per-clip traces hold one row per *graded* word, so a word the engine reported but
+    never graded has none — and ``None`` reads as "the engine never saw the word" (M-nograde,
+    A2). Such a word's cell is a pending row instead: no kept grade, every check's own status,
+    re-graded from the clip's own checks through the same pinned harness (the replay must
+    reproduce the clip's saved rows). A clip whose trace file holds no row at all has no checks
+    left to replay: its words keep ``None``.
     """
     wanted = set(drawn)
     cells: dict[tuple[str, int], dict] = {cell: dict.fromkeys(SCORINGS) for cell in drawn}
+    checks: dict[str, list[dict] | None] = {}
+    kept: dict[str, dict[tuple[int, str], tuple]] = {}
     for item in sorted({item for item, _ in drawn}):
-        path = traces / f"{population[item]['audio_sha256']}.jsonl.gz"
-        for trace in read_jsonl_gz(path):
+        rows = read_jsonl_gz(traces / f"{population[item]['audio_sha256']}.jsonl.gz")
+        checks[item] = _check_texts(rows[0]["checks"]) if rows else None
+        kept[item] = {(row["word"], row["scoring"]): _kept_grade(row) for row in rows}
+        for trace in rows:
             cell = (trace["item"], trace["word"])
             if cell in wanted:
                 cells[cell][trace["scoring"]] = {name: trace[name] for name in APP_FIELDS}
+    ungraded = [cell for cell in drawn if cells[cell][STRICT.name] is None]
+    if ungraded:
+        _grade_ungraded(cells, ungraded, checks, kept, population, engine, text, log)
     return cells
+
+
+def _check_texts(checks: Sequence[Mapping]) -> list[dict]:
+    """A saved trace's checks as the request's: their hop, overlap, flush and stop, no status."""
+    return [{name: check[name] for name in ("hop", "overlap", "flush")}
+            | ({"stop": True} if check.get("stop") else {}) for check in checks]
+
+
+def _kept_grade(row: Mapping) -> tuple:
+    """A trace row's kept grade: the four values a replay of the same request reproduces."""
+    return (row["quality"], row["score"], row["withheld"], row["errors"])
+
+
+def _grade_ungraded(cells: dict, ungraded: Sequence[tuple[str, int]],
+                    checks: Mapping[str, list[dict] | None],
+                    kept: Mapping[str, Mapping[tuple[int, str], tuple]],
+                    population: Mapping[str, Mapping], engine, text: MurajaText,
+                    log: Callable[[str], None]) -> None:
+    """Replay the clips of the words the gate gave no kept entry and fill their pending cells.
+
+    ``kept`` is the clip's saved grades: a replay that does not reproduce them word for word is
+    not the gate's session, so its check statuses are refused rather than committed.
+    """
+    by_item: dict[str, list[tuple[str, int]]] = defaultdict(list)
+    for cell in ungraded:
+        by_item[cell[0]].append(cell)
+    requests = []
+    for item in sorted(by_item):
+        if checks.get(item) is None:
+            log(f"arms: {item} holds no trace row, so no checks to replay: its "
+                f"{len(by_item[item])} drawn word(s) keep no App cell")
+            continue
+        surah, ayah = (int(part) for part in population[item]["filename_label"].split(":"))
+        requests.append(session_request(item, surah, ayah,
+                                        len(text.phonemes(surah, ayah).split(" ")), checks[item]))
+    if not requests:
+        return
+    _, results = engine.run(requests)
+    for request in requests:
+        item = request["item"]
+        rebuilt = {(row["word"], row["scoring"]): _kept_grade(row)
+                   for row in word_traces(request, results, AUDIT_SCORINGS)}
+        if rebuilt != kept[item]:
+            raise ValueError(f"{item}: replaying its saved checks does not reproduce the gate's "
+                             f"traces, so its ungraded words' check statuses are not the gate's")
+    by_engine = {(result["item"], result["scoring"]): result for result in results}
+    for request in requests:
+        for scoring in AUDIT_SCORINGS:
+            result = by_engine[(request["item"], scoring.engine_name)]
+            for cell in by_item[request["item"]]:
+                if cells[cell][scoring.name] is None:
+                    cells[cell][scoring.name] = _pending_trace(request, result, cell[1])
+    log(f"arms: {sum(len(by_item[request['item']]) for request in requests)} ungraded drawn "
+        f"words re-graded for their checks ({len(requests)} clips)")
+
+
+def _pending_trace(request: Mapping, result: Mapping, word: int) -> dict:
+    """A reported word's row with no kept grade: every check's own status and nothing else.
+
+    ``quality`` is pending — no verdict the reader got (:func:`attribution.kept_outcome`) — and
+    no kept score or error set exists to report; ``setting_checks`` is empty because no kept grade
+    set one. The statuses are what keeps the word off M-nograde (A2).
+    """
+    return {
+        "quality": PENDING, "score": None, "withheld": None, "errors": [],
+        "checks": [{**check, "status": next((status for status in graded["statuses"]
+                                             if status["word"] == word), None)}
+                   for check, graded in zip(request["checks"], result["checks"])],
+        "setting_checks": [],
+    }
 
 
 def _causes(drawn: Sequence[tuple[str, int]]) -> dict:

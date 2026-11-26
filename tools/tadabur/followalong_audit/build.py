@@ -9,6 +9,10 @@ words over the committed App table and detectors; the **gate** compares a second
 The gate needs the regenerated table and the per-clip traces that carry its error sets (the
 committed table holds only ``{graded, flagged, causes}``). Pass them with ``--regen-grades`` and
 ``--traces``; ``--reuse-frame`` re-reads a frame already built, which is the slow step.
+
+Every file is derived into a staging directory and published at once (:func:`publish`), so a
+draw is frozen the moment it lands: a re-derivation that matches it writes nothing, one that
+would change its sample is refused, and only the ``draw_seed.json`` record may be re-recorded.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from tadabur.followalong_audit.app_arm import read_grades, read_jsonl, write_jsonl
 from tadabur.followalong_audit.atomic import write_bytes_atomically, write_text_atomically
@@ -43,11 +48,52 @@ PREREGISTRATION = DOCS / "followalong-audit-preregistration.md"
 AMENDMENT = DOCS / "followalong-audit-draw-amendment.md"
 
 TRANCHES = ("confirm.1", "confirm.2")
+#: What a listener was served: the frame, the gate, the key, the blind worklist, the serve
+#: orders and the snips. A build never replaces another draw's sample.
+SAMPLE_FILES = ("frame.jsonl.gz", "reproduction.json", "app_errors.jsonl.gz", "key.jsonl",
+                "worklist.jsonl", "pilot.jsonl", "main.jsonl", "snips.jsonl",
+                "snips.report.json")
+#: Provenance rather than the sample: it names the commit that precedes this file, so a
+#: re-record is not a redraw.
+RECORD_FILES = ("draw_seed.json",)
+
+
+def publish(staged: Path, out: Path) -> list[str]:
+    """Move a staged bundle into ``out``, refusing to replace another draw's sample.
+
+    ``staged`` holds every file of the bundle; ``out`` the published one, or nothing. When
+    ``out`` holds any sample file, the re-derived bytes must equal it file for file - a draw
+    that changed would leave existing verdicts describing different words. The record may be
+    restamped, and a bundle that already matches writes nothing.
+
+    Returns the names actually written.
+    """
+    changed = [name for name in SAMPLE_FILES
+               if (out / name).exists()
+               and (out / name).read_bytes() != (staged / name).read_bytes()]
+    if changed:
+        raise ValueError(f"{out} holds a draw this build would change ({', '.join(changed)}): "
+                         f"a redraw of a committed draw needs its own approved operation")
+    written: list[str] = []
+    for name in (*SAMPLE_FILES, *RECORD_FILES):
+        body = (staged / name).read_bytes()
+        target = out / name
+        if target.exists() and target.read_bytes() == body:
+            continue
+        write_bytes_atomically(target, body)
+        written.append(name)
+    return written
 
 
 def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces: Path,
           reuse_frame: bool = False) -> dict:
-    """Write every committed draw file under ``out`` and return the run's counts."""
+    """Derive the whole draw, then publish it unless ``out`` already holds another one.
+
+    Every file is derived into a staging directory first, so a failed derivation (a missing
+    trace, a frame that drifted) leaves ``out`` untouched. An existing draw's sample is never
+    replaced: a re-derivation that changes a byte of it is refused, while one that matches it
+    writes nothing at all. The record may be restamped: it names the commit that precedes it.
+    """
     require_commit_hex(draw_commit)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -55,15 +101,12 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     frame = (_read_jsonl_gz(out / "frame.jsonl.gz") if reuse_frame
              else build_frame(population))
     _check_frame(frame)
-    _write_jsonl_gz(frame, out / "frame.jsonl.gz")
 
     committed = read_grades(APP_ARM / "word_grades.jsonl.gz")
     regenerated = read_grades(Path(regen_grades))
     reproduction = build_reproduction(frame, committed, regenerated,
                                       regen_grades=Path(regen_grades), traces=Path(traces))
-    _write_json(reproduction, out / "reproduction.json")
-    _write_jsonl_gz(build_app_errors(Path(traces), regenerated, population),
-                    out / "app_errors.jsonl.gz")
+    errors = build_app_errors(Path(traces), regenerated, population)
 
     seed = derive_seed(AMENDMENT_COMMIT)
     removed = {(entry["item"], entry["word"]) for entry in reproduction["did_not_reproduce"]}
@@ -82,27 +125,31 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     if len(key) != len(originals) + PILOT_REPEATS + MAIN_REPEATS:
         raise ValueError(f"the key holds {len(key)} served items, not the design's")
     worklist = _worklist_rows(key, clips, manifest)
-    write_jsonl(key, out / "key.jsonl")
-    write_jsonl(worklist, out / "worklist.jsonl")
-    for sitting, plan in plans.items():
-        write_jsonl(_serve_rows(plan, seed), out / f"{sitting}.jsonl")
 
     records = [record for tranche in TRANCHES
                for record in _read_jsonl_gz(WORD_TIMES / f"{tranche}.jsonl.gz")]
     placed = snip_placements(worklist, key, records)
-    write_snips((placement.snip for placement in placed), out / "snips.jsonl")
     report = _snip_report(placed)
-    _write_json(report, out / "snips.report.json")
+    record = {"amendment_commit": AMENDMENT_COMMIT, "seed": seed,
+              "preregistration_sha256": _sha256(PREREGISTRATION),
+              "amendment_sha256": _sha256(AMENDMENT), "draw_commit": draw_commit}
 
-    _write_json({
-        "amendment_commit": AMENDMENT_COMMIT,
-        "seed": seed,
-        "preregistration_sha256": _sha256(PREREGISTRATION),
-        "amendment_sha256": _sha256(AMENDMENT),
-        "draw_commit": draw_commit,
-    }, out / "draw_seed.json")
+    with TemporaryDirectory(prefix="s5-draw-") as staging:
+        staged = Path(staging)
+        _write_jsonl_gz(frame, staged / "frame.jsonl.gz")
+        _write_json(reproduction, staged / "reproduction.json")
+        _write_jsonl_gz(errors, staged / "app_errors.jsonl.gz")
+        write_jsonl(key, staged / "key.jsonl")
+        write_jsonl(worklist, staged / "worklist.jsonl")
+        for sitting, plan in plans.items():
+            write_jsonl(_serve_rows(plan, seed), staged / f"{sitting}.jsonl")
+        write_snips((placement.snip for placement in placed), staged / "snips.jsonl")
+        _write_json(report, staged / "snips.report.json")
+        _write_json(record, staged / "draw_seed.json")
+        written = publish(staged, out)
     return {"frame": len(frame), "flips": reproduction["flips"],
-            "drawn": len(originals), "served": len(key), "snips": report}
+            "drawn": len(originals), "served": len(key), "snips": report,
+            "written": written}
 
 
 # --- the frame ------------------------------------------------------------------------------------

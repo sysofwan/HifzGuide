@@ -599,6 +599,8 @@ def _s5_draw(args) -> int:
                     regen_grades=args.regen_grades, traces=args.traces,
                     reuse_frame=args.reuse_frame)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    if not summary["written"]:
+        print(f"{args.out}: the committed draw re-derives byte for byte; nothing written")
     return 0
 
 

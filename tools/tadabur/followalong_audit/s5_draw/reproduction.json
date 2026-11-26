@@ -138,5 +138,10 @@
   "did_not_reproduce": [],
   "flips": 0,
   "flips_in_s1_cells": 0,
-  "regenerated_words": 57935
+  "regen_grades_sha256": "6064be7082341690db9534f987b636c0e6bd482abf66aa1bd708dd9473dbb3b2",
+  "regenerated_words": 57935,
+  "traces": {
+    "files": 5742,
+    "sha256": "1412294b872150ee22db72e8b9f94afd23e9bd48dc7cb229a7d866410ed7a281"
+  }
 }

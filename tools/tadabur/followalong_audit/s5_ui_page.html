@@ -79,14 +79,35 @@ let posting = false;   // a save is in flight; cleared when its reply settles
 let armedAt = 0;       // when the shown item started accepting verdict clicks
 const $ = (id) => document.getElementById(id);
 
-async function load() {
-  const payload = await (await fetch("/api/sites")).json();
+// The server's snapshot taking the place of the page's: the vocabulary, the answers, the count.
+function adopt(payload) {
   state.vocabulary = payload.vocabulary;
   state.sites = payload.sites;
   renderChoices();
-  show(state.sites.findIndex((site) => site.answer === null) < 0 ? 0
-       : state.sites.findIndex((site) => site.answer === null));
   renderProgress(payload.progress);
+}
+
+async function load() {
+  const payload = await (await fetch("/api/sites")).json();
+  adopt(payload);
+  const unanswered = payload.sites.findIndex((site) => site.answer === null);
+  show(unanswered < 0 ? 0 : unanswered);
+}
+
+// Another tab moved the answer: take the file's snapshot while keeping the item on screen — the
+// key is read when the reply lands, so navigation during the request is honoured. Nothing is
+// selected or played: a refused answer never steps on, and the owner moves on only by a gesture
+// of their own. The refreshed answer becomes the stale token the next save sends.
+async function refresh() {
+  const payload = await (await fetch("/api/sites")).json();
+  const shown = state.sites[state.index];
+  adopt(payload);
+  const site = shown && payload.sites.find((candidate) => candidate.key === shown.key);
+  if (!site) return;   // the sitting's order is fixed; a reshaped list is not this page's item
+  state.index = payload.sites.indexOf(site);
+  draftFrom(site);
+  renderDraft();
+  $("prev").disabled = state.index === 0;
 }
 
 function renderChoices() {
@@ -127,6 +148,14 @@ function play() {
     .catch(() => $("hint").classList.remove("hidden"));
 }
 
+// The draft an item starts from: the answer the file holds for it, if any.
+function draftFrom(site) {
+  state.choice = site.answer ? site.answer.verdict : null;
+  state.kinds = new Set(site.answer ? site.answer.kinds : []);
+  $("note").value = site.answer ? site.answer.note : "";
+  $("sub-reason").value = site.answer && site.answer.sub_reason ? site.answer.sub_reason : "";
+}
+
 function show(index) {
   state.index = index;
   const site = state.sites[index];
@@ -137,10 +166,7 @@ function show(index) {
     Object.assign(document.createElement("span"), { textContent: site.after }));
   $("audio").src = `/api/audio?key=${encodeURIComponent(site.key)}&whole=0`;
   play();
-  state.choice = site.answer ? site.answer.verdict : null;
-  state.kinds = new Set(site.answer ? site.answer.kinds : []);
-  $("note").value = site.answer ? site.answer.note : "";
-  $("sub-reason").value = site.answer && site.answer.sub_reason ? site.answer.sub_reason : "";
+  draftFrom(site);
   renderDraft();
   $("prev").disabled = index === 0;
   $("status").textContent = "";
@@ -205,9 +231,10 @@ async function save() {
     }
     if (!response.ok) {
       const problem = reply.error || `not saved (${response.status})`;
-      // Another tab moved it: show what the file holds. A reload that fails must not hide the
+      // Another tab moved it: take the file's answer for the item on screen, so the owner's next
+      // save carries the right stale token and can land. A reload that fails must not hide the
       // answer's own refusal, so it is reported either way.
-      if (response.status === 409) await load().catch(() => {});
+      if (response.status === 409) await refresh().catch(() => {});
       say(problem);
       return;
     }

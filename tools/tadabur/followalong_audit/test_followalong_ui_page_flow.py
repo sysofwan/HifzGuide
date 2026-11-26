@@ -195,22 +195,76 @@ check("the next play clears the hint", () => {
 """
 
 
-def _payload() -> dict:
-    sites = [
-        {"key": "k0", "surah_ayah": "2:3", "before": "الذين ", "carrier": "يؤمنون",
-         "after": " بالغيب", "answer": None},
-        {"key": "k1", "surah_ayah": "2:4", "before": "و", "carrier": "الذين",
-         "after": " يؤمنون", "answer": None},
-        {"key": "k2", "surah_ayah": "2:5", "before": "", "carrier": "أُو۟لَـٰٓئِكَ",
-         "after": " عَلَىٰ هُدًى", "answer": None},
-        {"key": "k3", "surah_ayah": "2:6", "before": "إِنَّ ", "carrier": "ٱلَّذِينَ",
-         "after": " كَفَرُوا۟", "answer": None},
-    ]
+def _sites(count: int) -> list[dict]:
+    words = [("2:3", "الذين ", "يؤمنون", " بالغيب"), ("2:4", "و", "الذين", " يؤمنون"),
+             ("2:5", "", "أُو۟لَـٰٓئِكَ", " عَلَىٰ هُدًى"), ("2:6", "إِنَّ ", "ٱلَّذِينَ",
+                                                          " كَفَرُوا۟")]
+    return [{"key": f"k{index}", "surah_ayah": ayah, "before": before, "carrier": carrier,
+             "after": after, "answer": None}
+            for index, (ayah, before, carrier, after) in enumerate(words[:count])]
+
+
+def _payload(count: int) -> dict:
+    sites = _sites(count)
     return {"sites": sites, "progress": {"answered": 0, "total": len(sites)},
             "vocabulary": {"verdicts": list(VERDICTS), "kinds": list(MISTAKE_KINDS),
                            "sub_reasons": list(SUB_REASONS)}}
 
 
+# The 409 path (reviewer r11 R11.1): a refused stale answer must take the file's snapshot in
+# place — same item, same clip, no step — and the refreshed answer must be the next save's token.
+CONFLICT = r"""
+await settle();
+elapse(500);
+payload.sites[0].answer = { verdict: "not sure", kinds: [], sub_reason: null, note: "" };
+click("correct");   // another tab answered k0 after this page loaded it: this answer is stale
+await settle();
+check("a conflict keeps the item and its clip, and takes the file's answer", () => {
+  assert.equal(requests.length, 1);
+  assert.equal(page.state.index, 0);
+  assert.equal(page.state.sites[0].key, "k0");
+  assert.equal(page.state.choice, "not sure");
+  assert.equal(el("status").textContent, "another tab");
+  assert.equal(played(), 1);
+  assert.equal(el("audio").src, "/api/audio?key=k0&whole=0");
+});
+
+el("note").value = "second try";
+click("correct");
+await settle();
+check("the refreshed answer becomes the next save's stale token", () => {
+  assert.equal(requests.length, 2);
+  assert.deepEqual(requests[1].previous, { verdict: "not sure", kinds: [],
+                                           sub_reason: null, note: "" });
+  assert.equal(requests[1].note, "second try");
+  assert.equal(page.state.index, 1);
+  assert.equal(played(), 2);
+});
+
+elapse(500);
+holdNext();
+click("not sure");
+await tick();
+await tick();
+fire(el("prev"), "click");   // the owner steps back while the answer is in flight
+release({ status: 409, error: "another tab" });
+await settle();
+check("a conflict never moves a navigated page, nor plays it", () => {
+  assert.equal(requests.length, 3);
+  assert.equal(page.state.index, 0);
+  assert.equal(page.state.sites[0].key, "k0");
+  assert.equal(page.state.choice, "correct");   // the file's answer for k0, not the refused draft
+  assert.equal(el("status").textContent, "another tab");
+  assert.equal(played(), 3);
+});
+"""
+
+
+def test_a_conflict_refreshes_the_shown_answer_without_stepping(tmp_path):
+    result = run(CONFLICT, _payload(3), Path(tmp_path))
+    assert result == {"checks": 3, "requests": 3}, result
+
+
 def test_a_verdict_click_saves_steps_on_and_plays_the_next_item(tmp_path):
-    result = run(SCENARIO, _payload(), Path(tmp_path))
+    result = run(SCENARIO, _payload(4), Path(tmp_path))
     assert result == {"checks": CHECKS, "requests": 5}, result

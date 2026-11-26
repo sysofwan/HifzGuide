@@ -14,7 +14,8 @@ answer bodies the page has sent), ``click(verdict)``, ``enter()``, ``fire(target
 ``tick()``/``settle()``, ``elapse(ms)`` (moves the clock a step's click guard reads),
 ``played()`` (how often the player was told to play), ``check(name, assertion)``, ``assert``,
 ``setRefuse(reply)`` (the next answer is refused: ``{status, error}`` or ``{thrown: message}``),
-``holdNext()``/``release()`` (hold one reply in flight), ``blockAutoplay(on)`` and
+``holdNext()``/``release(refusal?)`` (hold one reply in flight, then resolve it — refused when a
+``{status, error}`` is given), ``blockAutoplay(on)`` and
 ``failSites(on)``.
 
 The runner prints ``{"checks": n, "requests": n}``; the caller asserts the shape it expects.
@@ -147,7 +148,8 @@ const accept = (body) => {
 globalThis.fetch = async (url, options = {}) => {
   if (url === "/api/sites") {
     if (sitesFail) throw new Error("the box is unreachable");
-    return { ok: true, status: 200, json: async () => payload };
+    // A fresh copy per read, as HTTP gives: the page's snapshot must not alias the server's.
+    return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(payload)) };
   }
   if (url !== "/api/verdict") throw new Error(`unexpected fetch ${url}`);
   const body = JSON.parse(options.body);
@@ -164,7 +166,9 @@ globalThis.fetch = async (url, options = {}) => {
   if (holdReply) {
     holdReply = false;
     return await new Promise((resolve) => {
-      heldReply = () => resolve({ ok: true, status: 200, json: async () => accept(body) });
+      heldReply = (refusal) => resolve(refusal
+        ? { ok: false, status: refusal.status, json: async () => ({ error: refusal.error }) }
+        : { ok: true, status: 200, json: async () => accept(body) });
     });
   }
   return { ok: true, status: 200, json: async () => accept(body) };
@@ -193,7 +197,7 @@ const helpers = {
   played: () => el("audio").played,
   setRefuse: (value) => { refuse = value; },
   holdNext: () => { holdReply = true; },
-  release: () => { const reply = heldReply; heldReply = null; if (reply) reply(); },
+  release: (refusal) => { const reply = heldReply; heldReply = null; if (reply) reply(refusal); },
   blockAutoplay: (on = true) => { blockedPlay = on; },
   failSites: (on = true) => { sitesFail = on; },
 };

@@ -28,6 +28,7 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from tadabur.followalong_audit.app_arm import read_jsonl, read_jsonl_gz
 from tadabur.followalong_audit.atomic import write_bytes_atomically
 from tadabur.followalong_audit.clips import gating_rows, oracle_eligible
 from tadabur.followalong_audit.session import session_request
@@ -95,7 +96,7 @@ def build_arms(traces: Path, *, log: Callable[[str], None] = lambda _message: No
     """
     from tadabur.followalong_audit.build import traces_identity
 
-    drawn = sorted({(row["item"], row["word"]) for row in _read_jsonl(DRAW_DIR / "key.jsonl")
+    drawn = sorted({(row["item"], row["word"]) for row in read_jsonl(DRAW_DIR / "key.jsonl")
                     if row["repeat_of"] is None})
     pinned = json.loads((DRAW_DIR / "reproduction.json").read_text(encoding="utf-8"))["traces"]
     found = traces_identity(Path(traces))
@@ -113,10 +114,9 @@ def build_arms(traces: Path, *, log: Callable[[str], None] = lambda _message: No
 
     engine = require_harness(commit=CURRENT_COMMIT) if harness is None else harness
     text = MurajaText(engine.quran_db)
+    references = ayah_references(text)
     word_times = load_word_times()
-    clips = tlog_clips(oracle_eligible(rows, word_times), word_times, end_samples(),
-                       ayah_references(text))
-    ayahs = ayah_references(text)
+    clips = tlog_clips(oracle_eligible(rows, word_times), word_times, end_samples(), references)
     by_item = {clip.item: clip for clip in clips}
     without = sorted(wanted - set(by_item))
     if without:
@@ -140,7 +140,7 @@ def build_arms(traces: Path, *, log: Callable[[str], None] = lambda _message: No
             "teacher": _by_word(teacher, item, word),
             "student": _by_word(student, item, word),
             "reference": None if clip is None else oracle_reference(
-                ayahs(f"{clip.surah}:{clip.ayah}"), word),
+                references(f"{clip.surah}:{clip.ayah}"), word),
         })
     return out
 
@@ -154,7 +154,7 @@ def _require_outcomes(cells: Mapping, drawn: Sequence[tuple[str, int]], table_pa
     """
     from tadabur.followalong_audit.attribution import kept_outcome
 
-    table = {(row["item"], row["word"]): row for row in _read_jsonl_gz(table_path)}
+    table = {(row["item"], row["word"]): row for row in read_jsonl_gz(table_path)}
     for cell in drawn:
         committed = table[cell]
         for scoring in AUDIT_SCORINGS:
@@ -199,7 +199,7 @@ def _app_cells(traces: Path, population: Mapping[str, Mapping],
     cells: dict[tuple[str, int], dict] = {cell: dict.fromkeys(SCORINGS) for cell in drawn}
     for item in sorted({item for item, _ in drawn}):
         path = traces / f"{population[item]['audio_sha256']}.jsonl.gz"
-        for trace in _read_jsonl_gz(path):
+        for trace in read_jsonl_gz(path):
             cell = (trace["item"], trace["word"])
             if cell in wanted:
                 cells[cell][trace["scoring"]] = {name: trace[name] for name in APP_FIELDS}
@@ -208,7 +208,7 @@ def _app_cells(traces: Path, population: Mapping[str, Mapping],
 
 def _causes(drawn: Sequence[tuple[str, int]]) -> dict:
     """Each drawn word's flag causes per scoring, from the committed App table."""
-    rows = {(row["item"], row["word"]): row for row in _read_jsonl_gz(
+    rows = {(row["item"], row["word"]): row for row in read_jsonl_gz(
         APP_ARM / "word_grades.jsonl.gz")}
     return {(item, word): {scoring: list(rows[(item, word)][scoring]["causes"])
                            for scoring in SCORINGS}
@@ -243,13 +243,3 @@ def _grade(clips: Sequence, request_of: Callable[[object], dict], engine,
 
 def _by_word(cells: Mapping, item: str, word: int) -> dict:
     return {scoring: cells.get((item, word), {}).get(scoring) for scoring in SCORINGS}
-
-
-def _read_jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
-            if line.strip()]
-
-
-def _read_jsonl_gz(path: Path) -> list[dict]:
-    with gzip.open(Path(path), "rt", encoding="utf-8") as source:
-        return [json.loads(line) for line in source if line.strip()]

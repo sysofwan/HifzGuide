@@ -771,7 +771,7 @@ def run_sweep(harness, seed: int = SWEEP_SEED, log=None) -> SweepResult:
 
     word_times = load_word_times()
     rows = oracle_eligible(gating_rows(), word_times)
-    references = AyahReferences(MurajaText(harness.quran_db), _canonical_words)
+    references = ayah_references(MurajaText(harness.quran_db))
     clips = tlog_clips(rows, word_times, end_samples(), references)
     aligned = [clip for clip in clips if clip.word_times]
     pace = median_speech_pace(

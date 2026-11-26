@@ -146,15 +146,9 @@ def test_a_reference_is_the_oracles_text_and_at_most_five_words_have_none(arms):
             assert isinstance(reference["word"], str) and reference["word"]
 
 
-def test_the_five_s1_pending_words_have_no_oracle_grade(arms):
-    pending = {(item, word) for item, word in (("55_28_6162424172.flac#0", 4),
-                                               ("56_34_2147808602.flac#0", 1),
-                                               ("79_28_420573590.flac#0", 1),
-                                               ("84_19_9013039918.flac#0", 4),
-                                               ("84_5_2752243060.flac#0", 3))}
-    by_word = {(row["item"], row["word"]): row for row in arms}
-    for word in pending & set(by_word):
-        assert kept_outcome(by_word[word]["oracle"]["strict"]) == "ungraded"
+# The five S1-pending words are not drawn, so nothing here reads them; the claim that the oracle
+# left each of them ungraded is asserted against the committed oracle table in
+# ``test_followalong_score_relock.py``.
 
 
 # --- the S2 patterns ------------------------------------------------------------------------------

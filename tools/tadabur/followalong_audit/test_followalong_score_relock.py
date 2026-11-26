@@ -12,6 +12,9 @@ locked in turn: later turns may add tests but never weaken or rewrite these.
   is about the committed tables: the five S1-pending words are App strict flags the oracle left
   ungraded. They are asserted here against ``oracle_sweep/word_grades.jsonl.gz`` and the App table,
   and "none of the five is drawn" is stated as a fact of the draw, not left implicit.
+* S2.5 (added beside the S2.1-S2.3 lock) — ``attribution.false_flag_bucket`` takes
+  ``reference=None`` for an engine word no canonical word maps to and falls through to F-ref and
+  the Teacher arm, so the scorer holds no second copy of the frozen bucket precedence.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from pathlib import Path
 
 import pytest
 
+from tadabur.followalong_audit.attribution import false_flag_bucket
 from tadabur.followalong_audit.s5_score import attribute_listened
 from training.muraja_policy import STRICT
 
@@ -135,3 +139,32 @@ def test_the_app_flags_each_s1_pending_word_strictly_for_the_issues_causes(app):
 def test_none_of_the_five_s1_pending_words_is_among_the_drawn_words():
     drawn = {(row["item"], row["word"]) for row in _jsonl(DRAW / "key.jsonl")}
     assert drawn.isdisjoint(S1_PENDING)
+
+
+# --- S2.5 -----------------------------------------------------------------------------------------
+MISMATCH = {"group_index": 0,
+            "kind": {"type": "mismatch", "expected": "س", "heard": "ص"}}
+
+
+def _flagged() -> dict:
+    """An App trace the kept grade flags, with nothing a setting check could align."""
+    return {"quality": "minor", "score": 0.5, "withheld": None, "errors": [MISMATCH],
+            "checks": [], "setting_checks": []}
+
+
+def _teacher(quality: str) -> dict:
+    return {"quality": quality, "score": 1.0, "withheld": None, "errors": []}
+
+
+def test_a_word_with_no_canonical_reference_falls_through_to_f_ref_and_the_teacher():
+    """``false_flag_bucket`` reads ``reference=None`` as F1-align that cannot fire, so the
+    scorer needs no second copy of the precedence (self-check S2.5)."""
+    app = _flagged()
+    assert false_flag_bucket(app=app, oracle=None, teacher=_teacher("correct"), reference=None,
+                             suspect=False) == "F2"
+    assert false_flag_bucket(app=app, oracle=None, teacher=_teacher("minor"), reference=None,
+                             suspect=False) == "F3"
+    assert false_flag_bucket(app=app, oracle=None, teacher=_teacher("unrecorded"), reference=None,
+                             suspect=False) == "F3"
+    assert false_flag_bucket(app=app, oracle=None, teacher=_teacher("correct"), reference=None,
+                             suspect=True) == "F-ref"

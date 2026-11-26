@@ -33,10 +33,11 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
+from tadabur.followalong_audit.app_arm import read_jsonl, read_jsonl_gz
 from tadabur.followalong_audit.atomic import write_text_atomically
 from tadabur.followalong_audit.attribution import (
     FOLLOW_ALONG, MODEL, UNKNOWN, error_key, false_flag_bucket, kept_outcome, miss_labels,
-    reference_suspects, rule_five, side,
+    model_share, reference_suspects, rule_five, side,
 )
 from training.muraja_policy import SHIPPED_DEFAULT, STRICT, Scoring
 
@@ -139,10 +140,13 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
     """One decisive word through the locked buckets, as the committed attribution line.
 
     ``suspects`` is :func:`attribution.reference_suspects`' set, and F-ref is placed on the
-    follow-along side (both sides are reported by rule 3). A word the App flagged and the owner
-    heard correct is a false flag (F1..F3); a mistake the App flagged is a correct catch; any
-    other mistake is a miss labelled by :func:`attribution.miss_labels`, its first label its
-    bucket. Neither side needs the arm the bucket names: the App cell is the row's own.
+    follow-along side (both sides are reported by rule 3). The line carries the key's stratum,
+    cell and π, the verdict the owner gave, both arms' kept outcomes, and the outcome, bucket,
+    labels and side the verdict routes to — everything but the raw traces. A word the App
+    flagged and the owner heard correct is a false flag (F1..F3); a mistake the App flagged is a
+    correct catch; any other mistake is a miss labelled by :func:`attribution.miss_labels`, its
+    first label its bucket. Neither side needs the arm the bucket names: the App cell is the
+    row's own.
     """
     app = arms["app"][scoring.name]
     oracle = arms["oracle"][scoring.name]
@@ -152,9 +156,9 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
     result = {
         "id": key_row["id"], "item": key_row["item"], "word": key_row["word"],
         "stratum": key_row["stratum"], "cell": key_row["cell"],
-        "pi": key_row["inclusion_probability"], "app": app_outcome,
-        "teacher": teacher_outcome, "outcome": None, "bucket": None, "labels": [], "side": None,
-        "soft_or_target": False,
+        "pi": key_row["inclusion_probability"], "verdict": verdict["verdict"],
+        "app": app_outcome, "teacher": teacher_outcome, "outcome": None, "bucket": None,
+        "labels": [], "side": None, "soft_or_target": False,
     }
     if verdict["verdict"] in _EXCLUDED:
         result["outcome"] = "excluded"
@@ -164,7 +168,7 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
             result["outcome"] = "true_pass"
             return result
         strict_suspect = _is_suspect(key_row, arms["app"][STRICT.name], suspects)
-        bucket = _false_flag_bucket(app=app, oracle=oracle, teacher=teacher,
+        bucket = false_flag_bucket(app=app, oracle=oracle, teacher=teacher,
                                    reference=arms["reference"], suspect=strict_suspect,
                                    scoring=scoring)
         result.update(outcome="false_flag", bucket=bucket, labels=[bucket],
@@ -179,25 +183,6 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
     result.update(outcome="miss", bucket=bucket, labels=labels,
                   side=_side(bucket, teacher_outcome, False))
     return result
-
-
-def _false_flag_bucket(*, app: Mapping, oracle: Mapping | None, teacher: Mapping | None,
-                       reference: Mapping | None, suspect: bool,
-                       scoring: Scoring) -> str:
-    """``false_flag_bucket``'s answer, and F-ref/F2/F3 for a word with no reference.
-
-    An engine word no canonical word maps to has ``reference`` ``None``: F1-align cannot fire, so
-    it falls through to F-ref and the Teacher arm exactly as ``false_flag_bucket`` does with an
-    alignment that cannot hold.
-    """
-    if kept_outcome(oracle, scoring) == "flagged":
-        return "F1"
-    if reference is None:
-        if suspect:
-            return "F-ref"
-        return "F2" if kept_outcome(teacher, scoring) == "passed" else "F3"
-    return false_flag_bucket(app=app, oracle=oracle, teacher=teacher, reference=reference,
-                             suspect=suspect, scoring=scoring)
 
 
 def _side(bucket: str, teacher_outcome: str, suspect: bool) -> str:
@@ -282,11 +267,13 @@ def rate_interval(records: Sequence[Mapping], statistic: Callable[[list], float 
                   ) -> list[float | None]:
     """The 95% interval of ``statistic`` over whole-clip resamples (prereg §7).
 
-    :func:`training.decode_evalset.cluster_bootstrap`'s arithmetic, over the same clip clusters
-    and percentile convention — but a resample the statistic cannot compute (a draw of clips with
-    no word of the rate's kind) is left out rather than counted as zero, so an undefined rate
-    stays undefined instead of gaining a false precision. A statistic that is always defined
-    gives exactly ``cluster_bootstrap``'s interval.
+    :func:`training.decode_evalset.cluster_bootstrap`'s percentile arithmetic, over the same clip
+    clusters — with two deliberate differences. The clips are resampled in sorted-key order, not
+    the insertion order ``cluster_bootstrap`` walks, so the same seed gives a different (equally
+    valid) realisation; sorting keeps the interval independent of the order the rows arrive in. A
+    resample the statistic cannot compute (a draw of clips with no word of the rate's kind) is
+    left out rather than counted as zero, so an undefined rate stays undefined instead of gaining
+    false precision.
     """
     grouped: dict[str, list] = {}
     for record in records:
@@ -376,19 +363,18 @@ def _rule_three(words: Sequence[Mapping]) -> dict:
     """
     unknown = [row for row in words if row["side"] == UNKNOWN]
     known = [row for row in words if row["side"] != UNKNOWN]
-    models = sum(1 for row in known if _as_side(row, FOLLOW_ALONG) == MODEL)
-    model_side_models = sum(1 for row in known if _as_side(row, MODEL) == MODEL)
-    follow_along_share = None if not known else models / len(known)
-    model_side_share = None if not known else model_side_models / len(known)
+    follow_along_share = _model_share(known, FOLLOW_ALONG)
     total = len(known) + len(unknown)
-    follow_along_extreme = models / total if known else None
-    model_extreme = (models + len(unknown)) / total if known else None
+    follow_along_extreme = (None if follow_along_share is None
+                            else follow_along_share * len(known) / total)
+    model_extreme = (None if follow_along_share is None
+                     else (follow_along_share * len(known) + len(unknown)) / total)
     straddles = (follow_along_extreme is not None
                  and follow_along_extreme < 0.5 <= model_extreme)
     return {
         "label": "before any follow-along fix",
         "model_share": {"f_ref_follow_along": follow_along_share,
-                        "f_ref_model": model_side_share},
+                        "f_ref_model": _model_share(known, MODEL)},
         "unknown": {"words": len(unknown),
                     "by_stratum": dict(sorted(Counter(row["stratum"] for row in unknown).items()))},
         "extremes": {"unknown_follow_along": follow_along_extreme,
@@ -399,9 +385,24 @@ def _rule_three(words: Sequence[Mapping]) -> dict:
     }
 
 
-def _as_side(row: Mapping, f_ref: str) -> str:
-    """The word's side with F-ref read on ``f_ref``'s side."""
-    return f_ref if row["side"] == F_REF_SIDE else row["side"]
+def _model_share(words: Sequence[Mapping], f_ref: str) -> float | None:
+    """``attribution.model_share`` of the words, ``None`` when not one has a side."""
+    if not words:
+        return None
+    return model_share((_bucket(row) for row in words), f_ref=f_ref)
+
+
+def _bucket(row: Mapping) -> str | tuple[str, bool]:
+    """The row's bucket as :func:`attribution.model_share` reads it: M-nograde with its grade."""
+    if row["bucket"] == "M-nograde":
+        return (row["bucket"], row["teacher"] != "ungraded")
+    return row["bucket"]
+
+
+def _bucket_side(row: Mapping, f_ref: str = FOLLOW_ALONG) -> str:
+    """The row's side by the bucket rules, F-ref read on ``f_ref``'s side."""
+    graded = row["teacher"] != "ungraded" if row["bucket"] == "M-nograde" else None
+    return side(row["bucket"], f_ref=f_ref, teacher_graded=graded)
 
 
 def _weighted_share(words: Sequence[Mapping]) -> float | None:
@@ -410,7 +411,7 @@ def _weighted_share(words: Sequence[Mapping]) -> float | None:
     weight = sum(_weight(row) for row in kept)
     if not weight:
         return None
-    model = sum(_weight(row) for row in kept if _as_side(row, FOLLOW_ALONG) == MODEL)
+    model = sum(_weight(row) for row in kept if _bucket_side(row) == MODEL)
     return model / weight
 
 
@@ -451,15 +452,15 @@ def score(*, draw: Path = DRAW_DIR, verdicts: Path = VERDICTS_PATH, out: Path,
     """
     from tadabur.followalong_audit.draw import subseed
 
-    key = _read_jsonl(Path(draw) / "key.jsonl")
+    key = read_jsonl(Path(draw) / "key.jsonl")
     seeds = json.loads((Path(draw) / "draw_seed.json").read_text(encoding="utf-8"))
     seed = subseed(seeds["seed"], "bootstrap")
     answered = read_verdicts(Path(verdicts), key)
     originals = [row for row in key if row["repeat_of"] is None]
     arms = {(row["item"], row["word"]): row
-            for row in _read_jsonl_gz(Path(draw) / "arms.jsonl.gz")}
-    suspects = reference_suspects(_read_jsonl_gz(Path(draw) / "app_errors.jsonl.gz"))
-    edges = ayah_edge_words(_read_jsonl_gz(APP_ARM / "word_grades.jsonl.gz"))
+            for row in read_jsonl_gz(Path(draw) / "arms.jsonl.gz")}
+    suspects = reference_suspects(read_jsonl_gz(Path(draw) / "app_errors.jsonl.gz"))
+    edges = ayah_edge_words(read_jsonl_gz(APP_ARM / "word_grades.jsonl.gz"))
     patterns = candidate_pattern_words(
         json.loads(S2_REPORT.read_text(encoding="utf-8")) if S2_REPORT.exists() else {})
     heard = [row for row in originals if row["id"] in answered]
@@ -476,7 +477,7 @@ def score(*, draw: Path = DRAW_DIR, verdicts: Path = VERDICTS_PATH, out: Path,
         rows = strict if scoring is STRICT else [
             attribute_listened(row, arms[(row["item"], row["word"])], answered[row["id"]],
                                suspects=suspects, scoring=scoring) for row in heard]
-        records = _records(rows, heard, answered, edges)
+        records = _records(rows, edges)
         blocks[_block_name(scoring)] = {"attribution": _attribution_counts(rows),
                                 "rates": _rates(records, seed, iterations),
                                 "rules": evaluate_rules(rows, oracle_pattern_words=patterns)}
@@ -503,11 +504,10 @@ def _excluded(heard: Sequence[Mapping], answered: Mapping[str, Mapping]) -> dict
                            if answered[row["id"]]["sub_reason"] == "not_in_clip")}
 
 
-def _records(rows: Sequence[Mapping], heard: Sequence[Mapping], answered: Mapping[str, Mapping],
-             edges: set[tuple[str, int]]) -> list[dict]:
-    """The rate records: one per heard word, in the scorer's record shape."""
+def _records(rows: Sequence[Mapping], edges: set[tuple[str, int]]) -> list[dict]:
+    """The rate records: one per attributed word, in the scorer's record shape."""
     return [{"item": row["item"], "word": row["word"], "stratum": row["stratum"],
-             "cell": row["cell"], "pi": row["pi"], "verdict": answered[row["id"]]["verdict"],
+             "cell": row["cell"], "pi": row["pi"], "verdict": row["verdict"],
              "app_flagged": row["app"] == "flagged",
              "ayah_edge": (row["item"], row["word"]) in edges}
             for row in rows]
@@ -556,15 +556,3 @@ def _scoped(scope: str) -> Callable[..., float | None]:
     def scoped(sample: list, *, without_edges: bool = False) -> float | None:
         return misses_per_100(sample, scope=scope, without_edges=without_edges)
     return scoped
-
-
-def _read_jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
-            if line.strip()]
-
-
-def _read_jsonl_gz(path: Path) -> list[dict]:
-    import gzip
-
-    with gzip.open(Path(path), "rt", encoding="utf-8") as source:
-        return [json.loads(line) for line in source if line.strip()]

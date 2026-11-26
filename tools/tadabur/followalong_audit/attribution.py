@@ -102,7 +102,7 @@ def _aligned(app: Mapping, reference: Mapping) -> bool:
 
 
 def false_flag_bucket(*, app: Mapping, oracle: Mapping | None, teacher: Mapping | None,
-                      reference: Mapping, suspect: bool,
+                      reference: Mapping | None, suspect: bool,
                       scoring: Scoring = STRICT) -> str:
     """The bucket of a word the App flagged and the owner heard correct.
 
@@ -110,12 +110,16 @@ def false_flag_bucket(*, app: Mapping, oracle: Mapping | None, teacher: Mapping 
     the App's setting check decoded the reference with a neighbour), F-ref (a reference suspect
     computed by :func:`reference_suspects`, checked before the Teacher arm), and finally the
     Teacher arm: F2 when it passed the word, F3 when it flagged it or left it ungraded (D8).
+
+    ``reference`` is ``None`` for an engine word no canonical word maps to: F1-align cannot fire
+    there, so the word falls through to F-ref and the Teacher arm.
     """
     if kept_outcome(app, scoring) != "flagged":
         raise ValueError("a false flag is a word the App flagged")
     if kept_outcome(oracle, scoring) == "flagged":
         return "F1"
-    if kept_outcome(oracle, scoring) == "passed" and _aligned(app, reference):
+    if (kept_outcome(oracle, scoring) == "passed" and reference is not None
+            and _aligned(app, reference)):
         return "F1-align"
     if suspect:
         return "F-ref"

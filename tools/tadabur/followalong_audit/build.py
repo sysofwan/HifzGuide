@@ -26,7 +26,7 @@ from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tadabur.followalong_audit.app_arm import read_grades, read_jsonl, write_jsonl
+from tadabur.followalong_audit.app_arm import read_grades, read_jsonl, read_jsonl_gz, write_jsonl
 from tadabur.followalong_audit.atomic import write_bytes_atomically, write_text_atomically
 from tadabur.followalong_audit.clips import app_arm_rows
 from tadabur.followalong_audit.draw import (
@@ -98,7 +98,7 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     population = app_arm_rows()
-    frame = (_read_jsonl_gz(out / "frame.jsonl.gz") if reuse_frame
+    frame = (read_jsonl_gz(out / "frame.jsonl.gz") if reuse_frame
              else build_frame(population))
     _check_frame(frame)
 
@@ -113,7 +113,7 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     draws = select_words(frame, seed=seed, removed=removed)
     clips = {item_key(clip["audio_path"]): clip for clip in population}
     manifest = {row["audio_sha256"]: row
-                for row in _read_jsonl_gz(APP_ARM / "audio_manifest.jsonl.gz")}
+                for row in read_jsonl_gz(APP_ARM / "audio_manifest.jsonl.gz")}
     originals = _key_rows(draws, clips, seed)
     plans, repeats = _plans_and_repeats(originals, seed)
     key = sorted(originals + repeats, key=lambda row: row["id"])
@@ -127,7 +127,7 @@ def build(*, out: Path = DRAW_DIR, draw_commit: str, regen_grades: Path, traces:
     worklist = _worklist_rows(key, clips, manifest)
 
     records = [record for tranche in TRANCHES
-               for record in _read_jsonl_gz(WORD_TIMES / f"{tranche}.jsonl.gz")]
+               for record in read_jsonl_gz(WORD_TIMES / f"{tranche}.jsonl.gz")]
     placed = snip_placements(worklist, key, records)
     report = _snip_report(placed)
     record = {"amendment_commit": AMENDMENT_COMMIT, "seed": seed,
@@ -238,7 +238,7 @@ def build_app_errors(traces: Path, regenerated: Sequence[Mapping],
     clips = {item_key(clip["audio_path"]): clip for clip in population}
     rows: list[dict] = []
     for path in sorted(Path(traces).glob("*.jsonl.gz")):
-        for trace in _read_jsonl_gz(path):
+        for trace in read_jsonl_gz(path):
             if trace["scoring"] != "strict" or (trace["item"], trace["word"]) not in flagged:
                 continue
             clip = clips[trace["item"]]
@@ -357,11 +357,6 @@ def _snip_report(placed: Sequence[SnipPlacement]) -> dict:
 
 def _sha256(path: Path) -> str:
     return sha256(Path(path).read_bytes()).hexdigest()
-
-
-def _read_jsonl_gz(path: Path) -> list[dict]:
-    with gzip.open(Path(path), "rt", encoding="utf-8") as source:
-        return [json.loads(line) for line in source if line.strip()]
 
 
 def _write_jsonl_gz(rows: Iterable[Mapping], path: Path) -> None:

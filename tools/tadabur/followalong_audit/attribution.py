@@ -96,13 +96,35 @@ def _aligned(app: Mapping, reference: Mapping) -> bool:
         seeds = [] if previous is None else [previous + word]
         if following is not None:
             seeds.append(word + following)
+    return _holds(app, seeds)
+
+
+def alone_aligned(app: Mapping, oracle: Mapping | None, reference: Mapping | None, *,
+                  scoring: Scoring = STRICT) -> bool:
+    """Prereg §5's sensitivity row: F1-align's alignment on the reference R alone.
+
+    The primary rule needs R joined with a neighbour, and in a clip with no neighbour at all it
+    needs R alone from four code points up. This row allows R alone in every clip, of any length,
+    under F1-align's other preconditions: the oracle's kept outcome passed, and one of the App's
+    setting checks holds R verbatim. It is reported beside the primary attribution and never
+    decides; it bounds how much the neighbour requirement leans toward the model side.
+    """
+    if app is None or reference is None:
+        return False
+    if kept_outcome(oracle, scoring) != "passed":
+        return False
+    return _holds(app, [reference["word"]])
+
+
+def _holds(app: Mapping, seeds: Iterable[str]) -> bool:
+    """Whether one of the App's setting checks holds one of ``seeds`` as an exact substring."""
     checks = app["checks"]
     return any(seed in checks[i]["hop"] + checks[i]["overlap"]
                for i in app["setting_checks"] for seed in seeds)
 
 
 def false_flag_bucket(*, app: Mapping, oracle: Mapping | None, teacher: Mapping | None,
-                      reference: Mapping, suspect: bool,
+                      reference: Mapping | None, suspect: bool,
                       scoring: Scoring = STRICT) -> str:
     """The bucket of a word the App flagged and the owner heard correct.
 
@@ -110,12 +132,16 @@ def false_flag_bucket(*, app: Mapping, oracle: Mapping | None, teacher: Mapping 
     the App's setting check decoded the reference with a neighbour), F-ref (a reference suspect
     computed by :func:`reference_suspects`, checked before the Teacher arm), and finally the
     Teacher arm: F2 when it passed the word, F3 when it flagged it or left it ungraded (D8).
+
+    ``reference`` is ``None`` for an engine word no canonical word maps to: F1-align cannot fire
+    there, so the word falls through to F-ref and the Teacher arm.
     """
     if kept_outcome(app, scoring) != "flagged":
         raise ValueError("a false flag is a word the App flagged")
     if kept_outcome(oracle, scoring) == "flagged":
         return "F1"
-    if kept_outcome(oracle, scoring) == "passed" and _aligned(app, reference):
+    if (kept_outcome(oracle, scoring) == "passed" and reference is not None
+            and _aligned(app, reference)):
         return "F1-align"
     if suspect:
         return "F-ref"

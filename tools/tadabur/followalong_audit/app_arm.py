@@ -197,6 +197,12 @@ def read_jsonl(path: Path) -> list[dict]:
             if line.strip()]
 
 
+def read_jsonl_gz(path: Path) -> list[dict]:
+    """The gzipped sibling of :func:`read_jsonl`: the tables a build commits."""
+    with gzip.open(Path(path), "rt", encoding="utf-8") as source:
+        return [json.loads(line) for line in source if line.strip()]
+
+
 # --- the determinism subset ---------------------------------------------------------------------
 
 

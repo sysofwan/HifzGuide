@@ -198,6 +198,21 @@ def main() -> int:
     s5.add_argument("--reuse-frame", action="store_true",
                     help="re-read <out>/frame.jsonl.gz instead of re-deriving it")
 
+    arms = commands.add_parser("s5-arms", help="build the drawn words' committed arm traces")
+    arms.add_argument("--traces", type=Path, required=True,
+                      help="the App arm's per-clip regen traces (the gate's own run)")
+    arms.add_argument("--out", type=Path, default=_draw_dir() / "arms.jsonl.gz")
+
+    score = commands.add_parser("s5-score", help="score the draw against the listener's verdicts")
+    score.add_argument("--verdicts", type=Path,
+                       default=_draw_dir() / "verdicts.jsonl",
+                       help="the listening page's verdicts (missing: no verdicts yet)")
+    score.add_argument("--out", type=Path, required=True, help="the run's directory")
+    score.add_argument("--iterations", type=int, default=4000,
+                       help="bootstrap resamples per interval (4000 is the audit's)")
+    score.add_argument("--draw", type=Path, default=_draw_dir(),
+                       help="the committed draw (read, never written)")
+
     oracle = commands.add_parser("oracle-sweep",
                                  help="run the clean and planted oracle sweeps")
     oracle.add_argument("--seed", type=int, default=_sweep_seed())
@@ -231,6 +246,10 @@ def main() -> int:
         return _report(args)
     if args.command == "s5-draw":
         return _s5_draw(args)
+    if args.command == "s5-arms":
+        return _s5_arms(args)
+    if args.command == "s5-score":
+        return _s5_score(args)
     if args.command == "oracle-sweep":
         return _oracle_sweep(args)
     return _run(args)
@@ -601,6 +620,27 @@ def _s5_draw(args) -> int:
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     if not summary["written"]:
         print(f"{args.out}: the committed draw re-derives byte for byte; nothing written")
+    return 0
+
+
+def _s5_arms(args) -> int:
+    from tadabur.followalong_audit.s5_arms import build_arms, write_arms
+
+    rows = build_arms(args.traces, log=lambda message: print(message, file=sys.stderr, flush=True))
+    written = write_arms(rows, args.out)
+    print(json.dumps({"rows": len(rows), "written": written,
+                      "bytes": Path(args.out).stat().st_size}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _s5_score(args) -> int:
+    from tadabur.followalong_audit.s5_score import score
+
+    summary = score(draw=args.draw, verdicts=args.verdicts, out=args.out,
+                    iterations=args.iterations)
+    print(json.dumps({"out": str(args.out), "verdicts": summary["verdicts"],
+                      "rule_4": summary["strict"]["rules"]["rule_4"]},
+                     ensure_ascii=False, sort_keys=True))
     return 0
 
 

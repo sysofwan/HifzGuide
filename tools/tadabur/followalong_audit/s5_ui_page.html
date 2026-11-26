@@ -42,6 +42,7 @@
 <main>
   <div id="ayah" class="ayah"></div>
   <audio id="audio" controls preload="auto"></audio>
+  <div id="hint" class="dim hidden">tap ▶ to play</div>
   <div class="buttons">
     <button id="whole" title="Play the whole clip (w)">Whole clip</button>
     <button id="prev" title="Previous (←)">Back</button>
@@ -67,7 +68,15 @@
 // page keeps only the site it shows and the answer it was shown, which every save sends back as
 // `previous` so a second tab cannot silently overwrite it.
 const state = { sites: [], vocabulary: null, index: 0, choice: null, kinds: new Set() };
+// The verdicts whose detail has to be set before they are sent: a mistake's kinds, an unusable
+// clip's sub-reason. Every other verdict is the whole answer at the click.
+const WAITS = new Set(["mistake", "unusable audio"]);
+// How long a newly shown item ignores verdict clicks. The click that caused the step — or its
+// double-click tail, or a held Space on the button that still has focus — must not answer the
+// item that just appeared, unheard.
+const GUARD_MS = 400;
 let posting = false;   // a save is in flight; cleared when its reply settles
+let armedAt = 0;       // when the shown item started accepting verdict clicks
 const $ = (id) => document.getElementById(id);
 
 async function load() {
@@ -110,9 +119,12 @@ function renderChoices() {
 }
 
 // Every step plays its clip at once: the owner asked for autoplay on a verdict, and a step is one
-// listen. The browser can refuse the very first play before any gesture; the player stays there.
+// listen. A browser may refuse the first play before any gesture; then the page says so, and the
+// player and its own play button are still there.
 function play() {
-  Promise.resolve($("audio").play()).catch(() => {});
+  $("hint").classList.add("hidden");
+  Promise.resolve($("audio").play())
+    .catch(() => $("hint").classList.remove("hidden"));
 }
 
 function show(index) {
@@ -132,6 +144,8 @@ function show(index) {
   renderDraft();
   $("prev").disabled = index === 0;
   $("status").textContent = "";
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  armedAt = Date.now();   // the item is one listen old: verdict clicks land from here on
 }
 
 // The current draft's controls: what is chosen, what is ticked, which inputs it allows. Kept
@@ -154,17 +168,21 @@ function choose(verdict) {
   renderDraft();
 }
 
-// A click on a verdict is the whole answer: it saves and steps on at once. A mistake is the one
-// exception — it waits for at least one kind, then Enter or Save does the same. The numbered keys
-// only select (no click), so a keyboard reader can look at the draft before saving it.
+// A click on a verdict is the whole answer: it saves and steps on at once. A mistake and an
+// unusable clip open their detail and wait for Enter or Save, which then does the same. The
+// numbered keys only select (no click), so a keyboard reader can look at the draft before saving
+// it, and a click inside a step's guard is the tail of the gesture that stepped, never an answer.
 async function record(verdict) {
+  if (Date.now() - armedAt < GUARD_MS) return;
+  if (posting) return say("saving…");   // the draft of an item in flight is not the owner's to edit
   choose(verdict);
-  if (verdict !== "mistake") await save();
+  if (!WAITS.has(verdict)) await save();
 }
 
 async function save() {
-  if (posting) return;   // one answer in flight: a second click must not post the same item twice
-  const site = state.sites[state.index];
+  if (posting) return;   // one answer in flight: Enter or Save cannot post the item twice
+  const index = state.index;
+  const site = state.sites[index];
   if (state.choice === null) return say("Choose a verdict first.");
   const kinds = state.choice === "mistake" ? [...state.kinds] : [];
   if (state.choice === "mistake" && kinds.length === 0) return say("Tick what was wrong.");
@@ -187,13 +205,15 @@ async function save() {
     }
     if (!response.ok) {
       const problem = reply.error || `not saved (${response.status})`;
-      if (response.status === 409) await load();   // another tab moved it: show what the file holds
+      // Another tab moved it: show what the file holds. A reload that fails must not hide the
+      // answer's own refusal, so it is reported either way.
+      if (response.status === 409) await load().catch(() => {});
       say(problem);
       return;
     }
     site.answer = reply.answer;
     renderProgress(reply.progress);
-    advance();
+    if (state.index === index) advance(index);   // never move the page the owner has navigated
   } finally {
     posting = false;
   }
@@ -201,8 +221,8 @@ async function save() {
 
 // The step after a save: the next item of the sitting, its snip already playing. The last item
 // stays shown — the sitting does not wrap, and re-answering it with Back still posts.
-function advance() {
-  if (state.index + 1 < state.sites.length) return show(state.index + 1);
+function advance(index) {
+  if (index + 1 < state.sites.length) return show(index + 1);
   say("saved — done: this is the last item");
 }
 
@@ -226,6 +246,7 @@ $("whole").addEventListener("click", () => {
   play();
 });
 $("prev").addEventListener("click", () => show(Math.max(0, state.index - 1)));
+$("audio").addEventListener("play", () => $("hint").classList.add("hidden"));
 $("next").addEventListener("click", next);
 $("save").addEventListener("click", save);
 document.addEventListener("keydown", (event) => {

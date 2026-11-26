@@ -133,6 +133,32 @@ serves_from() {  # runner pid
   return 1
 }
 
+# One writer per scratch root: the answers live in $ROOT/verdicts.jsonl, and a second ui would
+# hold its own snapshot of that file and overwrite the first's saves, while staging also replaces
+# the clone the first one serves from. The running runner is the reservation — `$LOGS/ui.pid`
+# names it, its command line is this root's runner, its lifetime is the sitting's — so a second
+# launch refuses before anything is staged, whatever port it was given and whether or not that
+# port is free. A pid that is gone (or reused by another process) is no reservation. The backup
+# job takes none: it only copies.
+refuse_live_ui() {
+  local pid args
+  pid=$(remote "cat '$LOGS/ui.pid' 2>/dev/null" || true)
+  case "$pid" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  if remote "test -f '$LOGS/ui.exit'"; then
+    return 0
+  fi
+  args=$(remote "ps -p '$pid' -o args= 2>/dev/null" || true)
+  case "$args" in
+    *"$ROOT/run-ui.sh"*) : ;;
+    *) return 0 ;;
+  esac
+  echo "$ROOT on $HOST already serves a ui (pid $pid); nothing was staged or started:" >&2
+  echo "  stop it first (ask the owner): kill -- -$pid" >&2
+  return 1
+}
+
 # Whether the page's port is free. An occupied port refuses the launch instead of reporting
 # whatever already answers there as the new sitting; a round that names PORT_FALLBACK retries
 # once on it, and only when PORT was not given explicitly.
@@ -158,6 +184,7 @@ refuse_occupied_port() {
 launch() {
   local pid probe= status=0
   if [ "$job" = ui ]; then
+    refuse_live_ui || return 1
     refuse_occupied_port || return 1
   fi
   if [ "$job" = backup ]; then

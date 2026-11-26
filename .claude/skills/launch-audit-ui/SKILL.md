@@ -170,6 +170,11 @@ stops the launch instead of reaching the owner's ear. The launcher serves `:8000
 else already answers there and `PORT` was not given, it retries once on `:8002` and prints the
 port it used. An explicit `PORT=` gets no fallback — an occupied port then refuses the launch.
 
+A scratch root holds one sitting at a time: while this root's UI is running, a second `ui launch`
+refuses before it stages anything, even on a free port — the two would share one verdicts file and
+each hold its own copy of it. Stop the running one first (`ui check` names its runner pid), then
+launch; the S5 page and its `WITH_MAIN` mode are one sitting on one root, not two.
+
 ## Still refused from the user's machine?
 
 Once the listener shows `0.0.0.0:8000` and the host's own `curl http://<LAN-IP>:8000/` returns 200,

@@ -41,8 +41,9 @@ def _launch(tmp_path: Path, repo: Path, *args: str, bound: str = "",
 
     Before the launch starts, only ``bound``'s port answers ``ss`` (the owner's other server);
     writing the runner creates the marker, after which the job's own listener answers on
-    whatever port it asks about and ``pgrep -P`` reports its child. The launch pipeline itself
-    runs unchanged against those answers."""
+    whatever port it asks about and ``pgrep -P`` reports its child. ``ui.pid`` then reads
+    ``UI_PID``, and ``ps -p`` answers ``UI_PS`` — together, a ui already running on this root.
+    The launch pipeline itself runs unchanged against those answers."""
     marker = tmp_path / "launched"
     shim = tmp_path / "bin"
     shim.mkdir(exist_ok=True)
@@ -52,6 +53,8 @@ cat > /dev/null
 cmd="$*"
 case "$cmd" in *'run-ui.sh'*) : > '{marker}'; exit 0 ;; esac
 case "$cmd" in *'test -f '*'ui.exit'*) exit 1 ;; esac
+case "$cmd" in *"cat '"*'ui.pid'*) printf '%s' "${{UI_PID:-}}"; exit 0 ;; esac
+case "$cmd" in *'ps -p'*) printf '%s\\n' "${{UI_PS:-}}"; exit 0 ;; esac
 if [ -f '{marker}' ]; then
   case "$cmd" in *'ss -ltnp'*) printf '%s\\n' '{LISTEN}' ; exit 0 ;; esac
 elif [ -n "{bound}" ]; then
@@ -106,3 +109,29 @@ def test_a_free_8000_is_served_without_a_second_look(tmp_path, stage):
     assert "  url:  http://box:8000/" in done.stdout and "trying" not in done.stderr
     remote = _remote(tmp_path)
     assert "--port 8000" in remote and ":8002 " not in remote
+
+
+def test_a_root_that_already_serves_a_ui_refuses_a_second_launch_before_staging(tmp_path, stage):
+    """The pilot is running on this root; `WITH_MAIN=1 ui launch` must not stage over it.
+
+    The same scratch root means the same clone, runner, log and verdicts file — the second ui
+    would answer from its own snapshot of that file. The refusal is the root's, not the port's:
+    it fires even though 8002 is free and the fallback would happily take it. An occupied 8000
+    with no ui of this root (the owner's other server) still falls back — see the test above."""
+    root = tmp_path / "scratch"
+    done = _launch(tmp_path, stage, "ui", "launch", bound="8000", UI_PID="4242",
+                   UI_PS=f"/usr/bin/bash {root}/run-ui.sh")
+    assert done.returncode == 1, _text(done)
+    assert f"{root} on root@box already serves a ui (pid 4242)" in done.stderr
+    assert "kill -- -4242" in done.stderr and "job started" not in done.stdout
+    remote = _remote(tmp_path)
+    assert "git clone" not in remote and "setsid" not in remote    # nothing staged or started
+    assert ":8002 " not in remote and "trying" not in done.stderr  # no port was consulted
+
+
+def test_a_pid_file_whose_runner_is_gone_does_not_block_the_launch(tmp_path, stage):
+    """A run left a pid file behind (killed, rebooted); its pid now names no runner of ours."""
+    done = _launch(tmp_path, stage, "ui", "launch", bound="8000", UI_PID="999", UI_PS="")
+    assert done.returncode == 0, _text(done)
+    assert "port 8000 on root@box is already bound; trying 8002" in done.stderr
+    assert "  url:  http://box:8002/" in done.stdout

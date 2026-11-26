@@ -30,7 +30,8 @@
 # `ui` and `backup` launch stage the current branch as a bundle on the box; the backup loop only
 # copies within the scratch root, so its launch never re-clones. Every job writes one log and its
 # exit file last, so `check` never reads a log tail. Jobs run under setsid with stdin closed, so
-# they survive the ssh session. Restarting a running UI needs the owner's OK.
+# they survive the ssh session. A second `ui launch` on this root refuses while the first one runs:
+# one verdicts file has one writer. Restarting a running UI needs the owner's OK.
 set -euo pipefail
 
 SCRIPT=issue-311-audit.sh

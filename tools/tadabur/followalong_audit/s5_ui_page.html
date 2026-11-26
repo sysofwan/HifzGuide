@@ -121,6 +121,15 @@ function show(index) {
   state.kinds = new Set(site.answer ? site.answer.kinds : []);
   $("note").value = site.answer ? site.answer.note : "";
   $("sub-reason").value = site.answer && site.answer.sub_reason ? site.answer.sub_reason : "";
+  renderDraft();
+  $("prev").disabled = index === 0;
+  $("status").textContent = "";
+}
+
+// The current draft's controls: what is chosen, what is ticked, which inputs it allows. Kept
+// apart from `show`, which initializes a newly displayed site from its stored answer; redrawing
+// a selection must not reload that answer, or it would drop the choice and its note.
+function renderDraft() {
   for (const button of document.querySelectorAll("#choices button")) {
     button.classList.toggle("chosen", button.dataset.verdict === state.choice);
   }
@@ -129,14 +138,12 @@ function show(index) {
   }
   $("kinds").classList.toggle("hidden", state.choice !== "mistake");
   $("sub").classList.toggle("hidden", state.choice !== "unusable audio");
-  $("prev").disabled = index === 0;
-  $("status").textContent = "";
 }
 
 function choose(verdict) {
   state.choice = verdict;
   if (verdict !== "mistake") state.kinds.clear();
-  show(state.index);
+  renderDraft();
 }
 
 async function save() {

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S5 listening</title>
+<style>
+  :root { color-scheme: light dark; --ink:#1c1c1e; --dim:#6b6b70; --line:#d0d0d5; --accent:#0a84ff; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#f2f2f7; --dim:#9a9aa0; --line:#3a3a3e; } }
+  body { font: 16px/1.6 -apple-system, system-ui, sans-serif; color: var(--ink);
+         max-width: 46rem; margin: 0 auto; padding: 1.2rem 1rem 4rem; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+           border-bottom: 1px solid var(--line); padding-bottom: .5rem; margin-bottom: 1.2rem; }
+  header .dim, .dim { color: var(--dim); font-size: .9rem; }
+  .ayah { font-size: 2rem; line-height: 2.2; text-align: center; margin: 1.2rem 0; }
+  mark { background: none; color: var(--accent); border-bottom: 2px solid var(--accent); }
+  audio { width: 100%; margin: .6rem 0 0; }
+  .buttons { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  button { font: inherit; padding: .5rem 1rem; border: 1px solid var(--line); border-radius: .6rem;
+           background: transparent; color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.chosen { border-color: var(--accent); color: var(--accent);
+                 background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  button:disabled { color: var(--dim); cursor: default; }
+  #whole { margin-right: auto; }
+  label.kind, label.sub { display: inline-flex; align-items: center; gap: .35rem; margin: 0 1rem 0 0; }
+  input[type=text] { font: inherit; width: 100%; padding: .45rem .6rem; border: 1px solid var(--line);
+                     border-radius: .5rem; background: transparent; color: var(--ink); }
+  .row { margin: .8rem 0; }
+  .hidden { display: none; }
+  footer { position: fixed; inset: auto 0 0 0; border-top: 1px solid var(--line);
+           background: Canvas; padding: .6rem 1rem; display: flex; gap: 1rem; align-items: center; }
+  footer .spacer { flex: 1; }
+</style>
+</head>
+<body>
+<header>
+  <span id="ayah-label" class="dim"></span>
+  <span id="progress" class="dim"></span>
+</header>
+
+<main>
+  <div id="ayah" class="ayah"></div>
+  <audio id="audio" controls preload="auto"></audio>
+  <div class="buttons">
+    <button id="whole" title="Play the whole clip (w)">Whole clip</button>
+    <button id="prev" title="Previous (←)">Back</button>
+  </div>
+
+  <div id="choices" class="buttons" role="group" aria-label="Verdict"></div>
+  <div id="kinds" class="row hidden" role="group" aria-label="What was wrong"></div>
+  <div id="sub" class="row hidden">
+    <label>Reason <select id="sub-reason"></select></label>
+  </div>
+  <div class="row"><input id="note" type="text" placeholder="Note (optional)"></div>
+</main>
+
+<footer>
+  <span id="status" class="dim"></span>
+  <span class="spacer"></span>
+  <button id="next" title="Next unanswered (→)">Next</button>
+  <button id="save" title="Save and go on (Enter)">Save</button>
+</footer>
+
+<script type="module">
+// One drawn word at a time. The server owns the order, the vocabulary and the verdicts file; the
+// page keeps only the site it shows and the answer it was shown, which every save sends back as
+// `previous` so a second tab cannot silently overwrite it.
+const state = { sites: [], vocabulary: null, index: 0, choice: null, kinds: new Set() };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  const payload = await (await fetch("/api/sites")).json();
+  state.vocabulary = payload.vocabulary;
+  state.sites = payload.sites;
+  renderChoices();
+  show(state.sites.findIndex((site) => site.answer === null) < 0 ? 0
+       : state.sites.findIndex((site) => site.answer === null));
+  renderProgress(payload.progress);
+}
+
+function renderChoices() {
+  const box = $("choices");
+  box.replaceChildren(...state.vocabulary.verdicts.map((verdict) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = verdict;
+    button.dataset.verdict = verdict;
+    button.addEventListener("click", () => choose(verdict));
+    return button;
+  }));
+  const kinds = $("kinds");
+  kinds.replaceChildren(...state.vocabulary.kinds.map((kind) => {
+    const label = document.createElement("label");
+    label.className = "kind";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = kind;
+    input.addEventListener("change", () => {
+      if (input.checked) state.kinds.add(kind); else state.kinds.delete(kind);
+    });
+    label.append(input, kind);
+    return label;
+  }));
+  $("sub-reason").replaceChildren(
+    Object.assign(document.createElement("option"), { value: "", textContent: "—" }),
+    ...state.vocabulary.sub_reasons.map((reason) =>
+      Object.assign(document.createElement("option"), { value: reason, textContent: reason })));
+}
+
+function show(index) {
+  state.index = index;
+  const site = state.sites[index];
+  $("ayah-label").textContent = site.surah_ayah;
+  $("ayah").replaceChildren(
+    Object.assign(document.createElement("span"), { textContent: site.before }),
+    Object.assign(document.createElement("mark"), { textContent: site.carrier }),
+    Object.assign(document.createElement("span"), { textContent: site.after }));
+  $("audio").src = `/api/audio?key=${encodeURIComponent(site.key)}&whole=0`;
+  state.choice = site.answer ? site.answer.verdict : null;
+  state.kinds = new Set(site.answer ? site.answer.kinds : []);
+  $("note").value = site.answer ? site.answer.note : "";
+  $("sub-reason").value = site.answer && site.answer.sub_reason ? site.answer.sub_reason : "";
+  for (const button of document.querySelectorAll("#choices button")) {
+    button.classList.toggle("chosen", button.dataset.verdict === state.choice);
+  }
+  for (const input of document.querySelectorAll("#kinds input")) {
+    input.checked = state.kinds.has(input.value);
+  }
+  $("kinds").classList.toggle("hidden", state.choice !== "mistake");
+  $("sub").classList.toggle("hidden", state.choice !== "unusable audio");
+  $("prev").disabled = index === 0;
+  $("status").textContent = "";
+}
+
+function choose(verdict) {
+  state.choice = verdict;
+  if (verdict !== "mistake") state.kinds.clear();
+  show(state.index);
+}
+
+async function save() {
+  const site = state.sites[state.index];
+  if (state.choice === null) return say("Choose a verdict first.");
+  const kinds = state.choice === "mistake" ? [...state.kinds] : [];
+  if (state.choice === "mistake" && kinds.length === 0) return say("Tick what was wrong.");
+  const body = {
+    key: site.key, verdict: state.choice, kinds,
+    sub_reason: state.choice === "unusable audio" ? ($("sub-reason").value || null) : null,
+    note: $("note").value, previous: site.answer,
+  };
+  const response = await fetch("/api/verdict", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const reply = await response.json();
+  if (!response.ok) {
+    say(reply.error || `not saved (${response.status})`);
+    if (response.status === 409) await load();   // another tab moved it: show what the file holds
+    return;
+  }
+  site.answer = reply.answer;
+  renderProgress(reply.progress);
+  say("saved");
+  next();
+}
+
+function next() {
+  const ahead = state.sites.findIndex((site, index) => index > state.index && site.answer === null);
+  const behind = state.sites.findIndex((site) => site.answer === null);
+  if (ahead >= 0) return show(ahead);
+  if (behind >= 0) return show(behind);
+  say("all answered");
+}
+
+function renderProgress(progress) {
+  $("progress").textContent = `${progress.answered} of ${progress.total} answered`;
+}
+
+function say(text) { $("status").textContent = text; }
+
+$("whole").addEventListener("click", () => {
+  const site = state.sites[state.index];
+  $("audio").src = `/api/audio?key=${encodeURIComponent(site.key)}&whole=1`;
+  $("audio").play();
+});
+$("prev").addEventListener("click", () => show(Math.max(0, state.index - 1)));
+$("next").addEventListener("click", next);
+$("save").addEventListener("click", save);
+$("sub-reason").addEventListener("change", () => {});
+document.addEventListener("keydown", (event) => {
+  if (event.target.matches("input[type=text]") && event.key !== "Enter") return;
+  if (event.key === "Enter") { event.preventDefault(); save(); return; }
+  if (event.key === "ArrowLeft") show(Math.min(state.sites.length - 1, state.index + 1));
+  if (event.key === "ArrowRight") show(Math.max(0, state.index - 1));
+  if (event.key === "w" || event.key === "W") $("whole").click();
+  const index = Number.parseInt(event.key, 10);
+  if (index >= 1 && index <= state.vocabulary.verdicts.length) {
+    choose(state.vocabulary.verdicts[index - 1]);
+  }
+});
+
+load();
+</script>
+</body>
+</html>

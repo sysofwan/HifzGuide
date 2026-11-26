@@ -166,7 +166,9 @@ git add tools/tadabur/followalong_audit/s5_draw/verdicts.jsonl   # the ! entry a
 The WAVs are the Mac's own (`~/hifzguide-scratch/fa-apparm/wav/<audio_sha256>.wav`, the files the
 App arm graded); the UI verifies each one against the committed
 `app_arm/audio_manifest.jsonl.gz` before it serves a word, so a truncated or substituted clip
-stops the launch instead of reaching the owner's ear. If port 8000 is taken, pass `PORT=8002`.
+stops the launch instead of reaching the owner's ear. The launcher serves `:8000`; when something
+else already answers there and `PORT` was not given, it retries once on `:8002` and prints the
+port it used. An explicit `PORT=` gets no fallback — an occupied port then refuses the launch.
 
 ## Still refused from the user's machine?
 

@@ -197,9 +197,9 @@ def read_tadabur_timings(path: Path) -> dict[str, list[dict]]:
 
 
 def _canonical_words(surah_ayah: str) -> list[str]:
-    from .waqf_segments import _uthmani_words
+    from .waqf_segments import uthmani_words
 
-    return _uthmani_words(surah_ayah)
+    return uthmani_words(surah_ayah)
 
 
 def define_controls(selection: Mapping, registry: Mapping, ayah_rows) -> dict:

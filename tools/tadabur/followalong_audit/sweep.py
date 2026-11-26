@@ -43,7 +43,7 @@ from tadabur.followalong_audit.patterns import group_findings, issue_body
 from tadabur.followalong_audit.plant import KINDS, Planted, plant, plantable_words, planting_seed
 from tadabur.followalong_audit.session import session_request
 from tadabur.followalong_audit.tracer import load_word_times
-from tadabur.waqf_segments import _uthmani_words, hafs_word_reference
+from tadabur.waqf_segments import uthmani_words, hafs_word_reference
 from training.decoding import SAMPLE_RATE, WINDOW, check_schedule, clusters
 from training.muraja_policy import (
     AUDIT_SCORINGS,
@@ -565,7 +565,7 @@ def _cluster_starts(offset: int, word: str) -> list[int]:
 def _canonical_words(label: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]:
     """The phonetizer's canonical phoneme words of ``"surah:ayah"``, their spaceless reference
     and word offsets: the coordinates the reference is placed and the mistakes planted in."""
-    uthmani = _uthmani_words(label)
+    uthmani = uthmani_words(label)
     reference, offsets = hafs_word_reference()(uthmani)
     words = tuple(reference[offsets[index]:offsets[index + 1]]
                   for index in range(len(offsets) - 1))

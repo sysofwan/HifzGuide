@@ -132,12 +132,12 @@ def verify_audio(rows: list[EditCheckSite], audio_dir: Path) -> None:
 def ayah_words(surah_ayahs) -> dict[str, dict]:
     """Each ayah's whole-ayah realized reference (wasl inside, waqf at its end, as
     ``mining_pool.whole_ayah_references`` makes it) with its Uthmani word offsets."""
-    from .waqf_segments import _uthmani_words, hafs_segment_reference
+    from .waqf_segments import uthmani_words, hafs_segment_reference
 
     segment_reference = hafs_segment_reference()
     words = {}
     for surah_ayah in sorted(set(surah_ayahs)):
-        reference, offsets = segment_reference(_uthmani_words(surah_ayah))
+        reference, offsets = segment_reference(uthmani_words(surah_ayah))
         words[surah_ayah] = {"reference": reference, "word_offsets": list(offsets)}
     return words
 

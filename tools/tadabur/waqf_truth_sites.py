@@ -511,9 +511,9 @@ def build(staged: dict) -> tuple[list[TruthSite], dict]:
     """The committed sites and summary: :func:`convert` over the frozen fixture with the
     Hafs realizer, staging fields filled from the staged-clip registry ``staged``. The
     summary lists, under ``clips_not_restaged``, every clip the registry lacks."""
-    from .waqf_segments import _uthmani_words
+    from .waqf_segments import uthmani_words
 
-    sites, summary = convert(read_boundaries(), _uthmani_words, hafs_realizer())
+    sites, summary = convert(read_boundaries(), uthmani_words, hafs_realizer())
     sites, not_restaged = fill_staging(sites, staged)
     summary["clips_not_restaged"] = not_restaged
     return sites, summary

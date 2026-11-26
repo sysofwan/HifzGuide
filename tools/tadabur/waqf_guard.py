@@ -250,9 +250,9 @@ def all_items() -> list[Item]:
 
 @cache
 def _ayah_words(surah_ayah: str) -> tuple[str, ...]:
-    from .waqf_segments import _uthmani_words
+    from .waqf_segments import uthmani_words
 
-    return tuple(_uthmani_words(surah_ayah))
+    return tuple(uthmani_words(surah_ayah))
 
 
 @cache

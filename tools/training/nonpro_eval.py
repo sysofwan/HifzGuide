@@ -173,7 +173,7 @@ def clusters(dataset: Dataset, lines: Sequence[dict]) -> dict[str, int]:
 def build_items(dataset: Dataset, lines: Sequence[dict], reference_of
                 ) -> tuple[list[ClipItem], list[str]]:
     """Every decoded clip with a reference, and the clips the phonetizer cannot handle."""
-    from tadabur.waqf_segments import _uthmani_words
+    from tadabur.waqf_segments import uthmani_words
 
     cluster = clusters(dataset, lines)
     items, unsupported = [], []
@@ -181,7 +181,7 @@ def build_items(dataset: Dataset, lines: Sequence[dict], reference_of
         surah, ayah = map(int, line["surah_ayah"].split(":"))
         try:
             reference = item_reference((line["word_from"], line["word_to"]),
-                                       _uthmani_words(line["surah_ayah"]), reference_of)
+                                       uthmani_words(line["surah_ayah"]), reference_of)
         except (KeyError, IndexError, Unmapped):
             unsupported.append(line["key"])
             continue
@@ -236,14 +236,14 @@ def passage_check(items: Sequence[ClipItem], decodes: Mapping[str, Mapping[str, 
     import statistics
 
     from tadabur.normalization import normalize_phonemes
-    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+    from tadabur.waqf_segments import uthmani_words, hafs_segment_reference
     from training.decode_evalset import levenshtein
 
     reference_of = hafs_segment_reference()
 
     def reference(passage) -> str:
         surah, ayah, word_from, word_to = passage
-        words = _uthmani_words(f"{surah}:{ayah}")[word_from - 1:word_to]
+        words = uthmani_words(f"{surah}:{ayah}")[word_from - 1:word_to]
         return normalize_phonemes(reference_of(words)[0]).normalized
 
     candidates = {"5:109 words 8-15": reference(QDAT_PASSAGE),

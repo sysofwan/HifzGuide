@@ -106,7 +106,7 @@ from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
     SegmentRecord,
-    _uthmani_words,
+    uthmani_words,
     hafs_segment_reference,
     hafs_word_reference,
 )
@@ -189,7 +189,7 @@ def _load_clip(clips_dir: Path, audio_filename: str) -> np.ndarray:
 
 def _uthmani_segment_text(surah_ayah: str, word_start: int, word_end: int) -> str:
     """The space-joined Uthmani words a segment covers (for the UI display)."""
-    words = _uthmani_words(surah_ayah)
+    words = uthmani_words(surah_ayah)
     return " ".join(words[word_start:word_end])
 
 
@@ -275,11 +275,11 @@ def segment_clips(
     statuses: list[ClipStatus] = []
     pause_attrib_by_clip: dict[str, tuple[waqf_detect.PauseAttribution, ...]] = {}
     for passing in ordered:
-        uthmani_words = _uthmani_words(passing.surah_ayah)
+        words = uthmani_words(passing.surah_ayah)
         if not (clips_dir / passing.audio_filename).exists():
             skips["clip_missing"] += 1
             statuses.append(
-                _clip_status(passing, len(uthmani_words), 0.0, 0.0, 0.0, "clip_missing")
+                _clip_status(passing, len(words), 0.0, 0.0, 0.0, "clip_missing")
             )
             continue
         waveform = _load_clip(clips_dir, passing.audio_filename)
@@ -287,7 +287,7 @@ def segment_clips(
         class_ids = list(model.decode(waveform, TARGET_SAMPLE_RATE).class_ids)
         pauses = pauses_by_clip.get(passing.audio_filename, [])
         try:
-            reference, boundaries = word_reference(uthmani_words)
+            reference, boundaries = word_reference(words)
             result = waqf_detect.segment_clip(
                 class_ids, duration_s, reference, boundaries, pauses,
                 boundary_tol=boundary_tol,
@@ -295,19 +295,19 @@ def segment_clips(
             )
             if result.skip is not None:
                 skips[result.skip] += 1
-                spans = (WaqfSpan(0, len(uthmani_words), 0.0, duration_s),)
+                spans = (WaqfSpan(0, len(words), 0.0, duration_s),)
             else:
                 spans = result.spans
                 if result.re_reads:
                     skips["re_read"] += 1
             clip_records = _records_for_spans(
-                passing, uthmani_words, spans, segment_reference
+                passing, words, spans, segment_reference
             )
         except (KeyError, IndexError):
             skips["phonetizer_unsupported"] += 1
             statuses.append(
                 _clip_status(
-                    passing, len(uthmani_words), duration_s, 0.0, duration_s,
+                    passing, len(words), duration_s, 0.0, duration_s,
                     "phonetizer_unsupported",
                 )
             )
@@ -317,7 +317,7 @@ def segment_clips(
             pause_attrib_by_clip[passing.audio_filename] = result.pauses
         statuses.append(
             _clip_status(
-                passing, len(uthmani_words), duration_s,
+                passing, len(words), duration_s,
                 spans[0].start_s, spans[-1].end_s, result.skip,
                 re_reads=result.re_reads,
                 recited_words=max(span.word_end for span in spans),

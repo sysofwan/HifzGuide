@@ -186,7 +186,6 @@ $("whole").addEventListener("click", () => {
 $("prev").addEventListener("click", () => show(Math.max(0, state.index - 1)));
 $("next").addEventListener("click", next);
 $("save").addEventListener("click", save);
-$("sub-reason").addEventListener("change", () => {});
 document.addEventListener("keydown", (event) => {
   if (event.target.matches("input[type=text]") && event.key !== "Enter") return;
   if (event.key === "Enter") { event.preventDefault(); save(); return; }

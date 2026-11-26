@@ -34,6 +34,7 @@ import json
 import threading
 import wave
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -80,6 +81,16 @@ def read_audio_manifest(path: Path) -> dict[str, dict]:
     return {row["audio_sha256"]: row for row in read_jsonl_gz(Path(path))}
 
 
+@dataclass(frozen=True)
+class _Draw:
+    """One read of the draw's files: the worklist's accepted rows by id, the served ones in
+    order, and the snips by clip — everything both startups need, each to serve or to verify."""
+
+    by_id: dict[str, CatchLossRow]
+    rows: list[CatchLossRow]
+    snips: dict[str, Snip]
+
+
 def load_rows(worklist: Path, snips: Path, orders: Mapping[str, Path], *,
               uthmani_words: Callable[[str], list[str]],
               references: Callable[[str], object] | None = None,
@@ -92,18 +103,23 @@ def load_rows(worklist: Path, snips: Path, orders: Mapping[str, Path], *,
     engine word is recited together with another canonical word, which would give the page two
     printed words for one phoneme word.
     """
-    by_id = _worklist_rows(worklist, uthmani_words)
-    return _served(by_id, snips, orders, sittings, references)
+    return _read_draw(worklist, snips, orders, uthmani_words=uthmani_words,
+                      references=references, sittings=sittings).rows
 
 
-def _worklist_rows(worklist: Path,
-                   uthmani_words: Callable[[str], list[str]]) -> dict[str, CatchLossRow]:
-    return {row.site.site_id: row
-            for row in read_catch_loss_worklist(Path(worklist), uthmani_words)}
+def _read_draw(worklist: Path, snips: Path, orders: Mapping[str, Path], *,
+               uthmani_words: Callable[[str], list[str]],
+               references: Callable[[str], object] | None,
+               sittings: Sequence[str]) -> _Draw:
+    by_id = {row.site.site_id: row
+             for row in read_catch_loss_worklist(Path(worklist), uthmani_words)}
+    snips_by_clip = read_snips(Path(snips))
+    return _Draw(by_id, _served(by_id, snips_by_clip, orders, sittings, references),
+                 snips_by_clip)
 
 
-def _served(by_id: Mapping[str, CatchLossRow], snips: Path, orders: Mapping[str, Path],
-            sittings: Sequence[str],
+def _served(by_id: Mapping[str, CatchLossRow], snips: Mapping[str, Snip],
+            orders: Mapping[str, Path], sittings: Sequence[str],
             references: Callable[[str], object] | None) -> list[CatchLossRow]:
     served: list[CatchLossRow] = []
     seen: set[str] = set()
@@ -116,7 +132,7 @@ def _served(by_id: Mapping[str, CatchLossRow], snips: Path, orders: Mapping[str,
                 raise ValueError(f"{orders[sitting]} serves {ident} twice")
             seen.add(ident)
             served.append(by_id[ident])
-    verify_snips(served, read_snips(Path(snips)))
+    verify_snips(served, snips)
     if references is not None:
         _refuse_wasl_merged(served, references)
     return served
@@ -173,13 +189,13 @@ class SessionState:
              references: Callable[[str], object] | None = None,
              sittings: Sequence[str] = ("pilot",)) -> SessionState:
         """The served rows, their snips, their verified WAVs and the verdicts already given."""
-        by_id = _worklist_rows(worklist, uthmani_words)
-        rows = _served(by_id, snips, orders, sittings, references)
+        draw = _read_draw(worklist, snips, orders, uthmani_words=uthmani_words,
+                          references=references, sittings=sittings)
         manifest = read_audio_manifest(wav_manifest)
-        for digest in sorted({row.site.audio_sha256 for row in rows}):
+        for digest in sorted({row.site.audio_sha256 for row in draw.rows}):
             _verify_clip(Path(wav_dir) / f"{digest}.wav", manifest.get(digest))
-        stored = read_verdicts(Path(verdicts), [{"id": ident} for ident in by_id])
-        return cls(rows, read_snips(Path(snips)), wav_dir=wav_dir, manifest=manifest,
+        stored = read_verdicts(Path(verdicts), [{"id": ident} for ident in draw.by_id])
+        return cls(draw.rows, draw.snips, wav_dir=wav_dir, manifest=manifest,
                    verdicts=verdicts, stored=stored)
 
     def payload(self) -> dict:
@@ -328,6 +344,10 @@ class Handler(AuditHandler):
                 self.send_bytes(self.state.audio(query.get("key", [""])[0], whole), "audio/wav")
             except KeyError as error:
                 self.send_json({"error": error.args[0]}, status=404)
+            except OSError as error:
+                # A clip removed or truncated mid-sitting: startup verified every served one, so
+                # say which file went rather than leaving the page's audio element on its own.
+                self.send_json({"error": str(error)}, status=500)
         else:
             self.send_json({"error": "not found"}, status=404)
 

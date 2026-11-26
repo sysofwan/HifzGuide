@@ -79,6 +79,7 @@ write_runner() {
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
+$(runner_hold)
 source '$CONDA'
 conda activate $ENV_NAME
 $(runner_body)
@@ -134,29 +135,73 @@ serves_from() {  # runner pid
 }
 
 # One writer per scratch root: the answers live in $ROOT/verdicts.jsonl, and a second ui would
-# hold its own snapshot of that file and overwrite the first's saves, while staging also replaces
-# the clone the first one serves from. The running runner is the reservation — `$LOGS/ui.pid`
-# names it, its command line is this root's runner, its lifetime is the sitting's — so a second
-# launch refuses before anything is staged, whatever port it was given and whether or not that
-# port is free. A pid that is gone (or reused by another process) is no reservation. The backup
-# job takes none: it only copies.
-refuse_live_ui() {
+# hold its own snapshot of that file and overwrite the first's saves, while staging would replace
+# the clone the first one serves from. The reservation is `$ROOT/ui.lock`, and its creation is
+# `mkdir` — one atomic syscall at the box, taken before anything is staged, so of two launches of
+# one root exactly one gets in, whatever ports they were given. The winner holds it for the ui's
+# lifetime: the runner records its pid there and removes the directory in its EXIT trap, and the
+# launcher removes it when a start fails (`drop_reservation`). The backup job takes none: it only
+# copies.
+reserve_root_ui() {
   local pid args
-  pid=$(remote "cat '$LOGS/ui.pid' 2>/dev/null" || true)
-  case "$pid" in
-    ''|*[!0-9]*) return 0 ;;
-  esac
-  if remote "test -f '$LOGS/ui.exit'"; then
+  RESERVATION="$$-$RANDOM"
+  if remote "mkdir -p '$ROOT' '$LOGS' && mkdir '$ROOT/ui.lock' 2>/dev/null \
+      && printf '%s' '$RESERVATION' > '$ROOT/ui.lock/token'"; then
     return 0
   fi
-  args=$(remote "ps -p '$pid' -o args= 2>/dev/null" || true)
-  case "$args" in
-    *"$ROOT/run-ui.sh"*) : ;;
-    *) return 0 ;;
+  pid=$(remote "cat '$ROOT/ui.lock/pid' 2>/dev/null" || true)
+  case "$pid" in
+    ''|*[!0-9]*) pid= ;;
   esac
-  echo "$ROOT on $HOST already serves a ui (pid $pid); nothing was staged or started:" >&2
-  echo "  stop it first (ask the owner): kill -- -$pid" >&2
+  if [ -n "$pid" ]; then
+    args=$(remote "ps -p '$pid' -o args= 2>/dev/null" || true)
+    case "$args" in
+      *"$ROOT/run-ui.sh"*)
+        echo "$ROOT on $HOST already serves a ui (pid $pid); nothing was staged or started:" >&2
+        echo "  stop it first (ask the owner): kill -- -$pid" >&2
+        return 1 ;;
+    esac
+    # A recorded runner that is gone holds nothing: move that reservation aside — only while it
+    # still records the pid just read, so a reservation another launch has made is never taken —
+    # and try again.
+    remote "test \"\$(cat '$ROOT/ui.lock/pid' 2>/dev/null)\" = '$pid' \
+      && mv '$ROOT/ui.lock' '$ROOT/ui.lock.stale.$$'" || true
+  else
+    # No pid yet: the holder is a launcher still staging. Only an old one is stale.
+    remote "test -z \"\$(cat '$ROOT/ui.lock/pid' 2>/dev/null)\" \
+      && find '$ROOT/ui.lock' -maxdepth 0 -mmin +15 | grep -q . \
+      && mv '$ROOT/ui.lock' '$ROOT/ui.lock.stale.$$'" || true
+  fi
+  remote "rm -rf '$ROOT/ui.lock.stale.$$'"
+  if remote "mkdir '$ROOT/ui.lock' 2>/dev/null \
+      && printf '%s' '$RESERVATION' > '$ROOT/ui.lock/token'"; then
+    return 0
+  fi
+  echo "$ROOT on $HOST is already being served or launched; nothing was staged or started:" >&2
+  echo "  if nothing serves it, remove $ROOT/ui.lock and retry" >&2
   return 1
+}
+
+# A failed ui launch hands its root back — if the reservation is still the one it made and no
+# runner has claimed it: a runner that did start releases it on the way out, and a reservation
+# another launch took over is never removed by the one that lost it.
+drop_reservation() {
+  [ "$job" = ui ] || return 0
+  remote "test \"\$(cat '$ROOT/ui.lock/token' 2>/dev/null)\" = '${RESERVATION:-}' \
+    && test -z \"\$(cat '$ROOT/ui.lock/pid' 2>/dev/null)\" && rm -rf '$ROOT/ui.lock'"
+  return 0
+}
+
+# What the runner adds to take the reservation over and release it, written into its script. Both
+# steps check the launcher's token, so a runner whose reservation was taken over while it staged
+# refuses to serve instead of claiming another launch's, and it never removes that one.
+runner_hold() {
+  [ "$job" = ui ] || return 0
+  printf 'claim_reservation() { [ "$(cat "%s/token" 2>/dev/null)" = "%s" ] || { echo "the root reservation was taken over; not serving" >&2; exit 1; }; echo $$ > "%s/pid"; }\n' \
+    "$ROOT/ui.lock" "${RESERVATION:-}" "$ROOT/ui.lock"
+  printf 'release_reservation() { [ "$(cat "%s/token" 2>/dev/null)" = "%s" ] && rm -rf "%s"; }\n' \
+    "$ROOT/ui.lock" "${RESERVATION:-}" "$ROOT/ui.lock"
+  printf 'trap release_reservation EXIT\nclaim_reservation\n'
 }
 
 # Whether the page's port is free. An occupied port refuses the launch instead of reporting
@@ -184,18 +229,28 @@ refuse_occupied_port() {
 launch() {
   local pid probe= status=0
   if [ "$job" = ui ]; then
-    refuse_live_ui || return 1
-    refuse_occupied_port || return 1
+    reserve_root_ui || return 1
+    if ! refuse_occupied_port; then
+      drop_reservation
+      return 1
+    fi
   fi
   if [ "$job" = backup ]; then
     remote "mkdir -p '$ROOT' '$LOGS'"
-  else
-    stage_repo
+  elif ! stage_repo; then
+    drop_reservation
+    return 1
   fi
-  write_runner
-  remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
+  if ! write_runner; then
+    drop_reservation
+    return 1
+  fi
+  if ! remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.pid'
           setsid bash '$ROOT/run-$NAME.sh' </dev/null >'$LOGS/$NAME.log' 2>&1 &
-          echo \$! > '$LOGS/$NAME.pid'"
+          echo \$! > '$LOGS/$NAME.pid'"; then
+    drop_reservation
+    return 1
+  fi
   pid=$(remote "cat '$LOGS/$NAME.pid'")
   if [ "$job" = ui ]; then
     if remote "test -f '$LOGS/$NAME.exit'"; then

@@ -58,6 +58,19 @@ neighbour as the oracle text joins them"). The unit stays the engine word, so a 
 its canonical words with no separator. **0** of the 540 drawn words have no mapped canonical word,
 so F1-align abstains nowhere in this draw.
 
+A drawn word the gate's traces hold no row for — the engine reported it and gave it no kept entry —
+keeps its checks instead. The clip's own saved checks (their hop, overlap and flush, the statuses
+dropped) are replayed through that same pinned harness, and the replay must reproduce the clip's
+saved kept grades to the word or its statuses are refused. **29** of the 540 drawn words have no
+saved row: **20**, over 19 clips, were re-graded this way, their App cell a pending row
+(`quality: "pending"`, no kept score or error set, every check's own status) so that a check which
+graded the word keeps it off M-nograde ("the engine never saw it", A2). 19 of the 20 hold at least
+one status; `35_5_1337214249.flac#0` word 9 holds none. The other **9** words, one per clip, sit in
+clips whose trace file holds no row at all — no checks left to replay — so their cells stay empty
+and nothing changes for them. Every kept outcome is unchanged, as the App word table requires. Read
+as mistakes, 16 of the 19 changed cells now read M1u (then M3, or M2 where the Teacher flagged), 3
+read M3 alone (`2_170_4222931689.flac#0` word 21 among them), and the ninth stays M-nograde/M3.
+
 ## The five S1-pending words
 
 The pre-registration counts S1 ∪ S1-pending as the S1 pool (N = 5,156). These five words are App
@@ -87,3 +100,12 @@ not a claim about the word.
 page is PR3 — so the only run it can make today is over no verdicts: it attributes nothing, reports
 every rate as `None` and rule 4 as "direction only", which is the intended behaviour rather than a
 placeholder.
+
+Beside the four rules the scorer reports prereg §5's **R-alone row** (`rules.r_alone`): how many
+decisive words' setting checks hold R alone, how many of those the primary attribution put on the
+model side, and rule 3's share with them read as F1-align. It is labelled a sensitivity and decides
+nothing; the primary buckets, sides and rules are the neighbour-required ones. The row applies the
+primary rule's four-code-point floor to a lone R: the prereg states that floor for the
+no-neighbour case and states none for this row, and without it a two-letter match would count as
+alignment evidence. If the owner reads the frozen text as "R of any length", that floor is a dated
+amendment, not something this build settles.

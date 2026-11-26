@@ -15,7 +15,8 @@ What it computes is the frozen design's (preregistrations §5-§7, draw amendmen
   interval (prereg §7, amendment §10) — the edge words are each clip's first and last word of its
   ayah range, read from the App word table, per the §6 erratum;
 * the decision rules (prereg §6, amendment §5,§7,§8), including rule 4's "direction only" under 60
-  confirmed misses.
+  confirmed misses, beside prereg §5's R-alone alignment row — reported with its own model share
+  and never deciding.
 
 No verdicts exist yet: an empty or missing file is a run that attributes nothing and reports
 ``None`` rates and "direction only", never a division by zero.
@@ -36,8 +37,8 @@ from pathlib import Path
 from tadabur.followalong_audit.app_arm import read_jsonl, read_jsonl_gz
 from tadabur.followalong_audit.atomic import write_text_atomically
 from tadabur.followalong_audit.attribution import (
-    FOLLOW_ALONG, MODEL, UNKNOWN, error_key, false_flag_bucket, kept_outcome, miss_labels,
-    model_share, reference_suspects, rule_five, side,
+    FOLLOW_ALONG, MODEL, UNKNOWN, alone_aligned, error_key, false_flag_bucket, kept_outcome,
+    miss_labels, model_share, reference_suspects, rule_five, side,
 )
 from training.muraja_policy import SHIPPED_DEFAULT, STRICT, Scoring
 
@@ -159,6 +160,7 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
         "pi": key_row["inclusion_probability"], "verdict": verdict["verdict"],
         "app": app_outcome, "teacher": teacher_outcome, "outcome": None, "bucket": None,
         "labels": [], "side": None, "soft_or_target": False,
+        "alone": alone_aligned(app, oracle, arms["reference"], scoring=scoring),
     }
     if verdict["verdict"] in _EXCLUDED:
         result["outcome"] = "excluded"
@@ -172,7 +174,7 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
                                    reference=arms["reference"], suspect=strict_suspect,
                                    scoring=scoring)
         result.update(outcome="false_flag", bucket=bucket, labels=[bucket],
-                      side=_side(bucket, teacher_outcome, strict_suspect),
+                      side=_side(bucket, teacher_outcome),
                       soft_or_target=_soft_or_target(arms["causes"][scoring.name]))
         return result
     if app_outcome == "flagged":
@@ -181,13 +183,13 @@ def attribute_listened(key_row: Mapping, arms: Mapping, verdict: Mapping, *,
     labels = miss_labels(app=app, teacher=teacher, scoring=scoring)
     bucket = labels[0]
     result.update(outcome="miss", bucket=bucket, labels=labels,
-                  side=_side(bucket, teacher_outcome, False))
+                  side=_side(bucket, teacher_outcome))
     return result
 
 
-def _side(bucket: str, teacher_outcome: str, suspect: bool) -> str:
+def _side(bucket: str, teacher_outcome: str) -> str:
     """The bucket's side; F-ref carries :data:`F_REF_SIDE` because rule 3 reads it both ways."""
-    if bucket == "F-ref" or suspect:
+    if bucket == "F-ref":
         return F_REF_SIDE
     return side(bucket, teacher_graded=teacher_outcome != "ungraded")
 
@@ -319,13 +321,15 @@ def candidate_pattern_words(report: Mapping) -> int:
 
 
 def evaluate_rules(attributions: Sequence[Mapping], *, oracle_pattern_words: int = 0) -> dict:
-    """The four rules over attributed words (prereg §6, amendment §5,§7,§8). Never raises on none."""
+    """The four rules over attributed words, beside prereg §5's never-deciding R-alone row
+    (prereg §6, amendment §5,§7,§8). Never raises on none."""
     decisive = [row for row in attributions if row["outcome"] in ("false_flag", "miss")]
     return {
         "rule_1": _rule_one(decisive, oracle_pattern_words),
         "rule_3": _rule_three(decisive),
         "rule_4": _rule_four(decisive),
         "rule_5": _rule_five(decisive),
+        "r_alone": _r_alone(decisive),
     }
 
 
@@ -358,17 +362,17 @@ def _rule_three(words: Sequence[Mapping]) -> dict:
     """Rule 3: the model side's share of the listened attributed words, before any fix.
 
     Unweighted, F-ref read on each side in turn, and an M-nograde word neither arm graded is on
-    neither side: it is counted by stratum and bounded by the two extremes. Straddling 50% is the
-    owner's call, not the readout's.
+    neither side: it is counted by stratum and bounded by the two extremes. The extremes need one
+    attributed word, not one known-side word: unknown words alone read 0 against 1, and that
+    straddles 50%. Straddling is the owner's call, not the readout's.
     """
     unknown = [row for row in words if row["side"] == UNKNOWN]
     known = [row for row in words if row["side"] != UNKNOWN]
     follow_along_share = _model_share(known, FOLLOW_ALONG)
     total = len(known) + len(unknown)
-    follow_along_extreme = (None if follow_along_share is None
-                            else follow_along_share * len(known) / total)
-    model_extreme = (None if follow_along_share is None
-                     else (follow_along_share * len(known) + len(unknown)) / total)
+    model_count = 0.0 if follow_along_share is None else follow_along_share * len(known)
+    follow_along_extreme = None if not total else model_count / total
+    model_extreme = None if not total else (model_count + len(unknown)) / total
     straddles = (follow_along_extreme is not None
                  and follow_along_extreme < 0.5 <= model_extreme)
     return {
@@ -385,15 +389,23 @@ def _rule_three(words: Sequence[Mapping]) -> dict:
     }
 
 
-def _model_share(words: Sequence[Mapping], f_ref: str) -> float | None:
+def _model_share(words: Sequence[Mapping], f_ref: str,
+                 moved: frozenset[tuple[str, int]] = frozenset()) -> float | None:
     """``attribution.model_share`` of the words, ``None`` when not one has a side."""
     if not words:
         return None
-    return model_share((_bucket(row) for row in words), f_ref=f_ref)
+    return model_share((_bucket(row, moved) for row in words), f_ref=f_ref)
 
 
-def _bucket(row: Mapping) -> str | tuple[str, bool]:
-    """The row's bucket as :func:`attribution.model_share` reads it: M-nograde with its grade."""
+def _bucket(row: Mapping, moved: frozenset[tuple[str, int]] = frozenset()
+            ) -> str | tuple[str, bool]:
+    """The row's bucket as :func:`attribution.model_share` reads it: M-nograde with its grade.
+
+    ``moved`` names words the R-alone sensitivity reads as F1-align instead of the bucket the
+    primary attribution gave them.
+    """
+    if moved and (row["item"], row["word"]) in moved:
+        return "F1-align"
     if row["bucket"] == "M-nograde":
         return (row["bucket"], row["teacher"] != "ungraded")
     return row["bucket"]
@@ -413,6 +425,26 @@ def _weighted_share(words: Sequence[Mapping]) -> float | None:
         return None
     model = sum(_weight(row) for row in kept if _bucket_side(row) == MODEL)
     return model / weight
+
+
+def _r_alone(words: Sequence[Mapping]) -> dict:
+    """Prereg §5's R-alone row: the follow-along attribution the neighbour requirement declines.
+
+    A false flag whose setting checks hold R alone (:func:`attribution.alone_aligned`) would be
+    F1-align but for the neighbour. ``matches`` counts every decisive word that aligns on R
+    alone; ``moved`` counts those the primary attributed to the model side, and ``model_share``
+    is rule 3's share with them read as F1-align — the bound on the primary rule's lean toward
+    the model side. The primary buckets, sides and decisions are untouched: this row is reported,
+    never deciding. A word whose row carries no ``alone`` evidence (:func:`attribute_listened`
+    computes it) is not counted.
+    """
+    matches = [row for row in words if row.get("alone")]
+    moved = frozenset((row["item"], row["word"]) for row in matches
+                      if row["outcome"] == "false_flag" and _bucket_side(row) == MODEL)
+    return {"label": "F1-align on the reference alone (sensitivity; never decides)",
+            "matches": len(matches), "moved": len(moved),
+            "model_share": _model_share([row for row in words if row["side"] != UNKNOWN],
+                                        FOLLOW_ALONG, moved)}
 
 
 def _rule_four(words: Sequence[Mapping]) -> dict:

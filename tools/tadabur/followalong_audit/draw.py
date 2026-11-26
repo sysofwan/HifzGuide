@@ -26,7 +26,7 @@ from tadabur.followalong_audit.allocation import (
 )
 from tadabur.followalong_audit.strata import S1, S3, S4, S5
 from tadabur.followalong_audit.strata_run import draw_frame
-from tadabur.word_snips import MIN_LL_PER_FRAME, WHOLE_CLIP, Snip, build_snips
+from tadabur.word_snips import MIN_LL_PER_FRAME, Snip, SnipPlacement, placements
 
 #: M: PR #326's squash commit, the first commit on ``main`` that adds the draw amendment.
 AMENDMENT_COMMIT = "03bc6d071a37a9bb264fcd6513381dbedee1c96e"
@@ -44,6 +44,8 @@ MAIN_REPEATS = 18
 REPEAT_GAP = 20
 
 S5_EDGES = ("leading", "trailing", "interior")
+#: The snip report's cause for an S5 edge word, which the draw serves whole by rule (§3).
+EDGE_WHOLE_REASON = "the S5 edge word plays whole"
 SITTINGS = ("pilot", "main")
 _SCORINGS = ("strict", "shipped_default")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
@@ -55,11 +57,16 @@ def _prefix(text: str) -> int:
     return int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest()[:8], "big")
 
 
-def derive_seed(commit_hex: str) -> int:
-    """The draw's seed for the amendment commit M (amendment §1)."""
+def require_commit_hex(commit_hex: str) -> str:
+    """The commit's 40 lowercase hex characters, refusing anything else."""
     if not _HEX40.match(commit_hex):
         raise ValueError(f"{commit_hex!r} is not a 40-character lowercase commit SHA")
-    return _prefix(f"followalong-audit-draw:{commit_hex}")
+    return commit_hex
+
+
+def derive_seed(commit_hex: str) -> int:
+    """The draw's seed for the amendment commit M (amendment §1)."""
+    return _prefix(f"followalong-audit-draw:{require_commit_hex(commit_hex)}")
 
 
 def subseed(seed: int, purpose: str) -> int:
@@ -323,9 +330,22 @@ def snips_for_draw(worklist: Sequence[Mapping], key: Sequence[Mapping],
                    min_ll_per_frame: float = MIN_LL_PER_FRAME) -> list[Snip]:
     """One snip per worklist row, with S5's edge words served whole (amendment §3, #264's rule).
 
-    ``build_snips`` places every word it can; a row whose key says ``whole_played`` is a
-    whole-clip snip whatever its alignment. The blind file and the key must describe the same
-    items, and a repeat (its own id, its original's clip and word) gets the same excerpt.
+    The snips of :func:`snip_placements`, which also says why a row plays whole.
+    """
+    return [placement.snip
+            for placement in snip_placements(worklist, key, records,
+                                             min_ll_per_frame=min_ll_per_frame)]
+
+
+def snip_placements(worklist: Sequence[Mapping], key: Sequence[Mapping],
+                    records: Iterable[Mapping], *,
+                    min_ll_per_frame: float = MIN_LL_PER_FRAME) -> list[SnipPlacement]:
+    """Every worklist row's placement, sorted by id, and for a whole-clip row its cause.
+
+    ``word_snips.placements`` places every word it can; a row whose key says ``whole_played``
+    is a whole-clip snip whatever its alignment, under :data:`EDGE_WHOLE_REASON`. The blind
+    file and the key must describe the same items, and a repeat (its own id, its original's
+    clip and word) gets the same excerpt.
     """
     whole = {}
     for row in key:
@@ -337,6 +357,7 @@ def snips_for_draw(worklist: Sequence[Mapping], key: Sequence[Mapping],
     if missing or extra:
         raise ValueError(f"the worklist and the key describe different items: {len(missing)} "
                          f"without a key row ({missing[:3]}), {len(extra)} with no worklist row")
-    return [Snip(snip.site_id, snip.audio_sha256, None, None, WHOLE_CLIP)
-            if whole[snip.site_id] else snip
-            for snip in build_snips(worklist, records, min_ll_per_frame=min_ll_per_frame)]
+    return sorted(placements(worklist, records, min_ll_per_frame,
+                             forced_whole={site_id: EDGE_WHOLE_REASON
+                                           for site_id, edge in whole.items() if edge}),
+                  key=lambda placement: placement.snip.site_id)

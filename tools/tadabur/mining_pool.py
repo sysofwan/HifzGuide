@@ -334,13 +334,13 @@ def _scan(args) -> None:
 def whole_ayah_references(surah_ayahs: Iterable[str]) -> dict[str, str | None]:
     """Each ayah's realized reference recited whole (wasl inside, waqf at its end), or
     ``None`` where quran-transcript cannot phonetize it."""
-    from .waqf_segments import _uthmani_words, hafs_segment_reference
+    from .waqf_segments import uthmani_words, hafs_segment_reference
 
     segment_reference = hafs_segment_reference()
     references: dict[str, str | None] = {}
     for surah_ayah in sorted(set(surah_ayahs)):
         try:
-            references[surah_ayah] = segment_reference(_uthmani_words(surah_ayah))[0]
+            references[surah_ayah] = segment_reference(uthmani_words(surah_ayah))[0]
         except (KeyError, IndexError):
             references[surah_ayah] = None
     return references

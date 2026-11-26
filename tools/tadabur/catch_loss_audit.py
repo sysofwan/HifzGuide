@@ -486,11 +486,11 @@ def main() -> None:
     args = build_parser().parse_args()
     spec = SPECS[args.spec]
     if args.command == "draw":
-        from .waqf_segments import _uthmani_words
+        from .waqf_segments import uthmani_words
 
         if args.root is not None:
             spec = replace(spec, root=args.root)
-        summary = draw(spec, uthmani_words=_uthmani_words, tranche=args.tranche)
+        summary = draw(spec, uthmani_words=uthmani_words, tranche=args.tranche)
         print(json.dumps(summary, ensure_ascii=False, indent=1, sort_keys=True))
     else:
         result = score(args.directory or spec.root / "catch_loss", spec=spec)

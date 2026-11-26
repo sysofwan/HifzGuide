@@ -326,9 +326,9 @@ def _worklist_rows(key: Sequence[Mapping], clips: Mapping[str, Mapping],
 
 @lru_cache(maxsize=None)
 def _uthmani(surah_ayah: str) -> tuple[str, ...]:
-    from tadabur.waqf_segments import _uthmani_words
+    from tadabur.waqf_segments import uthmani_words
 
-    return tuple(_uthmani_words(surah_ayah))
+    return tuple(uthmani_words(surah_ayah))
 
 
 # --- the files ------------------------------------------------------------------------------------

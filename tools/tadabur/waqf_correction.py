@@ -36,7 +36,7 @@ from training.tashkeel_eval import write_text_atomically
 from .local_pause import fires
 from .mining_pool import CLIPS_PATH as POOL_CLIPS_PATH
 from .mining_pool import PoolSegment, load_manifest
-from .waqf_segments import _uthmani_words, hafs_paused_reference
+from .waqf_segments import uthmani_words, hafs_paused_reference
 
 SHIP_A_DIR = Path(__file__).resolve().parent / "ship_a"
 CORRECTION_PATH = SHIP_A_DIR / "waqf_correction.jsonl"
@@ -90,7 +90,7 @@ def load_cuts(path: Path = CORRECTION_PATH) -> dict[tuple[str, int], Cuts]:
 
 @cache
 def _words(surah_ayah: str) -> tuple[str, ...]:
-    return tuple(_uthmani_words(surah_ayah))
+    return tuple(uthmani_words(surah_ayah))
 
 
 def _clips() -> dict[str, tuple[str, tuple[PoolSegment, ...]]]:

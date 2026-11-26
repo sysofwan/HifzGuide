@@ -139,6 +139,46 @@ aligned, sits below the `ll_per_frame` gate, names another ayah, has no such wor
 an excerpt shorter than the minimum. The sidecar is refused at startup if it misses a worklist
 id or was built for another clip, and each verdict records whether the whole clip played.
 
+### The S5 follow-along round (#311)
+
+`tadabur.followalong_audit.s5_ui` serves the S5 draw — the same word question, the frozen draw's
+own vocabulary and order. Its launcher stages the branch, pushes the audio, serves detached and
+pulls the owner's verdicts back:
+
+```bash
+scripts/issue-311-audit.sh wavs push                  # the drawn clips' WAVs (498, ~140 MB)
+scripts/issue-311-audit.sh ui launch                  # the pilot sitting on :8000, 0.0.0.0
+WITH_MAIN=1 scripts/issue-311-audit.sh ui launch      # ... the main sitting after it, once read
+scripts/issue-311-audit.sh ui check
+scripts/issue-311-audit.sh ui fetch ~/s5-verdicts     # then commit
+```
+
+The pilot is served alone by default: the pre-registration may resize the main sitting after the
+pilot is read, so the main one needs `WITH_MAIN=1`. The verdicts file lives in the scratch root
+(`/root/scratch/s5_audit/verdicts.jsonl`) — the only copy between sittings — and `ui fetch` pulls
+it into the path the scorer reads:
+
+```bash
+cp ~/s5-verdicts/verdicts.jsonl tools/tadabur/followalong_audit/s5_draw/verdicts.jsonl
+git add tools/tadabur/followalong_audit/s5_draw/verdicts.jsonl   # the ! entry already tracks it
+```
+
+The WAVs are the Mac's own (`~/hifzguide-scratch/fa-apparm/wav/<audio_sha256>.wav`, the files the
+App arm graded); the UI verifies each one against the committed
+`app_arm/audio_manifest.jsonl.gz` before it serves a word, so a truncated or substituted clip
+stops the launch instead of reaching the owner's ear. The launcher serves `:8000`; when something
+else already answers there and `PORT` was not given, it retries once on `:8002` and prints the
+port it used. An explicit `PORT=` gets no fallback — an occupied port then refuses the launch.
+
+A scratch root holds one sitting at a time: while this root's UI is running — or a reservation for
+it exists at all — a second `ui launch` refuses before it stages anything, even on a free port; the
+two would share one verdicts file and each hold its own copy of it. The reservation is
+`<root>/ui.lock`; the runner releases it when it exits, and a launch that fails before starting one
+releases it too. If a launcher died and left it behind, the launch refuses and prints the removal
+command — check that nothing serves that root first, then run it. Stop a running sitting first
+(`ui check` names its runner pid); the S5 page and its `WITH_MAIN` mode are one sitting on one
+root, not two.
+
 ## Still refused from the user's machine?
 
 Once the listener shows `0.0.0.0:8000` and the host's own `curl http://<LAN-IP>:8000/` returns 200,

@@ -96,11 +96,20 @@ def read_verdicts(path: Path, key: Sequence[Mapping]) -> dict[str, dict]:
 
 
 def _check_verdict(row: Mapping, ids: set[str]) -> None:
+    check_verdict(row)
+    if row["id"] not in ids:
+        raise ValueError(f"{row['id']!r} is not a served id of this draw")
+
+
+def check_verdict(row: Mapping) -> None:
+    """Refuse a verdict row that breaks the schema; the id's membership is the caller's check.
+
+    :func:`read_verdicts` holds the file to it, and the listening UI (:mod:`s5_ui`) to it
+    before it writes, so the page can never save an answer the scorer would refuse to read.
+    """
     if not isinstance(row, Mapping) or set(row) != VERDICT_FIELDS:
         raise ValueError(f"a verdict's fields are exactly {sorted(VERDICT_FIELDS)}, not "
                          f"{sorted(row) if isinstance(row, Mapping) else row!r}")
-    if row["id"] not in ids:
-        raise ValueError(f"{row['id']!r} is not a served id of this draw")
     verdict = row["verdict"]
     if verdict not in VERDICTS:
         raise ValueError(f"{row['id']}: {verdict!r} is not a verdict: {VERDICTS}")

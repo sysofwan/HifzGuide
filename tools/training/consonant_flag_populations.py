@@ -64,9 +64,9 @@ class Ayat:
 
     @cache
     def uthmani_words(self, surah: int, ayah: int) -> tuple[str, ...]:
-        from tadabur.waqf_segments import _uthmani_words
+        from tadabur.waqf_segments import uthmani_words
 
-        return tuple(_uthmani_words(f"{surah}:{ayah}"))
+        return tuple(uthmani_words(f"{surah}:{ayah}"))
 
     def _phonetized(self, words: Sequence[str]) -> str | None:
         from hafs_phonetizer import phonetize

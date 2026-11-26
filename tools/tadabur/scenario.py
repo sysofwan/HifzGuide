@@ -397,7 +397,7 @@ def main() -> None:
         pauses_from_intervals,
     )
     from .waqf_detect import collapse_with_times
-    from .waqf_segments import _uthmani_words, hafs_normalized_word_reference
+    from .waqf_segments import uthmani_words, hafs_normalized_word_reference
 
     references = load_reference_phonemes()
     detector = BleedDetector.of(references)
@@ -499,7 +499,7 @@ def main() -> None:
     ):
         reference = references[record.surah_ayah]
         try:
-            word_ref, word_offsets = word_reference(_uthmani_words(record.surah_ayah))
+            word_ref, word_offsets = word_reference(uthmani_words(record.surah_ayah))
         except (KeyError, IndexError):
             tally.phonetizer_unsupported += 1
             continue

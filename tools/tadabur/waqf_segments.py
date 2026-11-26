@@ -18,7 +18,7 @@ segmentation + scoring therefore lives in :mod:`tadabur.segment_score`, which ne
 GPU. This module is the torch-free half: it **stages** each passing clip as a whole
 16 kHz mono WAV on local disk (the full Tadabur source is streamed, never landed) so
 the model pass can decode it, and it owns the shared realized-reference label
-vocabulary — :class:`SegmentRecord`, :func:`hafs_phonetizer`, :func:`_uthmani_words`.
+vocabulary — :class:`SegmentRecord`, :func:`hafs_phonetizer`, :func:`uthmani_words`.
 
 A full build must locate every passing clip in the stream: one it cannot find raises
 rather than stage a partial clip set (see :func:`_require_all_streamed`), while a
@@ -285,12 +285,20 @@ def hafs_normalized_word_reference() -> NormalizedWordReference:
     return compute
 
 
-def _uthmani_words(surah_ayah: str) -> list[str]:
-    """The Uthmani words of ``"surah:ayah"`` (1-indexed), via quran-transcript."""
+def uthmani_words(surah_ayah: str) -> list[str]:
+    """The Uthmani words of ``"surah:ayah"`` (1-indexed), via quran-transcript.
+
+    The audit draw's worklist words come from here, not from ``quran.db``: the phonetizer's
+    spelling is the one the drawing pipeline (and the listening page) quotes.
+    """
     from quran_transcript import Aya
 
     surah, ayah = (int(part) for part in surah_ayah.split(":"))
     return list(Aya(surah, ayah).get().uthmani_words)
+
+
+#: The module's pre-#311 name, kept for the callers and tests that still spell it so.
+_uthmani_words = uthmani_words
 
 
 def _save_local_clip(audio_dir: Path, audio_filename: str, waveform: np.ndarray) -> None:

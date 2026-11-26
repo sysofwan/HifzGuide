@@ -303,7 +303,7 @@ def load_pilot() -> PilotBuild:
     (:func:`tadabur.qud_source.mushaf_metadata`, which needs the gated Hub dataset). Only the
     build reads the metadata, for QUD's recited text and its word timings; every readout and
     the pre-claim read the pilot with :func:`committed_pilot`, which needs no Hub access."""
-    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+    from tadabur.waqf_segments import uthmani_words, hafs_segment_reference
 
     reference_of = hafs_segment_reference()
     items: list[PilotItem] = []
@@ -312,7 +312,7 @@ def load_pilot() -> PilotBuild:
     for slug in PILOT:
         rows = mushaf_metadata(slug, _shards(slug), QUD_REVISION)
         mushaf_decodes = {m: read_decodes(slug, m) for m in MODELS}
-        built, left_out[slug] = build_items(slug, rows, mushaf_decodes["base"], _uthmani_words,
+        built, left_out[slug] = build_items(slug, rows, mushaf_decodes["base"], uthmani_words,
                                             reference_of)
         items += built
         for m in MODELS:
@@ -331,14 +331,14 @@ def committed_pilot() -> Pilot:
     unmapped, which is the one thing only QUD's recited text can add (#144's ``text_uthmani``:
     a validation of that text, never part of an item's reference).
     """
-    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+    from tadabur.waqf_segments import uthmani_words, hafs_segment_reference
 
     reference_of = hafs_segment_reference()
     items: list[PilotItem] = []
     decodes: dict[str, dict[str, dict]] = {m: {} for m in MODELS}
     for slug in PILOT:
         mushaf_decodes = {m: read_decodes(slug, m) for m in MODELS}
-        items += items_from_decodes(slug, mushaf_decodes["base"], _uthmani_words, reference_of)
+        items += items_from_decodes(slug, mushaf_decodes["base"], uthmani_words, reference_of)
         for m in MODELS:
             decodes[m].update(mushaf_decodes[m])
     return Pilot(items, decodes)

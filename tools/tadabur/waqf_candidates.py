@@ -462,7 +462,7 @@ def hafs_word_boundaries() -> WordBoundaries:
     and returning its per-word offsets (``len == n_words + 1``). Returns ``None`` for an
     ayah the phonetizer cannot handle so callers fall back to uniform interpolation.
     """
-    from .waqf_segments import _uthmani_words, hafs_word_reference
+    from .waqf_segments import uthmani_words, hafs_word_reference
 
     reference = hafs_word_reference()
     cache: dict[str, list[int] | None] = {}
@@ -470,7 +470,7 @@ def hafs_word_boundaries() -> WordBoundaries:
     def boundaries(surah_ayah: str) -> list[int] | None:
         if surah_ayah not in cache:
             try:
-                _, offsets = reference(_uthmani_words(surah_ayah))
+                _, offsets = reference(uthmani_words(surah_ayah))
                 cache[surah_ayah] = offsets
             except (KeyError, IndexError, ValueError):
                 cache[surah_ayah] = None

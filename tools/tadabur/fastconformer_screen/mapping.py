@@ -295,9 +295,9 @@ def _segment_reference(words: tuple[str, ...]) -> tuple[str, tuple[int, ...]] | 
 @lru_cache(maxsize=None)
 def _whole_ayah(surah_ayah: str) -> tuple[tuple[str, ...], str, tuple[int, ...]] | None:
     """The ayah's Uthmani words and its realized reference with per-word offsets."""
-    from tadabur.waqf_segments import _uthmani_words
+    from tadabur.waqf_segments import uthmani_words
 
-    words = tuple(_uthmani_words(surah_ayah))
+    words = tuple(uthmani_words(surah_ayah))
     built = _segment_reference(words)
     if built is None:
         return None
@@ -306,9 +306,9 @@ def _whole_ayah(surah_ayah: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]
 
 @lru_cache(maxsize=None)
 def _imlaei_layout(surah_ayah: str, start: int, count: int) -> Layout | None:
-    from tadabur.waqf_segments import _uthmani_words
+    from tadabur.waqf_segments import uthmani_words
 
-    built = _segment_reference(tuple(_uthmani_words(surah_ayah)[start:start + count]))
+    built = _segment_reference(tuple(uthmani_words(surah_ayah)[start:start + count]))
     if built is None:
         return None
     return Layout(tuple(imlaei_words(surah_ayah, start, count)), built[1], built[0])

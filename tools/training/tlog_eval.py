@@ -43,9 +43,9 @@ EXCLUDED_REASON = ("no item: the row names no ayah, or the phonetizer cannot han
 
 def _canonical_words(label: str) -> list[str]:
     """The ayah's canonical words from the reference database: the item's whole ayah."""
-    from tadabur.waqf_segments import _uthmani_words
+    from tadabur.waqf_segments import uthmani_words
 
-    return _uthmani_words(label)
+    return uthmani_words(label)
 
 
 def _whole_ayah(row: Mapping, line: Mapping, words: Sequence[str]) -> Sequence[int]:

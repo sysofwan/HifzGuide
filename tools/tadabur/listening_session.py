@@ -531,7 +531,7 @@ def pool_candidates(
     committed manifest is the default. A corrected reference is the segment read with a waqf
     at each cut, so the sites are mined from what was heard, never from a decode."""
     from .waqf_correction import load_cuts, paused_segment
-    from .waqf_segments import _uthmani_words
+    from .waqf_segments import uthmani_words
 
     corrections = load_cuts() if cuts is None else cuts
     candidates: list[Candidate] = []
@@ -545,7 +545,7 @@ def pool_candidates(
             segment_cuts = corrections.get((clip.audio_filename, segment.start_sample))
             if segment_cuts:
                 if words is None:
-                    words = tuple(_uthmani_words(clip.surah_ayah))
+                    words = tuple(uthmani_words(clip.surah_ayah))
                 segment = paused_segment(segment, words, segment_cuts)
             key = segment_key(clip.audio_filename, segment.segment_index)
             for found in segment_sites(
@@ -1021,14 +1021,14 @@ def _jsonl(path: Path) -> list[dict]:
 def uthmani_tanween() -> Callable[[str], list[bool]]:
     """Per ``surah:ayah``, whether each Uthmani word carries tanween (needs
     ``quran-transcript``; cached per ayah): the ``tanween_of`` :func:`pool_candidates` takes."""
-    from .waqf_segments import _uthmani_words
+    from .waqf_segments import uthmani_words
 
     cache: dict[str, list[bool]] = {}
 
     def tanween_of(surah_ayah: str) -> list[bool]:
         if surah_ayah not in cache:
             cache[surah_ayah] = [
-                any(c in _TANWEEN for c in word) for word in _uthmani_words(surah_ayah)
+                any(c in _TANWEEN for c in word) for word in uthmani_words(surah_ayah)
             ]
         return cache[surah_ayah]
 

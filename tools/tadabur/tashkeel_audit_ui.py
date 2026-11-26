@@ -708,12 +708,12 @@ def main() -> None:
             parser.error("--catch-loss serves the audit's worklist from --clip-cache alone; "
                          "--audio-dir, --worklist, --words, --edit-check and --edit-words do "
                          "not apply")
-        from .waqf_segments import _uthmani_words
+        from .waqf_segments import uthmani_words
 
         directory = args.catch_loss.parent
         state = SessionState.load_catch_loss(
             args.catch_loss, args.verdicts or directory / "verdicts.jsonl", args.clip_cache,
-            _uthmani_words, args.review or directory / "review.jsonl", snips=args.snips)
+            uthmani_words, args.review or directory / "review.jsonl", snips=args.snips)
     else:
         if args.snips is not None:
             parser.error("--snips needs --catch-loss")

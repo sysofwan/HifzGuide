@@ -43,6 +43,15 @@ scripts/test.sh --full   # every test, slow tier included: before a merge when t
 full-corpus artifact (marker declared in `tools/pytest.ini`); the full run's
 `--durations=15` output is the baseline for the next speed complaint.
 
+**Node.js (v18+) is a test dependency.** The listening UI's page script is behaviourally tested
+by running the served `<script type="module">` itself
+(`tadabur/followalong_audit/test_followalong_ui_page_script.py`): Python extracted the script and
+runs it under `node` with a DOM stub, because the page's verdict selection cannot be exercised
+over HTTP. A missing `node` **fails** that test rather than skipping it — skipping would let the
+page's only behavioural regression go green with the bug restored. The Mac has it through `fnm`
+(`node --version`); the cuda-dev box has none, so run the suite (or at least that test) on the
+Mac, or install Node 18+ there.
+
 ## Python Scripts
 
 ### `tadabur.smoke_decode` (Linux + CUDA)

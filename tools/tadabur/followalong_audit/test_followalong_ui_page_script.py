@@ -16,8 +16,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from tadabur.followalong_audit.s5_score import MISTAKE_KINDS, SUB_REASONS, VERDICTS
 
 PAGE = Path(__file__).resolve().parent / "s5_ui_page.html"
@@ -199,10 +197,17 @@ def _payload() -> dict:
                            "sub_reasons": list(SUB_REASONS)}}
 
 
-def test_the_page_script_selects_saves_and_changes_verdicts(tmp_path):
+def _node() -> str:
+    """The Node binary; a test dependency, never a reason to skip the only page-script check."""
     node = shutil.which("node")
-    if node is None:
-        pytest.skip("node is needed to run the page's own script")
+    assert node is not None, (
+        "node is required to run the page's own script (tools/README.md, Tests): install it "
+        "(fnm/nvm on the Mac) rather than running this suite without the page regression")
+    return node
+
+
+def test_the_page_script_selects_saves_and_changes_verdicts(tmp_path):
+    node = _node()
     (tmp_path / "page.js").write_text(_script(), encoding="utf-8")
     (tmp_path / "payload.json").write_text(json.dumps(_payload(), ensure_ascii=False),
                                            encoding="utf-8")

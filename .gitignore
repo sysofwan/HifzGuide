@@ -58,11 +58,14 @@ wandb/
 # any listening and committed beside the worklist it serves.
 !tools/tadabur/**/snips.jsonl
 # The S5 draw (#311): the blind worklist, the key with its stratum and arm outcomes, and the two
-# serve orders. Committed before any listening; the snips sidecar is the rule above.
+# serve orders. Committed before any listening; the snips sidecar is the rule above. The verdicts
+# are the owner's human data — the listening page writes them straight into the repo, so they are
+# tracked like every other label set.
 !tools/tadabur/followalong_audit/s5_draw/key.jsonl
 !tools/tadabur/followalong_audit/s5_draw/worklist.jsonl
 !tools/tadabur/followalong_audit/s5_draw/pilot.jsonl
 !tools/tadabur/followalong_audit/s5_draw/main.jsonl
+!tools/tadabur/followalong_audit/s5_draw/verdicts.jsonl
 # Ship A (#126): its mined sites (definitions with provenance), the #61 worklist and the random
 # word sample it asks, each frozen by checksum in ship_a/worklist.summary.json.
 !tools/tadabur/ship_a/sites.jsonl

@@ -324,7 +324,7 @@ def test_the_snip_report_gives_the_fallback_rate_the_run_note_quotes(key):
 
 # --- the files are tracked ----------------------------------------------------------------------
 @pytest.mark.parametrize("name", ["worklist.jsonl", "key.jsonl", "pilot.jsonl", "main.jsonl",
-                                  "snips.jsonl"])
+                                  "snips.jsonl", "verdicts.jsonl"])
 def test_a_label_file_is_not_gitignored(name):
     ignored = subprocess.run(
         ["git", "-C", str(ROOT), "check-ignore", "-q",

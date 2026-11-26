@@ -67,6 +67,7 @@
 // page keeps only the site it shows and the answer it was shown, which every save sends back as
 // `previous` so a second tab cannot silently overwrite it.
 const state = { sites: [], vocabulary: null, index: 0, choice: null, kinds: new Set() };
+let posting = false;   // a save is in flight; cleared when its reply settles
 const $ = (id) => document.getElementById(id);
 
 async function load() {
@@ -86,7 +87,7 @@ function renderChoices() {
     button.type = "button";
     button.textContent = verdict;
     button.dataset.verdict = verdict;
-    button.addEventListener("click", () => choose(verdict));
+    button.addEventListener("click", () => record(verdict));
     return button;
   }));
   const kinds = $("kinds");
@@ -108,6 +109,12 @@ function renderChoices() {
       Object.assign(document.createElement("option"), { value: reason, textContent: reason })));
 }
 
+// Every step plays its clip at once: the owner asked for autoplay on a verdict, and a step is one
+// listen. The browser can refuse the very first play before any gesture; the player stays there.
+function play() {
+  Promise.resolve($("audio").play()).catch(() => {});
+}
+
 function show(index) {
   state.index = index;
   const site = state.sites[index];
@@ -117,6 +124,7 @@ function show(index) {
     Object.assign(document.createElement("mark"), { textContent: site.carrier }),
     Object.assign(document.createElement("span"), { textContent: site.after }));
   $("audio").src = `/api/audio?key=${encodeURIComponent(site.key)}&whole=0`;
+  play();
   state.choice = site.answer ? site.answer.verdict : null;
   state.kinds = new Set(site.answer ? site.answer.kinds : []);
   $("note").value = site.answer ? site.answer.note : "";
@@ -146,7 +154,16 @@ function choose(verdict) {
   renderDraft();
 }
 
+// A click on a verdict is the whole answer: it saves and steps on at once. A mistake is the one
+// exception — it waits for at least one kind, then Enter or Save does the same. The numbered keys
+// only select (no click), so a keyboard reader can look at the draft before saving it.
+async function record(verdict) {
+  choose(verdict);
+  if (verdict !== "mistake") await save();
+}
+
 async function save() {
+  if (posting) return;   // one answer in flight: a second click must not post the same item twice
   const site = state.sites[state.index];
   if (state.choice === null) return say("Choose a verdict first.");
   const kinds = state.choice === "mistake" ? [...state.kinds] : [];
@@ -156,19 +173,37 @@ async function save() {
     sub_reason: state.choice === "unusable audio" ? ($("sub-reason").value || null) : null,
     note: $("note").value, previous: site.answer,
   };
-  const response = await fetch("/api/verdict", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  });
-  const reply = await response.json();
-  if (!response.ok) {
-    say(reply.error || `not saved (${response.status})`);
-    if (response.status === 409) await load();   // another tab moved it: show what the file holds
-    return;
+  posting = true;
+  try {
+    let response, reply;
+    try {
+      response = await fetch("/api/verdict", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      reply = await response.json();
+    } catch (error) {
+      return say(`not saved (${error.message})`);   // the box or the link is down: stay here
+    }
+    if (!response.ok) {
+      const problem = reply.error || `not saved (${response.status})`;
+      if (response.status === 409) await load();   // another tab moved it: show what the file holds
+      say(problem);
+      return;
+    }
+    site.answer = reply.answer;
+    renderProgress(reply.progress);
+    advance();
+  } finally {
+    posting = false;
   }
-  site.answer = reply.answer;
-  renderProgress(reply.progress);
-  say("saved");
-  next();
+}
+
+// The step after a save: the next item of the sitting, its snip already playing. The last item
+// stays shown — the sitting does not wrap, and re-answering it with Back still posts.
+function advance() {
+  if (state.index + 1 < state.sites.length) return show(state.index + 1);
+  say("saved — done: this is the last item");
 }
 
 function next() {
@@ -188,7 +223,7 @@ function say(text) { $("status").textContent = text; }
 $("whole").addEventListener("click", () => {
   const site = state.sites[state.index];
   $("audio").src = `/api/audio?key=${encodeURIComponent(site.key)}&whole=1`;
-  $("audio").play();
+  play();
 });
 $("prev").addEventListener("click", () => show(Math.max(0, state.index - 1)));
 $("next").addEventListener("click", next);
